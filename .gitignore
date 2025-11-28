@@ -1,0 +1,44 @@
+# Go
+*.o
+*.a
+*.so
+*.exe
+*.exe~
+*.dll
+*.dylib
+dist/
+bin/
+vendor/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sql
+database.backup
+
+# Logs
+*.log
+logs/
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+.cache/
