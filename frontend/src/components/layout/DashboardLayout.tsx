@@ -34,11 +34,16 @@ const SidebarItem = ({
         active 
           ? "bg-primary/10 text-foreground font-medium" 
           : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-        collapsed && "lg:justify-center lg:group-hover:justify-start"
+        collapsed && "lg:justify-center lg:group-hover/sidebar:justify-start"
       )}>
         <Icon className={cn("w-5 h-5", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} strokeWidth={1.5} />
-        <span className={cn(collapsed ? "hidden lg:group-hover:inline" : undefined)}>{label}</span>
-        {active && !collapsed && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(167,139,250,0.8)]" />}
+        <span className={cn(collapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>{label}</span>
+        {active && (
+          <div className={cn(
+            "ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(167,139,250,0.8)]",
+            collapsed && "hidden lg:group-hover/sidebar:block"
+          )} />
+        )}
       </div>
     </Link>
   )
@@ -81,10 +86,13 @@ const DashboardLayout = () => {
 
       {/* Sidebar */}
       <aside className={cn(
-        "group fixed lg:static inset-y-0 left-0 z-50 bg-card border-r border-border flex flex-col transition-transform duration-300 ease-in-out",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-        isCollapsed ? "w-64 lg:w-16 lg:hover:w-64" : "w-64 lg:w-64",
-        "transition-all"
+        "fixed inset-y-0 left-0 z-50 flex flex-col bg-card border-r border-border transition-transform duration-300 ease-in-out group/sidebar",
+        // Mobile behavior: fixed width, transform based on state
+        "w-64", 
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+        // Desktop behavior: static position, always visible (reset transform), width controlled by collapse state
+        "lg:static lg:translate-x-0",
+        isCollapsed ? "lg:w-16 lg:hover:w-64" : "lg:w-64"
       )}>
         {/* Logo Area */}
         <div className="h-16 flex items-center px-6 border-b border-border">
@@ -92,7 +100,7 @@ const DashboardLayout = () => {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
               B
             </div>
-            <span className={cn("text-foreground", isCollapsed ? "hidden lg:group-hover:inline" : undefined)}>
+            <span className={cn("text-foreground", isCollapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>
               Botla.co
             </span>
           </div>
@@ -117,7 +125,7 @@ const DashboardLayout = () => {
 
         {/* Navigation */}
         <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overflow-x-hidden">
-          <div className={cn("px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", isCollapsed ? "hidden lg:group-hover:block" : undefined)}>
+          <div className={cn("px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", isCollapsed ? "hidden lg:group-hover/sidebar:block" : undefined)}>
             Platform
           </div>
           {navItems.map((item) => (
@@ -133,8 +141,8 @@ const DashboardLayout = () => {
         </div>
 
         {/* User Profile / Logout */}
-        <div className={cn("border-t border-border", isCollapsed ? "p-2" : "p-4")}>
-          <div className={cn("bg-muted/50 rounded-xl p-3 flex items-center gap-3 mb-3", isCollapsed ? "hidden lg:group-hover:flex" : undefined)}>
+        <div className={cn("border-t border-border", isCollapsed ? "p-2 lg:group-hover/sidebar:p-4" : "p-4")}>
+          <div className={cn("bg-muted/50 rounded-xl p-3 flex items-center gap-3 mb-3", isCollapsed ? "hidden lg:group-hover/sidebar:flex" : undefined)}>
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent" />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate text-foreground">User Account</div>
@@ -145,12 +153,12 @@ const DashboardLayout = () => {
             variant="ghost" 
             className={cn(
               "w-full justify-start hover:text-destructive hover:bg-destructive/10",
-              isCollapsed ? "text-muted-foreground lg:justify-center lg:group-hover:justify-start px-2" : "text-foreground"
+              isCollapsed ? "text-muted-foreground lg:justify-center lg:group-hover/sidebar:justify-start lg:group-hover/sidebar:text-foreground px-2 lg:group-hover/sidebar:px-4" : "text-foreground"
             )}
             onClick={handleLogout}
           >
-            <LogOut className={cn("w-4 h-4", isCollapsed ? undefined : "mr-2")} />
-            <span className={cn(isCollapsed ? "hidden lg:group-hover:inline" : undefined)}>Logout</span>
+            <LogOut className={cn("w-4 h-4", isCollapsed ? "lg:group-hover/sidebar:mr-2" : "mr-2")} />
+            <span className={cn(isCollapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>Logout</span>
           </Button>
         </div>
       </aside>

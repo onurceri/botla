@@ -20,7 +20,8 @@ import {
   Layout,
   User,
   Inbox,
-  Info
+  Info,
+  Bot
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { uploadPDFSource, uploadTextSource, uploadURLSource, listSources, getSourceStatus, deleteSource } from '@/api/source'
@@ -289,20 +290,22 @@ const ChatbotDetailPage = () => {
         </Card>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="h-auto flex-wrap justify-start gap-2">
-            <TabsTrigger value="overview" className="gap-2">
-              <Settings className="w-4 h-4" /> Genel
-            </TabsTrigger>
-            <TabsTrigger value="sources" className="gap-2">
-              <Database className="w-4 h-4" /> Veri Kaynakları
-            </TabsTrigger>
-            <TabsTrigger value="playground" className="gap-2">
-              <Play className="w-4 h-4" /> Playground
-            </TabsTrigger>
-            <TabsTrigger value="connect" className="gap-2">
-              <Code className="w-4 h-4" /> Entegrasyon
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 scrollbar-hide">
+            <TabsList className="h-auto w-max flex-nowrap justify-start gap-2 md:w-auto md:flex-wrap">
+              <TabsTrigger value="overview" className="gap-2 whitespace-nowrap">
+                <Settings className="w-4 h-4" /> Genel
+              </TabsTrigger>
+              <TabsTrigger value="sources" className="gap-2 whitespace-nowrap">
+                <Database className="w-4 h-4" /> Veri Kaynakları
+              </TabsTrigger>
+              <TabsTrigger value="playground" className="gap-2 whitespace-nowrap">
+                <Play className="w-4 h-4" /> Playground
+              </TabsTrigger>
+              <TabsTrigger value="connect" className="gap-2 whitespace-nowrap">
+                <Code className="w-4 h-4" /> Entegrasyon
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-6">
@@ -453,9 +456,9 @@ const ChatbotDetailPage = () => {
           </TabsContent>
 
           {/* PLAYGROUND TAB */}
-          <TabsContent value="playground" className="h-[650px] flex gap-6">
+          <TabsContent value="playground" className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[650px]">
             {/* Settings Column */}
-            <div className="w-[320px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto pr-2">
+            <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto pr-2">
               
               {/* Identity Section */}
               <div className="border border-border rounded-xl bg-card overflow-hidden">
@@ -617,7 +620,7 @@ const ChatbotDetailPage = () => {
             </div>
 
             {/* Preview Column (Mock Browser) */}
-            <div className="flex-1 flex flex-col bg-background border border-border rounded-xl shadow-2xl overflow-hidden">
+            <div className="flex-1 flex flex-col bg-background border border-border rounded-xl shadow-2xl overflow-hidden min-h-[500px]">
               {/* Browser Toolbar */}
               <div className="h-10 bg-white/60 backdrop-blur border-b border-border flex items-center px-4 gap-4">
                 <div className="flex gap-2">
@@ -661,7 +664,7 @@ const ChatbotDetailPage = () => {
                 >
                   {previewOpen && (
                     <div 
-                      className="w-[380px] h-[600px] max-h-[calc(100%-40px)] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-300 origin-bottom-right"
+                      className="w-[calc(100vw-80px)] sm:w-[380px] h-[450px] sm:h-[600px] max-h-[calc(100%-40px)] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-300 origin-bottom-right"
                     >
                       {/* Widget Header */}
                       <div 
@@ -683,16 +686,9 @@ const ChatbotDetailPage = () => {
                       {/* Widget Messages */}
                       <div className="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth" style={{ background: chatBackgroundColor }}>
                         {/* Welcome Message */}
-                         <div className="flex justify-start items-end gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
-                              <path d="M12 8V4H8" />
-                              <rect width="16" height="12" x="4" y="8" rx="2" />
-                              <path d="M2 14h2" />
-                              <path d="M20 14h2" />
-                              <path d="M15 13v2" />
-                              <path d="M9 13v2" />
-                            </svg>
+                        <div className="flex justify-start items-end gap-2">
+                          <div className="flex-shrink-0 opacity-80">
+                            <Bot className="w-4 h-4" />
                           </div>
                           <div 
                             className="max-w-[85%] rounded-[18px] rounded-bl-sm px-4 py-2.5 text-[15px] leading-relaxed shadow-sm relative"
@@ -708,15 +704,8 @@ const ChatbotDetailPage = () => {
                         {chatHistory.map((msg, i) => (
                           <div key={i} className={cn("flex items-end gap-2", msg.role === 'user' ? "justify-end" : "justify-start")}>
                             {msg.role !== 'user' && (
-                              <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
-                                  <path d="M12 8V4H8" />
-                                  <rect width="16" height="12" x="4" y="8" rx="2" />
-                                  <path d="M2 14h2" />
-                                  <path d="M20 14h2" />
-                                  <path d="M15 13v2" />
-                                  <path d="M9 13v2" />
-                                </svg>
+                              <div className="flex-shrink-0 opacity-80">
+                                <Bot className="w-4 h-4" />
                               </div>
                             )}
                             <div 
@@ -735,11 +724,8 @@ const ChatbotDetailPage = () => {
                               </div>
                             </div>
                             {msg.role === 'user' && (
-                              <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
-                                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                                  <circle cx="12" cy="7" r="4" />
-                                </svg>
+                              <div className="flex-shrink-0 opacity-80">
+                                <User className="w-4 h-4" />
                               </div>
                             )}
                           </div>
