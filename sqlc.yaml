@@ -1,0 +1,36 @@
+version: "2"
+sql:
+  - engine: postgresql
+    schema:
+      - db/migrations/*.up.sql
+    queries:
+      - db/queries/auth
+    gen:
+      go:
+        out: internal/db/auth
+        package: authdb
+        sql_package: pgx/v5
+        emit_interface: true
+  - engine: postgresql
+    schema:
+      - db/migrations/*.up.sql
+    queries:
+      - db/queries/chatbots
+    gen:
+      go:
+        out: internal/db/chatbots
+        package: chatbotsdb
+        sql_package: pgx/v5
+        emit_interface: true
+  - engine: postgresql
+    schema:
+      - db/migrations/*.up.sql
+    queries:
+      - db/queries/analytics
+    gen:
+      go:
+        out: internal/db/analytics
+        package: analyticsdb
+        sql_package: pgx/v5
+        emit_json_tags: true
+        emit_interface: true

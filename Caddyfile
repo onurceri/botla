@@ -1,0 +1,10 @@
+:80 {
+    encode gzip
+    reverse_proxy backend:8080
+}
+
+# Enable TLS when a domain is provided via environment
+{$DOMAIN} {
+    encode gzip
+    reverse_proxy backend:8080
+}

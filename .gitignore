@@ -29,7 +29,7 @@ Thumbs.db
 
 # Database
 *.db
-*.sql
+
 database.backup
 
 # Logs
