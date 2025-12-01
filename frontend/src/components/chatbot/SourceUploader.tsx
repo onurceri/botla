@@ -61,13 +61,13 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
         <button
           onClick={() => setActiveMode(activeMode === 'pdf' ? null : 'pdf')}
           className={cn(
-            "flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed transition-all duration-200 hover:bg-muted",
+            "flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed transition-all duration-200 hover:bg-white/60 backdrop-blur shadow-sm",
             activeMode === 'pdf' 
               ? "border-primary bg-primary/5 text-primary" 
               : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
           )}
         >
-          <div className={cn("p-3 rounded-full bg-muted", activeMode === 'pdf' && "bg-primary/20")}>
+          <div className={cn("p-3 rounded-full bg-muted shadow-inner", activeMode === 'pdf' && "bg-primary/20")}>
             <Upload className="w-6 h-6" />
           </div>
           <span className="font-medium">PDF Yükle</span>
@@ -76,13 +76,13 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
         <button
           onClick={() => setActiveMode(activeMode === 'url' ? null : 'url')}
           className={cn(
-            "flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed transition-all duration-200 hover:bg-muted",
+            "flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed transition-all duration-200 hover:bg-white/60 backdrop-blur shadow-sm",
             activeMode === 'url' 
               ? "border-blue-500 bg-blue-500/5 text-blue-400" 
               : "border-border text-muted-foreground hover:border-blue-500/50 hover:text-foreground"
           )}
         >
-          <div className={cn("p-3 rounded-full bg-muted", activeMode === 'url' && "bg-blue-500/20")}>
+          <div className={cn("p-3 rounded-full bg-muted shadow-inner", activeMode === 'url' && "bg-blue-500/20")}> 
             <LinkIcon className="w-6 h-6" />
           </div>
           <span className="font-medium">Web Sitesi</span>
@@ -91,13 +91,13 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
         <button
           onClick={() => setActiveMode(activeMode === 'text' ? null : 'text')}
           className={cn(
-            "flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed transition-all duration-200 hover:bg-muted",
+            "flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed transition-all duration-200 hover:bg-white/60 backdrop-blur shadow-sm",
             activeMode === 'text' 
               ? "border-emerald-500 bg-emerald-500/5 text-emerald-400" 
               : "border-border text-muted-foreground hover:border-emerald-500/50 hover:text-foreground"
           )}
         >
-          <div className={cn("p-3 rounded-full bg-muted", activeMode === 'text' && "bg-emerald-500/20")}>
+          <div className={cn("p-3 rounded-full bg-muted shadow-inner", activeMode === 'text' && "bg-emerald-500/20")}> 
             <FileText className="w-6 h-6" />
           </div>
           <span className="font-medium">Metin Gir</span>
@@ -107,7 +107,7 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
       {/* Input Area */}
       {activeMode && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="relative p-6 rounded-xl bg-muted/30 border border-border">
+          <div className="relative p-6 rounded-2xl bg-white/60 backdrop-blur border border-border shadow-sm">
             <button 
               onClick={() => setActiveMode(null)}
               className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground"
@@ -143,7 +143,7 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
                   placeholder="https://example.com"
                   className="flex-1"
                 />
-                <Button onClick={handleSubmit} disabled={loading}>
+                <Button onClick={handleSubmit} disabled={loading} className="rounded-full">
                   {loading ? 'Ekleniyor...' : 'Ekle'}
                 </Button>
               </div>
@@ -158,7 +158,7 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
                   placeholder="Metin içeriğini buraya yapıştırın..."
                 />
                 <div className="flex justify-end">
-                  <Button onClick={handleSubmit} disabled={loading}>
+                  <Button onClick={handleSubmit} disabled={loading} className="rounded-full">
                     {loading ? 'Ekleniyor...' : 'Ekle'}
                   </Button>
                 </div>

@@ -19,7 +19,8 @@ import {
   Type,
   Layout,
   User,
-  Bot
+  Inbox,
+  Info
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { uploadPDFSource, uploadTextSource, uploadURLSource, listSources, getSourceStatus, deleteSource } from '@/api/source'
@@ -267,17 +268,17 @@ const ChatbotDetailPage = () => {
         </Card>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-muted border border-border p-1 h-auto flex-wrap justify-start gap-1">
-            <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+          <TabsList className="h-auto flex-wrap justify-start gap-2">
+            <TabsTrigger value="overview" className="gap-2">
               <Settings className="w-4 h-4" /> Genel
             </TabsTrigger>
-            <TabsTrigger value="sources" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+            <TabsTrigger value="sources" className="gap-2">
               <Database className="w-4 h-4" /> Veri Kaynakları
             </TabsTrigger>
-            <TabsTrigger value="playground" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+            <TabsTrigger value="playground" className="gap-2">
               <Play className="w-4 h-4" /> Playground
             </TabsTrigger>
-            <TabsTrigger value="connect" className="gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+            <TabsTrigger value="connect" className="gap-2">
               <Code className="w-4 h-4" /> Entegrasyon
             </TabsTrigger>
           </TabsList>
@@ -288,6 +289,7 @@ const ChatbotDetailPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Kimlik & Model</CardTitle>
+                  <CardDescription>Bot ismi, model seçimi ve sistem mesajı.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -313,13 +315,43 @@ const ChatbotDetailPage = () => {
                       onChange={(e) => setSystemPrompt(e.target.value)}
                       placeholder="Sen yardımcı bir asistansın..."
                     />
+                    <div className="flex justify-end text-xs text-muted-foreground">{systemPrompt.length} karakter</div>
                   </div>
                 </CardContent>
               </Card>
-
-
-
-
+              <Card>
+                <CardHeader>
+                  <CardTitle>Model Ayarları</CardTitle>
+                  <CardDescription>Yaratıcılık ve token sınırı.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Yaratıcılık (Temperature): {temperature}</label>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.1" 
+                      value={temperature} 
+                      onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                      className="w-full accent-primary"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Tutarlı (0.0)</span>
+                      <span>Yaratıcı (1.0)</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Maksimum Token</label>
+                    <Input 
+                      type="number" 
+                      value={maxTokens}
+                      onChange={(e) => setMaxTokens(Number(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -337,61 +369,64 @@ const ChatbotDetailPage = () => {
                   onUploadText={async (t) => { if(id) { await uploadTextSource(id, t).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                 />
                 
-                <div className="rounded-md border border-border overflow-hidden">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-muted text-muted-foreground font-medium">
-                      <tr>
-                        <th className="px-4 py-3">Tip</th>
-                        <th className="px-4 py-3">Kaynak Adı</th>
-                        <th className="px-4 py-3">Durum</th>
-                        <th className="px-4 py-3">Parçalar</th>
-                        <th className="px-4 py-3 text-right">İşlem</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {sources.map((s) => (
-                        <tr key={s.id} className="hover:bg-muted/50 transition-colors">
-                          <td className="px-4 py-3 uppercase text-xs font-bold text-muted-foreground">{s.source_type}</td>
-                          <td className="px-4 py-3 font-medium truncate max-w-[200px] text-foreground" title={s.original_filename || s.source_url}>
-                            {s.original_filename || s.source_url}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={cn(
-                              "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium",
-                              s.status === 'completed' ? "bg-emerald-100 text-emerald-700" :
-                              s.status === 'processing' ? "bg-blue-100 text-blue-700" :
-                              s.status === 'failed' ? "bg-red-100 text-red-700" :
-                              "bg-yellow-100 text-yellow-700"
-                            )}>
-                              {s.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
-                              {s.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                              {s.status === 'failed' && <AlertCircle className="w-3 h-3" />}
-                              {s.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">{s.chunk_count}</td>
-                          <td className="px-4 py-3 text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteSource(s.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                      {sources.length === 0 && (
+                {sources.length > 0 ? (
+                  <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-muted/40 text-muted-foreground font-medium">
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                            Henüz kaynak eklenmemiş.
-                          </td>
+                          <th className="px-4 py-3">Tip</th>
+                          <th className="px-4 py-3">Kaynak Adı</th>
+                          <th className="px-4 py-3">Durum</th>
+                          <th className="px-4 py-3">Parçalar</th>
+                          <th className="px-4 py-3 text-right">İşlem</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {sources.map((s) => (
+                          <tr key={s.id} className="hover:bg-muted/50 transition-colors">
+                            <td className="px-4 py-3 uppercase text-xs font-bold text-muted-foreground">{s.source_type}</td>
+                            <td className="px-4 py-3 font-medium truncate max-w-[200px] text-foreground" title={s.original_filename || s.source_url}>
+                              {s.original_filename || s.source_url}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={cn(
+                                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium",
+                                s.status === 'completed' ? "bg-emerald-100 text-emerald-700" :
+                                s.status === 'processing' ? "bg-blue-100 text-blue-700" :
+                                s.status === 'failed' ? "bg-red-100 text-red-700" :
+                                "bg-yellow-100 text-yellow-700"
+                              )}>
+                                {s.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
+                                {s.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
+                                {s.status === 'failed' && <AlertCircle className="w-3 h-3" />}
+                                {s.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{s.chunk_count}</td>
+                            <td className="px-4 py-3 text-right">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteSource(s.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-border bg-muted/30 p-10 text-center space-y-3">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted">
+                      <Inbox className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <div className="text-sm font-medium text-foreground">Henüz kaynak eklenmemiş</div>
+                    <div className="text-xs text-muted-foreground">PDF yükleyin, bir URL ekleyin veya metin girin.</div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -402,10 +437,10 @@ const ChatbotDetailPage = () => {
             <div className="w-[320px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto pr-2">
               
               {/* Identity Section */}
-              <div className="border border-border rounded-lg bg-card overflow-hidden">
+              <div className="border border-border rounded-xl bg-card overflow-hidden">
                 <button 
                   onClick={() => setExpandedSection(expandedSection === 'identity' ? null : 'identity')}
-                  className="w-full flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur hover:bg-white/70 transition-colors"
                 >
                   <div className="flex items-center gap-2 font-medium">
                     <User className="w-4 h-4 text-primary" />
@@ -432,10 +467,10 @@ const ChatbotDetailPage = () => {
               </div>
 
               {/* Appearance Section */}
-              <div className="border border-border rounded-lg bg-card overflow-hidden">
+              <div className="border border-border rounded-xl bg-card overflow-hidden">
                 <button 
                   onClick={() => setExpandedSection(expandedSection === 'appearance' ? null : 'appearance')}
-                  className="w-full flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur hover:bg-white/70 transition-colors"
                 >
                   <div className="flex items-center gap-2 font-medium">
                     <Layout className="w-4 h-4 text-primary" />
@@ -482,10 +517,10 @@ const ChatbotDetailPage = () => {
               </div>
 
               {/* Colors Section */}
-              <div className="border border-border rounded-lg bg-card overflow-hidden">
+              <div className="border border-border rounded-xl bg-card overflow-hidden">
                 <button 
                   onClick={() => setExpandedSection(expandedSection === 'colors' ? null : 'colors')}
-                  className="w-full flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur hover:bg-white/70 transition-colors"
                 >
                   <div className="flex items-center gap-2 font-medium">
                     <Palette className="w-4 h-4 text-primary" />
@@ -549,46 +584,14 @@ const ChatbotDetailPage = () => {
                 )}
               </div>
 
-              {/* Behavior Section */}
-              <div className="border border-border rounded-lg bg-card overflow-hidden">
-                <button 
-                  onClick={() => setExpandedSection(expandedSection === 'behavior' ? null : 'behavior')}
-                  className="w-full flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2 font-medium">
-                    <Bot className="w-4 h-4 text-primary" />
-                    Davranış
-                  </div>
-                  {expandedSection === 'behavior' ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                {expandedSection === 'behavior' && (
-                  <div className="p-4 space-y-4 border-t border-border animate-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted-foreground uppercase">Yaratıcılık (Temperature): {temperature}</label>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="1" 
-                        step="0.1" 
-                        value={temperature} 
-                        onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                        className="w-full accent-primary"
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Tutarlı (0.0)</span>
-                        <span>Yaratıcı (1.0)</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              
 
             </div>
 
             {/* Preview Column (Mock Browser) */}
             <div className="flex-1 flex flex-col bg-background border border-border rounded-xl shadow-2xl overflow-hidden">
               {/* Browser Toolbar */}
-              <div className="h-10 bg-muted/50 border-b border-border flex items-center px-4 gap-4">
+              <div className="h-10 bg-white/60 backdrop-blur border-b border-border flex items-center px-4 gap-4">
                 <div className="flex gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500/80" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
@@ -651,7 +654,7 @@ const ChatbotDetailPage = () => {
                         {/* Welcome Message */}
                          <div className="flex justify-start">
                           <div 
-                            className="max-w-[85%] rounded-2xl rounded-tl-none px-4 py-2.5 text-sm shadow-sm"
+                            className="max-w-[85%] rounded-2xl rounded-tl-none px-4 py-2.5 text-sm shadow-sm border"
                             style={{ background: botMessageColor, color: botMessageTextColor }}
                           >
                             {welcomeMessage}
@@ -661,8 +664,8 @@ const ChatbotDetailPage = () => {
                         {chatHistory.map((msg, i) => (
                           <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
                             <div 
-                              className={cn(
-                                "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                            className={cn(
+                                "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm border",
                                 msg.role === 'user' ? "rounded-tr-none" : "rounded-tl-none"
                               )}
                               style={{ 
@@ -678,15 +681,15 @@ const ChatbotDetailPage = () => {
                         {chatLoading && (
                           <div className="flex justify-start">
                             <div 
-                              className="max-w-[85%] rounded-2xl rounded-tl-none px-4 py-2.5 text-sm flex gap-1 shadow-sm"
-                              style={{ background: botMessageColor, color: botMessageTextColor }}
-                            >
-                              <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce opacity-70" />
-                              <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75 opacity-70" />
-                              <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150 opacity-70" />
-                            </div>
+                            className="max-w-[85%] rounded-2xl rounded-tl-none px-4 py-2.5 text-sm flex gap-1 shadow-sm border"
+                            style={{ background: botMessageColor, color: botMessageTextColor }}
+                          >
+                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce opacity-70" />
+                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75 opacity-70" />
+                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150 opacity-70" />
                           </div>
-                        )}
+                        </div>
+                      )}
                       </div>
 
                       {/* Widget Input */}
@@ -699,9 +702,9 @@ const ChatbotDetailPage = () => {
                             value={chatInput} 
                             onChange={(e) => setChatInput(e.target.value)} 
                             placeholder="Mesaj yazın..." 
-                            className="flex-1 h-10"
+                            className="flex-1 h-10 rounded-full px-4"
                           />
-                          <Button type="submit" size="icon" disabled={chatLoading} style={{ background: themeColor }} className="h-10 w-10">
+                          <Button type="submit" size="icon" disabled={chatLoading} style={{ background: themeColor }} className="h-10 w-10 rounded-full shadow-sm">
                             <MessageSquare className="w-4 h-4" />
                           </Button>
                         </form>
@@ -743,17 +746,21 @@ const ChatbotDetailPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="relative group">
-                  <pre className="bg-muted p-4 rounded-lg text-xs font-mono text-foreground overflow-x-auto border border-border">
+                  <pre className="bg-muted p-4 rounded-xl text-xs font-mono text-foreground overflow-x-auto border border-border shadow-sm">
                     {`<script src="https://cdn.botla.co/widget.js" data-bot="${id}"></script>`}
                   </pre>
                   <Button 
                     size="sm" 
                     variant="secondary" 
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 shadow-sm"
                     onClick={() => navigator.clipboard.writeText(`<script src="https://cdn.botla.co/widget.js" data-bot="${id}"></script>`)}
                   >
                     Kopyala
                   </Button>
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-4 h-4" />
+                  Kodun yüklendiğinden emin olmak için sayfayı yenileyin.
                 </div>
               </CardContent>
             </Card>
