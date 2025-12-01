@@ -5,6 +5,7 @@ import (
     "encoding/json"
     "net/http"
     "strings"
+    "regexp"
 
     "github.com/onurceri/botla-co/internal/db"
     "github.com/onurceri/botla-co/internal/models"
@@ -32,8 +33,12 @@ type createChatbotRequest struct {
     ChatFontFamily       *string  `json:"chat_font_family"`
     ChatHeaderColor      *string  `json:"chat_header_color"`
     ChatHeaderTextColor  *string  `json:"chat_header_text_color"`
+    ChatBackgroundColor  *string  `json:"chat_background_color"`
     BotIcon              *string  `json:"bot_icon"`
     BotDisplayName       *string  `json:"bot_display_name"`
+    SecureEmbedEnabled   *bool    `json:"secure_embed_enabled"`
+    AllowedDomains       *string  `json:"allowed_domains"`
+    EmbedSecret          *string  `json:"embed_secret"`
 }
 
 func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
@@ -81,8 +86,12 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
             ChatFontFamily:       defaultString(req.ChatFontFamily, "Inter, sans-serif"),
             ChatHeaderColor:      defaultString(req.ChatHeaderColor, "#3b82f6"),
             ChatHeaderTextColor:  defaultString(req.ChatHeaderTextColor, "#ffffff"),
+            ChatBackgroundColor:  defaultString(req.ChatBackgroundColor, "#fff5e6"),
             BotIcon:              req.BotIcon,
             BotDisplayName:       req.BotDisplayName,
+            SecureEmbedEnabled:   func() bool { if req.SecureEmbedEnabled != nil { return *req.SecureEmbedEnabled }; return false }(),
+            AllowedDomains:       req.AllowedDomains,
+            EmbedSecret:          req.EmbedSecret,
         }
         newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
         if err != nil {
@@ -147,6 +156,13 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
             w.WriteHeader(http.StatusBadRequest)
             return
         }
+        if req.ChatBackgroundColor != nil {
+            s := strings.TrimSpace(*req.ChatBackgroundColor)
+            if s != "" && !isValidHexColor(s) {
+                w.WriteHeader(http.StatusBadRequest)
+                return
+            }
+        }
         if req.Name != "" {
             c.Name = strings.TrimSpace(req.Name)
         }
@@ -195,11 +211,23 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
         if req.ChatHeaderTextColor != nil {
             c.ChatHeaderTextColor = *req.ChatHeaderTextColor
         }
+        if req.ChatBackgroundColor != nil {
+            c.ChatBackgroundColor = *req.ChatBackgroundColor
+        }
         if req.BotIcon != nil {
             c.BotIcon = req.BotIcon
         }
         if req.BotDisplayName != nil {
             c.BotDisplayName = req.BotDisplayName
+        }
+        if req.SecureEmbedEnabled != nil {
+            c.SecureEmbedEnabled = *req.SecureEmbedEnabled
+        }
+        if req.AllowedDomains != nil {
+            c.AllowedDomains = req.AllowedDomains
+        }
+        if req.EmbedSecret != nil {
+            c.EmbedSecret = req.EmbedSecret
         }
         err = db.UpdateChatbot(r.Context(), h.DB, c)
         if err != nil {
@@ -225,6 +253,9 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
 }
+
+var hexColorRe = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
+func isValidHexColor(s string) bool { return hexColorRe.MatchString(s) }
 
 func defaultString(p *string, d string) string {
     if p != nil {

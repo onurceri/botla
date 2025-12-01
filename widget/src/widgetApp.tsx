@@ -4,14 +4,16 @@ import { ChatDrawer } from './components/ChatDrawer'
 
 type Message = { role: 'user' | 'assistant'; content: string; ts?: number }
 
-export function WidgetApp({ chatbotId, apiBase, themeColor, welcome }: { chatbotId: string; apiBase?: string; themeColor?: string; welcome?: string }) {
-  const [open, setOpen] = useState(false)
+export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean }) {
+  const [open, setOpen] = useState(!!autoOpen)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [config, setConfig] = useState<any>(null)
   const [sid, setSid] = useState<string>('')
+  const [embedToken, setEmbedToken] = useState<string>('')
+  const [unread, setUnread] = useState(0)
 
   useEffect(() => {
     const base = apiBase || ''
@@ -25,23 +27,38 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, welcome }: { chatbot
     }).catch(() => {})
   }, [chatbotId, apiBase])
 
-  const color = themeColor || config?.theme_color || '#3b82f6'
-  const position = config?.position || 'bottom-right'
+  const color = (useOverrides && themeColor) || config?.theme_color || '#3b82f6'
+  const pos = (useOverrides && position) || config?.position || 'bottom-right'
+  function sanitizeUrl(u?: string) {
+    if (!u) return undefined
+    return u.replace(/[`'\"]/g, '').trim()
+  }
+  const botName = (useOverrides && botNameOverride) || config?.bot_display_name
+  const botIcon = sanitizeUrl((useOverrides && botIconOverride) || config?.bot_icon)
   
   useEffect(() => {
     if (panelRef.current) {
       panelRef.current.style.setProperty('--cbw-color', color)
-      panelRef.current.style.setProperty('--cbw-bot-msg-color', config?.bot_message_color || color)
-      panelRef.current.style.setProperty('--cbw-user-msg-color', config?.user_message_color || color)
-      panelRef.current.style.setProperty('--cbw-bot-msg-text-color', config?.bot_message_text_color || '#ffffff')
-      panelRef.current.style.setProperty('--cbw-user-msg-text-color', config?.user_message_text_color || '#ffffff')
-      panelRef.current.style.setProperty('--cbw-header-color', config?.chat_header_color || color)
-      panelRef.current.style.setProperty('--cbw-header-text-color', config?.chat_header_text_color || '#ffffff')
-      panelRef.current.style.setProperty('--cbw-font-family', config?.chat_font_family || 'inherit')
+      panelRef.current.style.setProperty('--cbw-bot-msg-color', botMessageColor || config?.bot_message_color || color)
+      panelRef.current.style.setProperty('--cbw-user-msg-color', userMessageColor || config?.user_message_color || color)
+      panelRef.current.style.setProperty('--cbw-bot-msg-text-color', botMessageTextColor || config?.bot_message_text_color || '#ffffff')
+      panelRef.current.style.setProperty('--cbw-user-msg-text-color', userMessageTextColor || config?.user_message_text_color || '#ffffff')
+      panelRef.current.style.setProperty('--cbw-header-color', headerColor || config?.chat_header_color || color)
+      panelRef.current.style.setProperty('--cbw-header-text-color', headerTextColor || config?.chat_header_text_color || '#ffffff')
+      panelRef.current.style.setProperty('--cbw-font-family', fontFamily || config?.chat_font_family || 'inherit')
+      if (panelBg || (config as any)?.chat_panel_bg_color) panelRef.current.style.setProperty('--cbw-panel-bg', panelBg || (config as any)?.chat_panel_bg_color)
+      if (chatBg || (config as any)?.chat_background_color) panelRef.current.style.setProperty('--cbw-chat-bg', chatBg || (config as any)?.chat_background_color)
+      if (inputBg || (config as any)?.chat_input_bg_color) panelRef.current.style.setProperty('--cbw-input-bg', inputBg || (config as any)?.chat_input_bg_color)
+      if (inputText || (config as any)?.chat_input_text_color) panelRef.current.style.setProperty('--cbw-input-text', inputText || (config as any)?.chat_input_text_color)
+      if (bubbleRadius || (config as any)?.chat_bubble_radius) panelRef.current.style.setProperty('--cbw-bubble-radius', bubbleRadius || (config as any)?.chat_bubble_radius)
+      if (sendButtonColor || (config as any)?.chat_send_button_color) panelRef.current.style.setProperty('--cbw-send-bg', sendButtonColor || (config as any)?.chat_send_button_color)
+      if (panelHeight || (config as any)?.chat_panel_height) {
+        panelRef.current.style.setProperty('--cbw-panel-height', panelHeight || (config as any)?.chat_panel_height)
+      }
       
       // Position
       panelRef.current.style.bottom = '20px'
-      if (position === 'bottom-left') {
+      if (pos === 'bottom-left') {
         panelRef.current.style.left = '20px'
         panelRef.current.style.right = 'auto'
       } else {
@@ -49,7 +66,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, welcome }: { chatbot
         panelRef.current.style.left = 'auto'
       }
     }
-  }, [color, config])
+  }, [color, config, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, pos, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor])
 
   useEffect(() => {
     const s = getSession(chatbotId)
@@ -79,10 +96,18 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, welcome }: { chatbot
     try {
       const base = apiBase || ''
       const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}/chat`
+      let token = embedToken
+      if (!token && embedTokenUrl) {
+        try { const tr = await fetch(embedTokenUrl); if (tr.ok) { const t = await tr.text(); token = t; setEmbedToken(t) } } catch {}
+      }
+      let captchaToken = ''
+      if (captchaSiteKey && (window as any).getCaptchaToken) {
+        try { captchaToken = await (window as any).getCaptchaToken(captchaSiteKey) } catch {}
+      }
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, session_id: ensureSession(chatbotId, sid, setSid) }),
+        body: JSON.stringify({ message: text, session_id: ensureSession(chatbotId, sid, setSid), embed_token: token, captcha_token: captchaToken }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -125,11 +150,11 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, welcome }: { chatbot
           setInput={setInput} 
           onSend={send} 
           onClose={toggle}
-          botName={config?.bot_display_name}
-          botIcon={config?.bot_icon}
+          botName={botName}
+          botIcon={botIcon}
         />
       ) : (
-        <ChatBubble color={color} unread={unread} onClick={toggle} icon={config?.bot_icon} />
+        <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />
       )}
     </div>
   )

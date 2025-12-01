@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: up down psql redis-ping migrate-up migrate-down migrate-version migrate-up-docker migrate-down-docker migrate-version-docker sqlc-generate
+.PHONY: up down psql redis-ping migrate-up migrate-down migrate-version migrate-up-docker migrate-down-docker migrate-version-docker migrate-force-docker sqlc-generate
 
 # Local DB URL for tooling on host
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
@@ -40,6 +40,10 @@ migrate-down-docker:
 
 migrate-version-docker:
 	-docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) version
+
+# Force migration version (usage: make migrate-force-docker v=4)
+migrate-force-docker:
+	docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) force $(v)
 
 sqlc-generate:
 	sqlc generate

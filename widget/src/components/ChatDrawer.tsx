@@ -9,28 +9,50 @@ export function ChatDrawer(
   return (
     <div className="cbw-panel" role="dialog" aria-label="Chatbot">
       <div className="cbw-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {botIcon && <img src={botIcon} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />}
+        <div className="cbw-header-title">
+            {botIcon && <img src={botIcon} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />}
             <span>{botName || 'Chatbot'}</span>
         </div>
-        <button className="cbw-bubble" style={{ background: 'transparent', color: 'inherit', boxShadow: 'none', width: 'auto', height: 'auto', padding: '4px' }} onClick={onClose} aria-label="Kapat">×</button>
+        <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">×</button>
       </div>
       <div className="cbw-messages">
         {messages.map((m, i) => <MsgComp key={i} m={m} />)}
-        {loading && <div className="cbw-msg assistant">Yazıyor…</div>}
+        {loading && (
+          <div className="cbw-msg-row">
+            <div className="cbw-msg assistant" style={{ display: 'flex', gap: '4px', alignItems: 'center', padding: '12px 16px' }}>
+              <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%', animation: 'cbw-bounce 1.4s infinite ease-in-out both', opacity: 0.7 }}></span>
+              <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%', animation: 'cbw-bounce 1.4s infinite ease-in-out both', animationDelay: '0.16s', opacity: 0.7 }}></span>
+              <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%', animation: 'cbw-bounce 1.4s infinite ease-in-out both', animationDelay: '0.32s', opacity: 0.7 }}></span>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="cbw-input">
-        <input
-          type="text"
-          placeholder="Mesaj yazın"
-          value={input}
-          onChange={(e) => setInput(e.currentTarget.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !loading) onSend() }}
-          disabled={loading}
-        />
-        <button onClick={onSend} disabled={loading} style={{ background: color }}>Gönder</button>
+      <div className="cbw-input-area">
+        <div className="cbw-input-wrapper">
+          <input
+            type="text"
+            className="cbw-input-field"
+            placeholder="Mesaj yazın..."
+            value={input}
+            onChange={(e) => setInput(e.currentTarget.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !loading) onSend() }}
+            disabled={loading}
+          />
+          <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label="Gönder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+        <div className="cbw-brand">Powered by <a href="https://botla.co" target="_blank" rel="noreferrer">Botla</a></div>
       </div>
-      <div className="cbw-brand">Powered by <a href="https://botla.co" target="_blank" rel="noreferrer">Botla</a></div>
+      <style>{`
+        @keyframes cbw-bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+      `}</style>
     </div>
   )
 }

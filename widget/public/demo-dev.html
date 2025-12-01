@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatbot Widget Dev Demo</title>
+  <style>
+    body {
+      min-height: 100vh
+    }
+  </style>
+</head>
+
+<body>
+  <div id="chatbot-widget-host"></div>
+  <script>
+    window.__CBW_PARAMS = {
+      'chatbot-id': 'ae96e560-4ccc-4942-bf3d-f9b1abcadec6',
+      'api-base': 'http://localhost:8080',
+      'auto-open': '1',
+      'debug': '1'
+    }
+  </script>
+  <script type="module" src="/src/widget.tsx"></script>
+</body>
+
+</html>

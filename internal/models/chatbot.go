@@ -24,7 +24,10 @@ type Chatbot struct {
     ChatFontFamily       string     `json:"chat_font_family"`
     ChatHeaderColor      string     `json:"chat_header_color"`
     ChatHeaderTextColor  string     `json:"chat_header_text_color"`
+    ChatBackgroundColor  string     `json:"chat_background_color"`
     BotIcon              *string    `json:"bot_icon,omitempty"`
     BotDisplayName       *string    `json:"bot_display_name,omitempty"`
+    AllowedDomains       *string    `json:"allowed_domains,omitempty"`
+    EmbedSecret          *string    `json:"embed_secret,omitempty"`
+    SecureEmbedEnabled   bool       `json:"secure_embed_enabled"`
 }
-

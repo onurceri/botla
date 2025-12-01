@@ -54,8 +54,13 @@ const ChatbotDetailPage = () => {
   const [chatFontFamily, setChatFontFamily] = useState('Inter, sans-serif')
   const [chatHeaderColor, setChatHeaderColor] = useState('#3b82f6')
   const [chatHeaderTextColor, setChatHeaderTextColor] = useState('#ffffff')
+  const [chatBackgroundColor, setChatBackgroundColor] = useState('#FFF5E6')
   const [botIcon, setBotIcon] = useState('')
   const [botDisplayName, setBotDisplayName] = useState('')
+  const [userPlan, setUserPlan] = useState('free')
+  const [secureEmbedEnabled, setSecureEmbedEnabled] = useState(false)
+  const [allowedDomains, setAllowedDomains] = useState('')
+  const [embedSecret, setEmbedSecret] = useState('')
   
   // Sources State
   const [sources, setSources] = useState<any[]>([])
@@ -73,11 +78,19 @@ const ChatbotDetailPage = () => {
   const isNew = id === 'new'
 
   useEffect(() => {
+    try {
+      const u = new URL(window.location.href)
+      const tab = u.searchParams.get('tab')
+      if (tab === 'connect' || tab === 'sources' || tab === 'playground' || tab === 'overview') {
+        setActiveTab(tab)
+      }
+    } catch {}
     // Generate a unique session ID for the playground on mount
     setSessionId(`playground-${Math.random().toString(36).substring(2, 15)}`)
   }, [])
 
   useEffect(() => {
+    api.get('/api/v1/me').then(({ data }) => { setUserPlan(data.subscription_plan || 'free') }).catch(() => {})
     if (!isNew && id) {
       api.get(`/api/v1/chatbots/${id}`).then(({ data }) => {
         setName(data.name || '')
@@ -96,8 +109,12 @@ const ChatbotDetailPage = () => {
         setChatFontFamily(data.chat_font_family || 'Inter, sans-serif')
         setChatHeaderColor(data.chat_header_color || '#3b82f6')
         setChatHeaderTextColor(data.chat_header_text_color || '#ffffff')
+        setChatBackgroundColor(data.chat_background_color || '#FFF5E6')
         setBotIcon(data.bot_icon || '')
         setBotDisplayName(data.bot_display_name || '')
+        setAllowedDomains(data.allowed_domains || '')
+        setEmbedSecret(data.embed_secret || '')
+        setSecureEmbedEnabled(!!data.secure_embed_enabled)
       }).catch(() => {})
       
       refreshSources()
@@ -138,8 +155,12 @@ const ChatbotDetailPage = () => {
       chat_font_family: chatFontFamily,
       chat_header_color: chatHeaderColor,
       chat_header_text_color: chatHeaderTextColor,
+      chat_background_color: chatBackgroundColor,
       bot_icon: botIcon,
-      bot_display_name: botDisplayName
+      bot_display_name: botDisplayName,
+      secure_embed_enabled: secureEmbedEnabled,
+      allowed_domains: secureEmbedEnabled ? allowedDomains : undefined,
+      embed_secret: secureEmbedEnabled ? embedSecret : undefined
     }
 
     try {
@@ -532,6 +553,13 @@ const ChatbotDetailPage = () => {
                   <div className="p-4 space-y-4 border-t border-border animate-in slide-in-from-top-2 duration-200">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground uppercase">Chat Arka Plan</label>
+                        <div className="flex gap-2 items-center">
+                          <Input type="color" value={chatBackgroundColor} onChange={(e) => setChatBackgroundColor(e.target.value)} className="w-8 h-8 p-0 border-0 rounded-full overflow-hidden cursor-pointer" />
+                          <Input value={chatBackgroundColor} onChange={(e) => setChatBackgroundColor(e.target.value)} className="flex-1 bg-background font-mono text-xs" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
                         <label className="text-xs font-medium text-muted-foreground uppercase">Header</label>
                         <div className="flex gap-2 items-center">
                           <Input type="color" value={chatHeaderColor} onChange={(e) => setChatHeaderColor(e.target.value)} className="w-8 h-8 p-0 border-0 rounded-full overflow-hidden cursor-pointer" />
@@ -607,7 +635,7 @@ const ChatbotDetailPage = () => {
               </div>
 
               {/* Browser Content */}
-              <div className="flex-1 relative bg-slate-50 dark:bg-slate-900/50" style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+              <div className="flex-1 relative bg-slate-50" style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
                 
                 {/* Mock Page Content */}
                 <div className="p-12 max-w-3xl mx-auto space-y-8 opacity-20 pointer-events-none select-none">
@@ -633,40 +661,68 @@ const ChatbotDetailPage = () => {
                 >
                   {previewOpen && (
                     <div 
-                      className="w-[360px] h-[520px] flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200"
+                      className="w-[380px] h-[600px] max-h-[calc(100%-40px)] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-300 origin-bottom-right"
                     >
                       {/* Widget Header */}
                       <div 
-                        className="p-4 flex items-center justify-between font-semibold"
+                        className="p-4 flex items-center justify-between font-semibold backdrop-blur-xl border-b border-black/5 z-10"
                         style={{ background: chatHeaderColor, color: chatHeaderTextColor }}
                       >
-                        <div className="flex items-center gap-2">
-                          {botIcon && <img src={botIcon} alt="" className="w-6 h-6 rounded-full object-cover" />}
-                          <span>{botDisplayName || 'Chatbot'}</span>
+                        <div className="flex items-center gap-2.5">
+                          {botIcon && <img src={botIcon} alt="" className="w-7 h-7 rounded-full object-cover shadow-sm" />}
+                          <span className="text-[15px]">{botDisplayName || 'Chatbot'}</span>
                         </div>
-                        <button onClick={() => setPreviewOpen(false)} className="text-inherit opacity-80 hover:opacity-100 transition-opacity">
-                          <X className="w-5 h-5" />
+                        <button 
+                          onClick={() => setPreviewOpen(false)} 
+                          className="w-7 h-7 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-colors text-inherit opacity-80 hover:opacity-100"
+                        >
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
 
                       {/* Widget Messages */}
-                      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950/50">
+                      <div className="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth" style={{ background: chatBackgroundColor }}>
                         {/* Welcome Message */}
-                         <div className="flex justify-start">
+                         <div className="flex justify-start items-end gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
+                              <path d="M12 8V4H8" />
+                              <rect width="16" height="12" x="4" y="8" rx="2" />
+                              <path d="M2 14h2" />
+                              <path d="M20 14h2" />
+                              <path d="M15 13v2" />
+                              <path d="M9 13v2" />
+                            </svg>
+                          </div>
                           <div 
-                            className="max-w-[85%] rounded-2xl rounded-tl-none px-4 py-2.5 text-sm shadow-sm border"
+                            className="max-w-[85%] rounded-[18px] rounded-bl-sm px-4 py-2.5 text-[15px] leading-relaxed shadow-sm relative"
                             style={{ background: botMessageColor, color: botMessageTextColor }}
                           >
                             {welcomeMessage}
+                            <div className="text-[11px] opacity-70 text-right mt-1 leading-none">
+                              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                            </div>
                           </div>
                         </div>
 
                         {chatHistory.map((msg, i) => (
-                          <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                          <div key={i} className={cn("flex items-end gap-2", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                            {msg.role !== 'user' && (
+                              <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
+                                  <path d="M12 8V4H8" />
+                                  <rect width="16" height="12" x="4" y="8" rx="2" />
+                                  <path d="M2 14h2" />
+                                  <path d="M20 14h2" />
+                                  <path d="M15 13v2" />
+                                  <path d="M9 13v2" />
+                                </svg>
+                              </div>
+                            )}
                             <div 
                             className={cn(
-                                "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm border",
-                                msg.role === 'user' ? "rounded-tr-none" : "rounded-tl-none"
+                                "max-w-[85%] rounded-[18px] px-4 py-2.5 text-[15px] leading-relaxed shadow-sm relative",
+                                msg.role === 'user' ? "rounded-br-sm" : "rounded-bl-sm"
                               )}
                               style={{ 
                                 background: msg.role === 'user' ? userMessageColor : botMessageColor,
@@ -674,43 +730,64 @@ const ChatbotDetailPage = () => {
                               }}
                             >
                               {msg.content}
+                              <div className="text-[11px] opacity-70 text-right mt-1 leading-none">
+                                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                              </div>
                             </div>
+                            {msg.role === 'user' && (
+                              <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70">
+                                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                                  <circle cx="12" cy="7" r="4" />
+                                </svg>
+                              </div>
+                            )}
                           </div>
                         ))}
 
                         {chatLoading && (
                           <div className="flex justify-start">
                             <div 
-                            className="max-w-[85%] rounded-2xl rounded-tl-none px-4 py-2.5 text-sm flex gap-1 shadow-sm border"
+                            className="max-w-[85%] rounded-[18px] rounded-bl-sm px-4 py-3 text-sm flex gap-1 shadow-sm"
                             style={{ background: botMessageColor, color: botMessageTextColor }}
                           >
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce opacity-70" />
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75 opacity-70" />
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150 opacity-70" />
+                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce opacity-60" />
+                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75 opacity-60" />
+                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150 opacity-60" />
                           </div>
                         </div>
                       )}
                       </div>
 
                       {/* Widget Input */}
-                      <div className="p-3 border-t border-border bg-background">
+                      <div className="p-3 border-t border-black/5 bg-white">
                         <form 
                           onSubmit={(e) => { e.preventDefault(); handleChat(); }}
-                          className="flex gap-2"
+                          className="flex flex-col gap-2"
                         >
-                          <Input 
-                            value={chatInput} 
-                            onChange={(e) => setChatInput(e.target.value)} 
-                            placeholder="Mesaj yazın..." 
-                            className="flex-1 h-10 rounded-full px-4"
-                            disabled={chatLoading}
-                          />
-                          <Button type="submit" size="icon" disabled={chatLoading} style={{ background: themeColor }} className="h-10 w-10 rounded-full shadow-sm">
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-2 bg-[#F2F2F7] rounded-3xl px-1 py-1 pl-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20 transition-all border border-transparent focus-within:border-primary/20">
+                            <input 
+                              value={chatInput} 
+                              onChange={(e) => setChatInput(e.target.value)} 
+                              placeholder="Mesaj yazın..." 
+                              className="flex-1 bg-transparent border-none outline-none text-[15px] placeholder:text-gray-400 h-9"
+                              disabled={chatLoading}
+                            />
+                            <button 
+                              type="submit" 
+                              disabled={chatLoading || !chatInput.trim()} 
+                              style={{ background: themeColor }} 
+                              className="h-8 w-8 rounded-full flex items-center justify-center text-white shadow-sm transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                              </svg>
+                            </button>
+                          </div>
                         </form>
-                        <div className="text-[10px] text-center text-muted-foreground mt-2">
-                          Powered by <span className="font-semibold">Botla</span>
+                        <div className="text-[11px] text-center text-gray-400 mt-2 font-medium">
+                          Powered by <a href="#" className="hover:underline">Botla</a>
                         </div>
                       </div>
                     </div>
@@ -720,17 +797,17 @@ const ChatbotDetailPage = () => {
                   {!previewOpen && (
                     <button
                       onClick={() => setPreviewOpen(true)}
-                      className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-                      style={{ background: themeColor }}
+                      className="w-[60px] h-[60px] rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 hover:shadow-2xl p-0 overflow-hidden"
+                      style={{ background: botIcon ? 'transparent' : themeColor }}
                       data-testid="widget-bubble"
                     >
                       {botIcon ? (
                         <img src={botIcon} alt="" className="w-full h-full object-cover rounded-full" />
                       ) : (
-                        <MessageCircle className="w-7 h-7 text-white" />
+                        <MessageCircle className="w-8 h-8 text-white" />
                       )}
                       {/* Unread Badge Simulation */}
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white">1</span>
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 bg-[#FF3B30] text-white text-[11px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm px-1">1</span>
                     </button>
                   )}
                 </div>
@@ -747,6 +824,27 @@ const ChatbotDetailPage = () => {
                 <CardDescription>Aşağıdaki kodu sitenizin &lt;body&gt; etiketinin sonuna yapıştırın.</CardDescription>
               </CardHeader>
               <CardContent>
+                {userPlan !== 'free' && (
+                  <div className="mb-4 flex items-center gap-3">
+                    <label className="text-sm font-medium">Güvenli Embed</label>
+                    <input type="checkbox" checked={secureEmbedEnabled} onChange={(e) => setSecureEmbedEnabled(e.target.checked)} />
+                  </div>
+                )}
+                {userPlan !== 'free' && secureEmbedEnabled && (
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">İzinli Alan Adları (virgülle ayırın)</label>
+                    <Input value={allowedDomains} onChange={(e) => setAllowedDomains(e.target.value)} placeholder="example.com, another.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Embed Secret</label>
+                    <div className="flex gap-2">
+                      <Input value={embedSecret} onChange={(e) => setEmbedSecret(e.target.value)} placeholder="Gizli anahtar" />
+                      <Button type="button" variant="secondary" onClick={() => setEmbedSecret(Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2))}>Yenile</Button>
+                    </div>
+                  </div>
+                </div>
+                )}
                 <div className="relative group">
                   <pre className="bg-muted p-4 rounded-xl text-xs font-mono text-foreground overflow-x-auto border border-border shadow-sm">
                     {`<script src="https://cdn.botla.co/widget.js" data-bot="${id}"></script>`}
@@ -760,6 +858,9 @@ const ChatbotDetailPage = () => {
                     Kopyala
                   </Button>
                 </div>
+                {userPlan === 'free' && (
+                  <div className="mt-4 text-xs text-muted-foreground">Güvenli embed (izinli alan adı ve secret) özellikleri ücretli planlarda aktif edilir.</div>
+                )}
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                   <Info className="w-4 h-4" />
                   Kodun yüklendiğinden emin olmak için sayfayı yenileyin.

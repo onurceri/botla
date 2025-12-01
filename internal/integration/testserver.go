@@ -23,6 +23,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
     mux.HandleFunc("/api/v1/auth/refresh", ah.RefreshHandler)
     mux.HandleFunc("/api/v1/auth/logout", ah.LogoutHandler)
     mux.Handle("/api/v1/protected", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(handlers.ProtectedHandler)))
+    mh := &handlers.MeHandlers{DB: pool}
+    mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	
 	anh := &handlers.AnalyticsHandlers{DB: pool}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
@@ -47,6 +49,14 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
     }))))
     mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.RateLimitMiddleware(rl)(http.HandlerFunc(sh.GetSourceStatusOrDelete))))
     mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
+    mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        const p = "/api/v1/public/chatbots/"
+        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
+            handlers.PublicChat(pool)(w, r)
+            return
+        }
+        handlers.PublicChatbotConfig(pool)(w, r)
+    }))
     origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
     cors := middleware.CORSMiddlewareAllowOrigins(origins)
     return cors(mux)
