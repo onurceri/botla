@@ -65,6 +65,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, welcome }: { chatbot
   }, [chatbotId, config])
 
   const send = async () => {
+    if (loading) return
     const text = input.trim()
     if (!text) return
     setInput('')

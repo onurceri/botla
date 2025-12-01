@@ -1,0 +1,92 @@
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from '@/components/ui/toast'
+import ChatbotDetailPage from '../ChatbotDetailPage'
+import { api } from '@/api/client'
+
+vi.mock('@/api/source', () => ({
+  listSources: vi.fn().mockResolvedValue([
+    { id: 'src1', source_type: 'text', original_filename: 'inline.txt', status: 'completed', chunk_count: 3 },
+  ]),
+  deleteSource: vi.fn().mockResolvedValue(undefined),
+  uploadPDFSource: vi.fn(),
+  uploadTextSource: vi.fn(),
+  uploadURLSource: vi.fn(),
+  getSourceStatus: vi.fn(),
+}))
+
+describe('ChatbotDetailPage sources', () => {
+  it('deletes a source and refreshes list', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: '123', name: 'Bot' } } as any)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={["/chatbots/123"]}>
+          <Routes>
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+    )
+
+    const srcTabs = screen.getAllByRole('tab', { name: /Veri Kaynakları/i })
+    await user.click(srcTabs[srcTabs.length - 1])
+    const sourceCell = await screen.findByText('inline.txt')
+    const row = sourceCell.closest('tr') as HTMLTableRowElement
+    const delBtn = within(row).getByRole('button')
+    await user.click(delBtn)
+    const { deleteSource } = await import('@/api/source')
+    expect(deleteSource).toHaveBeenCalledWith('src1')
+  })
+
+  it('polls source status until terminal state and refreshes list', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(global, 'setInterval').mockImplementation((cb: any) => {
+      Promise.resolve().then(cb)
+      Promise.resolve().then(cb)
+      Promise.resolve().then(cb)
+      return 1 as any
+    })
+    vi.spyOn(global, 'clearInterval').mockImplementation(() => {})
+    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: '123', name: 'Bot' } } as any)
+    const { uploadTextSource, getSourceStatus, listSources } = await import('@/api/source')
+    ;(uploadTextSource as any).mockResolvedValueOnce({ id: 'sid1' })
+    ;(getSourceStatus as any)
+      .mockResolvedValueOnce({ status: 'pending' })
+      .mockResolvedValueOnce({ status: 'processing' })
+    ;(getSourceStatus as any).mockResolvedValue({ status: 'completed' })
+
+    render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={["/chatbots/123"]}>
+          <Routes>
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+    )
+
+    const srcTabs2 = screen.getAllByRole('tab', { name: /Veri Kaynakları/i })
+    await user.click(srcTabs2[srcTabs2.length - 1])
+    const textButtons = screen.getAllByText('Metin Gir')
+    await user.click(textButtons[textButtons.length - 1])
+    const textarea = screen.getByPlaceholderText('Metin içeriğini buraya yapıştırın...')
+    await user.type(textarea, 'hello')
+    const buttons = screen.getAllByRole('button', { name: 'Ekle' })
+    await user.click(buttons[buttons.length - 1])
+
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(getSourceStatus).toHaveBeenCalled()
+    const calls = (listSources as any).mock.calls.length
+    expect(calls).toBeGreaterThanOrEqual(2)
+    const cells = await screen.findAllByText('inline.txt')
+    expect(cells.length).toBeGreaterThan(0)
+  })
+})

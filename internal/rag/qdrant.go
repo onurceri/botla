@@ -8,6 +8,7 @@ import (
     "fmt"
     "net/http"
     "os"
+    "strconv"
     "time"
 )
 
@@ -23,7 +24,13 @@ func NewQdrantClientFromEnv() (*QdrantClient, error) {
         return nil, errors.New("QDRANT_URL is empty")
     }
     k := os.Getenv("QDRANT_API_KEY")
-    return &QdrantClient{baseURL: u, apiKey: k, http: &http.Client{Timeout: 15 * time.Second}}, nil
+    to := 15 * time.Second
+    if v := os.Getenv("QDRANT_TIMEOUT_MS"); v != "" {
+        if n, err := strconv.Atoi(v); err == nil && n > 0 {
+            to = time.Duration(n) * time.Millisecond
+        }
+    }
+    return &QdrantClient{baseURL: u, apiKey: k, http: &http.Client{Timeout: to}}, nil
 }
 
 type EmbeddingPayload struct {

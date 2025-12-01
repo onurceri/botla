@@ -8,9 +8,9 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import { ToastProvider } from '@/components/ui/toast'
 
-// Mock Auth Check (Replace with real auth logic later)
+// Auth Check (aligned with axios/client storage keys)
 const isAuthenticated = () => {
-  return !!localStorage.getItem('token')
+  return !!localStorage.getItem('botla_token')
 }
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {

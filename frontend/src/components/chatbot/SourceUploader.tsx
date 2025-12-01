@@ -18,15 +18,35 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
   const [inputValue, setInputValue] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const isValidHttpUrl = (u: string) => {
+    try {
+      const parsed = new URL(u)
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch { return false }
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      if (file.type !== 'application/pdf') {
+        toast('Yalnızca PDF dosyaları desteklenir.', 'error')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
+      const max = 50 * 1024 * 1024
+      if (file.size > max) {
+        toast('Dosya boyutu 50MB\'den büyük olamaz.', 'error')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        return
+      }
       setLoading(true)
       try {
-        await onUploadPDF(e.target.files[0])
+        await onUploadPDF(file)
         toast('PDF başarıyla yüklendi. İşleniyor...', 'success')
         setActiveMode(null)
-      } catch (error) {
-        toast('PDF yüklenirken bir hata oluştu.', 'error')
+      } catch (error: any) {
+        const msg = error?.response?.data?.message || 'PDF yüklenirken bir hata oluştu.'
+        toast(msg, 'error')
       } finally {
         setLoading(false)
         if (fileInputRef.current) fileInputRef.current.value = ''
@@ -39,6 +59,10 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
     setLoading(true)
     try {
       if (activeMode === 'url') {
+        if (!isValidHttpUrl(inputValue.trim())) {
+          toast('Lütfen geçerli bir URL girin.', 'error')
+          return
+        }
         await onUploadURL(inputValue)
         toast('Web sitesi kaynağı eklendi. Taranıyor...', 'success')
       }
@@ -48,8 +72,9 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
       }
       setActiveMode(null)
       setInputValue('')
-    } catch (error) {
-      toast('Kaynak eklenirken bir hata oluştu.', 'error')
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || 'Kaynak eklenirken bir hata oluştu.'
+      toast(msg, 'error')
     } finally {
       setLoading(false)
     }
@@ -127,7 +152,7 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
                 />
                 <label 
                   htmlFor="pdf-upload"
-                  className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Yükleniyor...' : 'Dosya Seç'}
                 </label>

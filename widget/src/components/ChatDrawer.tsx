@@ -25,7 +25,8 @@ export function ChatDrawer(
           placeholder="Mesaj yazın"
           value={input}
           onChange={(e) => setInput(e.currentTarget.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') onSend() }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !loading) onSend() }}
+          disabled={loading}
         />
         <button onClick={onSend} disabled={loading} style={{ background: color }}>Gönder</button>
       </div>

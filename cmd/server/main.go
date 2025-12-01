@@ -30,7 +30,8 @@ func main() {
     mux := buildMux(cfg, pool, log)
     origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
     cors := middleware.CORSMiddlewareAllowOrigins(origins)
-    handler := middleware.RequestLogger(log)(mux)
+    rl := middleware.NewRateLimiterFromEnv()
+    handler := middleware.RequestLogger(log)(middleware.RateLimitMiddleware(rl)(mux))
     srv := newHTTPServer(cfg.PORT, cors(handler))
 	startServerAsync(srv, log, cfg.PORT)
 	waitForShutdownSignal()
@@ -77,8 +78,8 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 		ch.ByID(w, r)
 	})))
 	
-	// Feedback
-	mux.HandleFunc("/api/v1/messages/", chh.FeedbackHandler)
+    // Feedback (protected)
+    mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 
 	// Source status and delete
 	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(sh.GetSourceStatusOrDelete)))

@@ -1,17 +1,19 @@
 package handlers
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
-	"net/http"
-	"strings"
-	"time"
+    "context"
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "os"
+    "strconv"
+    "strings"
+    "time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/middleware"
+    "github.com/onurceri/botla-co/internal/db"
+    "github.com/onurceri/botla-co/internal/models"
+    "github.com/onurceri/botla-co/internal/rag"
+    "github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ChatHandlers struct {
@@ -100,8 +102,14 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		qc = nil
 	}
 
-	// Embedding
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+    // Embedding
+    to := 20 * time.Second
+    if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
+        if n, err := strconv.Atoi(v); err == nil && n > 0 {
+            to = time.Duration(n) * time.Millisecond
+        }
+    }
+    ctx, cancel := context.WithTimeout(r.Context(), to)
 	defer cancel()
 	embedding, err := oai.CreateEmbedding(ctx, req.Message)
 	var contextText string

@@ -97,7 +97,13 @@ func (q *SourceQueue) worker() {
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
 				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+            to := 45 * time.Second
+            if v := os.Getenv("INGEST_TIMEOUT_MS"); v != "" {
+                if n, err := strconv.Atoi(v); err == nil && n > 0 {
+                    to = time.Duration(n) * time.Millisecond
+                }
+            }
+            ctx, cancel := context.WithTimeout(context.Background(), to)
 			for ci, ch := range chunks {
 				emb, eerr := oai.CreateEmbedding(ctx, ch)
 				if eerr != nil {
@@ -184,7 +190,13 @@ func (q *SourceQueue) worker() {
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
 				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+            to := 45 * time.Second
+            if v := os.Getenv("INGEST_TIMEOUT_MS"); v != "" {
+                if n, err := strconv.Atoi(v); err == nil && n > 0 {
+                    to = time.Duration(n) * time.Millisecond
+                }
+            }
+            ctx, cancel := context.WithTimeout(context.Background(), to)
 			for ci, ch := range chunks {
 				emb, eerr := oai.CreateEmbedding(ctx, ch)
 				if eerr != nil {
@@ -260,7 +272,13 @@ func (q *SourceQueue) worker() {
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
 				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+            to := 45 * time.Second
+            if v := os.Getenv("INGEST_TIMEOUT_MS"); v != "" {
+                if n, err := strconv.Atoi(v); err == nil && n > 0 {
+                    to = time.Duration(n) * time.Millisecond
+                }
+            }
+            ctx, cancel := context.WithTimeout(context.Background(), to)
 			for ci, ch := range chunks {
 				emb, eerr := oai.CreateEmbedding(ctx, ch)
 				if eerr != nil {

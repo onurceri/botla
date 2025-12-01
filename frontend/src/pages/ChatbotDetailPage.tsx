@@ -203,7 +203,7 @@ const ChatbotDetailPage = () => {
   }
 
   const handleChat = async () => {
-    if (!chatInput.trim() || !id) return
+    if (chatLoading || !chatInput.trim() || !id) return
     const userMsg = chatInput
     setChatHistory(prev => [...prev, { role: 'user', content: userMsg }])
     setChatInput('')
@@ -703,6 +703,7 @@ const ChatbotDetailPage = () => {
                             onChange={(e) => setChatInput(e.target.value)} 
                             placeholder="Mesaj yazın..." 
                             className="flex-1 h-10 rounded-full px-4"
+                            disabled={chatLoading}
                           />
                           <Button type="submit" size="icon" disabled={chatLoading} style={{ background: themeColor }} className="h-10 w-10 rounded-full shadow-sm">
                             <MessageSquare className="w-4 h-4" />
@@ -721,6 +722,7 @@ const ChatbotDetailPage = () => {
                       onClick={() => setPreviewOpen(true)}
                       className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
                       style={{ background: themeColor }}
+                      data-testid="widget-bubble"
                     >
                       {botIcon ? (
                         <img src={botIcon} alt="" className="w-full h-full object-cover rounded-full" />

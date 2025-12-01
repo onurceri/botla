@@ -7,6 +7,7 @@ import (
     "errors"
     "net/http"
     "os"
+    "strconv"
     "time"
 )
 
@@ -25,7 +26,13 @@ func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
     if b == "" {
         b = "https://api.openai.com"
     }
-    return &OpenAIClient{apiKey: k, http: &http.Client{Timeout: 30 * time.Second}, base: b}, nil
+    to := 30 * time.Second
+    if v := os.Getenv("OPENAI_TIMEOUT_MS"); v != "" {
+        if n, err := strconv.Atoi(v); err == nil && n > 0 {
+            to = time.Duration(n) * time.Millisecond
+        }
+    }
+    return &OpenAIClient{apiKey: k, http: &http.Client{Timeout: to}, base: b}, nil
 }
 
 // Embeddings
