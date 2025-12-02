@@ -55,6 +55,7 @@ func SetupTestEnv() (*TestEnv, error) {
     _, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS allowed_domains TEXT`)
     _, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS embed_secret VARCHAR(255)`)
     _, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS secure_embed_enabled BOOLEAN DEFAULT false`)
+    _, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'tr'`)
     mux := NewTestMux(cfg, db)
     srv := httptest.NewServer(mux)
     return &TestEnv{Cfg: cfg, DB: db, Server: srv}, nil

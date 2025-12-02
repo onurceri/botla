@@ -6,27 +6,29 @@ import (
     "bytes"
     "strings"
 
-    "github.com/gen2brain/go-fitz"
-    "github.com/otiai10/gosseract/v2"
-    "github.com/onurceri/botla-co/internal/scraper"
+	"github.com/gen2brain/go-fitz"
+	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/otiai10/gosseract/v2"
 )
 
-func ExtractPDFWithOCR(filePath string) (string, error) {
-    doc, err := fitz.New(filePath)
-    if err != nil {
-        return "", err
-    }
-    defer doc.Close()
+func ExtractPDFWithOCR(filePath string, langCode string) (string, error) {
+	doc, err := fitz.New(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer doc.Close()
 
-    pages := doc.NumPage()
-    if pages < 1 {
-        return "", ErrNoSuchFile
-    }
+	pages := doc.NumPage()
+	if pages < 1 {
+		return "", ErrNoSuchFile
+	}
 
-    c := gosseract.NewClient()
-    defer c.Close()
-    _ = c.SetLanguage("tur")
-    _ = c.SetVariable("user_defined_dpi", "300")
+	cfg := langconfig.Get(langCode)
+	c := gosseract.NewClient()
+	defer c.Close()
+	_ = c.SetLanguage(cfg.OCRLanguage)
+	_ = c.SetVariable("user_defined_dpi", "300")
 
     var out strings.Builder
     for n := 0; n < pages; n++ {

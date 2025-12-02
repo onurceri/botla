@@ -1,19 +1,20 @@
 package handlers
 
 import (
-    "context"
-    "database/sql"
-    "encoding/json"
-    "net/http"
-    "os"
-    "strconv"
-    "strings"
-    "time"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/rag"
-    "github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ChatHandlers struct {
@@ -102,14 +103,14 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		qc = nil
 	}
 
-    // Embedding
-    to := 20 * time.Second
-    if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
-        if n, err := strconv.Atoi(v); err == nil && n > 0 {
-            to = time.Duration(n) * time.Millisecond
-        }
-    }
-    ctx, cancel := context.WithTimeout(r.Context(), to)
+	// Embedding
+	to := 20 * time.Second
+	if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			to = time.Duration(n) * time.Millisecond
+		}
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), to)
 	defer cancel()
 	embedding, err := oai.CreateEmbedding(ctx, req.Message)
 	var contextText string
@@ -125,13 +126,25 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	// Completion
 	var ans string
 	var tokens int
+	
+	// Get language config
+	langCode := cbot.Language
+	if langCode == "" {
+		langCode = "tr"
+	}
+	cfg := langconfig.Get(langCode)
+
 	if strings.TrimSpace(contextText) == "" {
-		ans = "Yeterli bilgi bulamadım."
+		ans = cfg.ResponseTemplates.NoInfoFound
 		tokens = 0
 	} else {
-		ans, tokens, err = oai.CreateCompletion(ctx, cbot.SystemPrompt, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
+		sp := strings.TrimSpace(cbot.SystemPrompt)
+		if sp == "" {
+			sp = cfg.ResponseTemplates.DefaultSystemPrompt
+		}
+		ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
 		if err != nil {
-			ans = "Şu an bir hata oluştu, lütfen tekrar deneyin."
+			ans = cfg.ResponseTemplates.ErrorMessage
 			tokens = 0
 		}
 	}
@@ -147,7 +160,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	// Note: IncrementConversationMessageCount was called twice (once for user, once for assistant)
 	// But conv.MessageCount holds the value *before* these increments because we haven't re-fetched it.
 	// So checking conv.MessageCount == 0 is correct for "was it new when we started".
-	
+
 	go func() {
 		// Use a background context or the request context if it's not cancelled immediately
 		// Better to use a detached context to ensure it runs even if request finishes
@@ -174,13 +187,13 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	msgID := parts[len(parts)-2]
-	
+
 	var req feedbackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	
+
 	chatbotID, err := db.UpdateMessageFeedback(r.Context(), h.DB, msgID, req.ThumbsUp)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -190,13 +203,13 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Update Analytics
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), req.ThumbsUp)
 	}()
-	
+
 	w.WriteHeader(http.StatusOK)
 }

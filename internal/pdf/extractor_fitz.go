@@ -15,7 +15,7 @@ import (
 	hn "golang.org/x/net/html"
 )
 
-func ExtractPDFText(filePath string) (string, error) {
+func ExtractPDFText(filePath string, langCode string) (string, error) {
 	doc, err := fitz.New(filePath)
 	if err != nil {
 		return "", err
@@ -56,7 +56,7 @@ func ExtractPDFText(filePath string) (string, error) {
 	}
 	res := strings.TrimSpace(out.String())
 	if len(res) < 100 {
-		ocrText, oerr := ExtractPDFWithOCR(filePath)
+		ocrText, oerr := ExtractPDFWithOCR(filePath, langCode)
 		if oerr == nil && strings.TrimSpace(ocrText) != "" {
 			return ocrText, nil
 		}

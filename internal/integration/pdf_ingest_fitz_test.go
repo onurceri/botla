@@ -3,76 +3,88 @@
 package integration
 
 import (
-    "encoding/json"
-    "mime/multipart"
-    "net/http"
-    "os"
-    "strings"
-    "testing"
-    "net/url"
-    "time"
+	"encoding/json"
+	"mime/multipart"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"testing"
+	"time"
 )
 
 func TestSources_PDF_Ingest_Success_Fitz(t *testing.T) {
-    oai := startOpenAIStub()
-    qd := startQdrantStub()
-    t.Setenv("OPENAI_API_BASE", oai.URL)
-    t.Setenv("QDRANT_URL", qd.URL)
-    te, err := SetupTestEnv()
-    if err != nil { t.Fatalf("setup failed: %v", err) }
-    defer TeardownTestEnv(te)
-    defer oai.Close()
-    defer qd.Close()
+	oai := startOpenAIStub()
+	qd := startQdrantStub()
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("QDRANT_URL", qd.URL)
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+	defer oai.Close()
+	defer qd.Close()
 
-    token := authToken(t, te.Server.URL, "pdf_fitz@example.com")
-    create := map[string]any{"name": "PDF Bot Fitz"}
-    cbj, _ := json.Marshal(create)
-    reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
-    reqC.Header.Set("Authorization", "Bearer "+token)
-    reqC.Header.Set("Content-Type", "application/json")
-    resC, _ := http.DefaultClient.Do(reqC)
-    var bot chatbot
-    json.NewDecoder(resC.Body).Decode(&bot)
-    resC.Body.Close()
+	token := authToken(t, te.Server.URL, "pdf_fitz@example.com")
+	create := map[string]any{"name": "PDF Bot Fitz"}
+	cbj, _ := json.Marshal(create)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	var bot chatbot
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
 
-    // read real pdf
-    pdfPath := "/Users/onur/Documents/workspace/botla-co/docs/test.pdf"
-    bts, err := os.ReadFile(pdfPath)
-    if err != nil { t.Fatalf("read pdf failed: %v", err) }
+	// read real pdf
+	pdfPath := "/Users/onur/Documents/workspace/botla-co/docs/test.pdf"
+	bts, err := os.ReadFile(pdfPath)
+	if err != nil {
+		t.Fatalf("read pdf failed: %v", err)
+	}
 
-    var body strings.Builder
-    mw := multipart.NewWriter(&body)
-    fw, _ := mw.CreateFormFile("file", "test.pdf")
-    fw.Write(bts)
-    mw.WriteField("source_type", "pdf")
-    mw.Close()
+	var body strings.Builder
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("file", "test.pdf")
+	fw.Write(bts)
+	mw.WriteField("source_type", "pdf")
+	mw.Close()
 
-    reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body.String()))
-    reqS.Header.Set("Authorization", "Bearer "+token)
-    reqS.Header.Set("Content-Type", mw.FormDataContentType())
-    resS, _ := http.DefaultClient.Do(reqS)
-    if resS.StatusCode != http.StatusCreated { t.Fatalf("expected 201, got %d", resS.StatusCode) }
-    var sid map[string]string
-    json.NewDecoder(resS.Body).Decode(&sid)
-    resS.Body.Close()
-    sourceID := sid["id"]
+	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body.String()))
+	reqS.Header.Set("Authorization", "Bearer "+token)
+	reqS.Header.Set("Content-Type", mw.FormDataContentType())
+	resS, _ := http.DefaultClient.Do(reqS)
+	if resS.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resS.StatusCode)
+	}
+	var sid map[string]string
+	json.NewDecoder(resS.Body).Decode(&sid)
+	resS.Body.Close()
+	sourceID := sid["id"]
 
-    // poll for completed
-    statusPath := "/api/v1/sources/"+url.PathEscape(sourceID)
-    completed := false
-    for i := 0; i < 400; i++ {
-        reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+statusPath, nil)
-        reqG.Header.Set("Authorization", "Bearer "+token)
-        resG, _ := http.DefaultClient.Do(reqG)
-        if resG.StatusCode != http.StatusOK { resG.Body.Close(); time.Sleep(25 * time.Millisecond); continue }
-        var st map[string]any
-        json.NewDecoder(resG.Body).Decode(&st)
-        resG.Body.Close()
-        if st["status"].(string) == "completed" {
-            completed = true
-            break
-        }
-        time.Sleep(25 * time.Millisecond)
-    }
-    if !completed { t.Fatalf("pdf fitz ingest not completed") }
+	// poll for completed
+	statusPath := "/api/v1/sources/" + url.PathEscape(sourceID)
+	completed := false
+	for i := 0; i < 400; i++ {
+		reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+statusPath, nil)
+		reqG.Header.Set("Authorization", "Bearer "+token)
+		resG, _ := http.DefaultClient.Do(reqG)
+		if resG.StatusCode != http.StatusOK {
+			resG.Body.Close()
+			time.Sleep(25 * time.Millisecond)
+			continue
+		}
+		var st map[string]any
+		json.NewDecoder(resG.Body).Decode(&st)
+		resG.Body.Close()
+		if st["status"].(string) == "completed" {
+			completed = true
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if !completed {
+		t.Fatalf("pdf fitz ingest not completed")
+	}
 }

@@ -1,23 +1,26 @@
 package rag
 
 import (
-    "math"
-    "unicode/utf8"
+	"math"
+	"unicode/utf8"
+
+	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
-// CountTokens estimates token count for a text with Turkish-friendly multiplier.
-// Approximation: tokens ≈ (characters / 4) * 1.3
-func CountTokens(text string) int {
-    if text == "" {
-        return 0
-    }
-    n := utf8.RuneCountInString(text)
-    base := float64(n) / 4.0
-    est := base * 1.3
-    t := int(math.Round(est))
-    if t < 1 {
-        t = 1
-    }
-    return t
+// CountTokens estimates token count for a text with language-specific multiplier.
+// Approximation: tokens ≈ (characters / 4) * multiplier
+func CountTokens(text string, langCode string) int {
+	if text == "" {
+		return 0
+	}
+	cfg := langconfig.Get(langCode)
+	n := utf8.RuneCountInString(text)
+	base := float64(n) / 4.0
+	est := base * cfg.TokenMultiplier
+	t := int(math.Round(est))
+	if t < 1 {
+		t = 1
+	}
+	return t
 }
 

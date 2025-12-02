@@ -455,7 +455,7 @@ CREATE INDEX idx_payments_status ON payments(status);
   "config": {
     "params": {
       "vectors": {
-        "size": 384,
+        "size": 1536,
         "distance": "Cosine"
       },
       "shard_number": 2,
@@ -1071,7 +1071,7 @@ m.Up()
      - OpenAI API çağır
      - Response parse
      - Qdrant'a kaydet
-     - DB'ye save (optional caching)
+     - Ingest kuyruğuna entegre edildi
 
 2. **Batch Processing**
    - 1 request = max 25 chunk
@@ -1081,7 +1081,7 @@ m.Up()
 
 3. **Error Recovery**
    - 1 chunk failed: Skip + log (diğerleri continue)
-   - Tüm request failed: Retry up to 3x
+   - Tüm request failed: Retry logic (1 retry, total 2 attempts)
    - Final fail: Mark status = "failed"
 
 4. **Cost Tracking** (Optional ama İyi)
@@ -1799,7 +1799,7 @@ internal/auth/password_test.go ← Test burada
 
 3. **Embedding Test** (internal/rag/embedding_test.go)
    - `TestBatchEmbedding` - Batch işleme çalışıyor mu?
-   - `TestEmbeddingVectorSize` - Vektör boyutu 384 mü?
+   - `TestEmbeddingVectorSize` - Vektör boyutu 1536 mı?
 
 **Test Yazma İlkeleri:**
 - Table-driven tests kullan

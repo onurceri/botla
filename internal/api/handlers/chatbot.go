@@ -20,6 +20,7 @@ type createChatbotRequest struct {
     Name                 string   `json:"name"`
     Description          *string  `json:"description"`
     SystemPrompt         *string  `json:"system_prompt"`
+    Language             *string  `json:"language"`
     Model                *string  `json:"model"`
     Temperature          *float32 `json:"temperature"`
     MaxTokens            *int     `json:"max_tokens"`
@@ -73,6 +74,7 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
             Name:                 req.Name,
             Description:          req.Description,
             SystemPrompt:         defaultString(req.SystemPrompt, "Sen yararlı, kibar ve bilgili bir yapay zeka asistanısın."),
+            Language:             defaultString(req.Language, "tr"),
             Model:                defaultString(req.Model, "gpt-3.5-turbo"),
             Temperature:          defaultFloat32(req.Temperature, 0.7),
             MaxTokens:            defaultInt(req.MaxTokens, 512),
@@ -171,6 +173,9 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
         }
         if req.SystemPrompt != nil {
             c.SystemPrompt = *req.SystemPrompt
+        }
+        if req.Language != nil {
+            c.Language = *req.Language
         }
         if req.Model != nil {
             c.Model = *req.Model

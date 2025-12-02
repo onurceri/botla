@@ -15,6 +15,7 @@ import (
 	"github.com/onurceri/botla-co/internal/pdf"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/internal/text"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
@@ -62,6 +63,17 @@ func (q *SourceQueue) worker() {
 			db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &msg, 0, nil)
 			continue
 		}
+		// fetch chatbot to get language
+		bot, err := db.GetChatbotByID(context.Background(), q.db, s.ChatbotID)
+		if err != nil || bot == nil {
+			msg := "chatbot_not_found"
+			db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &msg, 0, nil)
+			continue
+		}
+		langCode := bot.Language
+		if langCode == "" {
+			langCode = "tr"
+		}
 		switch s.SourceType {
 		case "url":
 			if s.SourceURL == nil || *s.SourceURL == "" {
@@ -83,50 +95,19 @@ func (q *SourceQueue) worker() {
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, 0, &now)
 				continue
 			}
-			chunks := ChunkText(content, 1500, 200)
-			chunkCount := len(chunks)
-			qc, err := rag.NewQdrantClientFromEnv()
-			if err != nil {
+			content = text.NormalizeTR(content)
+			rc, rerr := rag.ChunkText(content, 512, langCode)
+			if rerr != nil {
+				m := rerr.Error()
+				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
+				continue
+			}
+			chunkCount := len(rc)
+			if err := rag.GenerateEmbeddingsForSource(rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 				m := err.Error()
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
 				continue
 			}
-			oai, err := rag.NewOpenAIClientFromEnv()
-			if err != nil {
-				m := err.Error()
-				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-				continue
-			}
-            to := 45 * time.Second
-            if v := os.Getenv("INGEST_TIMEOUT_MS"); v != "" {
-                if n, err := strconv.Atoi(v); err == nil && n > 0 {
-                    to = time.Duration(n) * time.Millisecond
-                }
-            }
-            ctx, cancel := context.WithTimeout(context.Background(), to)
-			for ci, ch := range chunks {
-				emb, eerr := oai.CreateEmbedding(ctx, ch)
-				if eerr != nil {
-					m := eerr.Error()
-					db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-					cancel()
-					continue
-				}
-				if err := qc.UpsertEmbedding(ctx, makePointID(id, ci), emb, rag.EmbeddingPayload{
-					ChatbotID:    s.ChatbotID,
-					SourceID:     s.ID,
-					ChunkIndex:   ci,
-					OriginalText: ch,
-					SourceType:   s.SourceType,
-					CreatedAt:    time.Now(),
-				}); err != nil {
-					m := err.Error()
-					db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-					cancel()
-					continue
-				}
-			}
-			cancel()
 			now := time.Now()
 			db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, chunkCount, &now)
 		case "pdf":
@@ -165,7 +146,7 @@ func (q *SourceQueue) worker() {
 				defer os.Remove(localPath)
 			}
 
-			content, err := pdf.ExtractPDFText(localPath)
+			content, err := pdf.ExtractPDFText(localPath, langCode)
 			if err != nil {
 				m := err.Error()
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
@@ -176,50 +157,19 @@ func (q *SourceQueue) worker() {
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, 0, &now)
 				continue
 			}
-			chunks := ChunkText(content, 1500, 200)
-			chunkCount := len(chunks)
-			qc, err := rag.NewQdrantClientFromEnv()
-			if err != nil {
+			content = text.NormalizeTR(content)
+			rc, rerr := rag.ChunkText(content, 512, langCode)
+			if rerr != nil {
+				m := rerr.Error()
+				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
+				continue
+			}
+			chunkCount := len(rc)
+			if err := rag.GenerateEmbeddingsForSource(rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 				m := err.Error()
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
 				continue
 			}
-			oai, err := rag.NewOpenAIClientFromEnv()
-			if err != nil {
-				m := err.Error()
-				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-				continue
-			}
-            to := 45 * time.Second
-            if v := os.Getenv("INGEST_TIMEOUT_MS"); v != "" {
-                if n, err := strconv.Atoi(v); err == nil && n > 0 {
-                    to = time.Duration(n) * time.Millisecond
-                }
-            }
-            ctx, cancel := context.WithTimeout(context.Background(), to)
-			for ci, ch := range chunks {
-				emb, eerr := oai.CreateEmbedding(ctx, ch)
-				if eerr != nil {
-					m := eerr.Error()
-					db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-					cancel()
-					continue
-				}
-				if err := qc.UpsertEmbedding(ctx, makePointID(id, ci), emb, rag.EmbeddingPayload{
-					ChatbotID:    s.ChatbotID,
-					SourceID:     s.ID,
-					ChunkIndex:   ci,
-					OriginalText: ch,
-					SourceType:   s.SourceType,
-					CreatedAt:    time.Now(),
-				}); err != nil {
-					m := err.Error()
-					db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-					cancel()
-					continue
-				}
-			}
-			cancel()
 			now := time.Now()
 			db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, chunkCount, &now)
 		case "text":
@@ -258,50 +208,19 @@ func (q *SourceQueue) worker() {
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, 0, &now)
 				continue
 			}
-			chunks := ChunkText(content, 1500, 200)
-			chunkCount := len(chunks)
-			qc, err := rag.NewQdrantClientFromEnv()
-			if err != nil {
+			content = text.NormalizeTR(content)
+			rc, rerr := rag.ChunkText(content, 512, langCode)
+			if rerr != nil {
+				m := rerr.Error()
+				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
+				continue
+			}
+			chunkCount := len(rc)
+			if err := rag.GenerateEmbeddingsForSource(rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 				m := err.Error()
 				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
 				continue
 			}
-			oai, err := rag.NewOpenAIClientFromEnv()
-			if err != nil {
-				m := err.Error()
-				db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-				continue
-			}
-            to := 45 * time.Second
-            if v := os.Getenv("INGEST_TIMEOUT_MS"); v != "" {
-                if n, err := strconv.Atoi(v); err == nil && n > 0 {
-                    to = time.Duration(n) * time.Millisecond
-                }
-            }
-            ctx, cancel := context.WithTimeout(context.Background(), to)
-			for ci, ch := range chunks {
-				emb, eerr := oai.CreateEmbedding(ctx, ch)
-				if eerr != nil {
-					m := eerr.Error()
-					db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-					cancel()
-					continue
-				}
-				if err := qc.UpsertEmbedding(ctx, makePointID(id, ci), emb, rag.EmbeddingPayload{
-					ChatbotID:    s.ChatbotID,
-					SourceID:     s.ID,
-					ChunkIndex:   ci,
-					OriginalText: ch,
-					SourceType:   s.SourceType,
-					CreatedAt:    time.Now(),
-				}); err != nil {
-					m := err.Error()
-					db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &m, 0, nil)
-					cancel()
-					continue
-				}
-			}
-			cancel()
 			now := time.Now()
 			db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, chunkCount, &now)
 		default:
