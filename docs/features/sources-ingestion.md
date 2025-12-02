@@ -22,10 +22,15 @@ Attach knowledge sources (PDF, URL, Text) to chatbots for RAG.
 ## Constraints
 - PDF max size 50MB; content-type check; storage required for file/text.
 
+## PDF Support
+- Backend must be built with `-tags fitz` and `CGO_ENABLED=1` to enable PDF extraction via `go-fitz`.
+- Local run: `make be-run` builds and runs with the required tag.
+- Dependencies: MuPDF libraries are required. Easiest path is to use Docker, which installs `libmupdf` in the image automatically.
+- Without the tag, uploads succeed but processing marks the source as `failed` with `pdf support not enabled`.
+
 ## Error Handling
 - Clear status codes; frontend toasts for success/failure; standardized messages.
 
 ## Testing
 - Backend ingestion tests for PDF/URL/Text.
 - Frontend uploader interactions and error display.
-

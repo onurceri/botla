@@ -49,6 +49,9 @@ sqlc-generate:
 	sqlc generate
 
 be-run:
+	CGO_ENABLED=1 go run -tags fitz cmd/server/main.go
+
+be-run-no-pdf:
 	go run cmd/server/main.go
 
 fe-run:

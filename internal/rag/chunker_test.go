@@ -7,7 +7,7 @@ import (
 
 func TestChunkText_TurkishBasics(t *testing.T) {
     text := "Dr. Ahmet bugün toplantıya katıldı. Önemli kararlar alındı.\n\nProf. Ayşe yarın sunum yapacak. Detaylar e-posta ile gönderildi, vb. bilgilendirmeler yapıldı."
-    chunks, err := ChunkText(text, 50)
+    chunks, err := ChunkText(text, 50, "tr")
     if err != nil {
         t.Fatalf("unexpected error: %v", err)
     }
@@ -41,4 +41,3 @@ func tailString(s string, n int) string {
 }
 
 func min(a, b int) int { if a < b { return a }; return b }
-
