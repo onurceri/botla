@@ -31,4 +31,6 @@ type Chatbot struct {
     AllowedDomains       *string    `json:"allowed_domains,omitempty"`
     EmbedSecret          *string    `json:"embed_secret,omitempty"`
     SecureEmbedEnabled   bool       `json:"secure_embed_enabled"`
+    SuggestedQuestions   []string   `json:"suggested_questions,omitempty"`
+    SuggestionsEnabled   bool       `json:"suggestions_enabled"`
 }

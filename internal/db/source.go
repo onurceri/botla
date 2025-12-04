@@ -93,3 +93,14 @@ func UpdateSourceCapability(ctx context.Context, pool *sql.DB, id string, summar
     _, err := pool.ExecContext(ctx, `UPDATE data_sources SET capability_summary=$1 WHERE id=$2`, summary, id)
     return err
 }
+
+func UpdateSourceSuggestions(ctx context.Context, pool *sql.DB, id string, suggestions []string) error {
+    var js any
+    if suggestions == nil {
+        js = nil
+    } else {
+        js = suggestions
+    }
+    _, err := pool.ExecContext(ctx, `UPDATE data_sources SET suggested_questions=$1 WHERE id=$2`, js, id)
+    return err
+}

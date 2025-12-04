@@ -16,8 +16,27 @@ describe('ChatDrawer', () => {
         onClose={() => {}}
       />
     )
-    const input = screen.getByPlaceholderText('Mesaj yazın')
+    const input = screen.getByPlaceholderText('Mesaj yazın...')
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
     expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('renders suggestions when no user message', async () => {
+    const onSend = vi.fn()
+    render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[{ role: 'assistant', content: 'Merhaba' }]}
+        loading={false}
+        input=""
+        setInput={() => {}}
+        onSend={onSend}
+        onClose={() => {}}
+        botName="Bot"
+        suggestions={["S1", "S2"]}
+        onPickSuggestion={() => {}}
+      />
+    )
+    expect(await screen.findByRole('button', { name: 'S1' })).toBeDefined()
   })
 })

@@ -57,13 +57,15 @@ export function mount() {
   const chatBg = params.get('chat-bg-color') || undefined
   const bubbleRadius = params.get('bubble-radius') || undefined
   const sendButtonColor = params.get('send-button-color') || undefined
+  const resetSession = params.get('reset-session') === '1' || params.get('reset-session') === 'true'
+  const sessionIdOverride = params.get('session-id') || undefined
 
   const host = ensureHost()
   const shadow = host.shadowRoot || host.attachShadow({ mode: 'open' })
   injectStyles(shadow)
   const root = document.createElement('div')
   shadow.appendChild(root)
-  render(<WidgetApp chatbotId={chatbotId} apiBase={apiBase} themeColor={themeColor} headerColor={headerColor} headerTextColor={headerTextColor} botMessageColor={botMessageColor} botMessageTextColor={botMessageTextColor} userMessageColor={userMessageColor} userMessageTextColor={userMessageTextColor} fontFamily={fontFamily} position={position} botNameOverride={botName} botIconOverride={botIcon} panelHeight={panelHeight} panelBg={panelBg} inputBg={inputBg} inputText={inputText} chatBg={chatBg} bubbleRadius={bubbleRadius} sendButtonColor={sendButtonColor} useOverrides={useOverrides} welcome={welcome} embedTokenUrl={embedTokenUrl} captchaSiteKey={captchaSiteKey} autoOpen={autoOpen} />, root)
+  render(<WidgetApp chatbotId={chatbotId} apiBase={apiBase} themeColor={themeColor} headerColor={headerColor} headerTextColor={headerTextColor} botMessageColor={botMessageColor} botMessageTextColor={botMessageTextColor} userMessageColor={userMessageColor} userMessageTextColor={userMessageTextColor} fontFamily={fontFamily} position={position} botNameOverride={botName} botIconOverride={botIcon} panelHeight={panelHeight} panelBg={panelBg} inputBg={inputBg} inputText={inputText} chatBg={chatBg} bubbleRadius={bubbleRadius} sendButtonColor={sendButtonColor} useOverrides={useOverrides} welcome={welcome} embedTokenUrl={embedTokenUrl} captchaSiteKey={captchaSiteKey} autoOpen={autoOpen} resetSession={resetSession} sessionIdOverride={sessionIdOverride} />, root)
 }
 
 export function unmount() {

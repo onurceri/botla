@@ -40,6 +40,8 @@ type createChatbotRequest struct {
     SecureEmbedEnabled   *bool    `json:"secure_embed_enabled"`
     AllowedDomains       *string  `json:"allowed_domains"`
     EmbedSecret          *string  `json:"embed_secret"`
+    SuggestedQuestions   *[]string `json:"suggested_questions"`
+    SuggestionsEnabled   *bool    `json:"suggestions_enabled"`
 }
 
 func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
@@ -81,10 +83,10 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
             ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),
             WelcomeMessage:       defaultString(req.WelcomeMessage, "Merhaba! Size nasıl yardımcı olabilirim?"),
             Position:             defaultString(req.Position, "bottom-right"),
-            BotMessageColor:      defaultString(req.BotMessageColor, "#3b82f6"),
-            UserMessageColor:     defaultString(req.UserMessageColor, "#f3f4f6"),
-            BotMessageTextColor:  defaultString(req.BotMessageTextColor, "#ffffff"),
-            UserMessageTextColor: defaultString(req.UserMessageTextColor, "#1f2937"),
+            BotMessageColor:      defaultString(req.BotMessageColor, "#fcfcfd"),
+            UserMessageColor:     defaultString(req.UserMessageColor, "#2e408a"),
+            BotMessageTextColor:  defaultString(req.BotMessageTextColor, "#030303"),
+            UserMessageTextColor: defaultString(req.UserMessageTextColor, "#ffffff"),
             ChatFontFamily:       defaultString(req.ChatFontFamily, "Inter, sans-serif"),
             ChatHeaderColor:      defaultString(req.ChatHeaderColor, "#3b82f6"),
             ChatHeaderTextColor:  defaultString(req.ChatHeaderTextColor, "#ffffff"),
@@ -94,6 +96,8 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
             SecureEmbedEnabled:   func() bool { if req.SecureEmbedEnabled != nil { return *req.SecureEmbedEnabled }; return false }(),
             AllowedDomains:       req.AllowedDomains,
             EmbedSecret:          req.EmbedSecret,
+            SuggestedQuestions:   func() []string { if req.SuggestedQuestions != nil { return normalizeSuggestions(*req.SuggestedQuestions) }; return nil }(),
+            SuggestionsEnabled:   func() bool { if req.SuggestionsEnabled != nil { return *req.SuggestionsEnabled }; return false }(),
         }
         newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
         if err != nil {
@@ -234,6 +238,12 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
         if req.EmbedSecret != nil {
             c.EmbedSecret = req.EmbedSecret
         }
+        if req.SuggestedQuestions != nil {
+            c.SuggestedQuestions = normalizeSuggestions(*req.SuggestedQuestions)
+        }
+        if req.SuggestionsEnabled != nil {
+            c.SuggestionsEnabled = *req.SuggestionsEnabled
+        }
         err = db.UpdateChatbot(r.Context(), h.DB, c)
         if err != nil {
             w.WriteHeader(http.StatusInternalServerError)
@@ -257,6 +267,23 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
+}
+
+func normalizeSuggestions(in []string) []string {
+    if len(in) == 0 { return []string{} }
+    out := make([]string, 0, len(in))
+    seen := map[string]struct{}{}
+    for _, q := range in {
+        t := strings.TrimSpace(q)
+        if t == "" { continue }
+        if len(t) > 120 { t = t[:120] }
+        k := strings.ToLower(t)
+        if _, ok := seen[k]; ok { continue }
+        seen[k] = struct{}{}
+        out = append(out, t)
+        if len(out) >= 6 { break }
+    }
+    return out
 }
 
 var hexColorRe = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)

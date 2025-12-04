@@ -45,13 +45,13 @@ describe('ChatbotDetailPage sources', () => {
 
   it('polls source status until terminal state and refreshes list', async () => {
     const user = userEvent.setup()
-    vi.spyOn(global, 'setInterval').mockImplementation((cb: any) => {
+    vi.spyOn(globalThis, 'setInterval').mockImplementation((cb: any) => {
       Promise.resolve().then(cb)
       Promise.resolve().then(cb)
       Promise.resolve().then(cb)
       return 1 as any
     })
-    vi.spyOn(global, 'clearInterval').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'clearInterval').mockImplementation(() => {})
     vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: '123', name: 'Bot' } } as any)
     const { uploadTextSource, getSourceStatus, listSources } = await import('@/api/source')
     ;(uploadTextSource as any).mockResolvedValueOnce({ id: 'sid1' })

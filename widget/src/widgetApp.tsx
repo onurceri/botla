@@ -4,7 +4,7 @@ import { ChatDrawer } from './components/ChatDrawer'
 
 type Message = { role: 'user' | 'assistant'; content: string; ts?: number }
 
-export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean }) {
+export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, positionStrategy = 'fixed' }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; positionStrategy?: 'fixed' | 'absolute' }) {
   const [open, setOpen] = useState(!!autoOpen)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -14,18 +14,28 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
   const [sid, setSid] = useState<string>('')
   const [embedToken, setEmbedToken] = useState<string>('')
   const [unread, setUnread] = useState(0)
+  const [suggestions, setSuggestions] = useState<string[]>([])
 
   useEffect(() => {
     const base = apiBase || ''
     const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}`
     fetch(url).then(r => r.json()).then(data => {
       setConfig(data)
+      if (Array.isArray(data.suggested_questions)) {
+        if (!useOverrides) setSuggestions(data.suggested_questions as string[])
+      }
       if (data.welcome_message && !welcome) {
         // If welcome message is not overridden by prop, use from config
         // Logic to handle welcome message if not already present
       }
     }).catch(() => {})
-  }, [chatbotId, apiBase])
+  }, [chatbotId, apiBase, useOverrides])
+
+  useEffect(() => {
+    if (useOverrides && suggestionsOverride) {
+      setSuggestions(suggestionsOverride)
+    }
+  }, [useOverrides, suggestionsOverride])
 
   const color = (useOverrides && themeColor) || config?.theme_color || '#3b82f6'
   const pos = (useOverrides && position) || config?.position || 'bottom-right'
@@ -69,6 +79,12 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
   }, [color, config, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, pos, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor])
 
   useEffect(() => {
+    if (resetSession) {
+      clearSession(chatbotId)
+    }
+    if (sessionIdOverride && sessionIdOverride.length > 0) {
+      setSessionId(chatbotId, sessionIdOverride)
+    }
     const s = getSession(chatbotId)
     setSid(s.sessionId)
     if (s.messages && s.messages.length > 0) {
@@ -79,7 +95,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       setMessages([wm])
       saveSession(chatbotId, { sessionId: s.sessionId, messages: [wm] })
     }
-  }, [chatbotId, config])
+  }, [chatbotId, config, resetSession, sessionIdOverride])
 
   const send = async () => {
     if (loading) return
@@ -133,6 +149,14 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     }
   }
 
+  const pickSuggestion = (q: string) => {
+    if (loading) return
+    setInput(q)
+    setTimeout(() => {
+      if (!loading) send()
+    }, 0)
+  }
+
   const toggle = () => setOpen((v) => {
     const nv = !v
     if (nv) setUnread(0)
@@ -140,7 +164,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
   })
 
   return (
-    <div className="cbw-container" ref={panelRef}>
+    <div className="cbw-container" ref={panelRef} style={{ position: positionStrategy }}>
       {open ? (
         <ChatDrawer 
           color={color} 
@@ -152,6 +176,8 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
           onClose={toggle}
           botName={botName}
           botIcon={botIcon}
+          suggestions={suggestions}
+          onPickSuggestion={pickSuggestion}
         />
       ) : (
         <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />
@@ -177,6 +203,12 @@ function getSession(chatbotId: string): SessionData {
 }
 function saveSession(chatbotId: string, data: SessionData) {
   try { localStorage.setItem(storageKey(chatbotId), JSON.stringify(data)) } catch {}
+}
+function clearSession(chatbotId: string) {
+  try { localStorage.removeItem(storageKey(chatbotId)) } catch {}
+}
+function setSessionId(chatbotId: string, sessionId: string) {
+  saveSession(chatbotId, { sessionId, messages: [] })
 }
 function ensureSession(chatbotId: string, sid: string, setSid: (v: string) => void): string {
   if (sid && sid.length > 0) return sid

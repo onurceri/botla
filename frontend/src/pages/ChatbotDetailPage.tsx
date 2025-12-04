@@ -21,7 +21,8 @@ import {
   User,
   Inbox,
   Info,
-  Bot
+  Bot,
+  Plus
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { uploadPDFSource, uploadTextSource, uploadURLSource, listSources, getSourceStatus, deleteSource } from '@/api/source'
@@ -32,6 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import SourceUploader from '@/components/chatbot/SourceUploader'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
+import { WidgetApp } from '@widget/widgetApp'
+import '@widget/styles.css'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -48,9 +51,9 @@ const ChatbotDetailPage = () => {
   const [themeColor, setThemeColor] = useState('#a78bfa')
   const [welcomeMessage, setWelcomeMessage] = useState('Merhaba! Size nasıl yardımcı olabilirim?')
   const [position, setPosition] = useState('bottom-right')
-  const [botMessageColor, setBotMessageColor] = useState('#3b82f6')
-  const [userMessageColor, setUserMessageColor] = useState('#3b82f6')
-  const [botMessageTextColor, setBotMessageTextColor] = useState('#ffffff')
+  const [botMessageColor, setBotMessageColor] = useState('#fcfcfd')
+  const [userMessageColor, setUserMessageColor] = useState('#2e408a')
+  const [botMessageTextColor, setBotMessageTextColor] = useState('#030303')
   const [userMessageTextColor, setUserMessageTextColor] = useState('#ffffff')
   const [chatFontFamily, setChatFontFamily] = useState('Inter, sans-serif')
   const [chatHeaderColor, setChatHeaderColor] = useState('#3b82f6')
@@ -62,6 +65,8 @@ const ChatbotDetailPage = () => {
   const [secureEmbedEnabled, setSecureEmbedEnabled] = useState(false)
   const [allowedDomains, setAllowedDomains] = useState('')
   const [embedSecret, setEmbedSecret] = useState('')
+  const [suggestionsEnabled, setSuggestionsEnabled] = useState(false)
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   
   // Sources State
   const [sources, setSources] = useState<any[]>([])
@@ -103,9 +108,9 @@ const ChatbotDetailPage = () => {
         setThemeColor(data.theme_color || '#a78bfa')
         setWelcomeMessage(data.welcome_message || '')
         setPosition(data.position || 'bottom-right')
-        setBotMessageColor(data.bot_message_color || '#3b82f6')
-        setUserMessageColor(data.user_message_color || '#3b82f6')
-        setBotMessageTextColor(data.bot_message_text_color || '#ffffff')
+        setBotMessageColor(data.bot_message_color || '#fcfcfd')
+        setUserMessageColor(data.user_message_color || '#2e408a')
+        setBotMessageTextColor(data.bot_message_text_color || '#030303')
         setUserMessageTextColor(data.user_message_text_color || '#ffffff')
         setChatFontFamily(data.chat_font_family || 'Inter, sans-serif')
         setChatHeaderColor(data.chat_header_color || '#3b82f6')
@@ -116,6 +121,8 @@ const ChatbotDetailPage = () => {
         setAllowedDomains(data.allowed_domains || '')
         setEmbedSecret(data.embed_secret || '')
         setSecureEmbedEnabled(!!data.secure_embed_enabled)
+        setSuggestionsEnabled(!!data.suggestions_enabled)
+        setSuggestedQuestions(Array.isArray(data.suggested_questions) ? data.suggested_questions : [])
       }).catch(() => {})
       
       refreshSources()
@@ -162,6 +169,8 @@ const ChatbotDetailPage = () => {
       secure_embed_enabled: secureEmbedEnabled,
       allowed_domains: secureEmbedEnabled ? allowedDomains : undefined,
       embed_secret: secureEmbedEnabled ? embedSecret : undefined
+      , suggestions_enabled: suggestionsEnabled
+      , suggested_questions: suggestedQuestions
     }
 
     try {
@@ -224,9 +233,9 @@ const ChatbotDetailPage = () => {
     }, 1000)
   }
 
-  const handleChat = async () => {
-    if (chatLoading || !chatInput.trim() || !id) return
-    const userMsg = chatInput
+  const handleChat = async (message?: string) => {
+    if (chatLoading || (!chatInput.trim() && !message) || !id) return
+    const userMsg = message || chatInput
     setChatHistory(prev => [...prev, { role: 'user', content: userMsg }])
     setChatInput('')
     setChatLoading(true)
@@ -303,6 +312,9 @@ const ChatbotDetailPage = () => {
               </TabsTrigger>
               <TabsTrigger value="connect" className="gap-2 whitespace-nowrap">
                 <Code className="w-4 h-4" /> Entegrasyon
+              </TabsTrigger>
+              <TabsTrigger value="suggestions" className="gap-2 whitespace-nowrap">
+                <MessageSquare className="w-4 h-4" /> Örnek Sorular
               </TabsTrigger>
             </TabsList>
           </div>
@@ -654,149 +666,29 @@ const ChatbotDetailPage = () => {
                 </div>
 
                 {/* Widget Simulation */}
-                <div 
-                  className="absolute z-50 flex flex-col items-end gap-4"
-                  style={{ 
-                    bottom: '20px',
-                    ...(position === 'bottom-left' ? { left: '20px', right: 'auto', alignItems: 'flex-start' } : { right: '20px', left: 'auto' }),
-                    fontFamily: chatFontFamily
-                  }}
-                >
-                  {previewOpen && (
-                    <div 
-                      className="w-[calc(100vw-80px)] sm:w-[380px] h-[450px] sm:h-[600px] max-h-[calc(100%-40px)] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-300 origin-bottom-right"
-                    >
-                      {/* Widget Header */}
-                      <div 
-                        className="p-4 flex items-center justify-between font-semibold backdrop-blur-xl border-b border-black/5 z-10"
-                        style={{ background: chatHeaderColor, color: chatHeaderTextColor }}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          {botIcon && <img src={botIcon} alt="" className="w-7 h-7 rounded-full object-cover shadow-sm" />}
-                          <span className="text-[15px]">{botDisplayName || 'Chatbot'}</span>
-                        </div>
-                        <button 
-                          onClick={() => setPreviewOpen(false)} 
-                          className="w-7 h-7 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-colors text-inherit opacity-80 hover:opacity-100"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      {/* Widget Messages */}
-                      <div className="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth" style={{ background: chatBackgroundColor }}>
-                        {/* Welcome Message */}
-                        <div className="flex justify-start items-end gap-2">
-                          <div className="flex-shrink-0 opacity-80">
-                            <Bot className="w-4 h-4" />
-                          </div>
-                          <div 
-                            className="max-w-[85%] rounded-[18px] rounded-bl-sm px-4 py-2.5 text-[15px] leading-relaxed shadow-sm relative"
-                            style={{ background: botMessageColor, color: botMessageTextColor }}
-                          >
-                            {welcomeMessage}
-                            <div className="text-[11px] opacity-70 text-right mt-1 leading-none">
-                              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                            </div>
-                          </div>
-                        </div>
-
-                        {chatHistory.map((msg, i) => (
-                          <div key={i} className={cn("flex items-end gap-2", msg.role === 'user' ? "justify-end" : "justify-start")}>
-                            {msg.role !== 'user' && (
-                              <div className="flex-shrink-0 opacity-80">
-                                <Bot className="w-4 h-4" />
-                              </div>
-                            )}
-                            <div 
-                            className={cn(
-                                "max-w-[85%] rounded-[18px] px-4 py-2.5 text-[15px] leading-relaxed shadow-sm relative",
-                                msg.role === 'user' ? "rounded-br-sm" : "rounded-bl-sm"
-                              )}
-                              style={{ 
-                                background: msg.role === 'user' ? userMessageColor : botMessageColor,
-                                color: msg.role === 'user' ? userMessageTextColor : botMessageTextColor
-                              }}
-                            >
-                              {msg.content}
-                              <div className="text-[11px] opacity-70 text-right mt-1 leading-none">
-                                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                              </div>
-                            </div>
-                            {msg.role === 'user' && (
-                              <div className="flex-shrink-0 opacity-80">
-                                <User className="w-4 h-4" />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-
-                        {chatLoading && (
-                          <div className="flex justify-start">
-                            <div 
-                            className="max-w-[85%] rounded-[18px] rounded-bl-sm px-4 py-3 text-sm flex gap-1 shadow-sm"
-                            style={{ background: botMessageColor, color: botMessageTextColor }}
-                          >
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce opacity-60" />
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75 opacity-60" />
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150 opacity-60" />
-                          </div>
-                        </div>
-                      )}
-                      </div>
-
-                      {/* Widget Input */}
-                      <div className="p-3 border-t border-black/5 bg-white">
-                        <form 
-                          onSubmit={(e) => { e.preventDefault(); handleChat(); }}
-                          className="flex flex-col gap-2"
-                        >
-                          <div className="flex items-center gap-2 bg-[#F2F2F7] rounded-3xl px-1 py-1 pl-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20 transition-all border border-transparent focus-within:border-primary/20">
-                            <input 
-                              value={chatInput} 
-                              onChange={(e) => setChatInput(e.target.value)} 
-                              placeholder="Mesaj yazın..." 
-                              className="flex-1 bg-transparent border-none outline-none text-[15px] placeholder:text-gray-400 h-9"
-                              disabled={chatLoading}
-                            />
-                            <button 
-                              type="submit" 
-                              disabled={chatLoading || !chatInput.trim()} 
-                              style={{ background: themeColor }} 
-                              className="h-8 w-8 rounded-full flex items-center justify-center text-white shadow-sm transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                              </svg>
-                            </button>
-                          </div>
-                        </form>
-                        <div className="text-[11px] text-center text-gray-400 mt-2 font-medium">
-                          Powered by <a href="#" className="hover:underline">Botla</a>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Widget Bubble */}
-                  {!previewOpen && (
-                    <button
-                      onClick={() => setPreviewOpen(true)}
-                      className="w-[60px] h-[60px] rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 hover:shadow-2xl p-0 overflow-hidden"
-                      style={{ background: botIcon ? 'transparent' : themeColor }}
-                      data-testid="widget-bubble"
-                    >
-                      {botIcon ? (
-                        <img src={botIcon} alt="" className="w-full h-full object-cover rounded-full" />
-                      ) : (
-                        <MessageCircle className="w-8 h-8 text-white" />
-                      )}
-                      {/* Unread Badge Simulation */}
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 bg-[#FF3B30] text-white text-[11px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm px-1">1</span>
-                    </button>
-                  )}
-                </div>
+                  <WidgetApp 
+                    chatbotId={id || 'preview'}
+                    apiBase={import.meta.env.VITE_API_BASE_URL || ''}
+                    themeColor={themeColor}
+                    headerColor={chatHeaderColor}
+                    headerTextColor={chatHeaderTextColor}
+                    botMessageColor={botMessageColor}
+                    botMessageTextColor={botMessageTextColor}
+                    userMessageColor={userMessageColor}
+                    userMessageTextColor={userMessageTextColor}
+                    fontFamily={chatFontFamily}
+                    position={position as any}
+                    botNameOverride={botDisplayName}
+                    botIconOverride={botIcon}
+                    chatBg={chatBackgroundColor}
+                    welcome={welcomeMessage}
+                    autoOpen={previewOpen}
+                    useOverrides={true}
+                    resetSession={true}
+                    sessionIdOverride={sessionId}
+                    suggestions={suggestionsEnabled ? suggestedQuestions : []}
+                    positionStrategy="absolute"
+                  />
 
               </div>
             </div>
@@ -850,6 +742,93 @@ const ChatbotDetailPage = () => {
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                   <Info className="w-4 h-4" />
                   Kodun yüklendiğinden emin olmak için sayfayı yenileyin.
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* SUGGESTIONS TAB */}
+          <TabsContent value="suggestions" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Örnek Sorular</CardTitle>
+                <CardDescription>Önerilen soruları gösterin ve düzenleyin.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium">Örnek soruları göster</label>
+                  <input type="checkbox" checked={suggestionsEnabled} onChange={(e) => setSuggestionsEnabled(e.target.checked)} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Sorular</label>
+                  <div className="flex flex-wrap gap-2 min-h-[40px] p-4 rounded-xl border border-border bg-muted/10">
+                    {suggestedQuestions.length === 0 && (
+                      <div className="w-full text-center text-sm text-muted-foreground py-2">
+                        Henüz örnek soru eklenmemiş.
+                      </div>
+                    )}
+                    {suggestedQuestions.map((q, i) => (
+                      <div key={i} className="group flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-background shadow-sm hover:border-primary/50 transition-colors">
+                        <span className="text-sm">{q}</span>
+                        <button 
+                          className="text-muted-foreground hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100" 
+                          onClick={() => setSuggestedQuestions((prev) => prev.filter((_, idx) => idx !== i))}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {suggestedQuestions.length < 6 ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input 
+                          id="new-question-input"
+                          placeholder="Yeni bir soru yazın..." 
+                          className="flex-1"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const v = (e.target as HTMLInputElement).value.trim()
+                              if (v) {
+                                setSuggestedQuestions((prev) => {
+                                  const nv = [...prev, v.slice(0, 120)]
+                                  const uniq = Array.from(new Set(nv.map(s => s.toLowerCase())))
+                                  return nv.filter((s, idx) => uniq.indexOf(s.toLowerCase()) === idx).slice(0, 6)
+                                })
+                                ;(e.target as HTMLInputElement).value = ''
+                              }
+                            }
+                          }} 
+                        />
+                        <Button 
+                          type="button" 
+                          onClick={() => {
+                            const input = document.getElementById('new-question-input') as HTMLInputElement
+                            const v = input.value.trim()
+                            if (v) {
+                              setSuggestedQuestions((prev) => {
+                                const nv = [...prev, v.slice(0, 120)]
+                                const uniq = Array.from(new Set(nv.map(s => s.toLowerCase())))
+                                return nv.filter((s, idx) => uniq.indexOf(s.toLowerCase()) === idx).slice(0, 6)
+                              })
+                              input.value = ''
+                            }
+                          }}
+                        >
+                          Ekle
+                        </Button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <span className="inline-block px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] font-mono">Enter</span> 
+                        tuşuna basarak veya Ekle butonunu kullanarak ekleyebilirsiniz. (Maks. 6 soru)
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-100">
+                      Maksimum 6 soru limitine ulaştınız. Yeni eklemek için mevcutlardan silmelisiniz.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
