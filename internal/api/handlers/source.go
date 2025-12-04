@@ -37,7 +37,8 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	c, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
+    var err error
+    c, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
 	if err != nil {
 		if h.Log != nil {
 			h.Log.Error("chatbot_fetch_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "path": r.URL.Path})
@@ -65,14 +66,14 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 		}
         w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(items); err != nil {
+        if err = json.NewEncoder(w).Encode(items); err != nil {
             http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         }
-	case http.MethodPost:
-		if err := r.ParseMultipartForm(52 << 20); err != nil { // ~52MB
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+    case http.MethodPost:
+        if err = r.ParseMultipartForm(52 << 20); err != nil { // ~52MB
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
 		sourceType := strings.TrimSpace(r.FormValue("source_type"))
 		if sourceType == "" {
 			sourceType = "pdf"
@@ -84,11 +85,11 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 
 		switch sourceType {
 		case "pdf":
-			file, header, err := r.FormFile("file")
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
+            file, header, err := r.FormFile("file")
+            if err != nil {
+                w.WriteHeader(http.StatusBadRequest)
+                return
+            }
             defer func() { _ = file.Close() }()
 			if header.Size > 50<<20 { // 50MB limit
 				w.WriteHeader(http.StatusRequestEntityTooLarge)
@@ -110,14 +111,14 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 			}
 
 			key := storage.GenerateKey("sources", header.Filename)
-			uploadedKey, err := h.Storage.UploadFile(r.Context(), key, file)
-			if err != nil {
-				if h.Log != nil {
-					h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
-				}
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+            uploadedKey, err := h.Storage.UploadFile(r.Context(), key, file)
+            if err != nil {
+                if h.Log != nil {
+                    h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
+                }
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
 
 			ds.FilePath = &uploadedKey
 			orig := header.Filename
@@ -144,14 +145,14 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 			}
 
 			key := storage.GenerateKey("sources", "inline.txt")
-			uploadedKey, err := h.Storage.UploadFile(r.Context(), key, bytes.NewBufferString(text))
-			if err != nil {
-				if h.Log != nil {
-					h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
-				}
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+            uploadedKey, err := h.Storage.UploadFile(r.Context(), key, bytes.NewBufferString(text))
+            if err != nil {
+                if h.Log != nil {
+                    h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
+                }
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
 
 			ds.FilePath = &uploadedKey
 			of := "inline.txt"
@@ -173,12 +174,12 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 		}
         w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusCreated)
-        if err := json.NewEncoder(w).Encode(map[string]string{"id": newID}); err != nil {
+        if err = json.NewEncoder(w).Encode(map[string]string{"id": newID}); err != nil {
             http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         }
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
 }
 
 func parseChatbotIDFromPath(p string) (string, bool) {
@@ -213,12 +214,13 @@ func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	sourceID := strings.TrimPrefix(path, prefix)
-	if sourceID == "" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	s, err := db.GetSourceByID(r.Context(), h.DB, sourceID)
+    sourceID := strings.TrimPrefix(path, prefix)
+    if sourceID == "" {
+        w.WriteHeader(http.StatusNotFound)
+        return
+    }
+    var err error
+    s, err := db.GetSourceByID(r.Context(), h.DB, sourceID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -244,12 +246,12 @@ func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http
 	case http.MethodGet:
         w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(s); err != nil {
+        if err = json.NewEncoder(w).Encode(s); err != nil {
             http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         }
-	case http.MethodDelete:
+    case http.MethodDelete:
         // Best-effort: delete associated vectors then remove source record
-        if err := processing.DeleteSourceVectors(r.Context(), s.ID); err != nil {
+        if err = processing.DeleteSourceVectors(r.Context(), s.ID); err != nil {
             if h.Log != nil {
                 h.Log.Warn("vector_delete_error", map[string]any{"source_id": s.ID, "error": err.Error()})
             }
@@ -259,12 +261,12 @@ func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http
             _ = h.Storage.DeleteFile(r.Context(), *s.FilePath)
         }
 
-		if err := db.DeleteSource(r.Context(), h.DB, s.ID); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
+        if err = db.DeleteSource(r.Context(), h.DB, s.ID); err != nil {
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+        w.WriteHeader(http.StatusNoContent)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
 }

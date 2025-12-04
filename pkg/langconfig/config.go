@@ -16,6 +16,8 @@ type ResponseTemplates struct {
 	ErrorMessage                string
 	TopicExtractionSystemPrompt string
 	TopicExtractionUserPrompt   string
+	WelcomeMessage              string
+	DefaultPersonaPrompt        string
 }
 
 var Configs = map[string]LanguageConfig{
@@ -34,6 +36,8 @@ var Configs = map[string]LanguageConfig{
 			ErrorMessage:                "Şu an bir hata oluştu, lütfen tekrar deneyin.",
 			TopicExtractionSystemPrompt: TR_TopicExtractionSystemPrompt,
 			TopicExtractionUserPrompt:   TR_TopicExtractionUserPrompt,
+			WelcomeMessage:              "Merhaba! Size nasıl yardımcı olabilirim?",
+			DefaultPersonaPrompt:        "Sen yararlı, kibar ve bilgili bir yapay zeka asistanısın.",
 		},
 	},
 	"en": {
@@ -51,6 +55,8 @@ var Configs = map[string]LanguageConfig{
 			ErrorMessage:                "An error occurred, please try again later.",
 			TopicExtractionSystemPrompt: EN_TopicExtractionSystemPrompt,
 			TopicExtractionUserPrompt:   EN_TopicExtractionUserPrompt,
+			WelcomeMessage:              "Hello! How can I help you today?",
+			DefaultPersonaPrompt:        "You are a helpful, polite, and knowledgeable AI assistant.",
 		},
 	},
 }

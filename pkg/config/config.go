@@ -1,10 +1,11 @@
 package config
 
 import (
-	"log"
-	"os"
+    "log"
+    "os"
+    "strings"
 
-	"github.com/joho/godotenv"
+    "github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -79,12 +80,22 @@ func LoadConfig() *Config {
         R2_ACCESS_KEY_ID:     os.Getenv("R2_ACCESS_KEY_ID"),
         R2_SECRET_ACCESS_KEY: os.Getenv("R2_SECRET_ACCESS_KEY"),
         R2_BUCKET_NAME:       os.Getenv("R2_BUCKET_NAME"),
-        DEFAULT_CHATBOT_MODEL: func() string {
-            v := os.Getenv("DEFAULT_CHATBOT_MODEL")
-            if v == "" {
-                return "gpt-4o-mini"
-            }
-            return v
-        }(),
+        DEFAULT_CHATBOT_MODEL: DefaultChatbotModel(),
     }
+}
+
+func DefaultChatbotModel() string {
+    v := os.Getenv("DEFAULT_CHATBOT_MODEL")
+    if strings.TrimSpace(v) == "" {
+        return "gpt-4o-mini"
+    }
+    return v
+}
+
+func ResolveChatbotModel(cfg *Config) string {
+    v := DefaultChatbotModel()
+    if cfg != nil && strings.TrimSpace(cfg.DEFAULT_CHATBOT_MODEL) != "" {
+        v = cfg.DEFAULT_CHATBOT_MODEL
+    }
+    return v
 }

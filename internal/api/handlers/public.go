@@ -41,6 +41,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		var err error
 		botID := strings.TrimPrefix(path, prefix)
 		if botID == "" {
 			w.WriteHeader(http.StatusNotFound)
@@ -90,11 +91,11 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			BotDisplayName:       c.BotDisplayName,
 			SuggestedQuestions:   final,
 		}
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(out); err != nil {
-            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(out); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -130,6 +131,7 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		var err error
 		botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
 		cbot, err := db.GetChatbotByID(r.Context(), dbpool, botID)
 		if err != nil {
@@ -141,7 +143,7 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			return
 		}
 		var req publicChatRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -157,7 +159,7 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			return
 		}
 		um := &models.Message{ConversationID: conv.ID, Role: "user", Content: req.Message, TokensUsed: 0}
-		if _, err := db.CreateMessage(r.Context(), dbpool, um); err != nil {
+		if _, err = db.CreateMessage(r.Context(), dbpool, um); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -212,8 +214,8 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			}
 		}
 		am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: ans, TokensUsed: tokens}
-		if _, err := db.CreateMessage(r.Context(), dbpool, am); err == nil {
-			_ = db.IncrementConversationMessageCount(r.Context(), dbpool, conv.ID)
+		if _, err = db.CreateMessage(r.Context(), dbpool, am); err == nil {
+			_	= db.IncrementConversationMessageCount(r.Context(), dbpool, conv.ID)
 		}
 
 		go func() {
@@ -222,10 +224,10 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			_ = db.IncrementAnalytics(bgCtx, dbpool, cbot.ID, time.Now(), conv.MessageCount == 0, tokens)
 		}()
 
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(publicChatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
-            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(publicChatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	}
 }

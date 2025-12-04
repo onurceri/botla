@@ -36,13 +36,13 @@ func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
 		}
 	}
 
-	cfg := config.LoadConfig()
-	return &OpenAIClient{
-		apiKey:       k,
-		http:         &http.Client{Timeout: to},
-		base:         b,
-		defaultModel: cfg.DEFAULT_CHATBOT_MODEL,
-	}, nil
+    defModel := config.DefaultChatbotModel()
+    return &OpenAIClient{
+        apiKey:       k,
+        http:         &http.Client{Timeout: to},
+        base:         b,
+        defaultModel: defModel,
+    }, nil
 }
 
 // Embeddings

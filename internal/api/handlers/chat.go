@@ -53,6 +53,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	var err error
 	botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
 	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil {
@@ -68,7 +69,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req chatRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -85,7 +86,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 	// Save user message
 	um := &models.Message{ConversationID: conv.ID, Role: "user", Content: req.Message, TokensUsed: 0}
-	if _, err := db.CreateMessage(r.Context(), h.DB, um); err != nil {
+	if _, err = db.CreateMessage(r.Context(), h.DB, um); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -138,8 +139,8 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: ans, TokensUsed: tokens}
-	if _, err := db.CreateMessage(r.Context(), h.DB, am); err == nil {
-		_ = db.IncrementConversationMessageCount(r.Context(), h.DB, conv.ID)
+	if _, err = db.CreateMessage(r.Context(), h.DB, am); err == nil {
+		_	= db.IncrementConversationMessageCount(r.Context(), h.DB, conv.ID)
 	}
 
 	// Update Analytics
@@ -160,9 +161,9 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
-    if err := json.NewEncoder(w).Encode(chatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
-        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-    }
+	if err = json.NewEncoder(w).Encode(chatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 type feedbackRequest struct {

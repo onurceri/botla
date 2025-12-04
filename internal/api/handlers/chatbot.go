@@ -1,21 +1,22 @@
 package handlers
 
 import (
-    "database/sql"
-    "encoding/json"
-    "net/http"
-    "regexp"
-    "strings"
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"regexp"
+	"strings"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/pkg/middleware"
-    "github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ChatbotHandlers struct {
-    DB *sql.DB
-    Cfg *config.Config
+	DB  *sql.DB
+	Cfg *config.Config
 }
 
 type createChatbotRequest struct {
@@ -52,21 +53,23 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	var err error
 	switch r.Method {
 	case http.MethodGet:
-		bots, err := db.GetChatbotsByUserID(r.Context(), h.DB, id)
+		var bots []models.Chatbot
+		bots, err = db.GetChatbotsByUserID(r.Context(), h.DB, id)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(bots); err != nil {
-            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(bots); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	case http.MethodPost:
 		var req createChatbotRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -75,17 +78,20 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		langCode := defaultString(req.Language, "tr")
+		langCfg := langconfig.Get(langCode)
+
 		bot := &models.Chatbot{
-			UserID:               id,
-			Name:                 req.Name,
-			Description:          req.Description,
-			SystemPrompt:         defaultString(req.SystemPrompt, "Sen yararlı, kibar ve bilgili bir yapay zeka asistanısın."),
-			Language:             defaultString(req.Language, "tr"),
-            Model:                defaultString(req.Model, h.Cfg.DEFAULT_CHATBOT_MODEL),
+			UserID:       id,
+			Name:         req.Name,
+			Description:  req.Description,
+			SystemPrompt: defaultString(req.SystemPrompt, langCfg.ResponseTemplates.DefaultPersonaPrompt),
+			Language:     langCode,
+			Model:        defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
 			Temperature:          defaultFloat32(req.Temperature, 0.7),
 			MaxTokens:            defaultInt(req.MaxTokens, 512),
 			ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),
-			WelcomeMessage:       defaultString(req.WelcomeMessage, "Merhaba! Size nasıl yardımcı olabilirim?"),
+			WelcomeMessage:       defaultString(req.WelcomeMessage, langCfg.ResponseTemplates.WelcomeMessage),
 			Position:             defaultString(req.Position, "bottom-right"),
 			BotMessageColor:      defaultString(req.BotMessageColor, "#fcfcfd"),
 			UserMessageColor:     defaultString(req.UserMessageColor, "#2e408a"),
@@ -118,21 +124,23 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 				return false
 			}(),
 		}
-		newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
+		var newID string
+		newID, err = db.CreateChatbot(r.Context(), h.DB, bot)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		c, err := db.GetChatbotByID(r.Context(), h.DB, newID)
+		var c *models.Chatbot
+		c, err = db.GetChatbotByID(r.Context(), h.DB, newID)
 		if err != nil || c == nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusCreated)
-        if err := json.NewEncoder(w).Encode(c); err != nil {
-            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err = json.NewEncoder(w).Encode(c); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -144,6 +152,7 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	var err error
 	const prefix = "/api/v1/chatbots/"
 	path := r.URL.Path
 	if !strings.HasPrefix(path, prefix) {
@@ -174,14 +183,14 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(c); err != nil {
-            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(c); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	case http.MethodPut:
 		var req createChatbotRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -273,18 +282,19 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Re-read for updated_at change
-		c2, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+		var c2 *models.Chatbot
+		c2, err = db.GetChatbotByID(r.Context(), h.DB, botID)
 		if err != nil || c2 == nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        if err := json.NewEncoder(w).Encode(c2); err != nil {
-            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(c2); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	case http.MethodDelete:
-		if err := db.SoftDeleteChatbot(r.Context(), h.DB, botID, id); err != nil {
+		if err = db.SoftDeleteChatbot(r.Context(), h.DB, botID, id); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
