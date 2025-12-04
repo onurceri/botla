@@ -10,8 +10,6 @@ import (
 	"testing"
 )
 
-type embeddingStub struct{}
-
 func startOpenAIStub() *httptest.Server {
 	h := http.NewServeMux()
 	h.HandleFunc("/v1/embeddings", func(w http.ResponseWriter, r *http.Request) {

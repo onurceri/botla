@@ -59,7 +59,7 @@ func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
 		t.Fatalf("status: %d", w.Code)
 	}
 	body := w.Body.String()
-	if !(bytes.Contains([]byte(body), []byte("suggested_questions")) && bytes.Contains([]byte(body), []byte("Q1"))) {
+	if !bytes.Contains([]byte(body), []byte("suggested_questions")) || !bytes.Contains([]byte(body), []byte("Q1")) {
 		t.Fatalf("suggested_questions missing: %s", body)
 	}
 }

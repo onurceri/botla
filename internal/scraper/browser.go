@@ -154,7 +154,7 @@ func ScrapeDynamicURL(urlStr string, cfg DynamicConfig) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer p.Close()
+    defer func() { _ = p.Close() }()
 	_ = p.WaitLoad()
 	time.Sleep(3 * time.Second)
 

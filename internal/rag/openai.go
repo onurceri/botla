@@ -63,7 +63,7 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 		if err != nil {
 			lastErr = err
 		} else {
-			defer res.Body.Close()
+            defer func() { _ = res.Body.Close() }()
 			if res.StatusCode == http.StatusOK {
 				var er embeddingResponse
 				if err := json.NewDecoder(res.Body).Decode(&er); err != nil {
@@ -109,7 +109,7 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 		if err != nil {
 			lastErr = err
 		} else {
-			defer res.Body.Close()
+            defer func() { _ = res.Body.Close() }()
 			if res.StatusCode == http.StatusOK {
 				var er embeddingResponse
 				if err := json.NewDecoder(res.Body).Decode(&er); err != nil {
@@ -183,7 +183,7 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, systemPrompt, conte
 		if err != nil {
 			lastErr = err
 		} else {
-			defer res.Body.Close()
+            defer func() { _ = res.Body.Close() }()
 			if res.StatusCode == http.StatusOK {
 				var cr chatResponse
 				if err := json.NewDecoder(res.Body).Decode(&cr); err != nil {

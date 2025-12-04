@@ -1,15 +1,17 @@
 package storage
 
 import (
-	"context"
-	"fmt"
-	"io"
-	"time"
+    "context"
+    "fmt"
+    "io"
+    "path"
+    "strings"
+    "time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+    "github.com/aws/aws-sdk-go-v2/aws"
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/credentials"
+    "github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type StorageService interface {
@@ -24,14 +26,7 @@ type R2Storage struct {
 }
 
 func NewR2Storage(accountID, accessKeyID, secretAccessKey, bucketName string) (*R2Storage, error) {
-	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL: fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountID),
-		}, nil
-	})
-
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithEndpointResolverWithOptions(r2Resolver),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, "")),
 		config.WithRegion("auto"),
 	)
@@ -39,7 +34,9 @@ func NewR2Storage(accountID, accessKeyID, secretAccessKey, bucketName string) (*
 		return nil, fmt.Errorf("unable to load SDK config: %w", err)
 	}
 
-	client := s3.NewFromConfig(cfg)
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountID))
+	})
 
 	return &R2Storage{
 		client:     client,
@@ -92,6 +89,7 @@ func (s *R2Storage) DeleteFile(ctx context.Context, key string) error {
 
 // Helper to generate a unique key
 func GenerateKey(prefix, filename string) string {
-	timestamp := time.Now().UnixNano()
-	return fmt.Sprintf("%s/%d_%s", prefix, timestamp, filename)
+    timestamp := time.Now().UnixNano()
+    base := path.Base(strings.ReplaceAll(filename, "\\", "/"))
+    return fmt.Sprintf("%s/%d_%s", strings.TrimSuffix(prefix, "/"), timestamp, base)
 }

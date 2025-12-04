@@ -1,23 +1,29 @@
 package main
 
 import (
-	"database/sql"
-	"net/http"
-	"testing"
-	"time"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/onurceri/botla-co/pkg/logger"
+    "net/http"
+    "net/http/httptest"
+    "testing"
+    "github.com/onurceri/botla-co/internal/api/handlers"
 )
 
-func TestServerStartAndShutdown(t *testing.T) {
-	log := logger.New("INFO")
-	srv := newHTTPServer("0", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	startServerAsync(srv, log, "0")
-	time.Sleep(100 * time.Millisecond)
-	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	shutdownServer(srv, log, db)
+func TestChatbotsDispatchHandler_Routes(t *testing.T) {
+    ch := &handlers.ChatbotHandlers{}
+    sh := &handlers.SourcesHandlers{}
+    chh := &handlers.ChatHandlers{}
+    h := chatbotsDispatchHandler("secret", ch, sh, chh)
+
+    cases := []struct{ path string; code int }{
+        {"/api/v1/chatbots/x/sources", http.StatusUnauthorized},
+        {"/api/v1/chatbots/x/chat", http.StatusUnauthorized},
+        {"/api/v1/chatbots/x", http.StatusUnauthorized},
+    }
+    for _, c := range cases {
+        req := httptest.NewRequest(http.MethodGet, c.path, nil)
+        w := httptest.NewRecorder()
+        h.ServeHTTP(w, req)
+        if w.Code != c.code {
+            t.Fatalf("path %s: got %d want %d", c.path, w.Code, c.code)
+        }
+    }
 }

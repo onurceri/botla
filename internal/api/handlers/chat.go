@@ -1,20 +1,20 @@
 package handlers
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+    "context"
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "os"
+    "strconv"
+    "strings"
+    "time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/langconfig"
-	"github.com/onurceri/botla-co/pkg/middleware"
+    "github.com/onurceri/botla-co/internal/db"
+    "github.com/onurceri/botla-co/internal/models"
+    "github.com/onurceri/botla-co/internal/rag"
+    "github.com/onurceri/botla-co/pkg/langconfig"
+    "github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ChatHandlers struct {
@@ -104,12 +104,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Embedding
-	to := 20 * time.Second
-	if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			to = time.Duration(n) * time.Millisecond
-		}
-	}
+    to := chatTimeout()
 	ctx, cancel := context.WithTimeout(r.Context(), to)
 	defer cancel()
 	embedding, err := oai.CreateEmbedding(ctx, req.Message)
@@ -128,21 +123,15 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	var tokens int
 
 	// Get language config
-	langCode := cbot.Language
-	if langCode == "" {
-		langCode = "tr"
-	}
-	cfg := langconfig.Get(langCode)
+    langCode := defaultLang(cbot.Language)
+    cfg := langconfig.Get(langCode)
 
 	if strings.TrimSpace(contextText) == "" {
 		ans = cfg.ResponseTemplates.NoInfoFound
 		tokens = 0
 	} else {
-		sp := strings.TrimSpace(cbot.SystemPrompt)
-		if sp == "" {
-			sp = cfg.ResponseTemplates.DefaultSystemPrompt
-		}
-		ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
+        sp := systemPrompt(strings.TrimSpace(cbot.SystemPrompt), cfg)
+        ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
 		if err != nil {
 			ans = cfg.ResponseTemplates.ErrorMessage
 			tokens = 0
@@ -169,9 +158,11 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		_ = db.IncrementAnalytics(bgCtx, h.DB, cbot.ID, time.Now(), isNew, tokens)
 	}()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(chatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources})
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    if err := json.NewEncoder(w).Encode(chatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+    }
 }
 
 type feedbackRequest struct {
@@ -212,4 +203,28 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func chatTimeout() time.Duration {
+    d := 20 * time.Second
+    if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
+        if n, err := strconv.Atoi(v); err == nil && n > 0 {
+            d = time.Duration(n) * time.Millisecond
+        }
+    }
+    return d
+}
+
+func defaultLang(code string) string {
+    if strings.TrimSpace(code) == "" {
+        return "tr"
+    }
+    return code
+}
+
+func systemPrompt(sp string, cfg langconfig.LanguageConfig) string {
+    if strings.TrimSpace(sp) == "" {
+        return cfg.ResponseTemplates.DefaultSystemPrompt
+    }
+    return sp
 }

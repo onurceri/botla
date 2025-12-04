@@ -71,7 +71,7 @@ func ListRecentMessages(ctx context.Context, pool *sql.DB, conversationID string
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+    defer func() { _ = rows.Close() }()
 	var out []models.Message
 	for rows.Next() {
 		var m models.Message

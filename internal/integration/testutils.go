@@ -17,33 +17,33 @@ type TestEnv struct {
 }
 
 func SetupTestEnv() (*TestEnv, error) {
-	if os.Getenv("DB_HOST") == "" {
-		os.Setenv("DB_HOST", "localhost")
-	}
-	if os.Getenv("DB_PORT") == "" {
-		os.Setenv("DB_PORT", "5432")
-	}
-	if os.Getenv("DB_NAME") == "" {
-		os.Setenv("DB_NAME", "botla_dev")
-	}
-	if os.Getenv("DB_USER") == "" {
-		os.Setenv("DB_USER", "botla")
-	}
-	if os.Getenv("DB_PASSWORD") == "" {
-		os.Setenv("DB_PASSWORD", "botla")
-	}
-	if os.Getenv("QDRANT_URL") == "" {
-		os.Setenv("QDRANT_URL", "http://localhost:6333")
-	}
-	if os.Getenv("JWT_SECRET") == "" {
-		os.Setenv("JWT_SECRET", "test-secret")
-	}
-	if os.Getenv("PORT") == "" {
-		os.Setenv("PORT", "8080")
-	}
-	if os.Getenv("OPENAI_API_KEY") == "" {
-		os.Setenv("OPENAI_API_KEY", "test-key")
-	}
+    if os.Getenv("DB_HOST") == "" {
+        _ = os.Setenv("DB_HOST", "localhost")
+    }
+    if os.Getenv("DB_PORT") == "" {
+        _ = os.Setenv("DB_PORT", "5432")
+    }
+    if os.Getenv("DB_NAME") == "" {
+        _ = os.Setenv("DB_NAME", "botla_dev")
+    }
+    if os.Getenv("DB_USER") == "" {
+        _ = os.Setenv("DB_USER", "botla")
+    }
+    if os.Getenv("DB_PASSWORD") == "" {
+        _ = os.Setenv("DB_PASSWORD", "botla")
+    }
+    if os.Getenv("QDRANT_URL") == "" {
+        _ = os.Setenv("QDRANT_URL", "http://localhost:6333")
+    }
+    if os.Getenv("JWT_SECRET") == "" {
+        _ = os.Setenv("JWT_SECRET", "test-secret")
+    }
+    if os.Getenv("PORT") == "" {
+        _ = os.Setenv("PORT", "8080")
+    }
+    if os.Getenv("OPENAI_API_KEY") == "" {
+        _ = os.Setenv("OPENAI_API_KEY", "test-key")
+    }
 
 	cfg := config.LoadConfig()
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME)
@@ -65,10 +65,10 @@ func TeardownTestEnv(te *TestEnv) {
 	if te == nil {
 		return
 	}
-	if te.Server != nil {
-		te.Server.Close()
-	}
-	if te.DB != nil {
-		te.DB.Close()
-	}
+    if te.Server != nil {
+        te.Server.Close()
+    }
+    if te.DB != nil {
+        _ = te.DB.Close()
+    }
 }

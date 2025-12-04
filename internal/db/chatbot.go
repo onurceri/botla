@@ -50,7 +50,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+    defer func() { _ = rows.Close() }()
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot

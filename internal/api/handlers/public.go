@@ -1,20 +1,18 @@
 package handlers
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+    "context"
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "strings"
+    "time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/pkg/langconfig"
+    "github.com/onurceri/botla-co/internal/db"
+    "github.com/onurceri/botla-co/internal/models"
+    "github.com/onurceri/botla-co/internal/rag"
+    "github.com/onurceri/botla-co/internal/scraper"
+    "github.com/onurceri/botla-co/pkg/langconfig"
 )
 
 type publicChatbot struct {
@@ -58,8 +56,8 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			return
 		}
 		// Cache final suggestions keyed by updated_at to auto-invalidate
-		cache := scraper.NewCache()
-		key := "public:chatbot:" + c.ID + ":suggestions:" + c.UpdatedAt.UTC().Format(time.RFC3339Nano)
+        cache := scraper.NewCache()
+        key := publicSuggestionsCacheKey(c)
 		var final []string
 		if c.SuggestionsEnabled {
 			if v, ok := cache.Get(key); ok {
@@ -92,10 +90,16 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			BotDisplayName:       c.BotDisplayName,
 			SuggestedQuestions:   final,
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(out)
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(out); err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
 	}
+}
+
+func publicSuggestionsCacheKey(c *models.Chatbot) string {
+    return "public:chatbot:" + c.ID + ":suggestions:" + c.UpdatedAt.UTC().Format(time.RFC3339Nano)
 }
 
 type publicChatRequest struct {
@@ -169,12 +173,7 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			qc = nil
 		}
 
-		to := 20 * time.Second
-		if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n > 0 {
-				to = time.Duration(n) * time.Millisecond
-			}
-		}
+        to := chatTimeout()
 		ctx, cancel := context.WithTimeout(r.Context(), to)
 		defer cancel()
 		embedding, err := oai.CreateEmbedding(ctx, req.Message)
@@ -223,8 +222,10 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			_ = db.IncrementAnalytics(bgCtx, dbpool, cbot.ID, time.Now(), conv.MessageCount == 0, tokens)
 		}()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(publicChatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources})
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(publicChatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
 	}
 }

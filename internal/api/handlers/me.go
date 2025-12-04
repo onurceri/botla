@@ -47,6 +47,9 @@ func (h *MeHandlers) Me(w http.ResponseWriter, r *http.Request) {
 		plan = u.SubscriptionPlan.String
 	}
 	res := MeResponse{ID: u.ID, Email: u.Email, FullName: fullName, AvatarURL: avatar, SubscriptionPlan: plan}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    if err := json.NewEncoder(w).Encode(res); err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+    }
 }

@@ -28,19 +28,11 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	const prefix = "/api/v1/chatbots/"
-	path := r.URL.Path
-	if !strings.HasPrefix(path, prefix) {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	rest := strings.TrimPrefix(path, prefix)
-	parts := strings.Split(rest, "/")
-	if len(parts) != 2 || parts[1] != "sources" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	chatbotID := parts[0]
+    chatbotID, ok := parseChatbotIDFromPath(r.URL.Path)
+    if !ok {
+        w.WriteHeader(http.StatusNotFound)
+        return
+    }
 	if chatbotID == "new" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -71,9 +63,11 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(items)
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(items); err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
 	case http.MethodPost:
 		if err := r.ParseMultipartForm(52 << 20); err != nil { // ~52MB
 			w.WriteHeader(http.StatusBadRequest)
@@ -95,17 +89,17 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			defer file.Close()
+            defer func() { _ = file.Close() }()
 			if header.Size > 50<<20 { // 50MB limit
 				w.WriteHeader(http.StatusRequestEntityTooLarge)
 				return
 			}
-			ct := header.Header.Get("Content-Type")
-			name := strings.ToLower(header.Filename)
-			if ct != "application/pdf" && !strings.HasSuffix(name, ".pdf") {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
+            ct := header.Header.Get("Content-Type")
+            name := strings.ToLower(header.Filename)
+            if !isPDFContentType(ct, name) {
+                w.WriteHeader(http.StatusBadRequest)
+                return
+            }
 
 			if h.Storage == nil {
 				if h.Log != nil {
@@ -177,12 +171,34 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 		if h.Queue != nil {
 			h.Queue.Enqueue(newID)
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"id": newID})
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusCreated)
+        if err := json.NewEncoder(w).Encode(map[string]string{"id": newID}); err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func parseChatbotIDFromPath(p string) (string, bool) {
+    const prefix = "/api/v1/chatbots/"
+    if !strings.HasPrefix(p, prefix) {
+        return "", false
+    }
+    rest := strings.TrimPrefix(p, prefix)
+    parts := strings.Split(rest, "/")
+    if len(parts) != 2 || parts[1] != "sources" || strings.TrimSpace(parts[0]) == "" {
+        return "", false
+    }
+    return parts[0], true
+}
+
+func isPDFContentType(ct, name string) bool {
+    if ct == "application/pdf" {
+        return true
+    }
+    return strings.HasSuffix(name, ".pdf")
 }
 
 func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http.Request) {
@@ -226,18 +242,22 @@ func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http
 	}
 	switch r.Method {
 	case http.MethodGet:
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(s)
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(s); err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        }
 	case http.MethodDelete:
-		// Best-effort: delete associated vectors then remove source record
-		if err := processing.DeleteSourceVectors(r.Context(), s.ID); err != nil {
-			// continue with DB delete even if vector deletion fails
-		}
+        // Best-effort: delete associated vectors then remove source record
+        if err := processing.DeleteSourceVectors(r.Context(), s.ID); err != nil {
+            if h.Log != nil {
+                h.Log.Warn("vector_delete_error", map[string]any{"source_id": s.ID, "error": err.Error()})
+            }
+        }
 		// Also delete from storage if it's a file
-		if s.FilePath != nil && h.Storage != nil {
-			_ = h.Storage.DeleteFile(r.Context(), *s.FilePath)
-		}
+        if s.FilePath != nil && h.Storage != nil {
+            _ = h.Storage.DeleteFile(r.Context(), *s.FilePath)
+        }
 
 		if err := db.DeleteSource(r.Context(), h.DB, s.ID); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

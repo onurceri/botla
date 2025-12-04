@@ -1,13 +1,13 @@
 package rag
 
 import (
-	"context"
-	"crypto/md5"
-	"fmt"
-	"strconv"
-	"time"
+    "context"
+    "crypto/sha256"
+    "fmt"
+    "strconv"
+    "time"
 
-	"github.com/onurceri/botla-co/pkg/logger"
+    "github.com/onurceri/botla-co/pkg/logger"
 )
 
 // GenerateEmbeddings orchestrates batch embedding creation and Qdrant upsert.
@@ -147,10 +147,10 @@ func GenerateEmbeddingsForSource(chunks []Chunk, chatbotID, sourceID, sourceType
 }
 
 func MakePointID(sourceID string, index int) string {
-	s := sourceID + ":" + strconv.Itoa(index)
-	h := md5.Sum([]byte(s))
-	h[6] = (h[6] & 0x0f) | 0x30
-	h[8] = (h[8] & 0x3f) | 0x80
-	u := h[:]
-	return fmt.Sprintf("%x-%x-%x-%x-%x", u[0:4], u[4:6], u[6:8], u[8:10], u[10:])
+    s := sourceID + ":" + strconv.Itoa(index)
+    h := sha256.Sum256([]byte(s))
+    h[6] = (h[6] & 0x0f) | 0x30
+    h[8] = (h[8] & 0x3f) | 0x80
+    u := h[:16]
+    return fmt.Sprintf("%x-%x-%x-%x-%x", u[0:4], u[4:6], u[6:8], u[8:10], u[10:16])
 }

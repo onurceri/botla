@@ -35,7 +35,7 @@ func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+    defer func() { _ = rows.Close() }()
 	out := []models.DataSource{}
 	for rows.Next() {
 		var d models.DataSource
