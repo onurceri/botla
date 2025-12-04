@@ -126,7 +126,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	// Completion
 	var ans string
 	var tokens int
-	
+
 	// Get language config
 	langCode := cbot.Language
 	if langCode == "" {

@@ -48,6 +48,9 @@ func NewR2Storage(accountID, accessKeyID, secretAccessKey, bucketName string) (*
 }
 
 func (s *R2Storage) UploadFile(ctx context.Context, key string, body io.Reader) (string, error) {
+	if s.bucketName == "" {
+		return "", fmt.Errorf("bucket name is empty")
+	}
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(key),
@@ -60,6 +63,9 @@ func (s *R2Storage) UploadFile(ctx context.Context, key string, body io.Reader) 
 }
 
 func (s *R2Storage) DownloadFile(ctx context.Context, key string) (io.ReadCloser, error) {
+	if s.bucketName == "" {
+		return nil, fmt.Errorf("bucket name is empty")
+	}
 	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(key),
@@ -71,6 +77,9 @@ func (s *R2Storage) DownloadFile(ctx context.Context, key string) (io.ReadCloser
 }
 
 func (s *R2Storage) DeleteFile(ctx context.Context, key string) error {
+	if s.bucketName == "" {
+		return fmt.Errorf("bucket name is empty")
+	}
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(key),

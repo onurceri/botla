@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SourceUploader from '../SourceUploader'
 import { ToastProvider } from '@/components/ui/toast'
@@ -106,6 +106,22 @@ describe('SourceUploader', () => {
     expect(await screen.findByText('URL erişilemedi')).toBeInTheDocument()
   })
 
+  it('shows server error toast when PDF upload fails', async () => {
+    const user = userEvent.setup()
+    const serverError = { response: { data: { message: 'Sunucu hatası' } } }
+    render(
+      <ToastProvider>
+        <SourceUploader onUploadPDF={vi.fn().mockRejectedValueOnce(serverError)} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
+      </ToastProvider>
+    )
+    const pdfBtns = screen.getAllByText('PDF Yükle')
+    await user.click(pdfBtns[pdfBtns.length - 1])
+    const fileInput = document.querySelector('#pdf-upload') as HTMLInputElement
+    const file = new File(['%PDF-1.4'], 'doc.pdf', { type: 'application/pdf' })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    expect(await screen.findByText('Sunucu hatası')).toBeInTheDocument()
+  })
+
   it('rejects non-PDF file type with error toast', async () => {
     const onUploadPDF = vi.fn()
     render(
@@ -137,5 +153,21 @@ describe('SourceUploader', () => {
     fireEvent.change(hiddenInput, { target: { files: [bigFile] } })
     expect(onUploadPDF).not.toHaveBeenCalled()
     expect(await screen.findByText("Dosya boyutu 50MB'den büyük olamaz.")).toBeInTheDocument()
+  })
+
+  it('closes input area when X is clicked', async () => {
+    const user = userEvent.setup()
+    const utils = render(
+      <ToastProvider>
+        <SourceUploader onUploadPDF={vi.fn()} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
+      </ToastProvider>
+    )
+    const view = within(utils.container)
+    const urlBtns = view.getAllByText('Web Sitesi')
+    await user.click(urlBtns[urlBtns.length - 1])
+    expect(view.getAllByPlaceholderText('https://example.com').length).toBeGreaterThan(0)
+    const closeBtn = utils.container.querySelector('button .lucide-x')?.parentElement as HTMLButtonElement
+    await user.click(closeBtn)
+    expect(view.queryAllByPlaceholderText('https://example.com').length).toBe(0)
   })
 })

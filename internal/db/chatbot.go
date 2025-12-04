@@ -1,18 +1,18 @@
 package db
 
 import (
-    "context"
-    "database/sql"
-    "encoding/json"
+	"context"
+	"database/sql"
+	"encoding/json"
 
-    "github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/models"
 )
 
 func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (string, error) {
 	var id string
 	err := pool.QueryRowContext(
 		ctx,
-        `INSERT INTO chatbots (
+		`INSERT INTO chatbots (
             user_id, name, description, system_prompt, language, model,
             temperature, max_tokens, theme_color, welcome_message,
             position, bot_message_color, user_message_color,
@@ -24,9 +24,9 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
-        bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
-        bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, bot.SuggestedQuestions, bot.SuggestionsEnabled,
-    ).Scan(&id)
+		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
+		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, bot.SuggestedQuestions, bot.SuggestionsEnabled,
+	).Scan(&id)
 	if err != nil {
 		return "", err
 	}
@@ -34,7 +34,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 }
 
 func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]models.Chatbot, error) {
-    rows, err := pool.QueryContext(ctx, `
+	rows, err := pool.QueryContext(ctx, `
         SELECT id, user_id, name, description, system_prompt, language, model,
                temperature, max_tokens, theme_color, welcome_message,
                created_at, updated_at, deleted_at,
@@ -53,27 +53,27 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 	defer rows.Close()
 	var out []models.Chatbot
 	for rows.Next() {
-        var c models.Chatbot
-        var sj []byte
-        if err := rows.Scan(
-            &c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.Language, &c.Model,
-            &c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
-            &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
-            &c.Position, &c.BotMessageColor, &c.UserMessageColor,
-            &c.BotMessageTextColor, &c.UserMessageTextColor,
-            &c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
-            &c.ChatBackgroundColor,
-            &c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
-            &sj, &c.SuggestionsEnabled,
-        ); err != nil {
-            return nil, err
-        }
-        if len(sj) > 0 {
-            var arr []string
-            _ = json.Unmarshal(sj, &arr)
-            c.SuggestedQuestions = arr
-        }
-        out = append(out, c)
+		var c models.Chatbot
+		var sj []byte
+		if err := rows.Scan(
+			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.Language, &c.Model,
+			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
+			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
+			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
+			&c.BotMessageTextColor, &c.UserMessageTextColor,
+			&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
+			&c.ChatBackgroundColor,
+			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
+			&sj, &c.SuggestionsEnabled,
+		); err != nil {
+			return nil, err
+		}
+		if len(sj) > 0 {
+			var arr []string
+			_ = json.Unmarshal(sj, &arr)
+			c.SuggestedQuestions = arr
+		}
+		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -82,9 +82,9 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 }
 
 func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatbot, error) {
-    var c models.Chatbot
-    var sj []byte
-    err := pool.QueryRowContext(ctx, `
+	var c models.Chatbot
+	var sj []byte
+	err := pool.QueryRowContext(ctx, `
         SELECT id, user_id, name, description, system_prompt, language, model,
                temperature, max_tokens, theme_color, welcome_message,
                created_at, updated_at, deleted_at,
@@ -95,33 +95,33 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                bot_icon, bot_display_name, allowed_domains, embed_secret, secure_embed_enabled,
                suggested_questions, suggestions_enabled
         FROM chatbots WHERE id=$1 AND deleted_at IS NULL`, id).
-        Scan(
-            &c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.Language, &c.Model,
-            &c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
-            &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
-            &c.Position, &c.BotMessageColor, &c.UserMessageColor,
-            &c.BotMessageTextColor, &c.UserMessageTextColor,
-            &c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
-            &c.ChatBackgroundColor,
-            &c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
-            &sj, &c.SuggestionsEnabled,
-        )
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return nil, nil
-        }
-        return nil, err
-    }
-    if len(sj) > 0 {
-        var arr []string
-        _ = json.Unmarshal(sj, &arr)
-        c.SuggestedQuestions = arr
-    }
-    return &c, nil
+		Scan(
+			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.Language, &c.Model,
+			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
+			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
+			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
+			&c.BotMessageTextColor, &c.UserMessageTextColor,
+			&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
+			&c.ChatBackgroundColor,
+			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
+			&sj, &c.SuggestionsEnabled,
+		)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if len(sj) > 0 {
+		var arr []string
+		_ = json.Unmarshal(sj, &arr)
+		c.SuggestedQuestions = arr
+	}
+	return &c, nil
 }
 
 func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error {
-    _, err := pool.ExecContext(ctx, `
+	_, err := pool.ExecContext(ctx, `
         UPDATE chatbots SET
             name=$1,
             description=$2,
@@ -150,46 +150,46 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             suggestions_enabled=$25,
             updated_at=NOW()
         WHERE id=$26 AND user_id=$27 AND deleted_at IS NULL`,
-        bot.Name,
-        bot.Description,
-        bot.SystemPrompt,
-        bot.Language,
-        bot.Model,
-        bot.Temperature,
-        bot.MaxTokens,
-        bot.ThemeColor,
-        bot.WelcomeMessage,
-        bot.Position,
-        bot.BotMessageColor,
-        bot.UserMessageColor,
-        bot.BotMessageTextColor,
-        bot.UserMessageTextColor,
-        bot.ChatFontFamily,
-        bot.ChatHeaderColor,
-        bot.ChatHeaderTextColor,
-        bot.ChatBackgroundColor,
-        bot.BotIcon,
-        bot.BotDisplayName,
-        bot.AllowedDomains,
-        bot.EmbedSecret,
-        bot.SecureEmbedEnabled,
-        bot.SuggestedQuestions,
-        bot.SuggestionsEnabled,
-        bot.ID,
-        bot.UserID,
-    )
-    return err
+		bot.Name,
+		bot.Description,
+		bot.SystemPrompt,
+		bot.Language,
+		bot.Model,
+		bot.Temperature,
+		bot.MaxTokens,
+		bot.ThemeColor,
+		bot.WelcomeMessage,
+		bot.Position,
+		bot.BotMessageColor,
+		bot.UserMessageColor,
+		bot.BotMessageTextColor,
+		bot.UserMessageTextColor,
+		bot.ChatFontFamily,
+		bot.ChatHeaderColor,
+		bot.ChatHeaderTextColor,
+		bot.ChatBackgroundColor,
+		bot.BotIcon,
+		bot.BotDisplayName,
+		bot.AllowedDomains,
+		bot.EmbedSecret,
+		bot.SecureEmbedEnabled,
+		bot.SuggestedQuestions,
+		bot.SuggestionsEnabled,
+		bot.ID,
+		bot.UserID,
+	)
+	return err
 }
 
 func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, chatbotID string, suggestions []string) error {
-    var js any
-    if suggestions == nil {
-        js = nil
-    } else {
-        js = suggestions
-    }
-    _, err := pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, updated_at=NOW() WHERE id=$2 AND deleted_at IS NULL`, js, chatbotID)
-    return err
+	var js any
+	if suggestions == nil {
+		js = nil
+	} else {
+		js = suggestions
+	}
+	_, err := pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, updated_at=NOW() WHERE id=$2 AND deleted_at IS NULL`, js, chatbotID)
+	return err
 }
 
 func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) error {

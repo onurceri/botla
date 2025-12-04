@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/api/client'
 import { getAnalytics } from '@/api/analytics'
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+export const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-xl">
@@ -52,6 +52,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null
 }
+
+export const formatXAxisTick = (value: string) => {
+  const date = new Date(value)
+  return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
+}
+
+export const formatYAxisTick = (value: number) => `${value}`
 
 const DashboardPage = () => {
   const [stats, setStats] = useState({
@@ -208,10 +215,7 @@ const DashboardPage = () => {
                       fontSize={12} 
                       tickLine={false} 
                       axisLine={false}
-                      tickFormatter={(value) => {
-                        const date = new Date(value);
-                        return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
-                      }}
+                      tickFormatter={formatXAxisTick}
                       dy={10}
                     />
                     <YAxis 
@@ -219,7 +223,7 @@ const DashboardPage = () => {
                       fontSize={12} 
                       tickLine={false} 
                       axisLine={false} 
-                      tickFormatter={(value) => `${value}`}
+                      tickFormatter={formatYAxisTick}
                       dx={-10}
                     />
                     <Tooltip content={<CustomTooltip />} />

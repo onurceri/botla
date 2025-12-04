@@ -3,8 +3,8 @@
 package pdf
 
 import (
-    "bytes"
-    "strings"
+	"bytes"
+	"strings"
 
 	"github.com/gen2brain/go-fitz"
 	"github.com/onurceri/botla-co/internal/scraper"
@@ -30,32 +30,32 @@ func ExtractPDFWithOCR(filePath string, langCode string) (string, error) {
 	_ = c.SetLanguage(cfg.OCRLanguage)
 	_ = c.SetVariable("user_defined_dpi", "300")
 
-    var out strings.Builder
-    for n := 0; n < pages; n++ {
-        png, perr := doc.ImagePNG(n, 300)
-        if perr != nil {
-            return "", perr
-        }
-        if err := c.SetImageFromBytes(png); err != nil {
-            return "", err
-        }
-        txt, terr := c.Text()
-        if terr != nil {
-            return "", terr
-        }
-        if !scraper.IsValidUTF8([]byte(txt)) {
-            txt = string(bytes.ToValidUTF8([]byte(txt), []byte("?")))
-        }
-        norm, nerr := scraper.NormalizeText(txt)
-        if nerr != nil {
-            norm = strings.TrimSpace(txt)
-        }
-        if norm != "" {
-            out.WriteString(norm)
-        }
-        if n < pages-1 {
-            out.WriteString("\n\n")
-        }
-    }
-    return out.String(), nil
+	var out strings.Builder
+	for n := 0; n < pages; n++ {
+		png, perr := doc.ImagePNG(n, 300)
+		if perr != nil {
+			return "", perr
+		}
+		if err := c.SetImageFromBytes(png); err != nil {
+			return "", err
+		}
+		txt, terr := c.Text()
+		if terr != nil {
+			return "", terr
+		}
+		if !scraper.IsValidUTF8([]byte(txt)) {
+			txt = string(bytes.ToValidUTF8([]byte(txt), []byte("?")))
+		}
+		norm, nerr := scraper.NormalizeText(txt)
+		if nerr != nil {
+			norm = strings.TrimSpace(txt)
+		}
+		if norm != "" {
+			out.WriteString(norm)
+		}
+		if n < pages-1 {
+			out.WriteString("\n\n")
+		}
+	}
+	return out.String(), nil
 }

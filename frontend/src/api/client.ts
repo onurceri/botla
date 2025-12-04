@@ -46,7 +46,9 @@ api.interceptors.response.use(
       } catch (refreshErr) {
         localStorage.removeItem('botla_token')
         localStorage.removeItem('botla_refresh_token')
-        window.location.replace('/login')
+        if (!import.meta.env.VITE_E2E) {
+          window.location.replace('/login')
+        }
         return Promise.reject(refreshErr)
       }
     }

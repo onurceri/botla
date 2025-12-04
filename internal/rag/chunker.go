@@ -1,11 +1,11 @@
 package rag
 
 import (
-    "errors"
-    "math"
+	"errors"
+	"math"
 	"os"
-    "regexp"
-    "strings"
+	"regexp"
+	"strings"
 
 	"github.com/neurosnap/sentences"
 	"github.com/neurosnap/sentences/english"
@@ -13,8 +13,8 @@ import (
 )
 
 type Chunk struct {
-    Text       string
-    TokenCount int
+	Text       string
+	TokenCount int
 }
 
 // ChunkText splits raw text into token-aware chunks preserving paragraph and sentence boundaries.
@@ -192,4 +192,3 @@ func splitSentences(text string, langCode string) []string {
 	}
 	return out
 }
-

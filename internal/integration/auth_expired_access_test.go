@@ -1,51 +1,61 @@
 package integration
 
 import (
-    "bytes"
-    "encoding/json"
-    "net/http"
-    "testing"
-    "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"testing"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/auth"
+	"github.com/onurceri/botla-co/internal/auth"
 )
 
 func TestAuth_ExpiredAccessToken_Protected401(t *testing.T) {
-    te, err := SetupTestEnv()
-    if err != nil { t.Fatalf("setup failed: %v", err) }
-    defer TeardownTestEnv(te)
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
 
-    // register to obtain user id via protected ping
-    email := "exp@example.com"
-    regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User"}
-    rb, _ := json.Marshal(regBody)
-    resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
-    if resReg.StatusCode != http.StatusCreated { t.Fatalf("expected 201, got %d", resReg.StatusCode) }
-    resReg.Body.Close()
+	// register to obtain user id via protected ping
+	email := "exp+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
+	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User"}
+	rb, _ := json.Marshal(regBody)
+	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	if resReg.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resReg.StatusCode)
+	}
+	resReg.Body.Close()
 
-    // login to get valid token and confirm user id
-    lb := map[string]string{"email": email, "password": "pass1234"}
-    lbj, _ := json.Marshal(lb)
-    resLog, _ := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
-    if resLog.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resLog.StatusCode) }
-    var tr tokenResp
-    json.NewDecoder(resLog.Body).Decode(&tr)
-    resLog.Body.Close()
+	// login to get valid token and confirm user id
+	lb := map[string]string{"email": email, "password": "pass1234"}
+	lbj, _ := json.Marshal(lb)
+	resLog, _ := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	if resLog.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resLog.StatusCode)
+	}
+	var tr tokenResp
+	json.NewDecoder(resLog.Body).Decode(&tr)
+	resLog.Body.Close()
 
-    // protected ping with valid token
-    reqPing, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/protected", nil)
-    reqPing.Header.Set("Authorization", "Bearer "+tr.Token)
-    resPing, _ := http.DefaultClient.Do(reqPing)
-    if resPing.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resPing.StatusCode) }
-    resPing.Body.Close()
+	// protected ping with valid token
+	reqPing, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/protected", nil)
+	reqPing.Header.Set("Authorization", "Bearer "+tr.Token)
+	resPing, _ := http.DefaultClient.Do(reqPing)
+	if resPing.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resPing.StatusCode)
+	}
+	resPing.Body.Close()
 
-    // craft expired access token using same secret and user id "exp@example.com" subject via login
-    // Since ProtectedHandler reads userID from claims, we can generate with any non-empty id; use email as proxy
-    expired, _ := auth.GenerateToken(te.Cfg.JWT_SECRET, "expired-user", "access", -time.Minute)
-    reqExp, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/protected", nil)
-    reqExp.Header.Set("Authorization", "Bearer "+expired)
-    resExp, _ := http.DefaultClient.Do(reqExp)
-    if resExp.StatusCode != http.StatusUnauthorized { t.Fatalf("expected 401, got %d", resExp.StatusCode) }
-    resExp.Body.Close()
+	// craft expired access token using same secret and user id "exp@example.com" subject via login
+	// Since ProtectedHandler reads userID from claims, we can generate with any non-empty id; use email as proxy
+	expired, _ := auth.GenerateToken(te.Cfg.JWT_SECRET, "expired-user", "access", -time.Minute)
+	reqExp, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/protected", nil)
+	reqExp.Header.Set("Authorization", "Bearer "+expired)
+	resExp, _ := http.DefaultClient.Do(reqExp)
+	if resExp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resExp.StatusCode)
+	}
+	resExp.Body.Close()
 }
-

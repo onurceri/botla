@@ -1,0 +1,23 @@
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - frontend
+    - widget
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - revive
+    - errcheck
+    - ineffassign
+    - gosimple
+    - unused
+    - typecheck
+    - misspell
+    - gosec
+    - gocyclo
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

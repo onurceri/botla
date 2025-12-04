@@ -1,24 +1,24 @@
 package processing
 
 import (
-    "context"
-    "crypto/md5"
-    "database/sql"
-    "encoding/json"
+	"context"
+	"crypto/md5"
+	"database/sql"
+	"encoding/json"
 
-    "fmt"
-    "io"
-    "os"
-    "strconv"
-    "time"
-    "strings"
+	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/pdf"
-    "github.com/onurceri/botla-co/internal/rag"
-    "github.com/onurceri/botla-co/internal/scraper"
-    "github.com/onurceri/botla-co/internal/text"
-    "github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/pdf"
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/internal/text"
+	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 type SourceQueue struct {
@@ -103,13 +103,13 @@ func (q *SourceQueue) worker() {
 				continue
 			}
 			content = text.NormalizeTR(content)
-			
-            // Ingestion metadata (summary + suggested questions)
-            if meta, err := rag.ExtractIngestionMetadata(context.Background(), q.openaiClient, content, langCode); err == nil {
-                db.UpdateSourceCapability(context.Background(), q.db, id, meta.CapabilitySummary)
-                db.UpdateSourceSuggestions(context.Background(), q.db, id, meta.SuggestedQuestions)
-                aggregateAndPersistChatbotSuggestions(context.Background(), q.db, s.ChatbotID)
-            }
+
+			// Ingestion metadata (summary + suggested questions)
+			if meta, err := rag.ExtractIngestionMetadata(context.Background(), q.openaiClient, content, langCode); err == nil {
+				db.UpdateSourceCapability(context.Background(), q.db, id, meta.CapabilitySummary)
+				db.UpdateSourceSuggestions(context.Background(), q.db, id, meta.SuggestedQuestions)
+				aggregateAndPersistChatbotSuggestions(context.Background(), q.db, s.ChatbotID)
+			}
 
 			rc, rerr := rag.ChunkText(content, 512, langCode)
 			if rerr != nil {
@@ -174,12 +174,12 @@ func (q *SourceQueue) worker() {
 			}
 			content = text.NormalizeTR(content)
 
-            // Ingestion metadata (summary + suggested questions)
-            if meta, err := rag.ExtractIngestionMetadata(context.Background(), q.openaiClient, content, langCode); err == nil {
-                db.UpdateSourceCapability(context.Background(), q.db, id, meta.CapabilitySummary)
-                db.UpdateSourceSuggestions(context.Background(), q.db, id, meta.SuggestedQuestions)
-                aggregateAndPersistChatbotSuggestions(context.Background(), q.db, s.ChatbotID)
-            }
+			// Ingestion metadata (summary + suggested questions)
+			if meta, err := rag.ExtractIngestionMetadata(context.Background(), q.openaiClient, content, langCode); err == nil {
+				db.UpdateSourceCapability(context.Background(), q.db, id, meta.CapabilitySummary)
+				db.UpdateSourceSuggestions(context.Background(), q.db, id, meta.SuggestedQuestions)
+				aggregateAndPersistChatbotSuggestions(context.Background(), q.db, s.ChatbotID)
+			}
 
 			rc, rerr := rag.ChunkText(content, 512, langCode)
 			if rerr != nil {
@@ -233,12 +233,12 @@ func (q *SourceQueue) worker() {
 			}
 			content = text.NormalizeTR(content)
 
-            // Ingestion metadata (summary + suggested questions)
-            if meta, err := rag.ExtractIngestionMetadata(context.Background(), q.openaiClient, content, langCode); err == nil {
-                db.UpdateSourceCapability(context.Background(), q.db, id, meta.CapabilitySummary)
-                db.UpdateSourceSuggestions(context.Background(), q.db, id, meta.SuggestedQuestions)
-                aggregateAndPersistChatbotSuggestions(context.Background(), q.db, s.ChatbotID)
-            }
+			// Ingestion metadata (summary + suggested questions)
+			if meta, err := rag.ExtractIngestionMetadata(context.Background(), q.openaiClient, content, langCode); err == nil {
+				db.UpdateSourceCapability(context.Background(), q.db, id, meta.CapabilitySummary)
+				db.UpdateSourceSuggestions(context.Background(), q.db, id, meta.SuggestedQuestions)
+				aggregateAndPersistChatbotSuggestions(context.Background(), q.db, s.ChatbotID)
+			}
 
 			rc, rerr := rag.ChunkText(content, 512, langCode)
 			if rerr != nil {
@@ -263,58 +263,80 @@ func (q *SourceQueue) worker() {
 
 // aggregateAndPersistChatbotSuggestions queries data_sources for the chatbot and writes unique suggestions to chatbots.suggested_questions.
 func aggregateAndPersistChatbotSuggestions(ctx context.Context, pool *sql.DB, chatbotID string) {
-    // Fetch existing chatbot suggestions
-    var existing []byte
-    var currentSuggestions []string
-    _ = pool.QueryRowContext(ctx, `SELECT suggested_questions FROM chatbots WHERE id=$1`, chatbotID).Scan(&existing)
-    
-    if len(existing) > 0 {
-        _ = json.Unmarshal(existing, &currentSuggestions)
-    }
+	// Fetch existing chatbot suggestions
+	var existing []byte
+	var currentSuggestions []string
+	_ = pool.QueryRowContext(ctx, `SELECT suggested_questions FROM chatbots WHERE id=$1`, chatbotID).Scan(&existing)
 
-    // Initialize set with existing suggestions to avoid duplicates
-    uniq := map[string]struct{}{}
-    out := make([]string, 0, 6)
-    
-    for _, q := range currentSuggestions {
-        t := strings.TrimSpace(q)
-        if t == "" { continue }
-        if len(t) > 120 { t = t[:120] }
-        k := strings.ToLower(t)
-        if _, ok := uniq[k]; ok { continue }
-        uniq[k] = struct{}{}
-        out = append(out, t)
-    }
+	if len(existing) > 0 {
+		_ = json.Unmarshal(existing, &currentSuggestions)
+	}
 
-    // If we already have 6 or more questions, we don't need to fetch more
-    if len(out) >= 6 {
-        return
-    }
+	// Initialize set with existing suggestions to avoid duplicates
+	uniq := map[string]struct{}{}
+	out := make([]string, 0, 6)
 
-    rows, err := pool.QueryContext(ctx, `SELECT suggested_questions FROM data_sources WHERE chatbot_id=$1 AND suggested_questions IS NOT NULL`, chatbotID)
-    if err != nil { return }
-    defer rows.Close()
+	for _, q := range currentSuggestions {
+		t := strings.TrimSpace(q)
+		if t == "" {
+			continue
+		}
+		if len(t) > 120 {
+			t = t[:120]
+		}
+		k := strings.ToLower(t)
+		if _, ok := uniq[k]; ok {
+			continue
+		}
+		uniq[k] = struct{}{}
+		out = append(out, t)
+	}
 
-    for rows.Next() {
-        var arr []byte
-        if err := rows.Scan(&arr); err != nil { continue }
-        var items []string
-        if err := json.Unmarshal(arr, &items); err != nil { continue }
-        for _, it := range items {
-            t := strings.TrimSpace(it)
-            if t == "" { continue }
-            if len(t) > 120 { t = t[:120] }
-            k := strings.ToLower(t)
-            if _, ok := uniq[k]; ok { continue }
-            uniq[k] = struct{}{}
-            out = append(out, t)
-            if len(out) >= 6 { break }
-        }
-        if len(out) >= 6 { break }
-    }
-    
-    // Only update if we have changes or if we just want to ensure consistency
-    _ = db.UpdateChatbotSuggestions(ctx, pool, chatbotID, out)
+	// If we already have 6 or more questions, we don't need to fetch more
+	if len(out) >= 6 {
+		return
+	}
+
+	rows, err := pool.QueryContext(ctx, `SELECT suggested_questions FROM data_sources WHERE chatbot_id=$1 AND suggested_questions IS NOT NULL`, chatbotID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var arr []byte
+		if err := rows.Scan(&arr); err != nil {
+			continue
+		}
+		var items []string
+		if err := json.Unmarshal(arr, &items); err != nil {
+			continue
+		}
+		for _, it := range items {
+			t := strings.TrimSpace(it)
+			if t == "" {
+				continue
+			}
+			if len(t) > 120 {
+				t = t[:120]
+			}
+			k := strings.ToLower(t)
+			if _, ok := uniq[k]; ok {
+				continue
+			}
+			uniq[k] = struct{}{}
+			out = append(out, t)
+			if len(out) >= 6 {
+				break
+			}
+		}
+		if len(out) >= 6 {
+			break
+		}
+	}
+
+	// Only update if we have changes or if we just want to ensure consistency
+	_ = db.UpdateChatbotSuggestions(ctx, pool, chatbotID, out)
 }
 
 func DeleteSourceVectors(ctx context.Context, sourceID string) error {

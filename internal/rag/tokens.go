@@ -23,4 +23,3 @@ func CountTokens(text string, langCode string) int {
 	}
 	return t
 }
-

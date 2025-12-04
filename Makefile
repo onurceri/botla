@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: up down psql redis-ping migrate-up migrate-down migrate-version migrate-up-docker migrate-down-docker migrate-version-docker migrate-force-docker sqlc-generate
+.PHONY: up down psql redis-ping migrate-up migrate-down migrate-version migrate-up-docker migrate-down-docker migrate-version-docker migrate-force-docker sqlc-generate be-run be-run-no-pdf fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci
 
 # Local DB URL for tooling on host
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
@@ -56,3 +56,43 @@ be-run-no-pdf:
 
 fe-run:
 	cd frontend && npm run dev
+
+# Test and coverage targets
+test-all:
+	CGO_ENABLED=1 go test -tags fitz -race -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
+
+test-no-pdf:
+	go test -race -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
+
+cover-html:
+	@[ -f coverage.out ] || (echo "coverage.out not found. Run 'make test-all' first." && exit 1)
+	go tool cover -html=coverage.out -o coverage.html
+
+cover-func:
+	@[ -f coverage.out ] || (echo "coverage.out not found. Run 'make test-all' first." && exit 1)
+	go tool cover -func=coverage.out
+
+cover-gate:
+	@[ -f coverage.out ] || (echo "coverage.out not found. Run 'make test-all' first." && exit 1)
+	@pct=$$(go tool cover -func=coverage.out | tail -n1 | awk '{print $$3}'); \
+	 if [ "$$pct" != "100.0%" ]; then echo "Coverage gate failed: $$pct"; exit 1; else echo "Coverage 100%"; fi
+
+fmt:
+	gofmt -s -w .
+
+imports:
+	goimports -w .
+
+vet:
+	go vet ./...
+
+lint:
+	golangci-lint run ./...
+
+vuln:
+	govulncheck ./...
+
+ci:
+	$(MAKE) vet
+	$(MAKE) lint
+	$(MAKE) test-no-pdf

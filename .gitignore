@@ -43,4 +43,39 @@ build/
 .next/
 .cache/
 
-server
+/server
+coverage/
+**/coverage/
+.nyc_output/
+coverage-final.json
+lcov-report/
+
+# Go coverage artifacts
+coverage.out
+cover-*.out
+*.coverprofile
+coverage.html
+*.out
+rag.out
+
+# Test artifacts
+internal/testdb/
+docs/test.pdf
+
+# Go test binaries
+*.test
+
+# Profiler outputs
+*.prof
+*.pprof
+cpu.prof
+mem.prof
+
+# Local tooling
+.direnv/
+.envrc
+
+# Certificates/keys
+*.pem
+*.key
+*.crt

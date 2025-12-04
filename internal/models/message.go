@@ -3,12 +3,11 @@ package models
 import "time"
 
 type Message struct {
-    ID             string     `json:"id"`
-    ConversationID string     `json:"conversation_id"`
-    Role           string     `json:"role"`
-    Content        string     `json:"content"`
-    TokensUsed     int        `json:"tokens_used"`
-    ThumbsUp       *bool      `json:"thumbs_up,omitempty"`
-    CreatedAt      time.Time  `json:"created_at"`
+	ID             string    `json:"id"`
+	ConversationID string    `json:"conversation_id"`
+	Role           string    `json:"role"`
+	Content        string    `json:"content"`
+	TokensUsed     int       `json:"tokens_used"`
+	ThumbsUp       *bool     `json:"thumbs_up,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 }
-

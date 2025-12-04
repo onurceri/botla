@@ -1,13 +1,13 @@
 package langconfig
 
 type LanguageConfig struct {
-	Code            string
-	Name            string
-	Abbreviations   []string // For sentence splitting (e.g., "Dr.", "Mr.")
-	TokenMultiplier float64  // For token estimation
-	OCRLanguage     string   // Tesseract language code (e.g., "tur", "eng")
-	TokenizerData       string            // Path to the JSON training data
-	ResponseTemplates   ResponseTemplates // Localized response strings
+	Code              string
+	Name              string
+	Abbreviations     []string          // For sentence splitting (e.g., "Dr.", "Mr.")
+	TokenMultiplier   float64           // For token estimation
+	OCRLanguage       string            // Tesseract language code (e.g., "tur", "eng")
+	TokenizerData     string            // Path to the JSON training data
+	ResponseTemplates ResponseTemplates // Localized response strings
 }
 
 type ResponseTemplates struct {
@@ -29,9 +29,9 @@ var Configs = map[string]LanguageConfig{
 		OCRLanguage:     "tur",
 		TokenizerData:   "data/sentences/turkish.json",
 		ResponseTemplates: ResponseTemplates{
-			NoInfoFound:         "Yeterli bilgi bulamadım.",
-			DefaultSystemPrompt: "Her zaman Türkçe yanıt ver ve sadece verilen bağlamı kullan.",
-			ErrorMessage:        "Şu an bir hata oluştu, lütfen tekrar deneyin.",
+			NoInfoFound:                 "Yeterli bilgi bulamadım.",
+			DefaultSystemPrompt:         "Her zaman Türkçe yanıt ver ve sadece verilen bağlamı kullan.",
+			ErrorMessage:                "Şu an bir hata oluştu, lütfen tekrar deneyin.",
 			TopicExtractionSystemPrompt: TR_TopicExtractionSystemPrompt,
 			TopicExtractionUserPrompt:   TR_TopicExtractionUserPrompt,
 		},

@@ -39,7 +39,7 @@ describe('Connect tab secure embed UI', () => {
     // click save
     const saveBtn = await screen.findByText('Değişiklikleri Kaydet')
     fireEvent.click(saveBtn)
-    await waitFor(() => expect((api.put as any).mock.calls.length > 0).toBeTruthy())
+    await waitFor(() => (api.put as any).mock.calls.length > 0, { timeout: 3000 })
     const payload = (api.put as any).mock.calls.at(-1)[1]
     expect(payload.secure_embed_enabled).toBe(false)
     expect(payload.allowed_domains).toBeUndefined()

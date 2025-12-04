@@ -55,12 +55,12 @@ func ExtractPDFText(filePath string, langCode string) (string, error) {
 		}
 	}
 	res := strings.TrimSpace(out.String())
-    if len(res) < 100 {
-        ocrText, oerr := ExtractPDFWithOCRCompat(filePath, langCode)
-        if oerr == nil && strings.TrimSpace(ocrText) != "" {
-            return ocrText, nil
-        }
-    }
+	if len(res) < 100 {
+		ocrText, oerr := ExtractPDFWithOCRCompat(filePath, langCode)
+		if oerr == nil && strings.TrimSpace(ocrText) != "" {
+			return ocrText, nil
+		}
+	}
 	return out.String(), nil
 }
 

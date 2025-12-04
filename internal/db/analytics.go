@@ -41,7 +41,7 @@ func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, dat
 // IncrementFeedback updates the thumbs up/down count in analytics
 func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, date time.Time, isThumbsUp bool) error {
 	dateStr := date.Format("2006-01-02")
-	
+
 	upInc := 0
 	downInc := 0
 	if isThumbsUp {

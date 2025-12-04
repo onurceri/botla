@@ -10,16 +10,16 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/processing"
+	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
-    "github.com/onurceri/botla-co/pkg/logger"
 )
 
 type SourcesHandlers struct {
 	DB      *sql.DB
 	Queue   *processing.SourceQueue
 	Storage storage.StorageService
-    Log     *logger.Logger
+	Log     *logger.Logger
 }
 
 func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +47,9 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 	}
 	c, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
 	if err != nil {
-		if h.Log != nil { h.Log.Error("chatbot_fetch_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "path": r.URL.Path}) }
+		if h.Log != nil {
+			h.Log.Error("chatbot_fetch_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "path": r.URL.Path})
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -63,7 +65,9 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 	case http.MethodGet:
 		items, err := db.ListSourcesByChatbotID(r.Context(), h.DB, chatbotID)
 		if err != nil {
-			if h.Log != nil { h.Log.Error("sources_list_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "path": r.URL.Path}) }
+			if h.Log != nil {
+				h.Log.Error("sources_list_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "path": r.URL.Path})
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -104,7 +108,9 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 			}
 
 			if h.Storage == nil {
-				if h.Log != nil { h.Log.Error("storage_missing", map[string]any{"chatbot_id": chatbotID, "path": r.URL.Path}) }
+				if h.Log != nil {
+					h.Log.Error("storage_missing", map[string]any{"chatbot_id": chatbotID, "path": r.URL.Path})
+				}
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
@@ -112,7 +118,9 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 			key := storage.GenerateKey("sources", header.Filename)
 			uploadedKey, err := h.Storage.UploadFile(r.Context(), key, file)
 			if err != nil {
-				if h.Log != nil { h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID}) }
+				if h.Log != nil {
+					h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
+				}
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -134,7 +142,9 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 				return
 			}
 			if h.Storage == nil {
-				if h.Log != nil { h.Log.Error("storage_missing", map[string]any{"chatbot_id": chatbotID, "path": r.URL.Path}) }
+				if h.Log != nil {
+					h.Log.Error("storage_missing", map[string]any{"chatbot_id": chatbotID, "path": r.URL.Path})
+				}
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
@@ -142,7 +152,9 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 			key := storage.GenerateKey("sources", "inline.txt")
 			uploadedKey, err := h.Storage.UploadFile(r.Context(), key, bytes.NewBufferString(text))
 			if err != nil {
-				if h.Log != nil { h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID}) }
+				if h.Log != nil {
+					h.Log.Error("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
+				}
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -156,7 +168,9 @@ func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request)
 		}
 		newID, err := db.CreateDataSource(r.Context(), h.DB, &ds)
 		if err != nil {
-			if h.Log != nil { h.Log.Error("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "source_type": sourceType}) }
+			if h.Log != nil {
+				h.Log.Error("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "source_type": sourceType})
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

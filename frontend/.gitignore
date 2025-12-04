@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Coverage and caches
+coverage/
+.nyc_output/
+*.lcov
+.eslintcache
+*.tsbuildinfo
+.parcel-cache
