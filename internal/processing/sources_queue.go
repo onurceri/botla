@@ -20,14 +20,19 @@ import (
 )
 
 type SourceQueue struct {
-	ch      *chan string
-	db      *sql.DB
-	storage storage.StorageService
+	ch           *chan string
+	db           *sql.DB
+	storage      storage.StorageService
+	openaiClient rag.LLMClient
 }
 
 func StartSourceQueue(dbpool *sql.DB, st storage.StorageService) (*SourceQueue, error) {
 	c := make(chan string, 64)
-	q := &SourceQueue{ch: &c, db: dbpool, storage: st}
+	oa, err := rag.NewOpenAIClientFromEnv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create openai client: %w", err)
+	}
+	q := &SourceQueue{ch: &c, db: dbpool, storage: st, openaiClient: oa}
 	go q.worker()
 	// Ensure collection exists at startup (best-effort)
 	if qc, err := rag.NewQdrantClientFromEnv(); err == nil {
@@ -96,6 +101,12 @@ func (q *SourceQueue) worker() {
 				continue
 			}
 			content = text.NormalizeTR(content)
+			
+			// Topic Extraction
+			if summary, err := rag.ExtractTopics(context.Background(), q.openaiClient, content, langCode); err == nil {
+				db.UpdateSourceCapability(context.Background(), q.db, id, summary)
+			}
+
 			rc, rerr := rag.ChunkText(content, 512, langCode)
 			if rerr != nil {
 				m := rerr.Error()
@@ -158,6 +169,12 @@ func (q *SourceQueue) worker() {
 				continue
 			}
 			content = text.NormalizeTR(content)
+
+			// Topic Extraction
+			if summary, err := rag.ExtractTopics(context.Background(), q.openaiClient, content, langCode); err == nil {
+				db.UpdateSourceCapability(context.Background(), q.db, id, summary)
+			}
+
 			rc, rerr := rag.ChunkText(content, 512, langCode)
 			if rerr != nil {
 				m := rerr.Error()
@@ -209,6 +226,12 @@ func (q *SourceQueue) worker() {
 				continue
 			}
 			content = text.NormalizeTR(content)
+
+			// Topic Extraction
+			if summary, err := rag.ExtractTopics(context.Background(), q.openaiClient, content, langCode); err == nil {
+				db.UpdateSourceCapability(context.Background(), q.db, id, summary)
+			}
+
 			rc, rerr := rag.ChunkText(content, 512, langCode)
 			if rerr != nil {
 				m := rerr.Error()

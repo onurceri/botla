@@ -11,9 +11,11 @@ type LanguageConfig struct {
 }
 
 type ResponseTemplates struct {
-	NoInfoFound         string
-	DefaultSystemPrompt string
-	ErrorMessage        string
+	NoInfoFound                 string
+	DefaultSystemPrompt         string
+	ErrorMessage                string
+	TopicExtractionSystemPrompt string
+	TopicExtractionUserPrompt   string
 }
 
 var Configs = map[string]LanguageConfig{
@@ -30,6 +32,8 @@ var Configs = map[string]LanguageConfig{
 			NoInfoFound:         "Yeterli bilgi bulamadım.",
 			DefaultSystemPrompt: "Her zaman Türkçe yanıt ver ve sadece verilen bağlamı kullan.",
 			ErrorMessage:        "Şu an bir hata oluştu, lütfen tekrar deneyin.",
+			TopicExtractionSystemPrompt: TR_TopicExtractionSystemPrompt,
+			TopicExtractionUserPrompt:   TR_TopicExtractionUserPrompt,
 		},
 	},
 	"en": {
@@ -42,9 +46,11 @@ var Configs = map[string]LanguageConfig{
 		OCRLanguage:     "eng",
 		TokenizerData:   "data/sentences/english.json",
 		ResponseTemplates: ResponseTemplates{
-			NoInfoFound:         "I could not find enough information.",
-			DefaultSystemPrompt: "Always answer in English and use only the provided context.",
-			ErrorMessage:        "An error occurred, please try again later.",
+			NoInfoFound:                 "I could not find enough information.",
+			DefaultSystemPrompt:         "Always answer in English and use only the provided context.",
+			ErrorMessage:                "An error occurred, please try again later.",
+			TopicExtractionSystemPrompt: EN_TopicExtractionSystemPrompt,
+			TopicExtractionUserPrompt:   EN_TopicExtractionUserPrompt,
 		},
 	},
 }

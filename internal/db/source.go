@@ -89,3 +89,7 @@ func DeleteSource(ctx context.Context, pool *sql.DB, id string) error {
     return err
 }
 
+func UpdateSourceCapability(ctx context.Context, pool *sql.DB, id string, summary string) error {
+    _, err := pool.ExecContext(ctx, `UPDATE data_sources SET capability_summary=$1 WHERE id=$2`, summary, id)
+    return err
+}
