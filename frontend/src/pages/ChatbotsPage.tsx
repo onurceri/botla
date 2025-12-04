@@ -12,7 +12,7 @@ const ChatbotsPage = () => {
 
   useEffect(() => {
     api.get('/api/v1/chatbots')
-      .then(({ data }) => setBots(data))
+      .then(({ data }) => setBots(Array.isArray(data) ? data : []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false))
   }, [])

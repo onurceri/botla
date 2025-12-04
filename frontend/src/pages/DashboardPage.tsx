@@ -72,16 +72,18 @@ const DashboardPage = () => {
     const fetchData = async () => {
       try {
         // Fetch Analytics
-        const analyticsData = await getAnalytics()
+        const analyticsRaw = await getAnalytics()
+        const analyticsData = Array.isArray(analyticsRaw) ? analyticsRaw : []
         setChartData(analyticsData)
 
         // Calculate totals from analytics
-        const totalConv = analyticsData.reduce((acc: number, curr: any) => acc + curr.conversations, 0)
-        const totalMsg = analyticsData.reduce((acc: number, curr: any) => acc + curr.messages, 0)
+        const totalConv = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.conversations ?? 0), 0)
+        const totalMsg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.messages ?? 0), 0)
 
         // Fetch Bots for count and recent list
-        const { data: bots } = await api.get('/api/v1/chatbots')
-        setRecentBots(bots.slice(0, 3)) // Take first 3
+        const { data } = await api.get('/api/v1/chatbots')
+        const bots = Array.isArray(data) ? data : []
+        setRecentBots(bots.slice(0, 3))
         
         setStats({
           totalConversations: totalConv,
@@ -192,9 +194,9 @@ const DashboardPage = () => {
             </div>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[300px] min-w-0">
+            <div className="min-w-0">
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
+                <ResponsiveContainer width="100%" height={300} minWidth={0}>
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">

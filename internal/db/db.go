@@ -11,7 +11,11 @@ import (
 )
 
 func buildDSN(cfg *config.Config) string {
-    return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME)
+    base := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME)
+    if cfg != nil && cfg.DB_SCHEMA != "" && cfg.DB_SCHEMA != "public" {
+        return fmt.Sprintf("%s&options=-c%%20search_path%%3D%s", base, cfg.DB_SCHEMA)
+    }
+    return base
 }
 
 func New(cfg *config.Config) (*sql.DB, error) {

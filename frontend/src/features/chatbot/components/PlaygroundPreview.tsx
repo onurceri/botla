@@ -1,4 +1,5 @@
 import { WidgetApp } from '@widget/widgetApp'
+import styles from '@widget/styles.css?raw'
 
 type Props = {
   id: string
@@ -43,6 +44,7 @@ export default function PlaygroundPreview({
 }: Props) {
   return (
     <div className="flex-1 flex flex-col bg-background border border-border rounded-xl shadow-2xl overflow-hidden min-h-[500px]">
+      <style>{styles}</style>
       <div className="h-10 bg-white/60 backdrop-blur border-b border-border flex items-center px-4 gap-4">
         <div className="flex gap-2">
           <div className="w-3 h-3 rounded-full bg-red-500/80" />
@@ -96,4 +98,3 @@ export default function PlaygroundPreview({
     </div>
   )
 }
-

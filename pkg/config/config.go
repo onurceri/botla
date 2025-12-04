@@ -14,6 +14,7 @@ type Config struct {
     DB_NAME              string
     DB_USER              string
     DB_PASSWORD          string
+    DB_SCHEMA            string
     QDRANT_URL           string
     OPENAI_API_KEY       string
     IYZICO_API_KEY       string
@@ -63,6 +64,13 @@ func LoadConfig() *Config {
         DB_NAME:           os.Getenv("DB_NAME"),
         DB_USER:           os.Getenv("DB_USER"),
         DB_PASSWORD:       os.Getenv("DB_PASSWORD"),
+        DB_SCHEMA: func() string {
+            v := os.Getenv("DB_SCHEMA")
+            if strings.TrimSpace(v) == "" {
+                return "public"
+            }
+            return v
+        }(),
         QDRANT_URL:        os.Getenv("QDRANT_URL"),
         OPENAI_API_KEY:    os.Getenv("OPENAI_API_KEY"),
         IYZICO_API_KEY:    os.Getenv("IYZICO_API_KEY"),

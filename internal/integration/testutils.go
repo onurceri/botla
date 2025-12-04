@@ -1,13 +1,13 @@
 package integration
 
 import (
-	"database/sql"
-	"fmt"
-	"net/http/httptest"
-	"os"
+    "database/sql"
+    "net/http/httptest"
+    "os"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/onurceri/botla-co/pkg/config"
+    _ "github.com/jackc/pgx/v5/stdlib"
+    "github.com/onurceri/botla-co/pkg/config"
+    dbpkg "github.com/onurceri/botla-co/internal/db"
 )
 
 type TestEnv struct {
@@ -32,6 +32,9 @@ func SetupTestEnv() (*TestEnv, error) {
     if os.Getenv("DB_PASSWORD") == "" {
         _ = os.Setenv("DB_PASSWORD", "botla")
     }
+    if os.Getenv("DB_SCHEMA") == "" {
+        _ = os.Setenv("DB_SCHEMA", "test")
+    }
     if os.Getenv("QDRANT_URL") == "" {
         _ = os.Setenv("QDRANT_URL", "http://localhost:6333")
     }
@@ -45,12 +48,13 @@ func SetupTestEnv() (*TestEnv, error) {
         _ = os.Setenv("OPENAI_API_KEY", "test-key")
     }
 
-	cfg := config.LoadConfig()
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME)
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return nil, err
-	}
+    cfg := config.LoadConfig()
+    db, err := dbpkg.New(cfg)
+    if err != nil {
+        return nil, err
+    }
+    db.SetMaxOpenConns(1)
+    _, _ = db.Exec("SET search_path TO " + cfg.DB_SCHEMA)
 	// ensure columns exist for tests
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS allowed_domains TEXT`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS embed_secret VARCHAR(255)`)
