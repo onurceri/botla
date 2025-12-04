@@ -12,7 +12,7 @@ describe('ColorsSection', () => {
     const setBotText = vi.fn()
     const setUserMsg = vi.fn()
     const setUserText = vi.fn()
-    const utils = render(
+    render(
       <ColorsSection
         isExpanded={true}
         onToggle={onToggle}

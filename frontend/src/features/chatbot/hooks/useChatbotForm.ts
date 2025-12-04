@@ -4,7 +4,6 @@ export function useChatbotForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
-  const [model, setModel] = useState('gpt-3.5-turbo')
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(512)
   const [themeColor, setThemeColor] = useState('#a78bfa')
@@ -30,7 +29,6 @@ export function useChatbotForm() {
     setName(data.name || '')
     setDescription(data.description || '')
     setSystemPrompt(data.system_prompt || '')
-    setModel(data.model || 'gpt-3.5-turbo')
     setTemperature(data.temperature ?? 0.7)
     setMaxTokens(data.max_tokens ?? 512)
     setThemeColor(data.theme_color || '#a78bfa')
@@ -62,7 +60,6 @@ export function useChatbotForm() {
       name,
       description,
       system_prompt: systemPrompt,
-      model,
       temperature,
       max_tokens: maxTokens,
       theme_color: themeColor,
@@ -90,7 +87,6 @@ export function useChatbotForm() {
     name, setName,
     description, setDescription,
     systemPrompt, setSystemPrompt,
-    model, setModel,
     temperature, setTemperature,
     maxTokens, setMaxTokens,
     themeColor, setThemeColor,
@@ -116,4 +112,3 @@ export function useChatbotForm() {
     buildPayload,
   }
 }
-

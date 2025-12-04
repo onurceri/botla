@@ -1,19 +1,21 @@
 package handlers
 
 import (
-	"database/sql"
-	"encoding/json"
-	"net/http"
-	"regexp"
-	"strings"
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "regexp"
+    "strings"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/middleware"
+    "github.com/onurceri/botla-co/internal/db"
+    "github.com/onurceri/botla-co/internal/models"
+    "github.com/onurceri/botla-co/pkg/middleware"
+    "github.com/onurceri/botla-co/pkg/config"
 )
 
 type ChatbotHandlers struct {
-	DB *sql.DB
+    DB *sql.DB
+    Cfg *config.Config
 }
 
 type createChatbotRequest struct {
@@ -79,7 +81,7 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 			Description:          req.Description,
 			SystemPrompt:         defaultString(req.SystemPrompt, "Sen yararlı, kibar ve bilgili bir yapay zeka asistanısın."),
 			Language:             defaultString(req.Language, "tr"),
-			Model:                defaultString(req.Model, "gpt-3.5-turbo"),
+            Model:                defaultString(req.Model, h.Cfg.DEFAULT_CHATBOT_MODEL),
 			Temperature:          defaultFloat32(req.Temperature, 0.7),
 			MaxTokens:            defaultInt(req.MaxTokens, 512),
 			ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),

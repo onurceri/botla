@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import * as React from 'react'
-import { render, screen, cleanup, act } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 import { ToastProvider, useToast } from '../toast'
 
 function AutoFire() {

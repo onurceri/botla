@@ -37,7 +37,7 @@ describe('ChatbotDetailPage validate & delete branches', () => {
       return Promise.resolve({ data: {} } as any)
     })
     const delSpy = vi.spyOn(api, 'delete')
-    vi.spyOn(global, 'confirm').mockReturnValue(false as any)
+    vi.spyOn(window, 'confirm').mockReturnValue(false as any)
     const utils = render(
       <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/xyz"]}>
@@ -61,7 +61,7 @@ describe('ChatbotDetailPage validate & delete branches', () => {
       if (url.includes('/api/v1/chatbots/xyz/sources')) return Promise.resolve({ data: [] } as any)
       return Promise.resolve({ data: {} } as any)
     })
-    vi.spyOn(global, 'confirm').mockReturnValue(true as any)
+    vi.spyOn(window, 'confirm').mockReturnValue(true as any)
     vi.spyOn(api, 'delete').mockRejectedValueOnce(new Error('fail'))
     const utils2 = render(
       <ToastProvider>

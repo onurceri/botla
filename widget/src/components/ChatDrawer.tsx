@@ -4,7 +4,7 @@ import { Suggestions } from './Suggestions'
 type Msg = { role: 'user' | 'assistant'; content: string; ts?: number }
 
 export function ChatDrawer(
-  { color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion }:
+  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion }:
   { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void }
 ) {
   return (

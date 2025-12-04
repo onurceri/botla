@@ -27,7 +27,7 @@ describe('useSourceOps', () => {
   })
 
   it('handleDeleteSource shows error toast on failure', async () => {
-    vi.spyOn(global, 'confirm').mockReturnValue(true as any)
+    vi.spyOn(window, 'confirm').mockReturnValue(true as any)
     vi.spyOn(sourceApi, 'deleteSource').mockRejectedValueOnce(new Error('fail'))
 
     const wrapper = ({ children }: any) => <ToastProvider>{children}</ToastProvider>
@@ -41,4 +41,3 @@ describe('useSourceOps', () => {
     expect(document.body.textContent).toContain('Kaynak silinirken bir hata oluştu.')
   })
 })
-

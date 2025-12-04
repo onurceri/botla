@@ -9,12 +9,15 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 type OpenAIClient struct {
-	apiKey string
-	http   *http.Client
-	base   string
+	apiKey       string
+	http         *http.Client
+	base         string
+	defaultModel string
 }
 
 func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
@@ -32,7 +35,14 @@ func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
 			to = time.Duration(n) * time.Millisecond
 		}
 	}
-	return &OpenAIClient{apiKey: k, http: &http.Client{Timeout: to}, base: b}, nil
+
+	cfg := config.LoadConfig()
+	return &OpenAIClient{
+		apiKey:       k,
+		http:         &http.Client{Timeout: to},
+		base:         b,
+		defaultModel: cfg.DEFAULT_CHATBOT_MODEL,
+	}, nil
 }
 
 // Embeddings
@@ -161,7 +171,7 @@ type chatResponse struct {
 
 func (c *OpenAIClient) CreateCompletion(ctx context.Context, systemPrompt, contextText, userMessage string, model string, temperature float32, maxTokens int) (string, int, error) {
 	if model == "" {
-		model = "gpt-3.5-turbo"
+		model = c.defaultModel
 	}
 	user := "Context:\n" + contextText + "\n\nQuestion:\n" + userMessage
 	reqBody := chatRequest{

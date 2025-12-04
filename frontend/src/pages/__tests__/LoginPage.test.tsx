@@ -50,7 +50,7 @@ describe('LoginPage', () => {
     await user.type(emailInput, 'test@example.com')
     await user.type(passwordInput, 'secret123')
     const submitBtn = screen.getAllByRole('button', { name: 'Giriş Yap' })[0]
-    const postSpy = vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any)
+    vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any)
     const setSpy = vi.spyOn(window.localStorage, 'setItem')
     await user.click(submitBtn)
     expect(setSpy).toHaveBeenCalledWith('botla_token', 't')

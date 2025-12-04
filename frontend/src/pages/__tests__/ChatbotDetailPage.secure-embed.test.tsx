@@ -4,7 +4,6 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ChatbotDetailPage from '../ChatbotDetailPage'
 import { ToastProvider } from '@/components/ui/toast'
 
-let capturedPutBody: any = null
 vi.mock('@/api/client', () => {
   const put = vi.fn(async () => ({ data: {} }))
   const get = vi.fn(async (url: string) => {

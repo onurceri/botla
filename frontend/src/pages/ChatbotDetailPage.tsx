@@ -1,40 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  Save, 
-  Trash2, 
-  Play, 
-  Code, 
-  Settings,
-  Database,
-  MessageSquare,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  ChevronDown,
-  ChevronRight,
-  X,
-  MessageCircle,
-  Palette,
-  Type,
-  Layout,
-  User,
-  Inbox,
-  Info,
-  Bot,
-  Plus
-} from 'lucide-react'
+import { Inbox } from 'lucide-react'
 import { api } from '@/api/client'
 import { uploadPDFSource, uploadTextSource, uploadURLSource } from '@/api/source'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import SourceUploader from '@/components/chatbot/SourceUploader'
-import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
-import { WidgetApp } from '@widget/widgetApp'
-import '@widget/styles.css'
 import HeaderActions from '@/features/chatbot/components/HeaderActions'
 import TabsHeader from '@/features/chatbot/components/TabsHeader'
 import EmbeddingCodePanel from '@/features/chatbot/components/EmbeddingCodePanel'
@@ -60,9 +32,6 @@ const ChatbotDetailPage = () => {
     name, setName,
     description, setDescription,
     systemPrompt, setSystemPrompt,
-    model, setModel,
-    temperature, setTemperature,
-    maxTokens, setMaxTokens,
     themeColor, setThemeColor,
     welcomeMessage, setWelcomeMessage,
     position, setPosition,
@@ -96,7 +65,7 @@ const ChatbotDetailPage = () => {
   const [chatLoading, setChatLoading] = useState(false)
   
   // Playground State
-  const { previewOpen, setPreviewOpen, sessionId } = usePreview()
+  const { previewOpen, sessionId } = usePreview()
   const [expandedSection, setExpandedSection] = useState<string | null>('identity')
 
   
@@ -219,14 +188,8 @@ const ChatbotDetailPage = () => {
             <OverviewPanel
               name={name}
               setName={setName}
-              model={model}
-              setModel={setModel}
               systemPrompt={systemPrompt}
               setSystemPrompt={setSystemPrompt}
-              temperature={temperature}
-              setTemperature={setTemperature}
-              maxTokens={maxTokens}
-              setMaxTokens={setMaxTokens}
             />
           </TabsContent>
 

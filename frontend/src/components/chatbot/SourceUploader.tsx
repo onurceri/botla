@@ -1,9 +1,7 @@
-import { useState, useRef } from 'react'
 import { Upload, Link as LinkIcon, FileText, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { useToast } from '@/components/ui/toast'
 import { useSourceUpload } from '@/features/chatbot/hooks/useSourceUpload'
 
 interface SourceUploaderProps {

@@ -70,7 +70,7 @@ describe('ChatbotDetailPage save/delete', () => {
       if (url.includes('/api/v1/chatbots/123')) return Promise.resolve({ data: { id: '123', name: 'Var Olan Bot' } } as any)
       return Promise.resolve({ data: {} } as any)
     })
-    vi.spyOn(global, 'confirm').mockReturnValue(true as any)
+    vi.spyOn(window, 'confirm').mockReturnValue(true as any)
     const delSpy = vi.spyOn(api, 'delete').mockResolvedValueOnce({ data: {} } as any)
 
     render(

@@ -68,7 +68,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	mux.Handle("/api/v1/protected", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(handlers.ProtectedHandler)))
 	mh := &handlers.MeHandlers{DB: pool}
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
-	ch := &handlers.ChatbotHandlers{DB: pool}
+    ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ch.ListOrCreate)))
 	// Storage
 	var storageService storage.StorageService
@@ -83,7 +83,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	// Sources queue
 	q, _ := processing.StartSourceQueue(pool, storageService)
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
-	chh := &handlers.ChatHandlers{DB: pool}
+    chh := &handlers.ChatHandlers{DB: pool}
 	// Composite handler under /api/v1/chatbots/
     mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh))
 

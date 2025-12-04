@@ -22,7 +22,7 @@ vi.mock('@/features/chatbot/hooks/useSourceOps', () => {
 describe('ChatbotDetailPage sources upload flow', () => {
   it('uploads URL source and calls refresh and poll', async () => {
     vi.spyOn(sourceApi, 'uploadURLSource').mockResolvedValueOnce({ id: 's1' } as any)
-    const getSpy = vi.spyOn((await import('@/api/client')).api, 'get').mockImplementation((url: string) => {
+    vi.spyOn((await import('@/api/client')).api, 'get').mockImplementation((url: string) => {
       if (url.includes('/api/v1/me')) return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
       if (url.includes('/api/v1/chatbots/abc')) return Promise.resolve({ data: { id: 'abc', name: 'Bot' } } as any)
       if (url.includes('/api/v1/chatbots/abc/sources')) return Promise.resolve({ data: [] } as any)
@@ -55,7 +55,7 @@ describe('ChatbotDetailPage sources upload flow', () => {
   it('uploads PDF source and calls refresh and poll', async () => {
     vi.clearAllMocks()
     vi.spyOn(sourceApi, 'uploadPDFSource').mockResolvedValueOnce({ id: 'p1' } as any)
-    const getSpy = vi.spyOn((await import('@/api/client')).api, 'get').mockImplementation((url: string) => {
+    vi.spyOn((await import('@/api/client')).api, 'get').mockImplementation((url: string) => {
       if (url.includes('/api/v1/me')) return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
       if (url.includes('/api/v1/chatbots/abc')) return Promise.resolve({ data: { id: 'abc', name: 'Bot' } } as any)
       if (url.includes('/api/v1/chatbots/abc/sources')) return Promise.resolve({ data: [] } as any)

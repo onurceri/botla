@@ -32,10 +32,13 @@ func createUser(t *testing.T, db *sql.DB) string {
 }
 
 func TestChatbot_CRUD_DB(t *testing.T) {
-	db := openTestDB(t)
-	defer db.Close()
-	uid := createUser(t, db)
-	b := &models.Chatbot{
+    db := openTestDB(t)
+    defer db.Close()
+    uid := createUser(t, db)
+    t.Cleanup(func() {
+        _, _ = db.Exec(`DELETE FROM users WHERE id = $1`, uid)
+    })
+    b := &models.Chatbot{
 		UserID:               uid,
 		Name:                 "DB Bot",
 		SystemPrompt:         "p",
@@ -57,10 +60,17 @@ func TestChatbot_CRUD_DB(t *testing.T) {
 		SuggestedQuestions:   []string{"Q1"},
 		SuggestionsEnabled:   true,
 	}
-	id, err := CreateChatbot(context.Background(), db, b)
-	if err != nil || id == "" {
-		t.Fatalf("create chatbot: %v", err)
-	}
+    id, err := CreateChatbot(context.Background(), db, b)
+    if err != nil || id == "" {
+        t.Fatalf("create chatbot: %v", err)
+    }
+    // update cleanup closures with created id
+    t.Cleanup(func() {
+        _, _ = db.Exec(`DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE chatbot_id = $1)`, id)
+        _, _ = db.Exec(`DELETE FROM conversations WHERE chatbot_id = $1`, id)
+        _, _ = db.Exec(`DELETE FROM data_sources WHERE chatbot_id = $1`, id)
+        _, _ = db.Exec(`DELETE FROM chatbots WHERE id = $1`, id)
+    })
 	got, err := GetChatbotByID(context.Background(), db, id)
 	if err != nil || got == nil {
 		t.Fatalf("get chatbot: %v", err)

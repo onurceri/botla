@@ -62,9 +62,12 @@ func SetupTestEnv() (*TestEnv, error) {
 }
 
 func TeardownTestEnv(te *TestEnv) {
-	if te == nil {
-		return
-	}
+    if te == nil {
+        return
+    }
+    if te.DB != nil {
+        _, _ = te.DB.Exec("TRUNCATE TABLE refresh_tokens, messages, conversations, analytics, payments, data_sources, chatbots, users RESTART IDENTITY CASCADE")
+    }
     if te.Server != nil {
         te.Server.Close()
     }
