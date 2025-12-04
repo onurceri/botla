@@ -178,6 +178,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
           botIcon={botIcon}
           suggestions={suggestions}
           onPickSuggestion={pickSuggestion}
+          maxChars={config?.max_chars}
         />
       ) : (
         <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />

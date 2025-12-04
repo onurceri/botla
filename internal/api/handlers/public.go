@@ -31,6 +31,7 @@ type publicChatbot struct {
 	BotIcon              *string  `json:"bot_icon,omitempty"`
 	BotDisplayName       *string  `json:"bot_display_name,omitempty"`
 	SuggestedQuestions   []string `json:"suggested_questions,omitempty"`
+	MaxChars             int      `json:"max_chars"`
 }
 
 func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
@@ -90,6 +91,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			BotIcon:              c.BotIcon,
 			BotDisplayName:       c.BotDisplayName,
 			SuggestedQuestions:   final,
+			MaxChars:             1000,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

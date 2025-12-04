@@ -1,12 +1,50 @@
+import { useEffect, useRef } from 'preact/hooks'
 import { Message as MsgComp } from './Message'
 import { Suggestions } from './Suggestions'
 
 type Msg = { role: 'user' | 'assistant'; content: string; ts?: number }
 
 export function ChatDrawer(
-  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion }:
-  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void }
+  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000 }:
+  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number }
 ) {
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const MAX_CHARS = maxChars
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, loading])
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`
+    }
+  }, [input])
+
+  const handleInput = (e: any) => {
+    const val = e.currentTarget.value
+    if (val.length <= MAX_CHARS) {
+      setInput(val)
+    }
+  }
+
+  const handleKeyDown = (e: any) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (!loading && input.trim()) {
+        onSend()
+        // Reset height after send
+        if (textareaRef.current) textareaRef.current.style.height = 'auto'
+      }
+    }
+  }
+
   return (
     <div className="cbw-panel" role="dialog" aria-label="Chatbot">
       <div className="cbw-header">
@@ -56,26 +94,32 @@ export function ChatDrawer(
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
       <div className="cbw-input-area">
-        <div className="cbw-input-wrapper">
-          <input
-            type="text"
+        <div className="cbw-input-wrapper" style={{ alignItems: 'flex-end' }}>
+          <textarea
+            ref={textareaRef}
+            rows={1}
             className="cbw-input-field"
             placeholder="Mesaj yazın..."
             value={input}
-            onChange={(e) => setInput(e.currentTarget.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !loading) onSend() }}
+            onInput={handleInput}
+            onKeyDown={handleKeyDown}
             disabled={loading}
+            style={{ resize: 'none', overflowY: 'auto' }}
           />
-          <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label="Gönder">
+          <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label="Gönder" style={{ marginBottom: '2px' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
           </button>
         </div>
-        <div className="cbw-brand">Powered by <a href="https://botla.co" target="_blank" rel="noreferrer">Botla</a></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="cbw-brand">Powered by <a href="https://botla.co" target="_blank" rel="noreferrer">Botla</a></div>
+          <div className="cbw-char-limit">{input.length} / {MAX_CHARS}</div>
+        </div>
       </div>
       <style>{`
         @keyframes cbw-bounce {
@@ -86,3 +130,4 @@ export function ChatDrawer(
     </div>
   )
 }
+
