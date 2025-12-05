@@ -15,7 +15,7 @@ func TestPublicEndpoints_BasicFlow(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "pub@example.com")
-	create := map[string]any{"name": "Pub Bot"}
+	create := map[string]any{"name": "Pub Bot", "language": "tr-TR"}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)

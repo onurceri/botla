@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
@@ -13,14 +14,14 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 	err := pool.QueryRowContext(
 		ctx,
 		`INSERT INTO chatbots (
-            user_id, name, description, system_prompt, language, model,
+            user_id, name, description, system_prompt, language_id, model,
             temperature, max_tokens, theme_color, welcome_message,
             position, bot_message_color, user_message_color,
             bot_message_text_color, user_message_text_color,
             chat_font_family, chat_header_color, chat_header_text_color,
             chat_background_color, bot_icon, bot_display_name, suggested_questions, suggestions_enabled
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
-		bot.UserID, bot.Name, bot.Description, bot.SystemPrompt, bot.Language, bot.Model,
+        ) VALUES ($1,$2,$3,$4,(SELECT id FROM languages WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
+		bot.UserID, bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
@@ -35,28 +36,29 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 
 func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]models.Chatbot, error) {
 	rows, err := pool.QueryContext(ctx, `
-        SELECT id, user_id, name, description, system_prompt, language, model,
+        SELECT c.id, c.user_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
-               created_at, updated_at, deleted_at,
-               position, bot_message_color, user_message_color,
-               bot_message_text_color, user_message_text_color,
-               chat_font_family, chat_header_color, chat_header_text_color,
-               chat_background_color,
-               bot_icon, bot_display_name, allowed_domains, embed_secret, secure_embed_enabled,
-               suggested_questions, suggestions_enabled
-        FROM chatbots
-        WHERE user_id=$1 AND deleted_at IS NULL
-        ORDER BY created_at DESC`, userID)
+               c.created_at, c.updated_at, c.deleted_at,
+               c.position, c.bot_message_color, c.user_message_color,
+               c.bot_message_text_color, c.user_message_text_color,
+               c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
+               c.chat_background_color,
+               c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
+               c.suggested_questions, c.suggestions_enabled
+        FROM chatbots c
+        LEFT JOIN languages l ON l.id = c.language_id
+        WHERE c.user_id=$1 AND c.deleted_at IS NULL
+        ORDER BY c.created_at DESC`, userID)
 	if err != nil {
 		return nil, err
 	}
-    defer func() { _ = rows.Close() }()
+	defer func() { _ = rows.Close() }()
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
 		var sj []byte
 		if err := rows.Scan(
-			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.Language, &c.Model,
+			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
 			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
@@ -85,18 +87,20 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 	var c models.Chatbot
 	var sj []byte
 	err := pool.QueryRowContext(ctx, `
-        SELECT id, user_id, name, description, system_prompt, language, model,
+        SELECT c.id, c.user_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
-               created_at, updated_at, deleted_at,
-               position, bot_message_color, user_message_color,
-               bot_message_text_color, user_message_text_color,
-               chat_font_family, chat_header_color, chat_header_text_color,
-               chat_background_color,
-               bot_icon, bot_display_name, allowed_domains, embed_secret, secure_embed_enabled,
-               suggested_questions, suggestions_enabled
-        FROM chatbots WHERE id=$1 AND deleted_at IS NULL`, id).
+               c.created_at, c.updated_at, c.deleted_at,
+               c.position, c.bot_message_color, c.user_message_color,
+               c.bot_message_text_color, c.user_message_text_color,
+               c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
+               c.chat_background_color,
+               c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
+               c.suggested_questions, c.suggestions_enabled
+        FROM chatbots c
+        LEFT JOIN languages l ON l.id = c.language_id
+        WHERE c.id=$1 AND c.deleted_at IS NULL`, id).
 		Scan(
-			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.Language, &c.Model,
+			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
 			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
@@ -126,7 +130,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             name=$1,
             description=$2,
             system_prompt=$3,
-            language=$4,
+            language_id=(SELECT id FROM languages WHERE code=$4),
             model=$5,
             temperature=$6,
             max_tokens=$7,
@@ -153,7 +157,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.Name,
 		bot.Description,
 		bot.SystemPrompt,
-		bot.Language,
+		normalizeLocale(bot.LanguageCode),
 		bot.Model,
 		bot.Temperature,
 		bot.MaxTokens,
@@ -197,4 +201,18 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) err
         UPDATE chatbots SET deleted_at=NOW()
         WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL`, id, userID)
 	return err
+}
+
+func normalizeLocale(code string) string {
+	s := strings.TrimSpace(code)
+	if s == "" {
+		return "tr-TR"
+	}
+	switch s {
+	case "tr":
+		return "tr-TR"
+	case "en":
+		return "en-US"
+	}
+	return s
 }

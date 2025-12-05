@@ -1,18 +1,18 @@
 package handlers
 
 import (
-    "context"
-    "database/sql"
-    "encoding/json"
-    "net/http"
-    "strings"
-    "time"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/rag"
-    "github.com/onurceri/botla-co/internal/scraper"
-    "github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
 type publicChatbot struct {
@@ -58,8 +58,8 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			return
 		}
 		// Cache final suggestions keyed by updated_at to auto-invalidate
-        cache := scraper.NewCache()
-        key := publicSuggestionsCacheKey(c)
+		cache := scraper.NewCache()
+		key := publicSuggestionsCacheKey(c)
 		var final []string
 		if c.SuggestionsEnabled {
 			if v, ok := cache.Get(key); ok {
@@ -102,7 +102,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 }
 
 func publicSuggestionsCacheKey(c *models.Chatbot) string {
-    return "public:chatbot:" + c.ID + ":suggestions:" + c.UpdatedAt.UTC().Format(time.RFC3339Nano)
+	return "public:chatbot:" + c.ID + ":suggestions:" + c.UpdatedAt.UTC().Format(time.RFC3339Nano)
 }
 
 type publicChatRequest struct {
@@ -177,7 +177,7 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 			qc = nil
 		}
 
-        to := chatTimeout()
+		to := chatTimeout()
 		ctx, cancel := context.WithTimeout(r.Context(), to)
 		defer cancel()
 		embedding, err := oai.CreateEmbedding(ctx, req.Message)
@@ -195,9 +195,13 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 		var tokens int
 
 		// Get language config
-		langCode := cbot.Language
+		langCode := cbot.LanguageCode
 		if langCode == "" {
 			langCode = "tr"
+		} else {
+			if i := strings.Index(langCode, "-"); i > 0 {
+				langCode = langCode[:i]
+			}
 		}
 		cfg := langconfig.Get(langCode)
 
@@ -217,7 +221,7 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 		}
 		am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: ans, TokensUsed: tokens}
 		if _, err = db.CreateMessage(r.Context(), dbpool, am); err == nil {
-			_	= db.IncrementConversationMessageCount(r.Context(), dbpool, conv.ID)
+			_ = db.IncrementConversationMessageCount(r.Context(), dbpool, conv.ID)
 		}
 
 		go func() {

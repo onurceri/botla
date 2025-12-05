@@ -62,13 +62,13 @@ func (c *QdrantClient) EnsureEmbeddingsCollection(ctx context.Context) error {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	setHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
-    if err == nil && res.StatusCode == http.StatusOK {
-        _ = res.Body.Close()
-        return nil
-    }
-    if res != nil {
-        _ = res.Body.Close()
-    }
+	if err == nil && res.StatusCode == http.StatusOK {
+		_ = res.Body.Close()
+		return nil
+	}
+	if res != nil {
+		_ = res.Body.Close()
+	}
 	body := ensureCollectionRequest{ShardNumber: 2, ReplicationFactor: 1, WriteConsistencyFactor: 1}
 	body.Vectors.Size = 1536
 	body.Vectors.Distance = "Cosine"
@@ -79,7 +79,7 @@ func (c *QdrantClient) EnsureEmbeddingsCollection(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-    defer func() { _ = res2.Body.Close() }()
+	defer func() { _ = res2.Body.Close() }()
 	if res2.StatusCode != http.StatusOK {
 		return fmt.Errorf("create collection failed: %s", res2.Status)
 	}
@@ -111,7 +111,7 @@ func (c *QdrantClient) UpsertEmbedding(ctx context.Context, id interface{}, vect
 	if err != nil {
 		return err
 	}
-    defer func() { _ = res.Body.Close() }()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("upsert failed: %s", res.Status)
 	}
@@ -154,7 +154,7 @@ func (c *QdrantClient) SearchSimilar(ctx context.Context, embedding []float32, c
 	if err != nil {
 		return nil, err
 	}
-    defer func() { _ = res.Body.Close() }()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("search failed: %s", res.Status)
 	}
@@ -183,7 +183,7 @@ func (c *QdrantClient) DeleteBySourceID(ctx context.Context, sourceID string) er
 	if err != nil {
 		return err
 	}
-    defer func() { _ = res.Body.Close() }()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("delete failed: %s", res.Status)
 	}

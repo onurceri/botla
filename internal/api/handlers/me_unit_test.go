@@ -20,8 +20,12 @@ func TestMe_Success(t *testing.T) {
 	}
 	defer db.Close()
 	var uid string
+	var proPlanID string
+	if err := db.QueryRow(`SELECT id FROM plans WHERE code='pro'`).Scan(&proPlanID); err != nil {
+		t.Fatalf("plan: %v", err)
+	}
 	email := fmt.Sprintf("meuniq+%d@example.com", time.Now().UnixNano())
-	if err := db.QueryRow(`INSERT INTO users (email, password_hash, subscription_plan) VALUES ($1,$2,$3) RETURNING id`, email, "x", "pro").Scan(&uid); err != nil {
+	if err := db.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", proPlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
 	h := &MeHandlers{DB: db}

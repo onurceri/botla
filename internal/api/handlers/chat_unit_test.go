@@ -29,8 +29,12 @@ func TestChat_NoInfoFound(t *testing.T) {
 	}
 	defer dbx.Close()
 	var uid string
+	var freePlanID string
+	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
+		t.Fatalf("plan: %v", err)
+	}
 	email := fmt.Sprintf("chatuniq+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id`, email, "x").Scan(&uid); err != nil {
+	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
 	h := &ChatbotHandlers{DB: dbx}
@@ -38,7 +42,7 @@ func TestChat_NoInfoFound(t *testing.T) {
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
-	body := map[string]any{"name": "Chat Bot"}
+	body := map[string]any{"name": "Chat Bot", "language": "tr-TR"}
 	jb, _ := json.Marshal(body)
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots", bytes.NewReader(jb))
 	rr1 := httptest.NewRecorder()

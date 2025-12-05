@@ -33,8 +33,8 @@ func (l *Logger) write(level string, msg string, fields map[string]any) {
 		"msg":    msg,
 		"fields": fields,
 	}
-    b, _ := json.Marshal(entry)
-    _, _ = os.Stdout.Write(append(b, '\n'))
+	b, _ := json.Marshal(entry)
+	_, _ = os.Stdout.Write(append(b, '\n'))
 }
 
 func (l *Logger) Debug(msg string, fields map[string]any) { l.write("DEBUG", msg, fields) }

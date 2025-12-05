@@ -1,17 +1,17 @@
 package storage
 
 import (
-    "context"
-    "fmt"
-    "io"
-    "path"
-    "strings"
-    "time"
+	"context"
+	"fmt"
+	"io"
+	"path"
+	"strings"
+	"time"
 
-    "github.com/aws/aws-sdk-go-v2/aws"
-    "github.com/aws/aws-sdk-go-v2/config"
-    "github.com/aws/aws-sdk-go-v2/credentials"
-    "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type StorageService interface {
@@ -89,7 +89,7 @@ func (s *R2Storage) DeleteFile(ctx context.Context, key string) error {
 
 // Helper to generate a unique key
 func GenerateKey(prefix, filename string) string {
-    timestamp := time.Now().UnixNano()
-    base := path.Base(strings.ReplaceAll(filename, "\\", "/"))
-    return fmt.Sprintf("%s/%d_%s", strings.TrimSuffix(prefix, "/"), timestamp, base)
+	timestamp := time.Now().UnixNano()
+	base := path.Base(strings.ReplaceAll(filename, "\\", "/"))
+	return fmt.Sprintf("%s/%d_%s", strings.TrimSuffix(prefix, "/"), timestamp, base)
 }

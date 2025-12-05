@@ -17,16 +17,16 @@ import (
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/internal/text"
-	"github.com/onurceri/botla-co/pkg/storage"
 	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 type SourceQueue struct {
-    ch           *chan string
-    db           *sql.DB
-    storage      storage.StorageService
-    openaiClient rag.LLMClient
-    log          *logger.Logger
+	ch           *chan string
+	db           *sql.DB
+	storage      storage.StorageService
+	openaiClient rag.LLMClient
+	log          *logger.Logger
 }
 
 func StartSourceQueue(dbpool *sql.DB, st storage.StorageService) (*SourceQueue, error) {
@@ -35,7 +35,7 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService) (*SourceQueue, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create openai client: %w", err)
 	}
-    q := &SourceQueue{ch: &c, db: dbpool, storage: st, openaiClient: oa, log: logger.New("INFO")}
+	q := &SourceQueue{ch: &c, db: dbpool, storage: st, openaiClient: oa, log: logger.New("INFO")}
 	go q.worker()
 	// Ensure collection exists at startup (best-effort)
 	if qc, err := rag.NewQdrantClientFromEnv(); err == nil {
@@ -81,26 +81,36 @@ func (q *SourceQueue) worker() {
 }
 
 func defaultLang(code string) string {
-	if strings.TrimSpace(code) == "" {
+	s := strings.TrimSpace(code)
+	if s == "" {
 		return "tr"
 	}
-	return code
+	if i := strings.Index(s, "-"); i > 0 {
+		s = s[:i]
+	}
+	return s
 }
 
 func (q *SourceQueue) markProcessing(id string) {
-    if q.log != nil { q.log.Info("source_processing_start", map[string]any{"source_id": id}) }
-    _ = db.UpdateSourceProcessing(context.Background(), q.db, id, "processing", nil, 0, nil)
+	if q.log != nil {
+		q.log.Info("source_processing_start", map[string]any{"source_id": id})
+	}
+	_ = db.UpdateSourceProcessing(context.Background(), q.db, id, "processing", nil, 0, nil)
 }
 
 func (q *SourceQueue) fail(id string, msg string) {
-    if q.log != nil { q.log.Warn("source_processing_fail", map[string]any{"source_id": id, "reason": msg}) }
-    _ = db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &msg, 0, nil)
+	if q.log != nil {
+		q.log.Warn("source_processing_fail", map[string]any{"source_id": id, "reason": msg})
+	}
+	_ = db.UpdateSourceProcessing(context.Background(), q.db, id, "failed", &msg, 0, nil)
 }
 
 func (q *SourceQueue) complete(id string, chunks int) {
-    if q.log != nil { q.log.Info("source_processing_complete", map[string]any{"source_id": id, "chunks": chunks}) }
-    now := time.Now()
-    _ = db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, chunks, &now)
+	if q.log != nil {
+		q.log.Info("source_processing_complete", map[string]any{"source_id": id, "chunks": chunks})
+	}
+	now := time.Now()
+	_ = db.UpdateSourceProcessing(context.Background(), q.db, id, "completed", nil, chunks, &now)
 }
 
 func (q *SourceQueue) loadSourceAndLang(id string) (*models.DataSource, string, bool) {
@@ -114,7 +124,7 @@ func (q *SourceQueue) loadSourceAndLang(id string) (*models.DataSource, string, 
 		q.fail(id, "chatbot_not_found")
 		return nil, "", false
 	}
-	return s, defaultLang(bot.Language), true
+	return s, defaultLang(bot.LanguageCode), true
 }
 
 func (q *SourceQueue) persistIngestionMetadata(content string, langCode string, s *models.DataSource) {

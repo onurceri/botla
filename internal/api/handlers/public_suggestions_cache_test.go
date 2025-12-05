@@ -19,15 +19,19 @@ func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
 	pool, cleanup := mustInitDB(t)
 	defer cleanup()
 	var uid string
+	var freePlanID string
+	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
+		t.Fatalf("plan: %v", err)
+	}
 	email := "cache_" + time.Now().Format("150405.000000") + "@test"
-	if err := pool.QueryRow(`INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id`, email, "x").Scan(&uid); err != nil {
+	if err := pool.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
 	bot := &models.Chatbot{
 		UserID:               uid,
 		Name:                 "Bot",
 		SystemPrompt:         "p",
-		Language:             "en",
+		LanguageCode:         "en",
 		Model:                "gpt-3.5-turbo",
 		Temperature:          0.1,
 		MaxTokens:            64,

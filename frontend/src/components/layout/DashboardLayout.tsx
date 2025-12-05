@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { 
   LayoutDashboard, 
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { api } from '@/api/client'
 
 const SidebarItem = ({ 
   icon: Icon, 
@@ -55,6 +56,10 @@ const DashboardLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sidebarMode, setSidebarMode] = useState<'pinned' | 'hover'>(() => (localStorage.getItem('botla_sidebar_mode') as 'pinned' | 'hover') || 'pinned')
   const isCollapsed = sidebarMode === 'hover'
+  const [profileName, setProfileName] = useState<string>('')
+  const [profileEmail, setProfileEmail] = useState<string>('')
+  const [planName, setPlanName] = useState<string>('')
+  const [planCode, setPlanCode] = useState<string>('free')
 
   const toggleSidebarMode = () => {
     const next = sidebarMode === 'pinned' ? 'hover' : 'pinned'
@@ -67,6 +72,23 @@ const DashboardLayout = () => {
     localStorage.removeItem('botla_refresh_token')
     navigate('/login')
   }
+
+  useEffect(() => {
+    api.get('/api/v1/me')
+      .then((res) => {
+        setProfileName(res.data?.full_name ?? '')
+        setProfileEmail(res.data?.email ?? '')
+        const code = res.data?.subscription_plan ?? res.data?.plan_code ?? 'free'
+        setPlanCode(code)
+        setPlanName(res.data?.plan_name ?? '')
+      })
+      .catch(() => {
+        setProfileName('')
+        setProfileEmail('')
+        setPlanCode('free')
+        setPlanName('')
+      })
+  }, [])
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
@@ -145,8 +167,8 @@ const DashboardLayout = () => {
           <div className={cn("bg-muted/50 rounded-xl p-3 flex items-center gap-3 mb-3", isCollapsed ? "hidden lg:group-hover/sidebar:flex" : undefined)}>
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent" />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate text-foreground">User Account</div>
-              <div className="text-xs text-muted-foreground truncate">Pro Plan</div>
+              <div className="text-sm font-medium truncate text-foreground">{profileName || profileEmail}</div>
+              <div className="text-xs text-muted-foreground truncate">{planName || planCode}</div>
             </div>
           </div>
           <Button 

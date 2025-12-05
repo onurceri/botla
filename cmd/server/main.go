@@ -68,7 +68,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	mux.Handle("/api/v1/protected", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(handlers.ProtectedHandler)))
 	mh := &handlers.MeHandlers{DB: pool}
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
-    ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg}
+	ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ch.ListOrCreate)))
 	// Storage
 	var storageService storage.StorageService
@@ -83,9 +83,9 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	// Sources queue
 	q, _ := processing.StartSourceQueue(pool, storageService)
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
-    chh := &handlers.ChatHandlers{DB: pool}
+	chh := &handlers.ChatHandlers{DB: pool}
 	// Composite handler under /api/v1/chatbots/
-    mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh))
+	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh))
 
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
@@ -105,22 +105,22 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	anh := &handlers.AnalyticsHandlers{DB: pool}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
 
-    return mux
+	return mux
 }
 
 func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers) http.Handler {
-    return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        const p = "/api/v1/chatbots/"
-        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
-            sh.ChatbotSources(w, r)
-            return
-        }
-        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-            chh.Chat(w, r)
-            return
-        }
-        ch.ByID(w, r)
-    }))
+	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		const p = "/api/v1/chatbots/"
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
+			sh.ChatbotSources(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
+			chh.Chat(w, r)
+			return
+		}
+		ch.ByID(w, r)
+	}))
 }
 
 func newHTTPServer(port string, h http.Handler) *http.Server {
@@ -150,6 +150,6 @@ func shutdownServer(srv *http.Server, log *logger.Logger, pool *sql.DB) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	log.Info("server_shutdown", map[string]any{})
-    _ = srv.Shutdown(ctx)
-    _ = pool.Close()
+	_ = srv.Shutdown(ctx)
+	_ = pool.Close()
 }

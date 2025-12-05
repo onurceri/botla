@@ -1,5 +1,7 @@
 BEGIN;
 
+DROP TABLE IF EXISTS user_subscription_history;
+DROP TABLE IF EXISTS refresh_tokens;
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS analytics;
 DROP TABLE IF EXISTS messages;
@@ -7,5 +9,8 @@ DROP TABLE IF EXISTS conversations;
 DROP TABLE IF EXISTS data_sources;
 DROP TABLE IF EXISTS chatbots;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS plan_translations;
+DROP TABLE IF EXISTS plans;
+DROP TABLE IF EXISTS languages;
 
 COMMIT;

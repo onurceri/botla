@@ -78,16 +78,17 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		langCode := defaultString(req.Language, "tr")
-		langCfg := langconfig.Get(langCode)
+		langCodeBCP := normalizeLocale(defaultString(req.Language, "tr-TR"))
+		baseLang := baseLangCode(langCodeBCP)
+		langCfg := langconfig.Get(baseLang)
 
 		bot := &models.Chatbot{
-			UserID:       id,
-			Name:         req.Name,
-			Description:  req.Description,
-			SystemPrompt: defaultString(req.SystemPrompt, langCfg.ResponseTemplates.DefaultPersonaPrompt),
-			Language:     langCode,
-			Model:        defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
+			UserID:               id,
+			Name:                 req.Name,
+			Description:          req.Description,
+			SystemPrompt:         defaultString(req.SystemPrompt, langCfg.ResponseTemplates.DefaultPersonaPrompt),
+			LanguageCode:         langCodeBCP,
+			Model:                defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
 			Temperature:          defaultFloat32(req.Temperature, 0.7),
 			MaxTokens:            defaultInt(req.MaxTokens, 512),
 			ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),
@@ -211,7 +212,7 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 			c.SystemPrompt = *req.SystemPrompt
 		}
 		if req.Language != nil {
-			c.Language = *req.Language
+			c.LanguageCode = normalizeLocale(*req.Language)
 		}
 		if req.Model != nil {
 			c.Model = *req.Model
@@ -357,4 +358,29 @@ func defaultFloat32(p *float32, d float32) float32 {
 		return *p
 	}
 	return d
+}
+
+func normalizeLocale(code string) string {
+	if code == "" {
+		return "tr-TR"
+	}
+	s := strings.TrimSpace(code)
+	switch s {
+	case "tr":
+		return "tr-TR"
+	case "en":
+		return "en-US"
+	}
+	return s
+}
+
+func baseLangCode(code string) string {
+	s := strings.TrimSpace(code)
+	if s == "" {
+		return "tr"
+	}
+	if i := strings.Index(s, "-"); i > 0 {
+		s = s[:i]
+	}
+	return s
 }

@@ -22,8 +22,12 @@ func TestChatbot_ListCreateUpdateDelete(t *testing.T) {
 	}
 	defer db.Close()
 	var uid string
+	var freePlanID string
+	if err := db.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
+		t.Fatalf("plan: %v", err)
+	}
 	email := fmt.Sprintf("botuniq+%d@example.com", time.Now().UnixNano())
-	if err := db.QueryRow(`INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id`, email, "x").Scan(&uid); err != nil {
+	if err := db.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
 	h := &ChatbotHandlers{DB: db}
@@ -31,7 +35,7 @@ func TestChatbot_ListCreateUpdateDelete(t *testing.T) {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
 	// create
-	body := map[string]any{"name": "Unit Bot", "suggestions_enabled": true, "suggested_questions": []string{"A"}}
+	body := map[string]any{"name": "Unit Bot", "language": "en-US", "suggestions_enabled": true, "suggested_questions": []string{"A"}}
 	jb, _ := json.Marshal(body)
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots", bytes.NewReader(jb))
 	rr1 := httptest.NewRecorder()

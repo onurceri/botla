@@ -28,7 +28,7 @@ func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
 		UserID:               userID,
 		Name:                 "TestBot",
 		SystemPrompt:         "prompt",
-		Language:             "en",
+		LanguageCode:         "en",
 		Model:                "gpt-3.5-turbo",
 		Temperature:          0.1,
 		MaxTokens:            128,
@@ -68,7 +68,11 @@ func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
 func createTestUser(t *testing.T, db *sql.DB) string {
 	var id string
 	email := "test+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	if err := db.QueryRow(`INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id`, email, "x").Scan(&id); err != nil {
+	var freePlanID string
+	if err := db.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if err := db.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&id); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	return id

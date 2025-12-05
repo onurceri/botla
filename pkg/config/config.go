@@ -1,32 +1,32 @@
 package config
 
 import (
-    "log"
-    "os"
-    "strings"
+	"log"
+	"os"
+	"strings"
 
-    "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-    DB_HOST              string
-    DB_PORT              string
-    DB_NAME              string
-    DB_USER              string
-    DB_PASSWORD          string
-    DB_SCHEMA            string
-    QDRANT_URL           string
-    OPENAI_API_KEY       string
-    IYZICO_API_KEY       string
-    IYZICO_SECRET_KEY    string
-    JWT_SECRET           string
-    PORT                 string
-    CORS_ALLOWED_ORIGINS string
-    R2_ACCOUNT_ID        string
-    R2_ACCESS_KEY_ID     string
-    R2_SECRET_ACCESS_KEY string
-    R2_BUCKET_NAME       string
-    DEFAULT_CHATBOT_MODEL string
+	DB_HOST               string
+	DB_PORT               string
+	DB_NAME               string
+	DB_USER               string
+	DB_PASSWORD           string
+	DB_SCHEMA             string
+	QDRANT_URL            string
+	OPENAI_API_KEY        string
+	IYZICO_API_KEY        string
+	IYZICO_SECRET_KEY     string
+	JWT_SECRET            string
+	PORT                  string
+	CORS_ALLOWED_ORIGINS  string
+	R2_ACCOUNT_ID         string
+	R2_ACCESS_KEY_ID      string
+	R2_SECRET_ACCESS_KEY  string
+	R2_BUCKET_NAME        string
+	DEFAULT_CHATBOT_MODEL string
 }
 
 var fatalf = func(msg string) { log.Fatal(msg) }
@@ -58,52 +58,52 @@ func LoadConfig() *Config {
 		fatalf("PORT cannot be empty")
 	}
 
-    return &Config{
-        DB_HOST:           os.Getenv("DB_HOST"),
-        DB_PORT:           os.Getenv("DB_PORT"),
-        DB_NAME:           os.Getenv("DB_NAME"),
-        DB_USER:           os.Getenv("DB_USER"),
-        DB_PASSWORD:       os.Getenv("DB_PASSWORD"),
-        DB_SCHEMA: func() string {
-            v := os.Getenv("DB_SCHEMA")
-            if strings.TrimSpace(v) == "" {
-                return "public"
-            }
-            return v
-        }(),
-        QDRANT_URL:        os.Getenv("QDRANT_URL"),
-        OPENAI_API_KEY:    os.Getenv("OPENAI_API_KEY"),
-        IYZICO_API_KEY:    os.Getenv("IYZICO_API_KEY"),
-        IYZICO_SECRET_KEY: os.Getenv("IYZICO_SECRET_KEY"),
-        JWT_SECRET:        os.Getenv("JWT_SECRET"),
-        PORT:              os.Getenv("PORT"),
-        CORS_ALLOWED_ORIGINS: func() string {
-            v := os.Getenv("CORS_ALLOWED_ORIGINS")
-            if v == "" {
-                return "http://localhost:5173"
-            }
-            return v
-        }(),
-        R2_ACCOUNT_ID:        os.Getenv("R2_ACCOUNT_ID"),
-        R2_ACCESS_KEY_ID:     os.Getenv("R2_ACCESS_KEY_ID"),
-        R2_SECRET_ACCESS_KEY: os.Getenv("R2_SECRET_ACCESS_KEY"),
-        R2_BUCKET_NAME:       os.Getenv("R2_BUCKET_NAME"),
-        DEFAULT_CHATBOT_MODEL: DefaultChatbotModel(),
-    }
+	return &Config{
+		DB_HOST:     os.Getenv("DB_HOST"),
+		DB_PORT:     os.Getenv("DB_PORT"),
+		DB_NAME:     os.Getenv("DB_NAME"),
+		DB_USER:     os.Getenv("DB_USER"),
+		DB_PASSWORD: os.Getenv("DB_PASSWORD"),
+		DB_SCHEMA: func() string {
+			v := os.Getenv("DB_SCHEMA")
+			if strings.TrimSpace(v) == "" {
+				return "public"
+			}
+			return v
+		}(),
+		QDRANT_URL:        os.Getenv("QDRANT_URL"),
+		OPENAI_API_KEY:    os.Getenv("OPENAI_API_KEY"),
+		IYZICO_API_KEY:    os.Getenv("IYZICO_API_KEY"),
+		IYZICO_SECRET_KEY: os.Getenv("IYZICO_SECRET_KEY"),
+		JWT_SECRET:        os.Getenv("JWT_SECRET"),
+		PORT:              os.Getenv("PORT"),
+		CORS_ALLOWED_ORIGINS: func() string {
+			v := os.Getenv("CORS_ALLOWED_ORIGINS")
+			if v == "" {
+				return "http://localhost:5173"
+			}
+			return v
+		}(),
+		R2_ACCOUNT_ID:         os.Getenv("R2_ACCOUNT_ID"),
+		R2_ACCESS_KEY_ID:      os.Getenv("R2_ACCESS_KEY_ID"),
+		R2_SECRET_ACCESS_KEY:  os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2_BUCKET_NAME:        os.Getenv("R2_BUCKET_NAME"),
+		DEFAULT_CHATBOT_MODEL: DefaultChatbotModel(),
+	}
 }
 
 func DefaultChatbotModel() string {
-    v := os.Getenv("DEFAULT_CHATBOT_MODEL")
-    if strings.TrimSpace(v) == "" {
-        return "gpt-4o-mini"
-    }
-    return v
+	v := os.Getenv("DEFAULT_CHATBOT_MODEL")
+	if strings.TrimSpace(v) == "" {
+		return "gpt-4o-mini"
+	}
+	return v
 }
 
 func ResolveChatbotModel(cfg *Config) string {
-    v := DefaultChatbotModel()
-    if cfg != nil && strings.TrimSpace(cfg.DEFAULT_CHATBOT_MODEL) != "" {
-        v = cfg.DEFAULT_CHATBOT_MODEL
-    }
-    return v
+	v := DefaultChatbotModel()
+	if cfg != nil && strings.TrimSpace(cfg.DEFAULT_CHATBOT_MODEL) != "" {
+		v = cfg.DEFAULT_CHATBOT_MODEL
+	}
+	return v
 }

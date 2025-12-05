@@ -68,10 +68,17 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var userID string
+	var freePlanID string
+	_ = h.DB.QueryRowContext(r.Context(), "SELECT id FROM plans WHERE code='free'").Scan(&freePlanID)
 	err = h.DB.QueryRowContext(
 		r.Context(),
-		"INSERT INTO users (email, password_hash, full_name) VALUES ($1,$2,$3) RETURNING id",
-		req.Email, hash, req.FullName,
+		"INSERT INTO users (email, password_hash, full_name, plan_id) VALUES ($1,$2,$3,$4) RETURNING id",
+		req.Email, hash, req.FullName, func() interface{} {
+			if freePlanID != "" {
+				return freePlanID
+			}
+			return nil
+		}(),
 	).Scan(&userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -194,11 +201,11 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(status)
-    if err := json.NewEncoder(w).Encode(tokenResponse{Token: accessToken, RefreshToken: refreshToken}); err != nil {
-        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-    }
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(tokenResponse{Token: accessToken, RefreshToken: refreshToken}); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
@@ -207,9 +214,9 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    if err := json.NewEncoder(w).Encode(map[string]any{"user_id": id, "status": "ok"}); err != nil {
-        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-    }
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]any{"user_id": id, "status": "ok"}); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }

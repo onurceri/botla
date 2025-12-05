@@ -35,7 +35,7 @@ func TestChatbot_CRUD(t *testing.T) {
 	token := authToken(t, te.Server.URL, "crud@example.com")
 
 	// create
-	create := map[string]any{"name": "My Bot"}
+	create := map[string]any{"name": "My Bot", "language": "en-US"}
 	cb, _ := json.Marshal(create)
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)

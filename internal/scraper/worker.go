@@ -1,14 +1,14 @@
 package scraper
 
 import (
-    "crypto/sha256"
-    "encoding/hex"
-    "strings"
-    "time"
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
+	"time"
 
-    "github.com/PuerkitoBio/goquery"
-    "github.com/gocolly/colly"
-    "github.com/onurceri/botla-co/pkg/logger"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/gocolly/colly"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 type ScrapingTask struct {
@@ -18,8 +18,8 @@ type ScrapingTask struct {
 }
 
 func keyFor(url string) string {
-    h := sha256.Sum256([]byte(url))
-    return "scraped:" + hex.EncodeToString(h[:])
+	h := sha256.Sum256([]byte(url))
+	return "scraped:" + hex.EncodeToString(h[:])
 }
 
 func visibleText(sel *goquery.Selection) string {
@@ -66,9 +66,9 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig) (string, error) {
 	if err != nil {
 		return "", err
 	}
-    if err := bundle.Queue.Run(c); err != nil {
-        return "", err
-    }
+	if err := bundle.Queue.Run(c); err != nil {
+		return "", err
+	}
 	c.Wait()
 
 	if content == "" {

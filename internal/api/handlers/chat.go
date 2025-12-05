@@ -1,20 +1,20 @@
 package handlers
 
 import (
-    "context"
-    "database/sql"
-    "encoding/json"
-    "net/http"
-    "os"
-    "strconv"
-    "strings"
-    "time"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/rag"
-    "github.com/onurceri/botla-co/pkg/langconfig"
-    "github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ChatHandlers struct {
@@ -105,7 +105,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Embedding
-    to := chatTimeout()
+	to := chatTimeout()
 	ctx, cancel := context.WithTimeout(r.Context(), to)
 	defer cancel()
 	embedding, err := oai.CreateEmbedding(ctx, req.Message)
@@ -124,15 +124,15 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	var tokens int
 
 	// Get language config
-    langCode := defaultLang(cbot.Language)
-    cfg := langconfig.Get(langCode)
+	langCode := defaultLang(cbot.LanguageCode)
+	cfg := langconfig.Get(langCode)
 
 	if strings.TrimSpace(contextText) == "" {
 		ans = cfg.ResponseTemplates.NoInfoFound
 		tokens = 0
 	} else {
-        sp := systemPrompt(strings.TrimSpace(cbot.SystemPrompt), cfg)
-        ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
+		sp := systemPrompt(strings.TrimSpace(cbot.SystemPrompt), cfg)
+		ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
 		if err != nil {
 			ans = cfg.ResponseTemplates.ErrorMessage
 			tokens = 0
@@ -140,7 +140,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: ans, TokensUsed: tokens}
 	if _, err = db.CreateMessage(r.Context(), h.DB, am); err == nil {
-		_	= db.IncrementConversationMessageCount(r.Context(), h.DB, conv.ID)
+		_ = db.IncrementConversationMessageCount(r.Context(), h.DB, conv.ID)
 	}
 
 	// Update Analytics
@@ -159,8 +159,8 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		_ = db.IncrementAnalytics(bgCtx, h.DB, cbot.ID, time.Now(), isNew, tokens)
 	}()
 
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err = json.NewEncoder(w).Encode(chatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -207,25 +207,30 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func chatTimeout() time.Duration {
-    d := 20 * time.Second
-    if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
-        if n, err := strconv.Atoi(v); err == nil && n > 0 {
-            d = time.Duration(n) * time.Millisecond
-        }
-    }
-    return d
+	d := 20 * time.Second
+	if v := os.Getenv("CHAT_TIMEOUT_MS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			d = time.Duration(n) * time.Millisecond
+		}
+	}
+	return d
 }
 
 func defaultLang(code string) string {
-    if strings.TrimSpace(code) == "" {
-        return "tr"
-    }
-    return code
+	s := strings.TrimSpace(code)
+	if s == "" {
+		return "tr"
+	}
+	i := strings.Index(s, "-")
+	if i > 0 {
+		s = s[:i]
+	}
+	return s
 }
 
 func systemPrompt(sp string, cfg langconfig.LanguageConfig) string {
-    if strings.TrimSpace(sp) == "" {
-        return cfg.ResponseTemplates.DefaultSystemPrompt
-    }
-    return sp
+	if strings.TrimSpace(sp) == "" {
+		return cfg.ResponseTemplates.DefaultSystemPrompt
+	}
+	return sp
 }

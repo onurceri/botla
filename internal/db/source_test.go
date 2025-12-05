@@ -13,7 +13,7 @@ func TestDataSource_CRUD_DB(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
 	uid := createUser(t, db)
-	b := &models.Chatbot{UserID: uid, Name: "Src Bot", SystemPrompt: "p", Language: "en", Model: "gpt-3.5-turbo", Temperature: 0.1, MaxTokens: 64, ThemeColor: "#000000", WelcomeMessage: "hi", Position: "bottom-right", BotMessageColor: "#000000", UserMessageColor: "#ffffff", BotMessageTextColor: "#ffffff", UserMessageTextColor: "#000000", ChatFontFamily: "Inter", ChatHeaderColor: "#000000", ChatHeaderTextColor: "#ffffff", ChatBackgroundColor: "#ffffff"}
+	b := &models.Chatbot{UserID: uid, Name: "Src Bot", SystemPrompt: "p", LanguageCode: "en-US", Model: "gpt-3.5-turbo", Temperature: 0.1, MaxTokens: 64, ThemeColor: "#000000", WelcomeMessage: "hi", Position: "bottom-right", BotMessageColor: "#000000", UserMessageColor: "#ffffff", BotMessageTextColor: "#ffffff", UserMessageTextColor: "#000000", ChatFontFamily: "Inter", ChatHeaderColor: "#000000", ChatHeaderTextColor: "#ffffff", ChatBackgroundColor: "#ffffff"}
 	bid, err := CreateChatbot(context.Background(), db, b)
 	if err != nil {
 		t.Fatalf("create bot: %v", err)

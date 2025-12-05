@@ -24,8 +24,12 @@ func TestSources_StatusAndDelete(t *testing.T) {
 	}
 	defer dbx.Close()
 	var uid string
+	var freePlanID string
+	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
+		t.Fatalf("plan: %v", err)
+	}
 	email := fmt.Sprintf("srcuniq+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash) VALUES ($1,$2) RETURNING id`, email, "x").Scan(&uid); err != nil {
+	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
 	ch := &ChatbotHandlers{DB: dbx}

@@ -1,16 +1,16 @@
 package scraper
 
 import (
-    "crypto/rand"
-    "math/big"
-    "net/http"
-    "os"
-    "strings"
-    "time"
+	"crypto/rand"
+	"math/big"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
-    "github.com/gocolly/colly"
-    "github.com/gocolly/colly/queue"
-    "github.com/onurceri/botla-co/pkg/logger"
+	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/queue"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 type CollectorConfig struct {
@@ -60,13 +60,13 @@ func NewCollector(cfg CollectorConfig) (*CollectorBundle, error) {
 			"Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15A372 Safari/604.1",
 		}
 	}
-    c.OnRequest(func(r *colly.Request) {
-        idx := int64(0)
-        if n, err := rand.Int(rand.Reader, big.NewInt(int64(len(ua)))); err == nil {
-            idx = n.Int64()
-        }
-        r.Headers.Set("User-Agent", ua[idx])
-    })
+	c.OnRequest(func(r *colly.Request) {
+		idx := int64(0)
+		if n, err := rand.Int(rand.Reader, big.NewInt(int64(len(ua)))); err == nil {
+			idx = n.Int64()
+		}
+		r.Headers.Set("User-Agent", ua[idx])
+	})
 
 	c.OnError(func(r *colly.Response, err error) {
 		l.Error("scraper_error", map[string]any{"status": r.StatusCode, "url": r.Request.URL.String(), "err": err.Error()})
@@ -76,14 +76,14 @@ func NewCollector(cfg CollectorConfig) (*CollectorBundle, error) {
 		l.Info("scraper_done", map[string]any{"url": r.Request.URL.String(), "bytes": len(r.Body)})
 	})
 
-    c.OnResponse(func(r *colly.Response) {
-        ct := r.Headers.Get("Content-Type")
-        if ct != "" {
-            if !isHTMLContentType(ct) {
-                r.Request.Abort()
-            }
-        }
-    })
+	c.OnResponse(func(r *colly.Response) {
+		ct := r.Headers.Get("Content-Type")
+		if ct != "" {
+			if !isHTMLContentType(ct) {
+				r.Request.Abort()
+			}
+		}
+	})
 
 	c.WithTransport(&http.Transport{Proxy: http.ProxyFromEnvironment})
 
@@ -126,6 +126,6 @@ func DefaultCollectorConfig() CollectorConfig {
 }
 
 func isHTMLContentType(ct string) bool {
-    s := strings.ToLower(ct)
-    return strings.Contains(s, "text/html") || strings.Contains(s, "application/xhtml+xml")
+	s := strings.ToLower(ct)
+	return strings.Contains(s, "text/html") || strings.Contains(s, "application/xhtml+xml")
 }

@@ -8,7 +8,7 @@ type Chatbot struct {
 	Name                 string     `json:"name"`
 	Description          *string    `json:"description,omitempty"`
 	SystemPrompt         string     `json:"system_prompt"`
-	Language             string     `json:"language"`
+	LanguageCode         string     `json:"language"`
 	Model                string     `json:"model"`
 	Temperature          float32    `json:"temperature"`
 	MaxTokens            int        `json:"max_tokens"`

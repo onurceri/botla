@@ -9,12 +9,16 @@ const SettingsPage = () => {
   const [activeSection, setActiveSection] = useState<'profile' | 'plan'>('profile')
   const [userPlan, setUserPlan] = useState<string>('free')
   const [rateLimit, setRateLimit] = useState<{ limit: number | null; remaining: number | null }>({ limit: null, remaining: null })
+  const [fullName, setFullName] = useState<string>('')
+  const [email, setEmail] = useState<string>('')
 
   useEffect(() => {
     api.get('/api/v1/me')
       .then((res) => {
-        const plan = res.data?.subscription_plan || 'free'
+        const plan = res.data?.subscription_plan ?? res.data?.plan_code ?? 'free'
         setUserPlan(plan)
+        setFullName(res.data?.full_name ?? '')
+        setEmail(res.data?.email ?? '')
         const limit = parseInt(res.headers['x-ratelimit-limit'] || '', 10)
         const remaining = parseInt(res.headers['x-ratelimit-remaining'] || '', 10)
         setRateLimit({
@@ -24,6 +28,8 @@ const SettingsPage = () => {
       })
       .catch(() => {
         setUserPlan('free')
+        setFullName('')
+        setEmail('')
         setRateLimit({ limit: null, remaining: null })
       })
   }, [])
@@ -70,11 +76,11 @@ const SettingsPage = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Ad Soyad</label>
-                  <Input defaultValue="Onur Ceri" disabled />
+                  <Input value={fullName} disabled />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
-                  <Input defaultValue="onur@example.com" disabled />
+                  <Input value={email} disabled />
                 </div>
               </CardContent>
             </Card>
