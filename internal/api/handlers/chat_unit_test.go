@@ -12,6 +12,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -38,7 +39,8 @@ func TestChat_NoInfoFound(t *testing.T) {
 		t.Fatalf("user: %v", err)
 	}
 	h := &ChatbotHandlers{DB: dbx}
-	ch := &ChatHandlers{DB: dbx}
+	chatSvc := services.NewChatService(dbx, nil, nil, nil) // nil clients -> lazy init
+	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -59,3 +61,4 @@ func TestChat_NoInfoFound(t *testing.T) {
 		t.Fatalf("chat: %d", rr2.Code)
 	}
 }
+

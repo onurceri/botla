@@ -14,6 +14,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
+// ChatbotHandlers handles chatbot-related HTTP endpoints
 type ChatbotHandlers struct {
 	DB  *sql.DB
 	Cfg *config.Config
@@ -47,121 +48,119 @@ type createChatbotRequest struct {
 	SuggestionsEnabled   *bool     `json:"suggestions_enabled"`
 }
 
+// ListOrCreate handles GET (list) and POST (create) for chatbots
 func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
-	id, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || id == "" {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok || userID == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	var err error
+
 	switch r.Method {
 	case http.MethodGet:
-		var bots []models.Chatbot
-		bots, err = db.GetChatbotsByUserID(r.Context(), h.DB, id)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err = json.NewEncoder(w).Encode(bots); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+		h.listChatbots(w, r, userID)
 	case http.MethodPost:
-		var req createChatbotRequest
-		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		req.Name = strings.TrimSpace(req.Name)
-		if req.Name == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		langCodeBCP := normalizeLocale(defaultString(req.Language, "tr-TR"))
-		baseLang := baseLangCode(langCodeBCP)
-		langCfg := langconfig.Get(baseLang)
-
-		bot := &models.Chatbot{
-			UserID:               id,
-			Name:                 req.Name,
-			Description:          req.Description,
-			SystemPrompt:         defaultString(req.SystemPrompt, langCfg.ResponseTemplates.DefaultPersonaPrompt),
-			LanguageCode:         langCodeBCP,
-			Model:                defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
-			Temperature:          defaultFloat32(req.Temperature, 0.7),
-			MaxTokens:            defaultInt(req.MaxTokens, 512),
-			ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),
-			WelcomeMessage:       defaultString(req.WelcomeMessage, langCfg.ResponseTemplates.WelcomeMessage),
-			Position:             defaultString(req.Position, "bottom-right"),
-			BotMessageColor:      defaultString(req.BotMessageColor, "#fcfcfd"),
-			UserMessageColor:     defaultString(req.UserMessageColor, "#2e408a"),
-			BotMessageTextColor:  defaultString(req.BotMessageTextColor, "#030303"),
-			UserMessageTextColor: defaultString(req.UserMessageTextColor, "#ffffff"),
-			ChatFontFamily:       defaultString(req.ChatFontFamily, "Inter, sans-serif"),
-			ChatHeaderColor:      defaultString(req.ChatHeaderColor, "#3b82f6"),
-			ChatHeaderTextColor:  defaultString(req.ChatHeaderTextColor, "#ffffff"),
-			ChatBackgroundColor:  defaultString(req.ChatBackgroundColor, "#fff5e6"),
-			BotIcon:              req.BotIcon,
-			BotDisplayName:       req.BotDisplayName,
-			SecureEmbedEnabled: func() bool {
-				if req.SecureEmbedEnabled != nil {
-					return *req.SecureEmbedEnabled
-				}
-				return false
-			}(),
-			AllowedDomains: req.AllowedDomains,
-			EmbedSecret:    req.EmbedSecret,
-			SuggestedQuestions: func() []string {
-				if req.SuggestedQuestions != nil {
-					return normalizeSuggestions(*req.SuggestedQuestions)
-				}
-				return nil
-			}(),
-			SuggestionsEnabled: func() bool {
-				if req.SuggestionsEnabled != nil {
-					return *req.SuggestionsEnabled
-				}
-				return false
-			}(),
-		}
-		var newID string
-		newID, err = db.CreateChatbot(r.Context(), h.DB, bot)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		var c *models.Chatbot
-		c, err = db.GetChatbotByID(r.Context(), h.DB, newID)
-		if err != nil || c == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		if err = json.NewEncoder(w).Encode(c); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+		h.createChatbot(w, r, userID)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
+// listChatbots returns all chatbots for a user
+func (h *ChatbotHandlers) listChatbots(w http.ResponseWriter, r *http.Request, userID string) {
+	bots, err := db.GetChatbotsByUserID(r.Context(), h.DB, userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(bots); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+// createChatbot creates a new chatbot
+func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, userID string) {
+	var req createChatbotRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	langCodeBCP := normalizeLocale(defaultString(req.Language, "tr-TR"))
+	baseLang := baseLangCode(langCodeBCP)
+	langCfg := langconfig.Get(baseLang)
+
+	bot := h.buildNewChatbot(userID, req, langCodeBCP, langCfg)
+
+	newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c, err := db.GetChatbotByID(r.Context(), h.DB, newID)
+	if err != nil || c == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err = json.NewEncoder(w).Encode(c); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+// buildNewChatbot constructs a new chatbot with defaults
+func (h *ChatbotHandlers) buildNewChatbot(userID string, req createChatbotRequest, langCode string, langCfg langconfig.LanguageConfig) *models.Chatbot {
+	return &models.Chatbot{
+		UserID:               userID,
+		Name:                 req.Name,
+		Description:          req.Description,
+		SystemPrompt:         defaultString(req.SystemPrompt, langCfg.ResponseTemplates.DefaultPersonaPrompt),
+		LanguageCode:         langCode,
+		Model:                defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
+		Temperature:          defaultFloat32(req.Temperature, 0.7),
+		MaxTokens:            defaultInt(req.MaxTokens, 512),
+		ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),
+		WelcomeMessage:       defaultString(req.WelcomeMessage, langCfg.ResponseTemplates.WelcomeMessage),
+		Position:             defaultString(req.Position, "bottom-right"),
+		BotMessageColor:      defaultString(req.BotMessageColor, "#fcfcfd"),
+		UserMessageColor:     defaultString(req.UserMessageColor, "#2e408a"),
+		BotMessageTextColor:  defaultString(req.BotMessageTextColor, "#030303"),
+		UserMessageTextColor: defaultString(req.UserMessageTextColor, "#ffffff"),
+		ChatFontFamily:       defaultString(req.ChatFontFamily, "Inter, sans-serif"),
+		ChatHeaderColor:      defaultString(req.ChatHeaderColor, "#3b82f6"),
+		ChatHeaderTextColor:  defaultString(req.ChatHeaderTextColor, "#ffffff"),
+		ChatBackgroundColor:  defaultString(req.ChatBackgroundColor, "#fff5e6"),
+		BotIcon:              req.BotIcon,
+		BotDisplayName:       req.BotDisplayName,
+		SecureEmbedEnabled:   boolValue(req.SecureEmbedEnabled, false),
+		AllowedDomains:       req.AllowedDomains,
+		EmbedSecret:          req.EmbedSecret,
+		SuggestedQuestions:   suggestionsValue(req.SuggestedQuestions),
+		SuggestionsEnabled:   boolValue(req.SuggestionsEnabled, false),
+	}
+}
+
+// ByID handles GET/PUT/DELETE for a specific chatbot
 func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
-	id, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || id == "" {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok || userID == "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	var err error
-	const prefix = "/api/v1/chatbots/"
-	path := r.URL.Path
-	if !strings.HasPrefix(path, prefix) {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	botID := strings.TrimPrefix(path, prefix)
-	if botID == "" {
+
+	botID, ok := parseBotIDFromPath(r.URL.Path)
+	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -169,6 +168,7 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	c, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -178,133 +178,175 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if c.UserID != id {
+	if c.UserID != userID {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+
 	switch r.Method {
 	case http.MethodGet:
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err = json.NewEncoder(w).Encode(c); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+		h.getChatbot(w, c)
 	case http.MethodPut:
-		var req createChatbotRequest
-		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if req.ChatBackgroundColor != nil {
-			s := strings.TrimSpace(*req.ChatBackgroundColor)
-			if s != "" && !isValidHexColor(s) {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		}
-		if req.Name != "" {
-			c.Name = strings.TrimSpace(req.Name)
-		}
-		if req.Description != nil {
-			c.Description = req.Description
-		}
-		if req.SystemPrompt != nil {
-			c.SystemPrompt = *req.SystemPrompt
-		}
-		if req.Language != nil {
-			c.LanguageCode = normalizeLocale(*req.Language)
-		}
-		if req.Model != nil {
-			c.Model = *req.Model
-		}
-		if req.Temperature != nil {
-			c.Temperature = *req.Temperature
-		}
-		if req.MaxTokens != nil {
-			c.MaxTokens = *req.MaxTokens
-		}
-		if req.ThemeColor != nil {
-			c.ThemeColor = *req.ThemeColor
-		}
-		if req.WelcomeMessage != nil {
-			c.WelcomeMessage = *req.WelcomeMessage
-		}
-		if req.Position != nil {
-			c.Position = *req.Position
-		}
-		if req.BotMessageColor != nil {
-			c.BotMessageColor = *req.BotMessageColor
-		}
-		if req.UserMessageColor != nil {
-			c.UserMessageColor = *req.UserMessageColor
-		}
-		if req.BotMessageTextColor != nil {
-			c.BotMessageTextColor = *req.BotMessageTextColor
-		}
-		if req.UserMessageTextColor != nil {
-			c.UserMessageTextColor = *req.UserMessageTextColor
-		}
-		if req.ChatFontFamily != nil {
-			c.ChatFontFamily = *req.ChatFontFamily
-		}
-		if req.ChatHeaderColor != nil {
-			c.ChatHeaderColor = *req.ChatHeaderColor
-		}
-		if req.ChatHeaderTextColor != nil {
-			c.ChatHeaderTextColor = *req.ChatHeaderTextColor
-		}
-		if req.ChatBackgroundColor != nil {
-			c.ChatBackgroundColor = *req.ChatBackgroundColor
-		}
-		if req.BotIcon != nil {
-			c.BotIcon = req.BotIcon
-		}
-		if req.BotDisplayName != nil {
-			c.BotDisplayName = req.BotDisplayName
-		}
-		if req.SecureEmbedEnabled != nil {
-			c.SecureEmbedEnabled = *req.SecureEmbedEnabled
-		}
-		if req.AllowedDomains != nil {
-			c.AllowedDomains = req.AllowedDomains
-		}
-		if req.EmbedSecret != nil {
-			c.EmbedSecret = req.EmbedSecret
-		}
-		if req.SuggestedQuestions != nil {
-			c.SuggestedQuestions = normalizeSuggestions(*req.SuggestedQuestions)
-		}
-		if req.SuggestionsEnabled != nil {
-			c.SuggestionsEnabled = *req.SuggestionsEnabled
-		}
-		err = db.UpdateChatbot(r.Context(), h.DB, c)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		// Re-read for updated_at change
-		var c2 *models.Chatbot
-		c2, err = db.GetChatbotByID(r.Context(), h.DB, botID)
-		if err != nil || c2 == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err = json.NewEncoder(w).Encode(c2); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+		h.updateChatbot(w, r, c, botID)
 	case http.MethodDelete:
-		if err = db.SoftDeleteChatbot(r.Context(), h.DB, botID, id); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
+		h.deleteChatbot(w, r, botID, userID)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
+// getChatbot returns a single chatbot
+func (h *ChatbotHandlers) getChatbot(w http.ResponseWriter, c *models.Chatbot) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(c); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+// updateChatbot handles PUT request to update a chatbot
+func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, c *models.Chatbot, botID string) {
+	var req createChatbotRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Validate hex color if provided
+	if req.ChatBackgroundColor != nil {
+		s := strings.TrimSpace(*req.ChatBackgroundColor)
+		if s != "" && !isValidHexColor(s) {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Apply updates
+	applyChatbotUpdates(c, req)
+
+	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Re-read for updated_at change
+	c2, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	if err != nil || c2 == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(c2); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+// deleteChatbot handles DELETE request
+func (h *ChatbotHandlers) deleteChatbot(w http.ResponseWriter, r *http.Request, botID, userID string) {
+	if err := db.SoftDeleteChatbot(r.Context(), h.DB, botID, userID); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// applyChatbotUpdates applies request fields to chatbot model
+func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
+	if req.Name != "" {
+		c.Name = strings.TrimSpace(req.Name)
+	}
+	if req.Description != nil {
+		c.Description = req.Description
+	}
+	if req.SystemPrompt != nil {
+		c.SystemPrompt = *req.SystemPrompt
+	}
+	if req.Language != nil {
+		c.LanguageCode = normalizeLocale(*req.Language)
+	}
+	if req.Model != nil {
+		c.Model = *req.Model
+	}
+	if req.Temperature != nil {
+		c.Temperature = *req.Temperature
+	}
+	if req.MaxTokens != nil {
+		c.MaxTokens = *req.MaxTokens
+	}
+	if req.ThemeColor != nil {
+		c.ThemeColor = *req.ThemeColor
+	}
+	if req.WelcomeMessage != nil {
+		c.WelcomeMessage = *req.WelcomeMessage
+	}
+	if req.Position != nil {
+		c.Position = *req.Position
+	}
+	if req.BotMessageColor != nil {
+		c.BotMessageColor = *req.BotMessageColor
+	}
+	if req.UserMessageColor != nil {
+		c.UserMessageColor = *req.UserMessageColor
+	}
+	if req.BotMessageTextColor != nil {
+		c.BotMessageTextColor = *req.BotMessageTextColor
+	}
+	if req.UserMessageTextColor != nil {
+		c.UserMessageTextColor = *req.UserMessageTextColor
+	}
+	if req.ChatFontFamily != nil {
+		c.ChatFontFamily = *req.ChatFontFamily
+	}
+	if req.ChatHeaderColor != nil {
+		c.ChatHeaderColor = *req.ChatHeaderColor
+	}
+	if req.ChatHeaderTextColor != nil {
+		c.ChatHeaderTextColor = *req.ChatHeaderTextColor
+	}
+	if req.ChatBackgroundColor != nil {
+		c.ChatBackgroundColor = *req.ChatBackgroundColor
+	}
+	if req.BotIcon != nil {
+		c.BotIcon = req.BotIcon
+	}
+	if req.BotDisplayName != nil {
+		c.BotDisplayName = req.BotDisplayName
+	}
+	if req.SecureEmbedEnabled != nil {
+		c.SecureEmbedEnabled = *req.SecureEmbedEnabled
+	}
+	if req.AllowedDomains != nil {
+		c.AllowedDomains = req.AllowedDomains
+	}
+	if req.EmbedSecret != nil {
+		c.EmbedSecret = req.EmbedSecret
+	}
+	if req.SuggestedQuestions != nil {
+		c.SuggestedQuestions = normalizeSuggestions(*req.SuggestedQuestions)
+	}
+	if req.SuggestionsEnabled != nil {
+		c.SuggestionsEnabled = *req.SuggestionsEnabled
+	}
+}
+
+// --- Helper functions ---
+
+// parseBotIDFromPath extracts bot ID from /api/v1/chatbots/:id
+func parseBotIDFromPath(path string) (string, bool) {
+	const prefix = "/api/v1/chatbots/"
+	if !strings.HasPrefix(path, prefix) {
+		return "", false
+	}
+	botID := strings.TrimPrefix(path, prefix)
+	if botID == "" {
+		return "", false
+	}
+	return botID, true
+}
+
+// normalizeSuggestions deduplicates and truncates suggestions
 func normalizeSuggestions(in []string) []string {
 	if len(in) == 0 {
 		return []string{}
@@ -358,6 +400,20 @@ func defaultFloat32(p *float32, d float32) float32 {
 		return *p
 	}
 	return d
+}
+
+func boolValue(p *bool, d bool) bool {
+	if p != nil {
+		return *p
+	}
+	return d
+}
+
+func suggestionsValue(p *[]string) []string {
+	if p != nil {
+		return normalizeSuggestions(*p)
+	}
+	return nil
 }
 
 func normalizeLocale(code string) string {

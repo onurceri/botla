@@ -12,7 +12,7 @@ func TestExtractPDFText_Sample(t *testing.T) {
 	if p == "" {
 		t.Skip("BOTLA_PDF_PATH not set; skipping fitz extraction test")
 	}
-	s, err := ExtractPDFText(p, "tr")
+	s, err := ExtractPDFText(p, "tr", true)
 	if err != nil {
 		t.Fatalf("extract error: %v", err)
 	}

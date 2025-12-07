@@ -4,8 +4,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
 func TestChatTimeoutEnvParsing(t *testing.T) {
@@ -21,21 +19,3 @@ func TestChatTimeoutEnvParsing(t *testing.T) {
 	}
 }
 
-func TestDefaultLang(t *testing.T) {
-	if defaultLang("") != "tr" {
-		t.Fatal("empty must default to tr")
-	}
-	if defaultLang("en") != "en" {
-		t.Fatal("non-empty must be preserved")
-	}
-}
-
-func TestSystemPromptFallback(t *testing.T) {
-	cfg := langconfig.Get("tr")
-	if systemPrompt("", cfg) != cfg.ResponseTemplates.DefaultSystemPrompt {
-		t.Fatalf("expected default system prompt fallback")
-	}
-	if systemPrompt("x", cfg) != "x" {
-		t.Fatalf("expected provided system prompt")
-	}
-}

@@ -3,7 +3,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import DashboardPage from '@/pages/DashboardPage'
 import ChatbotsPage from '@/pages/ChatbotsPage'
 import ChatbotDetailPage from '@/pages/ChatbotDetailPage'
-import SettingsPage from '@/pages/SettingsPage'
+import ProfilePage from '@/pages/ProfilePage'
+import PlanPage from '@/pages/PlanPage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import { ToastProvider } from '@/components/ui/toast'
@@ -39,7 +40,9 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="chatbots" element={<ChatbotsPage />} />
             <Route path="chatbots/:id" element={<ChatbotDetailPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings" element={<Navigate to="/settings/profile" replace />} />
+            <Route path="settings/profile" element={<ProfilePage />} />
+            <Route path="settings/plan" element={<PlanPage />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />

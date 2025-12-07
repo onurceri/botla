@@ -12,13 +12,13 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ChatHandlers struct {
-	DB *sql.DB
+	DB          *sql.DB
+	ChatService *services.ChatService
 }
 
 type chatRequest struct {
@@ -53,7 +53,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	var err error
+
 	botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
 	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil {
@@ -68,6 +68,38 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+
+	// Get plan and check limits (keep in handler for early rejection)
+	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var ragConfig models.RAGConfig
+	if plan != nil {
+		ragConfig = plan.Config.Chat.RAG
+		if len(plan.Config.Chat.AllowedModels) > 0 {
+			allowed := false
+			for _, m := range plan.Config.Chat.AllowedModels {
+				if m == cbot.Model {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				cbot.Model = plan.Config.Chat.AllowedModels[0]
+			}
+		}
+		// Check token limits
+		if plan.Config.Chat.MaxMonthlyTokens > 0 {
+			used, err := db.GetMonthlyTokenUsage(r.Context(), h.DB, userID)
+			if err == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
+				http.Error(w, "Monthly token limit exceeded", http.StatusPaymentRequired)
+				return
+			}
+		}
+	}
+
 	var req chatRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -79,89 +111,33 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conv, err := db.GetOrCreateConversationBySessionID(r.Context(), h.DB, cbot.ID, req.SessionID)
-	if err != nil || conv == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	// Save user message
-	um := &models.Message{ConversationID: conv.ID, Role: "user", Content: req.Message, TokensUsed: 0}
-	if _, err = db.CreateMessage(r.Context(), h.DB, um); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_ = db.IncrementConversationMessageCount(r.Context(), h.DB, conv.ID)
-
-	// Clients
-	oai, err := rag.NewOpenAIClientFromEnv()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	qc, err := rag.NewQdrantClientFromEnv()
-	if err != nil {
-		// proceed without context
-		qc = nil
-	}
-
-	// Embedding
+	// Create context with timeout
 	to := chatTimeout()
 	ctx, cancel := context.WithTimeout(r.Context(), to)
 	defer cancel()
-	embedding, err := oai.CreateEmbedding(ctx, req.Message)
-	var contextText string
+
+	// Delegate to chat service
+	chatReq := services.ChatRequest{
+		Message:   req.Message,
+		SessionID: req.SessionID,
+		BotID:     botID,
+		UserID:    &userID,
+	}
+	result, err := h.ChatService.ProcessChat(ctx, chatReq, cbot, ragConfig)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Convert sources
 	var sources []sourceUsed
-	if err == nil && qc != nil {
-		ctxText, metas, _ := rag.SearchContext(embedding, cbot.ID)
-		contextText = ctxText
-		for _, m := range metas {
-			sources = append(sources, sourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
-		}
+	for _, s := range result.Sources {
+		sources = append(sources, sourceUsed{ChunkIndex: s.ChunkIndex, SourceType: s.SourceType})
 	}
-
-	// Completion
-	var ans string
-	var tokens int
-
-	// Get language config
-	langCode := defaultLang(cbot.LanguageCode)
-	cfg := langconfig.Get(langCode)
-
-	if strings.TrimSpace(contextText) == "" {
-		ans = cfg.ResponseTemplates.NoInfoFound
-		tokens = 0
-	} else {
-		sp := systemPrompt(strings.TrimSpace(cbot.SystemPrompt), cfg)
-		ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
-		if err != nil {
-			ans = cfg.ResponseTemplates.ErrorMessage
-			tokens = 0
-		}
-	}
-	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: ans, TokensUsed: tokens}
-	if _, err = db.CreateMessage(r.Context(), h.DB, am); err == nil {
-		_ = db.IncrementConversationMessageCount(r.Context(), h.DB, conv.ID)
-	}
-
-	// Update Analytics
-	// Check if this was a new conversation (0 messages before this interaction)
-	isNew := conv.MessageCount == 0
-	// We added 2 messages (User + Assistant)
-	// Note: IncrementConversationMessageCount was called twice (once for user, once for assistant)
-	// But conv.MessageCount holds the value *before* these increments because we haven't re-fetched it.
-	// So checking conv.MessageCount == 0 is correct for "was it new when we started".
-
-	go func() {
-		// Use a background context or the request context if it's not cancelled immediately
-		// Better to use a detached context to ensure it runs even if request finishes
-		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = db.IncrementAnalytics(bgCtx, h.DB, cbot.ID, time.Now(), isNew, tokens)
-	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(chatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
+	if err = json.NewEncoder(w).Encode(chatResponse{Response: result.Response, TokensUsed: result.TokensUsed, SourcesUsed: sources}); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
@@ -216,21 +192,3 @@ func chatTimeout() time.Duration {
 	return d
 }
 
-func defaultLang(code string) string {
-	s := strings.TrimSpace(code)
-	if s == "" {
-		return "tr"
-	}
-	i := strings.Index(s, "-")
-	if i > 0 {
-		s = s[:i]
-	}
-	return s
-}
-
-func systemPrompt(sp string, cfg langconfig.LanguageConfig) string {
-	if strings.TrimSpace(sp) == "" {
-		return cfg.ResponseTemplates.DefaultSystemPrompt
-	}
-	return sp
-}

@@ -19,23 +19,38 @@ func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, dat
 		convInc = 1
 	}
 
-	// We don't have a total_tokens column in the schema provided in docs/chatbot_saas_implementation_guide.md
-	// The schema has: total_conversations, total_messages, unanswered_messages, thumbs_up_count, thumbs_down_count, average_tokens_per_message
-	// To keep it simple and consistent with the schema, we will just update message and conversation counts for now.
-	// If we want to track tokens, we should probably add a total_tokens_used column.
-	// For now, let's assume we want to track what we can.
-
 	query := `
-		INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations, total_tokens_used)
+		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (chatbot_id, analytics_date)
 		DO UPDATE SET
 			total_messages = analytics.total_messages + EXCLUDED.total_messages,
-			total_conversations = analytics.total_conversations + EXCLUDED.total_conversations
+			total_conversations = analytics.total_conversations + EXCLUDED.total_conversations,
+			total_tokens_used = analytics.total_tokens_used + EXCLUDED.total_tokens_used
 	`
 
-	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, msgInc, convInc)
+	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, msgInc, convInc, tokens)
 	return err
+}
+
+// GetMonthlyTokenUsage returns the total tokens used by all chatbots of a user in the current month.
+func GetMonthlyTokenUsage(ctx context.Context, pool *sql.DB, userID string) (int, error) {
+	now := time.Now()
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	startStr := startOfMonth.Format("2006-01-02")
+
+	var total int
+	query := `
+		SELECT COALESCE(SUM(a.total_tokens_used), 0)
+		FROM analytics a
+		JOIN chatbots c ON a.chatbot_id = c.id
+		WHERE c.user_id = $1 AND a.analytics_date >= $2
+	`
+	err := pool.QueryRowContext(ctx, query, userID, startStr).Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 // IncrementFeedback updates the thumbs up/down count in analytics

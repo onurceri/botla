@@ -9,17 +9,13 @@ import (
 
 	"github.com/neurosnap/sentences"
 	"github.com/neurosnap/sentences/english"
+	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
-type Chunk struct {
-	Text       string
-	TokenCount int
-}
-
 // ChunkText splits raw text into token-aware chunks preserving paragraph and sentence boundaries.
 // targetTokens defines desired max tokens per chunk; chunks include ~15% tail overlap from previous chunk.
-func ChunkText(text string, targetTokens int, langCode string) ([]Chunk, error) {
+func ChunkText(text string, targetTokens int, langCode string) ([]models.Chunk, error) {
 	s := strings.TrimSpace(text)
 	if s == "" {
 		return nil, nil
@@ -29,7 +25,7 @@ func ChunkText(text string, targetTokens int, langCode string) ([]Chunk, error) 
 	}
 
 	paras := splitParagraphs(s)
-	var chunks []Chunk
+	var chunks []models.Chunk
 	var current []string
 	var prevTail []string
 
@@ -42,7 +38,7 @@ func ChunkText(text string, targetTokens int, langCode string) ([]Chunk, error) 
 		if tokens == 0 && !force {
 			return
 		}
-		chunks = append(chunks, Chunk{Text: joined, TokenCount: tokens})
+		chunks = append(chunks, models.Chunk{Text: joined, TokenCount: tokens})
 		// compute tail ~15% of chunk tokens using sentence boundaries
 		tailTokens := int(math.Round(float64(tokens) * 0.15))
 		prevTail = tailFromSentences(current, tailTokens, langCode)

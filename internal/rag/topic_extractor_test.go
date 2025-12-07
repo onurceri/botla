@@ -69,3 +69,21 @@ func TestNormalizeSuggestions_DedupeAndCap(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractIngestionMetadata_EmptyQuestionsInJSON(t *testing.T) {
+	// Valid JSON but empty questions -> should derive from summary
+	js := `{
+        "capability_summary": "This text describes the refund policy.",
+        "suggested_questions": []
+    }`
+	im, err := ExtractIngestionMetadata(context.Background(), mockLLM{out: js}, "demo content", "en")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if im.CapabilitySummary == "" {
+		t.Fatalf("summary empty")
+	}
+	if len(im.SuggestedQuestions) == 0 {
+		t.Fatalf("expected derived questions when JSON list is empty")
+	}
+}

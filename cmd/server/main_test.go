@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/api/handlers"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 func TestChatbotsDispatchHandler_Routes(t *testing.T) {
@@ -30,4 +33,24 @@ func TestChatbotsDispatchHandler_Routes(t *testing.T) {
 			t.Fatalf("path %s: got %d want %d", c.path, w.Code, c.code)
 		}
 	}
+}
+
+func TestNewHTTPServer_Config(t *testing.T) {
+	mux := http.NewServeMux()
+	srv := newHTTPServer("8081", mux)
+	if srv.Addr != ":8081" {
+		t.Fatalf("addr got %s want %s", srv.Addr, ":8081")
+	}
+	if srv.Handler == nil {
+		t.Fatalf("handler should be set")
+	}
+}
+
+func TestStartAndShutdownServer(t *testing.T) {
+	mux := http.NewServeMux()
+	srv := newHTTPServer("0", mux)
+	log := logger.New("ERROR")
+	startServerAsync(srv, log, "0")
+	db, _ := sql.Open("pgx", "postgres://localhost")
+	shutdownServer(srv, log, db)
 }

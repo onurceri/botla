@@ -73,24 +73,24 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 		if err != nil {
 			lastErr = err
 		} else {
-			defer func() { _ = res.Body.Close() }()
 			if res.StatusCode == http.StatusOK {
 				var er embeddingResponse
-				if err := json.NewDecoder(res.Body).Decode(&er); err != nil {
+				err := json.NewDecoder(res.Body).Decode(&er)
+				_ = res.Body.Close()
+				if err != nil {
 					lastErr = err
+				} else if len(er.Data) == 0 {
+					lastErr = errors.New("no embedding returned")
 				} else {
-					if len(er.Data) == 0 {
-						lastErr = errors.New("no embedding returned")
-					} else {
-						out := make([]float32, len(er.Data[0].Embedding))
-						for i, v := range er.Data[0].Embedding {
-							out[i] = float32(v)
-						}
-						return out, nil
+					out := make([]float32, len(er.Data[0].Embedding))
+					for i, v := range er.Data[0].Embedding {
+						out[i] = float32(v)
 					}
+					return out, nil
 				}
 			} else {
 				lastErr = errors.New(res.Status)
+				_ = res.Body.Close()
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
@@ -119,27 +119,27 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 		if err != nil {
 			lastErr = err
 		} else {
-			defer func() { _ = res.Body.Close() }()
 			if res.StatusCode == http.StatusOK {
 				var er embeddingResponse
-				if err := json.NewDecoder(res.Body).Decode(&er); err != nil {
+				err := json.NewDecoder(res.Body).Decode(&er)
+				_ = res.Body.Close()
+				if err != nil {
 					lastErr = err
+				} else if len(er.Data) == 0 {
+					lastErr = errors.New("no embedding returned")
 				} else {
-					if len(er.Data) == 0 {
-						lastErr = errors.New("no embedding returned")
-					} else {
-						out := make([][]float32, len(er.Data))
-						for i := range er.Data {
-							out[i] = make([]float32, len(er.Data[i].Embedding))
-							for j, v := range er.Data[i].Embedding {
-								out[i][j] = float32(v)
-							}
+					out := make([][]float32, len(er.Data))
+					for i := range er.Data {
+						out[i] = make([]float32, len(er.Data[i].Embedding))
+						for j, v := range er.Data[i].Embedding {
+							out[i][j] = float32(v)
 						}
-						return out, nil
 					}
+					return out, nil
 				}
 			} else {
 				lastErr = errors.New(res.Status)
+				_ = res.Body.Close()
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
@@ -193,20 +193,20 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, systemPrompt, conte
 		if err != nil {
 			lastErr = err
 		} else {
-			defer func() { _ = res.Body.Close() }()
 			if res.StatusCode == http.StatusOK {
 				var cr chatResponse
-				if err := json.NewDecoder(res.Body).Decode(&cr); err != nil {
+				err := json.NewDecoder(res.Body).Decode(&cr)
+				_ = res.Body.Close()
+				if err != nil {
 					lastErr = err
+				} else if len(cr.Choices) == 0 {
+					lastErr = errors.New("no completion returned")
 				} else {
-					if len(cr.Choices) == 0 {
-						lastErr = errors.New("no completion returned")
-					} else {
-						return cr.Choices[0].Message.Content, cr.Usage.TotalTokens, nil
-					}
+					return cr.Choices[0].Message.Content, cr.Usage.TotalTokens, nil
 				}
 			} else {
 				lastErr = errors.New(res.Status)
+				_ = res.Body.Close()
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)

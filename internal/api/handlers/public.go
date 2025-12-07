@@ -10,9 +10,8 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/internal/services"
 )
 
 type publicChatbot struct {
@@ -121,119 +120,112 @@ type publicChatResponse struct {
 	SourcesUsed []publicSourceUsed `json:"sources_used"`
 }
 
-func PublicChat(dbpool *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		const prefix = "/api/v1/public/chatbots/"
-		path := r.URL.Path
-		if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, "/chat") {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		var err error
-		botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
-		cbot, err := db.GetChatbotByID(r.Context(), dbpool, botID)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if cbot == nil {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		var req publicChatRequest
-		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		req.Message = strings.TrimSpace(req.Message)
-		if req.Message == "" || strings.TrimSpace(req.SessionID) == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+// PublicHandlers contains handlers for public (unauthenticated) endpoints
+type PublicHandlers struct {
+	DB          *sql.DB
+	ChatService *services.ChatService
+}
 
-		conv, err := db.GetOrCreateConversationBySessionID(r.Context(), dbpool, cbot.ID, req.SessionID)
-		if err != nil || conv == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		um := &models.Message{ConversationID: conv.ID, Role: "user", Content: req.Message, TokensUsed: 0}
-		if _, err = db.CreateMessage(r.Context(), dbpool, um); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		_ = db.IncrementConversationMessageCount(r.Context(), dbpool, conv.ID)
+// PublicChat handles public chat requests using the ChatService
+func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	const prefix = "/api/v1/public/chatbots/"
+	path := r.URL.Path
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, "/chat") {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
-		oai, err := rag.NewOpenAIClientFromEnv()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		qc, err := rag.NewQdrantClientFromEnv()
-		if err != nil {
-			qc = nil
-		}
+	botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
+	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if cbot == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
-		to := chatTimeout()
-		ctx, cancel := context.WithTimeout(r.Context(), to)
-		defer cancel()
-		embedding, err := oai.CreateEmbedding(ctx, req.Message)
-		var contextText string
-		var sources []publicSourceUsed
-		if err == nil && qc != nil {
-			ctxText, metas, _ := rag.SearchContext(embedding, cbot.ID)
-			contextText = ctxText
-			for _, m := range metas {
-				sources = append(sources, publicSourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
+	// Plan and limits
+	plan, err := db.GetPlanByUserID(r.Context(), h.DB, cbot.UserID)
+	var ragConfig models.RAGConfig
+	if err == nil && plan != nil {
+		ragConfig = plan.Config.Chat.RAG
+		// Check monthly token limit
+		if plan.Config.Chat.MaxMonthlyTokens > 0 {
+			used, uerr := db.GetMonthlyTokenUsage(r.Context(), h.DB, cbot.UserID)
+			if uerr == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
+				http.Error(w, "Monthly token limit exceeded", http.StatusPaymentRequired)
+				return
 			}
 		}
-		// Completion
-		var ans string
-		var tokens int
-
-		// Get language config
-		langCode := cbot.LanguageCode
-		if langCode == "" {
-			langCode = "tr"
-		} else {
-			if i := strings.Index(langCode, "-"); i > 0 {
-				langCode = langCode[:i]
+		// Enforce allowed model if set
+		if len(plan.Config.Chat.AllowedModels) > 0 {
+			allowed := false
+			for _, m := range plan.Config.Chat.AllowedModels {
+				if m == cbot.Model {
+					allowed = true
+					break
+				}
 			}
-		}
-		cfg := langconfig.Get(langCode)
-
-		if strings.TrimSpace(contextText) == "" {
-			ans = cfg.ResponseTemplates.NoInfoFound
-			tokens = 0
-		} else {
-			sp := strings.TrimSpace(cbot.SystemPrompt)
-			if sp == "" {
-				sp = cfg.ResponseTemplates.DefaultSystemPrompt
+			if !allowed {
+				cbot.Model = plan.Config.Chat.AllowedModels[0]
 			}
-			ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, cbot.Model, cbot.Temperature, cbot.MaxTokens)
-			if err != nil {
-				ans = cfg.ResponseTemplates.ErrorMessage
-				tokens = 0
-			}
-		}
-		am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: ans, TokensUsed: tokens}
-		if _, err = db.CreateMessage(r.Context(), dbpool, am); err == nil {
-			_ = db.IncrementConversationMessageCount(r.Context(), dbpool, conv.ID)
-		}
-
-		go func() {
-			bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = db.IncrementAnalytics(bgCtx, dbpool, cbot.ID, time.Now(), conv.MessageCount == 0, tokens)
-		}()
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if err = json.NewEncoder(w).Encode(publicChatResponse{Response: ans, TokensUsed: tokens, SourcesUsed: sources}); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
+
+	var req publicChatRequest
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	req.Message = strings.TrimSpace(req.Message)
+	if req.Message == "" || strings.TrimSpace(req.SessionID) == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Create context with timeout
+	to := chatTimeout()
+	ctx, cancel := context.WithTimeout(r.Context(), to)
+	defer cancel()
+
+	// Delegate to chat service
+	chatReq := services.ChatRequest{
+		Message:   req.Message,
+		SessionID: req.SessionID,
+		BotID:     botID,
+		UserID:    nil, // Public/anonymous
+	}
+	result, err := h.ChatService.ProcessChat(ctx, chatReq, cbot, ragConfig)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Convert sources
+	var sources []publicSourceUsed
+	for _, s := range result.Sources {
+		sources = append(sources, publicSourceUsed{ChunkIndex: s.ChunkIndex, SourceType: s.SourceType})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(publicChatResponse{Response: result.Response, TokensUsed: result.TokensUsed, SourcesUsed: sources}); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+// PublicChatFunc returns a http.HandlerFunc for backwards compatibility
+// Deprecated: Use PublicHandlers.PublicChat instead
+func PublicChat(dbpool *sql.DB) http.HandlerFunc {
+	// Create a ChatService for backwards compatibility
+	// Note: This is a transitional pattern; in production, ChatService should be properly initialized
+	svc := services.NewChatService(dbpool, nil, nil, nil)
+	h := &PublicHandlers{DB: dbpool, ChatService: svc}
+	return h.PublicChat
 }

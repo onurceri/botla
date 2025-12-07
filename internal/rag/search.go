@@ -6,16 +6,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/onurceri/botla-co/internal/models"
 )
 
-type ChunkMetadata struct {
-	SourceID   string
-	SourceType string
-	ChunkIndex int
-	Score      float64
-}
-
-func SearchContext(queryEmbedding []float32, chatbotID string) (string, []ChunkMetadata, error) {
+func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, limitMaxTokens int) (string, []models.ChunkMetadata, error) {
 	if len(queryEmbedding) == 0 || chatbotID == "" {
 		return "", nil, nil
 	}
@@ -24,19 +19,22 @@ func SearchContext(queryEmbedding []float32, chatbotID string) (string, []ChunkM
 		return "", nil, err
 	}
 	ctx := context.Background()
-	topK := 5
-	if v := os.Getenv("RAG_TOPK"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			topK = n
+	topK := limitTopK
+	if topK <= 0 {
+		topK = 5
+		if v := os.Getenv("RAG_TOPK"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				topK = n
+			}
 		}
 	}
 	items, err := qc.SearchSimilar(ctx, queryEmbedding, chatbotID, topK)
 	if err != nil {
 		return "", nil, err
 	}
-	var metas []ChunkMetadata
+	var metas []models.ChunkMetadata
 	for _, it := range items {
-		metas = append(metas, ChunkMetadata{SourceID: it.Payload.SourceID, SourceType: it.Payload.SourceType, ChunkIndex: it.Payload.ChunkIndex, Score: it.Score})
+		metas = append(metas, models.ChunkMetadata{SourceID: it.Payload.SourceID, SourceType: it.Payload.SourceType, ChunkIndex: it.Payload.ChunkIndex, Score: it.Score})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Score > items[j].Score })
 	threshold := 0.2
@@ -46,12 +44,15 @@ func SearchContext(queryEmbedding []float32, chatbotID string) (string, []ChunkM
 		}
 	}
 	var parts []string
-	var used []ChunkMetadata
+	var used []models.ChunkMetadata
 	var tokens int
-	maxCtx := 2000
-	if v := os.Getenv("RAG_MAX_CONTEXT_TOKENS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			maxCtx = n
+	maxCtx := limitMaxTokens
+	if maxCtx <= 0 {
+		maxCtx = 2000
+		if v := os.Getenv("RAG_MAX_CONTEXT_TOKENS"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				maxCtx = n
+			}
 		}
 	}
 	for _, it := range items {
@@ -72,7 +73,7 @@ func SearchContext(queryEmbedding []float32, chatbotID string) (string, []ChunkM
 		}
 		parts = append(parts, next)
 		tokens += nt
-		used = append(used, ChunkMetadata{SourceID: it.Payload.SourceID, SourceType: it.Payload.SourceType, ChunkIndex: it.Payload.ChunkIndex, Score: it.Score})
+		used = append(used, models.ChunkMetadata{SourceID: it.Payload.SourceID, SourceType: it.Payload.SourceType, ChunkIndex: it.Payload.ChunkIndex, Score: it.Score})
 	}
 	if len(parts) == 0 {
 		return "", metas, nil

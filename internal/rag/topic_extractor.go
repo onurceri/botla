@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
@@ -32,15 +33,10 @@ func ExtractTopics(ctx context.Context, client LLMClient, content string, langCo
 	return strings.TrimSpace(summary), nil
 }
 
-type IngestionMetadata struct {
-	CapabilitySummary  string   `json:"capability_summary"`
-	SuggestedQuestions []string `json:"suggested_questions"`
-}
-
 var fenceRe = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
 
 // ExtractIngestionMetadata asks the LLM for structured output with capability summary and example questions.
-func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content string, langCode string) (IngestionMetadata, error) {
+func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content string, langCode string) (models.IngestionMetadata, error) {
 	if len(content) > 4000 {
 		content = content[:4000]
 	}
@@ -52,22 +48,36 @@ func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content str
 
 	out, _, err := client.CreateCompletion(ctx, sp, ct, um, "gpt-4o-mini", 0.0, 300)
 	if err != nil {
-		return IngestionMetadata{}, fmt.Errorf("llm call failed: %w", err)
+		return models.IngestionMetadata{}, fmt.Errorf("llm call failed: %w", err)
 	}
 	raw := strings.TrimSpace(out)
 	// If fenced code, extract inner JSON
 	if m := fenceRe.FindStringSubmatch(raw); len(m) == 2 {
 		raw = strings.TrimSpace(m[1])
 	}
-	var im IngestionMetadata
+	var im models.IngestionMetadata
 	if jerr := json.Unmarshal([]byte(raw), &im); jerr != nil {
 		// Fallback: derive minimal metadata from legacy summary
 		sum, serr := ExtractTopics(ctx, client, content, langCode)
 		if serr != nil {
-			return IngestionMetadata{}, errors.New("failed to parse and fallback summary")
+			return models.IngestionMetadata{}, errors.New("failed to parse and fallback summary")
 		}
-		im = IngestionMetadata{CapabilitySummary: strings.TrimSpace(sum), SuggestedQuestions: deriveQuestionsFromSummary(sum, cfg.Code)}
+		im = models.IngestionMetadata{CapabilitySummary: strings.TrimSpace(sum), SuggestedQuestions: deriveQuestionsFromSummary(sum, cfg.Code)}
 	}
+
+	// If JSON parsed but questions are empty, try to derive from summary
+	if len(im.SuggestedQuestions) == 0 {
+		if im.CapabilitySummary != "" {
+			im.SuggestedQuestions = deriveQuestionsFromSummary(im.CapabilitySummary, cfg.Code)
+		} else {
+			// Last resort: try legacy extraction
+			if sum, serr := ExtractTopics(ctx, client, content, langCode); serr == nil {
+				im.CapabilitySummary = strings.TrimSpace(sum)
+				im.SuggestedQuestions = deriveQuestionsFromSummary(sum, cfg.Code)
+			}
+		}
+	}
+
 	// Normalize questions: trim, drop empties, cap count/length
 	im.SuggestedQuestions = normalizeSuggestions(im.SuggestedQuestions)
 	return im, nil

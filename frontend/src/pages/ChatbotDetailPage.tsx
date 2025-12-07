@@ -57,7 +57,7 @@ const ChatbotDetailPage = () => {
   const [userPlan, setUserPlan] = useState('free')
   
   const isNew = id === 'new'
-  const { sources, refreshSources, pollStatus, handleDeleteSource } = useSourceOps(id, isNew)
+  const { sources, refreshSources, pollStatus, handleDeleteSource, handleRefreshSource, refreshingId } = useSourceOps(id, isNew)
   
   // Chat Test State
   const [chatInput, setChatInput] = useState('')
@@ -208,7 +208,13 @@ const ChatbotDetailPage = () => {
                 />
                 
                 {sources.length > 0 ? (
-                  <SourceList sources={sources as any} onDelete={handleDeleteSource} />
+                  <SourceList 
+                    sources={sources as any} 
+                    userPlan={userPlan}
+                    onDelete={handleDeleteSource} 
+                    onRefresh={handleRefreshSource}
+                    refreshingId={refreshingId}
+                  />
                 ) : (
                   <div className="rounded-2xl border border-border bg-muted/30 p-10 text-center space-y-3">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted">

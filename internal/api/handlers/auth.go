@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -10,6 +12,12 @@ import (
 	"github.com/onurceri/botla-co/internal/auth"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
+
+// hashToken creates a SHA-256 hash of the token for secure storage
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
+}
 
 type AuthHandlers struct {
 	DB     *sql.DB
@@ -139,9 +147,10 @@ func (h *AuthHandlers) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if token exists and is not revoked
+	// Check if token exists and is not revoked (lookup by hash)
 	var revoked bool
-	err = h.DB.QueryRowContext(r.Context(), "SELECT revoked FROM refresh_tokens WHERE token=$1", req.RefreshToken).Scan(&revoked)
+	tokenHash := hashToken(req.RefreshToken)
+	err = h.DB.QueryRowContext(r.Context(), "SELECT revoked FROM refresh_tokens WHERE token_hash=$1", tokenHash).Scan(&revoked)
 	if err == sql.ErrNoRows || revoked {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -152,7 +161,7 @@ func (h *AuthHandlers) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Revoke old token (Rotation)
-	_, err = h.DB.ExecContext(r.Context(), "UPDATE refresh_tokens SET revoked=true WHERE token=$1", req.RefreshToken)
+	_, err = h.DB.ExecContext(r.Context(), "UPDATE refresh_tokens SET revoked=true WHERE token_hash=$1", tokenHash)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -173,7 +182,8 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Just revoke it, don't verify signature necessarily (or verify if you want strictness)
-	_, err := h.DB.ExecContext(r.Context(), "UPDATE refresh_tokens SET revoked=true WHERE token=$1", req.RefreshToken)
+	tokenHash := hashToken(req.RefreshToken)
+	_, err := h.DB.ExecContext(r.Context(), "UPDATE refresh_tokens SET revoked=true WHERE token_hash=$1", tokenHash)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -195,7 +205,7 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	_, err = h.DB.ExecContext(r.Context(), "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)", userID, refreshToken, time.Now().Add(7*24*time.Hour))
+	_, err = h.DB.ExecContext(r.Context(), "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)", userID, hashToken(refreshToken), time.Now().Add(7*24*time.Hour))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

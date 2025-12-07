@@ -1,10 +1,21 @@
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, RefreshCw, AlertCircle, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Source = { id: string; source_type: string; original_filename?: string; source_url?: string; status: string; chunk_count: number }
 
-export default function SourceList({ sources, onDelete }: { sources: Source[]; onDelete: (id: string) => void }) {
+interface SourceListProps {
+  sources: Source[]
+  userPlan: string
+  onDelete: (id: string) => void
+  onRefresh: (id: string) => void
+  refreshingId?: string
+}
+
+export default function SourceList({ sources, userPlan, onDelete, onRefresh, refreshingId }: SourceListProps) {
+  const canRefresh = userPlan !== 'free'
+
   return (
     <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
       <table className="w-full text-sm text-left">
@@ -39,7 +50,32 @@ export default function SourceList({ sources, onDelete }: { sources: Source[]; o
                 </span>
               </td>
               <td className="px-4 py-3 text-muted-foreground">{s.chunk_count}</td>
-              <td className="px-4 py-3 text-right">
+              <td className="px-4 py-3 text-right space-x-1">
+                {s.source_type === 'url' && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-primary disabled:opacity-50"
+                            aria-label="Kaynağı Yenile"
+                            disabled={!canRefresh || s.status === 'pending' || s.status === 'processing' || refreshingId === s.id}
+                            onClick={() => onRefresh(s.id)}
+                          >
+                            <RefreshCw className={cn("w-4 h-4", refreshingId === s.id && "animate-spin")} />
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!canRefresh && (
+                        <TooltipContent>
+                          <p>Yenileme özelliği ücretli planlarda aktiftir</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 <Button 
                   variant="ghost" 
                   size="icon" 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/internal/processing"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
@@ -34,7 +35,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 	memStore := storage.NewMemoryStorage()
 	q, _ := processing.StartSourceQueue(pool, memStore)
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore}
-	chh := &handlers.ChatHandlers{DB: pool}
+	chatSvc := services.NewChatService(pool, nil, nil, nil) // nil clients -> lazy init
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	mux.Handle("/api/v1/chatbots/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
@@ -47,7 +49,13 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 		}
 		ch.ByID(w, r)
 	})))
-	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(sh.GetSourceStatusOrDelete)))
+	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/refresh") {
+			sh.RefreshSource(w, r)
+			return
+		}
+		sh.GetSourceStatusOrDelete(w, r)
+	})))
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"

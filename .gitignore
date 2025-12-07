@@ -79,3 +79,6 @@ mem.prof
 *.pem
 *.key
 *.crt
+
+# IDEs
+#.trae/

@@ -14,6 +14,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
@@ -81,11 +82,17 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	}
 
 	// Sources queue
-	q, _ := processing.StartSourceQueue(pool, storageService)
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
-	chh := &handlers.ChatHandlers{DB: pool}
+    q, _ := processing.StartSourceQueue(pool, storageService)
+    sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
+	// Chat service
+	oaiClient, _ := rag.NewOpenAIClientFromEnv()
+	qdClient, _ := rag.NewQdrantClientFromEnv()
+	chatSvc := services.NewChatService(pool, oaiClient, qdClient, log)
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	// Composite handler under /api/v1/chatbots/
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh))
+    // Per-route limiter for sources endpoints
+    rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
+    mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, rlSources))
 
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
@@ -99,8 +106,14 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	// Feedback (protected)
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 
-	// Source status and delete
-	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(sh.GetSourceStatusOrDelete)))
+	// Source status, delete, and refresh
+	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/refresh") {
+			sh.RefreshSource(w, r)
+			return
+		}
+		sh.GetSourceStatusOrDelete(w, r)
+	}))))
 
 	anh := &handlers.AnalyticsHandlers{DB: pool}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
@@ -108,19 +121,19 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	return mux
 }
 
-func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers) http.Handler {
-	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const p = "/api/v1/chatbots/"
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
-			sh.ChatbotSources(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			chh.Chat(w, r)
-			return
-		}
-		ch.ByID(w, r)
-	}))
+func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, rlSources *middleware.RateLimiter) http.Handler {
+    return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        const p = "/api/v1/chatbots/"
+        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
+            middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.ChatbotSources)).ServeHTTP(w, r)
+            return
+        }
+        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
+            chh.Chat(w, r)
+            return
+        }
+        ch.ByID(w, r)
+    }))
 }
 
 func newHTTPServer(port string, h http.Handler) *http.Server {
@@ -152,4 +165,9 @@ func shutdownServer(srv *http.Server, log *logger.Logger, pool *sql.DB) {
 	log.Info("server_shutdown", map[string]any{})
 	_ = srv.Shutdown(ctx)
 	_ = pool.Close()
+}
+// Backward-compatible dispatcher used by tests
+func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers) http.Handler {
+    rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
+    return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, rlSources)
 }

@@ -2,6 +2,8 @@ package integration
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -30,8 +32,10 @@ func TestAuth_RevokedRefreshToken_401(t *testing.T) {
 		t.Fatalf("missing refresh token")
 	}
 
-	// Manually revoke the refresh token in DB
-	_, err = te.DB.Exec("UPDATE refresh_tokens SET revoked=true WHERE token=$1", tp.RefreshToken)
+	// Manually revoke the refresh token in DB (lookup by hash)
+	h := sha256.Sum256([]byte(tp.RefreshToken))
+	tokenHash := hex.EncodeToString(h[:])
+	_, err = te.DB.Exec("UPDATE refresh_tokens SET revoked=true WHERE token_hash=$1", tokenHash)
 	if err != nil {
 		t.Fatalf("db revoke failed: %v", err)
 	}

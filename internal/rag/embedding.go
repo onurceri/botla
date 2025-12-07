@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
@@ -16,7 +17,7 @@ import (
 // - Retry: up to 3x per batch with exponential backoff handled in client
 // - Error recovery: skip failed items; continue others
 // - Cost tracking: logs approximate cost based on chunk token counts
-func GenerateEmbeddings(chunks []Chunk, chatbotID string) error {
+func GenerateEmbeddings(chunks []models.Chunk, chatbotID string) error {
 	if len(chunks) == 0 || chatbotID == "" {
 		return nil
 	}
@@ -91,7 +92,7 @@ func GenerateEmbeddings(chunks []Chunk, chatbotID string) error {
 	return nil
 }
 
-func GenerateEmbeddingsForSource(chunks []Chunk, chatbotID, sourceID, sourceType string) error {
+func GenerateEmbeddingsForSource(chunks []models.Chunk, chatbotID, sourceID, sourceType string) error {
 	if len(chunks) == 0 || chatbotID == "" || sourceID == "" {
 		return nil
 	}

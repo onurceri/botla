@@ -6,6 +6,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const (
+	JWTIssuer   = "botla-co"
+	JWTAudience = "botla-api"
+)
+
 type Claims struct {
 	UserID    string
 	TokenType string
@@ -19,6 +24,8 @@ func GenerateToken(secret string, userID string, tokenType string, ttl time.Dura
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
+			Issuer:    JWTIssuer,
+			Audience:  jwt.ClaimStrings{JWTAudience},
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
@@ -30,7 +37,7 @@ func GenerateToken(secret string, userID string, tokenType string, ttl time.Dura
 func VerifyToken(secret string, tokenString string) (*Claims, error) {
 	parsed, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (any, error) {
 		return []byte(secret), nil
-	})
+	}, jwt.WithIssuer(JWTIssuer), jwt.WithAudience(JWTAudience))
 	if err != nil {
 		return nil, err
 	}

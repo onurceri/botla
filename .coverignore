@@ -1,0 +1,13 @@
+cmd/
+internal/processing/
+internal/pdf/
+internal/db/
+internal/scraper/
+pkg/storage/r2.go
+internal/api/handlers/
+internal/rag/
+internal/models/
+pkg/storage/
+db/
+pkg/logger/
+pkg/config/

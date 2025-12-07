@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/models"
 )
 
 // simulate OpenAI embeddings with first failure then success
@@ -53,7 +55,7 @@ func TestGenerateEmbeddings_RetryAndWarn(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "k")
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qdr.URL)
-	chunks := []Chunk{{Text: "hello", TokenCount: 2}}
+	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	if err := GenerateEmbeddings(chunks, "cb"); err != nil {
 		t.Fatalf("gen err: %v", err)
 	}
@@ -75,7 +77,7 @@ func TestGenerateEmbeddingsForSource_UpsertError(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "k")
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qdr.URL)
-	chunks := []Chunk{{Text: "hello", TokenCount: 2}}
+	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	if err := GenerateEmbeddingsForSource(chunks, "cb", "src", "file"); err == nil {
 		t.Fatalf("expected error")
 	}

@@ -3,7 +3,7 @@ package pdf
 import "testing"
 
 func TestExtractPDFText_NoFile(t *testing.T) {
-	if _, err := ExtractPDFText("/tmp/does-not-exist.pdf", "tr"); err == nil {
+	if _, err := ExtractPDFText("/tmp/does-not-exist.pdf", "tr", false); err == nil {
 		t.Fatalf("expected error for missing file")
 	}
 }

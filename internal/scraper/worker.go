@@ -6,9 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"net/url"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly"
 	"github.com/onurceri/botla-co/pkg/logger"
+	"golang.org/x/net/html"
 )
 
 type ScrapingTask struct {
@@ -81,7 +84,60 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig) (string, error) {
 	return content, nil
 }
 
-func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig) (string, error) {
+// ExtractLinks finds all links in the HTML content that belong to the same domain as baseURL.
+// It returns a list of absolute URLs.
+func ExtractLinks(htmlContent string, baseURL string) ([]string, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := html.Parse(strings.NewReader(htmlContent))
+	if err != nil {
+		return nil, err
+	}
+
+	var links []string
+	seen := make(map[string]bool)
+
+	var f func(*html.Node)
+	f = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			for _, a := range n.Attr {
+				if a.Key == "href" {
+					val := strings.TrimSpace(a.Val)
+					if val == "" || strings.HasPrefix(val, "#") || strings.HasPrefix(val, "javascript:") || strings.HasPrefix(val, "mailto:") {
+						continue
+					}
+					u, err := base.Parse(val)
+					if err == nil {
+						// Normalize: remove fragment, query? maybe keep query for some sites?
+						// Let's remove fragment for sure.
+						u.Fragment = ""
+						// Only internal links (subdomains included? usually yes or strict domain match)
+						// Let's do strict host match for now or subdomain allowed?
+						// Usually "same domain" means everything under example.com including sub.example.com
+						// But safer is same host.
+						if u.Host == base.Host {
+							s := u.String()
+							if !seen[s] && s != baseURL {
+								seen[s] = true
+								links = append(links, s)
+							}
+						}
+					}
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+		}
+	}
+	f(doc)
+	return links, nil
+}
+
+func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic bool) (string, error) {
 	l := logger.New("INFO")
 	cache := NewCache()
 	k := keyFor(task.URL)
@@ -98,6 +154,19 @@ func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig) (string, erro
 		// If static content is short, try dynamic to see if we get more
 		l.Info("scraper_static_short", map[string]any{"url": task.URL, "len": len(s)})
 	}
+
+	if !allowDynamic {
+		if s != "" {
+			_ = cache.Set(k, s, 7*24*time.Hour)
+			return s, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		// If s is empty and no error (e.g. empty page), return empty
+		return "", nil
+	}
+
 	// Fallback to dynamic
 	dc := DefaultDynamicConfig()
 	ds, derr := ScrapeDynamicURL(task.URL, dc)

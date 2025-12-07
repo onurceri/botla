@@ -24,9 +24,17 @@ export const uploadURLSource = async (chatbotId: string, url: string) => {
   return data as { id: string }
 }
 
-export const getSourceStatus = async (sourceId: string) => {
-  const { data } = await api.get(`/api/v1/sources/${sourceId}`)
-  return data
+export const getSourceStatus = async (sourceId: string, etag?: string) => {
+  try {
+    const res = await api.get(`/api/v1/sources/${sourceId}`, { headers: etag ? { 'If-None-Match': etag } : undefined })
+    const newEtag = res.headers['etag'] as string | undefined
+    return { data: res.data, etag: newEtag, notModified: false }
+  } catch (err: any) {
+    if (err?.response?.status === 304) {
+      return { data: null, etag, notModified: true }
+    }
+    throw err
+  }
 }
 
 export const listSources = async (chatbotId: string) => {
@@ -37,4 +45,9 @@ export const listSources = async (chatbotId: string) => {
 export const deleteSource = async (sourceId: string) => {
   const { data } = await api.delete(`/api/v1/sources/${sourceId}`)
   return data
+}
+
+export const refreshSource = async (sourceId: string) => {
+  const { data } = await api.post(`/api/v1/sources/${sourceId}/refresh`)
+  return data as { id: string }
 }

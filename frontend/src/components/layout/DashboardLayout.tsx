@@ -3,13 +3,14 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   Bot, 
-  Settings, 
   LogOut, 
   Menu, 
   X,
   ChevronRight,
   Pin,
-  MousePointer
+  MousePointer,
+  User,
+  CreditCard
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -93,7 +94,11 @@ const DashboardLayout = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
     { icon: Bot, label: 'Chatbots', to: '/chatbots' },
-    { icon: Settings, label: 'Settings', to: '/settings' },
+  ]
+
+  const settingsItems = [
+    { icon: User, label: 'Profil', to: '/settings/profile' },
+    { icon: CreditCard, label: 'Plan & Fatura', to: '/settings/plan' },
   ]
 
   return (
@@ -151,6 +156,20 @@ const DashboardLayout = () => {
             Platform
           </div>
           {navItems.map((item) => (
+            <SidebarItem 
+              key={item.to}
+              icon={item.icon}
+              label={item.label}
+              to={item.to}
+              active={location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))}
+              collapsed={isCollapsed}
+            />
+          ))}
+
+          <div className={cn("px-3 mt-6 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", isCollapsed ? "hidden lg:group-hover/sidebar:block" : undefined)}>
+            Ayarlar
+          </div>
+          {settingsItems.map((item) => (
             <SidebarItem 
               key={item.to}
               icon={item.icon}

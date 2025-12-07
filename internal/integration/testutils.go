@@ -2,6 +2,7 @@ package integration
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http/httptest"
 	"os"
 
@@ -54,6 +55,12 @@ func SetupTestEnv() (*TestEnv, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
+	// Validate schema name to prevent SQL injection
+	for _, c := range cfg.DB_SCHEMA {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+			return nil, fmt.Errorf("invalid schema name: %s", cfg.DB_SCHEMA)
+		}
+	}
 	_, _ = db.Exec("SET search_path TO " + cfg.DB_SCHEMA)
 	// ensure extensions and canonical tables for plans/languages exist in test schema
 	_, _ = db.Exec(`CREATE EXTENSION IF NOT EXISTS pgcrypto`)
@@ -98,12 +105,31 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_id UUID`)
 	// ensure chatbots has language_id column for tests
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS language_id UUID REFERENCES languages(id)`)
-	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language_id UUID`)
+	// ensure analytics has total_tokens_used
+	_, _ = db.Exec(`ALTER TABLE analytics ADD COLUMN IF NOT EXISTS total_tokens_used INTEGER DEFAULT 0`)
+    _, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language_id UUID`)
 	// ensure columns exist for tests
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS allowed_domains TEXT`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS embed_secret VARCHAR(255)`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS secure_embed_enabled BOOLEAN DEFAULT false`)
-	mux := NewTestMux(cfg, db)
+    _, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS secure_embed_enabled BOOLEAN DEFAULT false`)
+    // ensure new source columns exist for tests
+    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
+    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
+    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
+    // create usage_ingestions table for tests
+    _, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
+        user_id VARCHAR(64) NOT NULL,
+        period_month DATE NOT NULL,
+        sources_count INT NOT NULL DEFAULT 0,
+        embedding_tokens INT NOT NULL DEFAULT 0,
+        refresh_count INT NOT NULL DEFAULT 0,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, period_month)
+    )`)
+    // Add refresh tracking columns
+    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
+    _, _ = db.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)
+    mux := NewTestMux(cfg, db)
 	srv := httptest.NewServer(mux)
 	return &TestEnv{Cfg: cfg, DB: db, Server: srv}, nil
 }
