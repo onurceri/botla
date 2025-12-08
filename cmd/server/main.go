@@ -38,10 +38,7 @@ func main() {
 	}
 
 	// Ensure embeddings collection exists
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if err := qdrantClient.EnsureEmbeddingsCollection(ctx); err != nil {
-		log.Error("qdrant_ensure_collection_failed", map[string]any{"error": err.Error()})
+	if err := ensureQdrantCollection(qdrantClient, log); err != nil {
 		os.Exit(1)
 	}
 	log.Info("qdrant_collection_ready", nil)
@@ -113,7 +110,9 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			handlers.PublicChat(pool)(w, r)
+			// Public handlers
+			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
+			ph.PublicChat(w, r)
 			return
 		}
 		handlers.PublicChatbotConfig(pool)(w, r)
@@ -217,9 +216,12 @@ func shutdownServer(srv *http.Server, log *logger.Logger, pool *sql.DB) {
 	_ = pool.Close()
 }
 
-// Backward-compatible dispatcher used by tests
-func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers) http.Handler {
-	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
-	acth := &handlers.ActionHandlers{DB: ch.DB}
-	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, rlSources)
+func ensureQdrantCollection(qdrantClient *rag.QdrantClient, log *logger.Logger) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := qdrantClient.EnsureEmbeddingsCollection(ctx); err != nil {
+		log.Error("qdrant_ensure_collection_failed", map[string]any{"error": err.Error()})
+		return err
+	}
+	return nil
 }

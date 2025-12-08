@@ -30,14 +30,14 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 	if action == nil {
 		// If action is nil, check if it is a built-in tool
 		if toolCall.Function.Name == "list_sources" {
-			return e.executeBuiltin(ctx, toolCall)
+			return e.executeBuiltin(toolCall)
 		}
 		return nil, fmt.Errorf("unknown action: %s", toolCall.Function.Name)
 	}
 
 	switch action.ActionType {
 	case models.ActionTypeBuiltin:
-		return e.executeBuiltin(ctx, toolCall)
+		return e.executeBuiltin(toolCall)
 	case models.ActionTypeHTTP:
 		return e.executeHTTP(ctx, toolCall, action)
 	case models.ActionTypeZapier:
@@ -47,7 +47,7 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 	}
 }
 
-func (e *ToolExecutor) executeBuiltin(ctx context.Context, toolCall ToolCall) (*ToolResult, error) {
+func (e *ToolExecutor) executeBuiltin(toolCall ToolCall) (*ToolResult, error) {
 	switch toolCall.Function.Name {
 	case "list_sources":
 		// Return capability summaries
@@ -92,14 +92,15 @@ func (e *ToolExecutor) executeHTTP(ctx context.Context, toolCall ToolCall, actio
 	}
 
 	// Auth
-	if config.AuthType == "bearer" {
+	switch config.AuthType {
+	case "bearer":
 		// Simplified: assuming token is in AuthConfig
 		var authCfg map[string]string
 		_ = json.Unmarshal(config.AuthConfig, &authCfg)
 		if token, ok := authCfg["token"]; ok {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}
-	} else if config.AuthType == "api_key" {
+	case "api_key":
 		var authCfg map[string]string
 		_ = json.Unmarshal(config.AuthConfig, &authCfg)
 		keyName := authCfg["key"]
@@ -118,7 +119,7 @@ func (e *ToolExecutor) executeHTTP(ctx context.Context, toolCall ToolCall, actio
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -160,7 +161,7 @@ func (e *ToolExecutor) executeZapier(ctx context.Context, toolCall ToolCall, act
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -6,6 +6,9 @@ describe('OverviewPanel', () => {
   it('renders and allows editing of name and system prompt', () => {
     const setName = vi.fn()
     const setSystemPrompt = vi.fn()
+    const setModel = vi.fn()
+    const setTemperature = vi.fn()
+    const setMaxTokens = vi.fn()
 
     render(
       <OverviewPanel
@@ -13,6 +16,12 @@ describe('OverviewPanel', () => {
         setName={setName}
         systemPrompt="Merhaba"
         setSystemPrompt={setSystemPrompt}
+        model="openai:gpt-4o"
+        setModel={setModel}
+        temperature={0.5}
+        setTemperature={setTemperature}
+        maxTokens={1024}
+        setMaxTokens={setMaxTokens}
       />
     )
 

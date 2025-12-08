@@ -213,7 +213,7 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(tokenResponse{Token: accessToken, RefreshToken: refreshToken}); err != nil {
+	if err = json.NewEncoder(w).Encode(tokenResponse{Token: accessToken, RefreshToken: refreshToken}); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

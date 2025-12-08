@@ -115,5 +115,13 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, req createChatbotReques
 		IncludePaths:         pathsValue(req.IncludePaths),
 		ExcludePaths:         pathsValue(req.ExcludePaths),
 		SelectorWhitelist:    selectorsValue(req.SelectorWhitelist),
+		DiscoveryMode:        defaultString(req.DiscoveryMode, "auto"),
+		RefreshPolicy:        defaultString(req.RefreshPolicy, "manual"),
+		RefreshFrequency:     req.RefreshFrequency,
+		HideBranding:         boolValue(req.HideBranding, false),
+		CustomBranding:       req.CustomBranding,
+		ConfidenceThreshold:  defaultFloat64(req.ConfidenceThreshold, 0.7),
+		FallbackMessages:     req.FallbackMessages,
+		TopicRestrictions:    req.TopicRestrictions,
 	}
 }

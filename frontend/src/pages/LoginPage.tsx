@@ -28,7 +28,7 @@ const LoginPage = () => {
       localStorage.setItem('botla_refresh_token', data.refresh_token)
       toast('Giriş başarılı! Yönlendiriliyorsunuz...', 'success')
       navigate('/')
-    } catch (error) {
+    } catch {
       toast('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'error')
     } finally {
       setIsLoading(false)

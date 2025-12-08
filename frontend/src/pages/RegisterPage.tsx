@@ -27,7 +27,7 @@ const RegisterPage = () => {
       await api.post('/api/v1/auth/register', { full_name: name, email, password })
       toast('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
       navigate('/login')
-    } catch (error) {
+    } catch {
       toast('Kayıt başarısız. Lütfen tekrar deneyin.', 'error')
     } finally {
       setIsLoading(false)

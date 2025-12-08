@@ -17,7 +17,7 @@ func GetEnabledActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var actions []*models.ChatbotAction
 	for rows.Next() {
@@ -44,7 +44,7 @@ func GetActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*models.Ch
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var actions []*models.ChatbotAction
 	for rows.Next() {

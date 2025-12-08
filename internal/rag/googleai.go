@@ -123,33 +123,33 @@ func (c *GoogleAIClient) CreateCompletion(ctx context.Context, params models.Com
 		req.Header.Set("Content-Type", "application/json")
 
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var gr googleResponse
-				err := json.NewDecoder(res.Body).Decode(&gr)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(gr.Candidates) == 0 || len(gr.Candidates[0].Content.Parts) == 0 {
-					lastErr = errors.New("no content returned")
-				} else {
-					return &models.CompletionResult{
-						Content:     gr.Candidates[0].Content.Parts[0].Text,
-						UsageTokens: gr.UsageMetadata.TotalTokenCount,
-					}, nil
-				}
-			} else {
-				var errResp struct {
-					Error struct {
-						Message string `json:"message"`
-						Status  string `json:"status"`
-					} `json:"error"`
-				}
-				_ = json.NewDecoder(res.Body).Decode(&errResp)
-				_ = res.Body.Close()
-				lastErr = errors.New(res.Status + ": " + errResp.Error.Message)
+		case res.StatusCode != http.StatusOK:
+			var errResp struct {
+				Error struct {
+					Message string `json:"message"`
+					Status  string `json:"status"`
+				} `json:"error"`
+			}
+			_ = json.NewDecoder(res.Body).Decode(&errResp)
+			_ = res.Body.Close()
+			lastErr = errors.New(res.Status + ": " + errResp.Error.Message)
+		default:
+			var gr googleResponse
+			err := json.NewDecoder(res.Body).Decode(&gr)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(gr.Candidates) == 0 || len(gr.Candidates[0].Content.Parts) == 0:
+				lastErr = errors.New("no content returned")
+			default:
+				return &models.CompletionResult{
+					Content:     gr.Candidates[0].Content.Parts[0].Text,
+					UsageTokens: gr.UsageMetadata.TotalTokenCount,
+				}, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)

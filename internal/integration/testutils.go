@@ -57,7 +57,7 @@ func SetupTestEnv() (*TestEnv, error) {
 	db.SetMaxOpenConns(1)
 	// Validate schema name to prevent SQL injection
 	for _, c := range cfg.DB_SCHEMA {
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '_' {
 			return nil, fmt.Errorf("invalid schema name: %s", cfg.DB_SCHEMA)
 		}
 	}

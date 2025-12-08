@@ -76,6 +76,13 @@ func defaultFloat32(p *float32, d float32) float32 {
 	return d
 }
 
+func defaultFloat64(p *float64, d float64) float64 {
+	if p != nil {
+		return *p
+	}
+	return d
+}
+
 func boolValue(p *bool, d bool) bool {
 	if p != nil {
 		return *p

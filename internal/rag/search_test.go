@@ -8,7 +8,7 @@ import (
 )
 
 func TestSearchContext_Empty(t *testing.T) {
-	s, metas, err := SearchContext(nil, "", 0, 0)
+	s, metas, err := SearchContext(nil, "", 0, 0, 0)
 	if err != nil || s != "" || metas != nil {
 		t.Fatalf("unexpected for empty input")
 	}
@@ -30,9 +30,8 @@ func TestSearchContext_ThresholdAndMaxTokens(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("QDRANT_URL", srv.URL)
 	t.Setenv("RAG_TOPK", "5")
-	t.Setenv("RAG_SCORE_THRESHOLD", "0.2")
 	t.Setenv("RAG_MAX_CONTEXT_TOKENS", "5")
-	body, used, err := SearchContext([]float32{0.1}, "cb", 0, 0)
+	body, used, err := SearchContext([]float32{0.1}, "cb", 0, 0, 0.2)
 	if err != nil {
 		t.Fatalf("search err: %v", err)
 	}
@@ -48,7 +47,7 @@ func TestSearchContext_MissingQdrant(t *testing.T) {
 	t.Setenv("QDRANT_URL", "")
 	// should handle missing qdrant gracefully if SearchContext is called
 	// (though SearchContext checks err != nil from NewQdrantClient)
-	_, _, err := SearchContext([]float32{0.1}, "cb", 0, 0)
+	_, _, err := SearchContext([]float32{0.1}, "cb", 0, 0, 0)
 	if err == nil {
 		t.Fatalf("expected error when qdrant url missing")
 	}
@@ -68,8 +67,7 @@ func TestSearchContext_AllBelowThreshold(t *testing.T) {
 	}))
 	defer srv.Close()
 	t.Setenv("QDRANT_URL", srv.URL)
-	t.Setenv("RAG_SCORE_THRESHOLD", "0.2")
-	body, metas, err := SearchContext([]float32{0.1}, "cb", 0, 0)
+	body, metas, err := SearchContext([]float32{0.1}, "cb", 0, 0, 0.2)
 	if err != nil {
 		t.Fatalf("search err: %v", err)
 	}

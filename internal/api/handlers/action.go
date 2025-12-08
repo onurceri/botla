@@ -110,7 +110,7 @@ func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request, botID stri
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"actions": actions})
+	_ = json.NewEncoder(w).Encode(map[string]any{"actions": actions})
 }
 
 func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID string) {
@@ -155,7 +155,7 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID st
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(action)
+	_ = json.NewEncoder(w).Encode(action)
 }
 
 func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request, botID, actionID string) {
@@ -170,7 +170,7 @@ func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request, botID, acti
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(action)
+	_ = json.NewEncoder(w).Encode(action)
 }
 
 func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request, botID, actionID string) {
@@ -185,7 +185,7 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request, botID, a
 	}
 
 	var req createActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -207,13 +207,13 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request, botID, a
 	}
 	action.Enabled = req.Enabled
 
-	if err := db.UpdateAction(r.Context(), h.DB, action); err != nil {
+	if err = db.UpdateAction(r.Context(), h.DB, action); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(action)
+	_ = json.NewEncoder(w).Encode(action)
 }
 
 func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request, botID, actionID string) {
@@ -227,7 +227,7 @@ func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request, botID, a
 		return
 	}
 
-	if err := db.DeleteAction(r.Context(), h.DB, actionID); err != nil {
+	if err = db.DeleteAction(r.Context(), h.DB, actionID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -238,5 +238,5 @@ func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request, botID, a
 func (h *ActionHandlers) Test(w http.ResponseWriter, r *http.Request, botID, actionID string) {
 	// TODO: Implement test logic (execute action with test params)
 	w.WriteHeader(http.StatusNotImplemented)
-	fmt.Fprintf(w, "Test not implemented yet")
+	_, _ = fmt.Fprintf(w, "Test not implemented yet")
 }

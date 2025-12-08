@@ -36,10 +36,10 @@ type URLSet struct {
 
 // SitemapParseResult contains the result of parsing a sitemap
 type SitemapParseResult struct {
-	URLs       []SitemapURL `json:"urls"`
-	TotalCount int          `json:"total_count"`
-	IsSitemapIndex bool     `json:"is_sitemap_index"`
-	SubSitemaps    int      `json:"sub_sitemaps,omitempty"`
+	URLs           []SitemapURL `json:"urls"`
+	TotalCount     int          `json:"total_count"`
+	IsSitemapIndex bool         `json:"is_sitemap_index"`
+	SubSitemaps    int          `json:"sub_sitemaps,omitempty"`
 }
 
 // HTTPClient interface for testing
@@ -49,10 +49,10 @@ type HTTPClient interface {
 
 // SitemapParser handles parsing of sitemap XML files
 type SitemapParser struct {
-	client     HTTPClient
-	maxDepth   int
-	timeout    time.Duration
-	maxURLs    int
+	client   HTTPClient
+	maxDepth int
+	timeout  time.Duration
+	maxURLs  int
 }
 
 // DefaultSitemapParser creates a parser with default settings
@@ -134,7 +134,7 @@ func (p *SitemapParser) fetchURL(ctx context.Context, targetURL string) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
@@ -278,7 +278,7 @@ func DiscoverSitemapURL(ctx context.Context, baseURL string) (string, error) {
 
 	for _, path := range commonPaths {
 		testURL := fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, path)
-		
+
 		req, err := http.NewRequestWithContext(ctx, http.MethodHead, testURL, nil)
 		if err != nil {
 			continue
@@ -289,7 +289,7 @@ func DiscoverSitemapURL(ctx context.Context, baseURL string) (string, error) {
 		if err != nil {
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
 			return testURL, nil

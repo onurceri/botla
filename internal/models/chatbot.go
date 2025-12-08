@@ -43,6 +43,9 @@ type Chatbot struct {
 	LastRefreshAt        *time.Time `json:"last_refresh_at,omitempty"`
 	HideBranding         bool            `json:"hide_branding"`
 	CustomBranding       *CustomBranding `json:"custom_branding,omitempty"`
+	ConfidenceThreshold  float64         `json:"confidence_threshold"`
+	FallbackMessages     *FallbackMessages `json:"fallback_messages,omitempty"`
+	TopicRestrictions    *TopicConfig    `json:"topic_restrictions,omitempty"`
 }
 
 // CustomBranding represents custom branding configuration (Enterprise plan feature)
@@ -50,4 +53,16 @@ type CustomBranding struct {
 	LogoURL string `json:"logo_url,omitempty"`
 	Text    string `json:"text,omitempty"`
 	Link    string `json:"link,omitempty"`
+}
+
+type FallbackMessages struct {
+	NoInfoFound    string `json:"no_info_found"`
+	ErrorMessage   string `json:"error_message"`
+	HandoffMessage string `json:"handoff_message"`
+}
+
+type TopicConfig struct {
+	AllowedTopics  []string `json:"allowed_topics,omitempty"`
+	BlockedTopics  []string `json:"blocked_topics,omitempty"`
+	BlockedMessage string   `json:"blocked_message,omitempty"`
 }

@@ -229,6 +229,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 }
 
 // PublicChatFunc returns a http.HandlerFunc for backwards compatibility
+//
 // Deprecated: Use PublicHandlers.PublicChat instead
 func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 	// Create a ChatService for backwards compatibility

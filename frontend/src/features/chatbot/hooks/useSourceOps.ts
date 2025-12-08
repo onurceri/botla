@@ -11,7 +11,7 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
 
   const refreshSources = useCallback(() => {
     if (!isNew && id) {
-      listSources(id).then(setSources).catch(() => {})
+      listSources(id).then(setSources).catch(() => { })
     }
   }, [id, isNew])
 
@@ -53,7 +53,7 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
       await deleteSource(sourceId)
       toast('Kaynak başarıyla silindi.', 'success')
       refreshSources()
-    } catch (error) {
+    } catch {
       toast('Kaynak silinirken bir hata oluştu.', 'error')
     }
   }, [refreshSources, toast])

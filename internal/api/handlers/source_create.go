@@ -22,7 +22,7 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, c
 	}
 
 	// Check monthly ingestion quota
-	if err := h.checkIngestionQuota(r, userID, plan); err != nil {
+	if err = h.checkIngestionQuota(r, userID, plan); err != nil {
 		http.Error(w, err.Error(), http.StatusPaymentRequired)
 		return
 	}

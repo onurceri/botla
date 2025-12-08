@@ -39,7 +39,7 @@ export default function ActionForm({ action, onSave, onCancel, isSaving }: Props
           method,
           headers: JSON.parse(headers)
         }
-      } catch (e) {
+      } catch {
         alert('Headers JSON formatı hatalı')
         return
       }
@@ -52,7 +52,7 @@ export default function ActionForm({ action, onSave, onCancel, isSaving }: Props
     let parsedParams: any = {}
     try {
       parsedParams = JSON.parse(parameters)
-    } catch (e) {
+    } catch {
       alert('Parameters JSON formatı hatalı')
       return
     }

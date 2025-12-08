@@ -52,11 +52,11 @@ func ChunkText(text string, targetTokens int, langCode string) ([]models.Chunk, 
 				current = append(current, prevTail...)
 			}
 			// try to add next sentence
-			candidate := append(current, sentences[i])
-			candText := joinSentences(candidate)
+			// candidate := append(current, sentences[i])
+			candText := joinSentences(append(current, sentences[i]))
 			candTokens := CountTokens(candText, langCode)
 			if candTokens <= targetTokens || len(current) == 0 {
-				current = candidate
+				current = append(current, sentences[i])
 				continue
 			}
 			// would exceed: flush current, start new chunk seeded with tail
@@ -64,9 +64,9 @@ func ChunkText(text string, targetTokens int, langCode string) ([]models.Chunk, 
 			// after flush, seed new chunk with previous tail and reprocess same sentence
 			if len(prevTail) > 0 {
 				current = append([]string{}, prevTail...)
-				cand := append(current, sentences[i])
-				if CountTokens(joinSentences(cand), langCode) <= targetTokens || len(prevTail) == 0 {
-					current = cand
+				// cand := append(current, sentences[i])
+				if CountTokens(joinSentences(append(current, sentences[i])), langCode) <= targetTokens || len(prevTail) == 0 {
+					current = append(current, sentences[i])
 				} else {
 					// very long sentence: emit alone
 					current = append([]string{}, sentences[i])

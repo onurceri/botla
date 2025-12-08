@@ -98,6 +98,33 @@ func GetSourceByID(ctx context.Context, pool *sql.DB, id string) (*models.DataSo
 	return &d, nil
 }
 
+// GetURLSourcesForChatbot returns all URL sources for a chatbot
+func GetURLSourcesForChatbot(ctx context.Context, pool *sql.DB, chatbotID string) ([]models.DataSource, error) {
+	rows, err := pool.QueryContext(ctx, `
+        SELECT id, chatbot_id, source_type, source_url, status, error_message, 
+               chunk_count, created_at, hash, deleted_at, last_refreshed_at
+        FROM data_sources
+        WHERE chatbot_id = $1 AND source_type = 'url' AND deleted_at IS NULL
+        ORDER BY created_at DESC`, chatbotID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []models.DataSource
+	for rows.Next() {
+		var s models.DataSource
+		if err := rows.Scan(&s.ID, &s.ChatbotID, &s.SourceType, &s.SourceURL, &s.Status, &s.ErrorMessage,
+			&s.ChunkCount, &s.CreatedAt, &s.Hash, &s.DeletedAt, &s.LastRefreshedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func UpdateSourceProcessing(ctx context.Context, pool *sql.DB, id string, status string, errorMessage *string, chunkCount int, processedAt *time.Time) error {
 	_, err := pool.ExecContext(ctx, `
         UPDATE data_sources SET

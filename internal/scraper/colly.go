@@ -62,14 +62,14 @@ func NewCollector(cfg CollectorConfig) (*CollectorBundle, error) {
 	}
 	c.OnRequest(func(r *colly.Request) {
 		idx := int64(0)
-		if n, err := rand.Int(rand.Reader, big.NewInt(int64(len(ua)))); err == nil {
+		if n, rErr := rand.Int(rand.Reader, big.NewInt(int64(len(ua)))); rErr == nil {
 			idx = n.Int64()
 		}
 		r.Headers.Set("User-Agent", ua[idx])
 	})
 
-	c.OnError(func(r *colly.Response, err error) {
-		l.Error("scraper_error", map[string]any{"status": r.StatusCode, "url": r.Request.URL.String(), "err": err.Error()})
+	c.OnError(func(r *colly.Response, e error) {
+		l.Error("scraper_error", map[string]any{"status": r.StatusCode, "url": r.Request.URL.String(), "err": e.Error()})
 	})
 
 	c.OnScraped(func(r *colly.Response) {

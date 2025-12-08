@@ -86,7 +86,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	var sources []models.SourceUsed
 
 	if err == nil && qc != nil {
-		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens)
+		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens, bot.ConfidenceThreshold)
 		contextText = ctxText
 		for _, m := range metas {
 			sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
@@ -103,6 +103,9 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 
 	if strings.TrimSpace(contextText) == "" {
 		ans = cfg.ResponseTemplates.NoInfoFound
+		if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
+			ans = bot.FallbackMessages.NoInfoFound
+		}
 		tokens = 0
 	} else {
 		sp := resolveSystemPrompt(bot.SystemPrompt, cfg)
@@ -110,9 +113,16 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 		// Get client for the model
 		client, modelName, err := s.Factory.GetClientForModel(bot.Model)
 		if err != nil {
-			// Fallback to OpenAI if factory fails
-			client, _ = rag.NewOpenAIClientFromEnv()
+			c, e := rag.NewOpenAIClientFromEnv()
+			if e != nil || c == nil {
+				return nil, fmt.Errorf("openai client not configured: %w", e)
+			}
+			client = c
 			modelName = "gpt-4o-mini"
+		}
+
+		if client == nil {
+			return nil, fmt.Errorf("model client unavailable")
 		}
 
 		params := models.CompletionParams{
@@ -127,6 +137,9 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 		res, err := client.CreateCompletion(ctx, params)
 		if err != nil {
 			ans = cfg.ResponseTemplates.ErrorMessage
+			if bot.FallbackMessages != nil && bot.FallbackMessages.ErrorMessage != "" {
+				ans = bot.FallbackMessages.ErrorMessage
+			}
 			tokens = 0
 			if s.Log != nil {
 				s.Log.Error("completion_error", map[string]any{"error": err.Error(), "model": bot.Model})
@@ -199,7 +212,7 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 	var sources []models.SourceUsed
 
 	if err == nil && qc != nil {
-		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens)
+		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens, bot.ConfidenceThreshold)
 		contextText = ctxText
 		for _, m := range metas {
 			sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
@@ -214,12 +227,6 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 	// If no context found, normally we might just return "no info".
 	// But with tools, maybe the tools can answer?
 	// For now, let's include the context if found.
-	if strings.TrimSpace(contextText) == "" {
-		// If we strictly rely on context, we might stop here.
-		// But let's allow tools to run even if no context is found from RAG.
-		// However, the original logic returns NoInfoFound.
-		// Let's stick to providing context if available.
-	}
 
 	userMsgContent := "Context:\n" + contextText + "\n\nQuestion:\n" + req.Message
 	messages := []rag.ChatMessage{
@@ -238,7 +245,7 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 		client, _ = rag.NewOpenAIClientFromEnv()
 		modelName = "gpt-4o-mini"
 	}
-	
+
 	openaiClient, ok := client.(*rag.OpenAIClient)
 	if !ok {
 		// Fallback to standard OpenAI client if the factory returned something else but we need OpenAI features
@@ -249,6 +256,10 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 			return nil, fmt.Errorf("tool support requires OpenAI client: %w", err)
 		}
 		modelName = "gpt-4o-mini" // Force OpenAI model
+	}
+
+	if openaiClient == nil {
+		return nil, fmt.Errorf("openai client unavailable")
 	}
 
 	executor := &rag.ToolExecutor{DB: s.DB, Log: s.Log}
@@ -288,7 +299,7 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 			} else {
 				content = result.Result
 			}
-			
+
 			messages = append(messages, rag.ChatMessage{
 				Role:       "tool",
 				ToolCallID: tc.ID,

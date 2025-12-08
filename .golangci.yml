@@ -15,8 +15,11 @@ linters:
     - ineffassign
     - unused
     - misspell
+    - gocritic
 linters-settings:
   govet:
+    enable:
+      - shadow
     check-shadowing: true
     # - gocyclo
 issues:

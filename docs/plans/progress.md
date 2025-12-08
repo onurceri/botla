@@ -41,3 +41,7 @@
 - ✅ **2.2 Zapier Integration (2025-12-08)**
   - **Goal**: Native support for Zapier Webhook actions.
   - **Status**: Verified. Implemented as a supported Action type.
+
+- ✅ **2.3 Guardrails & Confidence Thresholds (2025-12-08)**
+  - **Goal**: Allow admins to set confidence thresholds and fallback messages to prevent hallucinations.
+  - **Status**: Verified. Implemented DB schema, API updates, and Frontend UI.

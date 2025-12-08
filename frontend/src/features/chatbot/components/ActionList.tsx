@@ -53,7 +53,7 @@ export default function ActionList({ chatbotId }: Props) {
       await deleteAction(chatbotId, actionId)
       toast('Aksiyon silindi.', 'success')
       fetchActions()
-    } catch (error) {
+    } catch {
       toast('Silme işlemi başarısız oldu.', 'error')
     }
   }

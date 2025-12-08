@@ -9,6 +9,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestChatbotsDispatchHandler_Routes(t *testing.T) {
@@ -54,4 +55,11 @@ func TestStartAndShutdownServer(t *testing.T) {
 	startServerAsync(srv, log, "0")
 	db, _ := sql.Open("pgx", "postgres://localhost")
 	shutdownServer(srv, log, db)
+}
+
+// Backward-compatible dispatcher used by tests
+func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers) http.Handler {
+	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
+	acth := &handlers.ActionHandlers{DB: ch.DB}
+	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, rlSources)
 }

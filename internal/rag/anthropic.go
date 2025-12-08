@@ -114,32 +114,32 @@ func (c *AnthropicClient) CreateCompletion(ctx context.Context, params models.Co
 		req.Header.Set("content-type", "application/json")
 
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var ar anthropicResponse
-				err := json.NewDecoder(res.Body).Decode(&ar)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(ar.Content) == 0 {
-					lastErr = errors.New("no content returned")
-				} else {
-					return &models.CompletionResult{
-						Content:     ar.Content[0].Text,
-						UsageTokens: ar.Usage.InputTokens + ar.Usage.OutputTokens,
-					}, nil
-				}
-			} else {
-				var errResp struct {
-					Error struct {
-						Message string `json:"message"`
-					} `json:"error"`
-				}
-				_ = json.NewDecoder(res.Body).Decode(&errResp)
-				_ = res.Body.Close()
-				lastErr = errors.New(res.Status + ": " + errResp.Error.Message)
+		case res.StatusCode != http.StatusOK:
+			var errResp struct {
+				Error struct {
+					Message string `json:"message"`
+				} `json:"error"`
+			}
+			_ = json.NewDecoder(res.Body).Decode(&errResp)
+			_ = res.Body.Close()
+			lastErr = errors.New(res.Status + ": " + errResp.Error.Message)
+		default:
+			var ar anthropicResponse
+			err := json.NewDecoder(res.Body).Decode(&ar)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(ar.Content) == 0:
+				lastErr = errors.New("no content returned")
+			default:
+				return &models.CompletionResult{
+					Content:     ar.Content[0].Text,
+					UsageTokens: ar.Usage.InputTokens + ar.Usage.OutputTokens,
+				}, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)

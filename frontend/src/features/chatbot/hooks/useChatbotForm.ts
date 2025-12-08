@@ -6,6 +6,18 @@ type CustomBranding = {
   link?: string
 }
 
+type FallbackMessages = {
+  no_info_found?: string
+  error_message?: string
+  handoff_message?: string
+}
+
+type TopicConfig = {
+  allowed_topics?: string[]
+  blocked_topics?: string[]
+  blocked_message?: string
+}
+
 export function useChatbotForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -41,6 +53,9 @@ export function useChatbotForm() {
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null)
   const [hideBranding, setHideBranding] = useState(false)
   const [customBranding, setCustomBranding] = useState<CustomBranding | null>(null)
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.7)
+  const [fallbackMessages, setFallbackMessages] = useState<FallbackMessages | null>(null)
+  const [topicRestrictions, setTopicRestrictions] = useState<TopicConfig | null>(null)
 
   function setFromServer(data: any) {
     setName(data.name || '')
@@ -77,6 +92,9 @@ export function useChatbotForm() {
     setLastRefreshAt(data.last_refresh_at || null)
     setHideBranding(!!data.hide_branding)
     setCustomBranding(data.custom_branding || null)
+    setConfidenceThreshold(data.confidence_threshold ?? 0.7)
+    setFallbackMessages(data.fallback_messages || null)
+    setTopicRestrictions(data.topic_restrictions || null)
   }
 
   function validate() {
@@ -117,6 +135,9 @@ export function useChatbotForm() {
       refresh_frequency: refreshFrequency,
       hide_branding: hideBranding,
       custom_branding: hideBranding ? customBranding : null,
+      confidence_threshold: confidenceThreshold,
+      fallback_messages: fallbackMessages,
+      topic_restrictions: topicRestrictions,
     }
   }
 
@@ -158,5 +179,8 @@ export function useChatbotForm() {
     validate,
     buildPayload,
     model, setModel,
+    confidenceThreshold, setConfidenceThreshold,
+    fallbackMessages, setFallbackMessages,
+    topicRestrictions, setTopicRestrictions,
   }
 }

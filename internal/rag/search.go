@@ -10,7 +10,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 )
 
-func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, limitMaxTokens int) (string, []models.ChunkMetadata, error) {
+func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, limitMaxTokens int, scoreThreshold float64) (string, []models.ChunkMetadata, error) {
 	if len(queryEmbedding) == 0 || chatbotID == "" {
 		return "", nil, nil
 	}
@@ -23,7 +23,7 @@ func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, li
 	if topK <= 0 {
 		topK = 5
 		if v := os.Getenv("RAG_TOPK"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			if n, errEnv := strconv.Atoi(v); errEnv == nil && n > 0 {
 				topK = n
 			}
 		}
@@ -37,12 +37,9 @@ func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, li
 		metas = append(metas, models.ChunkMetadata{SourceID: it.Payload.SourceID, SourceType: it.Payload.SourceType, ChunkIndex: it.Payload.ChunkIndex, Score: it.Score})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Score > items[j].Score })
-	threshold := 0.2
-	if v := os.Getenv("RAG_SCORE_THRESHOLD"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 {
-			threshold = f
-		}
-	}
+
+	threshold := scoreThreshold
+
 	var parts []string
 	var used []models.ChunkMetadata
 	var tokens int
@@ -50,7 +47,7 @@ func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, li
 	if maxCtx <= 0 {
 		maxCtx = 2000
 		if v := os.Getenv("RAG_MAX_CONTEXT_TOKENS"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			if n, errEnv := strconv.Atoi(v); errEnv == nil && n > 0 {
 				maxCtx = n
 			}
 		}

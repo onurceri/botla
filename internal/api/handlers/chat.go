@@ -92,8 +92,8 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		}
 		// Check token limits
 		if plan.Config.Chat.MaxMonthlyTokens > 0 {
-			used, err := db.GetMonthlyTokenUsage(r.Context(), h.DB, userID)
-			if err == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
+			used, errUsage := db.GetMonthlyTokenUsage(r.Context(), h.DB, userID)
+			if errUsage == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
 				http.Error(w, "Monthly token limit exceeded", http.StatusPaymentRequired)
 				return
 			}

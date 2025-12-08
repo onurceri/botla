@@ -66,27 +66,27 @@ func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]
 		req.Header.Set("X-Title", "Botla")
 
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var er embeddingResponse
-				err := json.NewDecoder(res.Body).Decode(&er)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(er.Data) == 0 {
-					lastErr = errors.New("no embedding returned")
-				} else {
-					out := make([]float32, len(er.Data[0].Embedding))
-					for i, v := range er.Data[0].Embedding {
-						out[i] = float32(v)
-					}
-					return out, nil
+		case res.StatusCode != http.StatusOK:
+			lastErr = errors.New(res.Status)
+			_ = res.Body.Close()
+		default:
+			var er embeddingResponse
+			err := json.NewDecoder(res.Body).Decode(&er)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(er.Data) == 0:
+				lastErr = errors.New("no embedding returned")
+			default:
+				out := make([]float32, len(er.Data[0].Embedding))
+				for i, v := range er.Data[0].Embedding {
+					out[i] = float32(v)
 				}
-			} else {
-				lastErr = errors.New(res.Status)
-				_ = res.Body.Close()
+				return out, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
@@ -109,30 +109,30 @@ func (c *OpenRouterClient) CreateEmbeddingsBatch(ctx context.Context, texts []st
 		req.Header.Set("X-Title", "Botla")
 
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var er embeddingResponse
-				err := json.NewDecoder(res.Body).Decode(&er)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(er.Data) == 0 {
-					lastErr = errors.New("no embedding returned")
-				} else {
-					out := make([][]float32, len(er.Data))
-					for i := range er.Data {
-						out[i] = make([]float32, len(er.Data[i].Embedding))
-						for j, v := range er.Data[i].Embedding {
-							out[i][j] = float32(v)
-						}
+		case res.StatusCode != http.StatusOK:
+			lastErr = errors.New(res.Status)
+			_ = res.Body.Close()
+		default:
+			var er embeddingResponse
+			err := json.NewDecoder(res.Body).Decode(&er)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(er.Data) == 0:
+				lastErr = errors.New("no embedding returned")
+			default:
+				out := make([][]float32, len(er.Data))
+				for i := range er.Data {
+					out[i] = make([]float32, len(er.Data[i].Embedding))
+					for j, v := range er.Data[i].Embedding {
+						out[i][j] = float32(v)
 					}
-					return out, nil
 				}
-			} else {
-				lastErr = errors.New(res.Status)
-				_ = res.Body.Close()
+				return out, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)

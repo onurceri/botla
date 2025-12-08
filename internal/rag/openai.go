@@ -71,27 +71,27 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var er embeddingResponse
-				err := json.NewDecoder(res.Body).Decode(&er)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(er.Data) == 0 {
-					lastErr = errors.New("no embedding returned")
-				} else {
-					out := make([]float32, len(er.Data[0].Embedding))
-					for i, v := range er.Data[0].Embedding {
-						out[i] = float32(v)
-					}
-					return out, nil
+		case res.StatusCode != http.StatusOK:
+			lastErr = errors.New(res.Status)
+			_ = res.Body.Close()
+		default:
+			var er embeddingResponse
+			err := json.NewDecoder(res.Body).Decode(&er)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(er.Data) == 0:
+				lastErr = errors.New("no embedding returned")
+			default:
+				out := make([]float32, len(er.Data[0].Embedding))
+				for i, v := range er.Data[0].Embedding {
+					out[i] = float32(v)
 				}
-			} else {
-				lastErr = errors.New(res.Status)
-				_ = res.Body.Close()
+				return out, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
@@ -117,30 +117,30 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var er embeddingResponse
-				err := json.NewDecoder(res.Body).Decode(&er)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(er.Data) == 0 {
-					lastErr = errors.New("no embedding returned")
-				} else {
-					out := make([][]float32, len(er.Data))
-					for i := range er.Data {
-						out[i] = make([]float32, len(er.Data[i].Embedding))
-						for j, v := range er.Data[i].Embedding {
-							out[i][j] = float32(v)
-						}
+		case res.StatusCode != http.StatusOK:
+			lastErr = errors.New(res.Status)
+			_ = res.Body.Close()
+		default:
+			var er embeddingResponse
+			err := json.NewDecoder(res.Body).Decode(&er)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(er.Data) == 0:
+				lastErr = errors.New("no embedding returned")
+			default:
+				out := make([][]float32, len(er.Data))
+				for i := range er.Data {
+					out[i] = make([]float32, len(er.Data[i].Embedding))
+					for j, v := range er.Data[i].Embedding {
+						out[i][j] = float32(v)
 					}
-					return out, nil
 				}
-			} else {
-				lastErr = errors.New(res.Status)
-				_ = res.Body.Close()
+				return out, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
@@ -201,26 +201,26 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var cr chatResponse
-				err := json.NewDecoder(res.Body).Decode(&cr)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(cr.Choices) == 0 {
-					lastErr = errors.New("no completion returned")
-				} else {
-					return &models.CompletionResult{
-						Content:     cr.Choices[0].Message.Content,
-						UsageTokens: cr.Usage.TotalTokens,
-					}, nil
-				}
-			} else {
-				lastErr = errors.New(res.Status)
-				_ = res.Body.Close()
+		case res.StatusCode != http.StatusOK:
+			lastErr = errors.New(res.Status)
+			_ = res.Body.Close()
+		default:
+			var cr chatResponse
+			err := json.NewDecoder(res.Body).Decode(&cr)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(cr.Choices) == 0:
+				lastErr = errors.New("no completion returned")
+			default:
+				return &models.CompletionResult{
+					Content:     cr.Choices[0].Message.Content,
+					UsageTokens: cr.Usage.TotalTokens,
+				}, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
@@ -278,23 +278,23 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.http.Do(req)
-		if err != nil {
+		switch {
+		case err != nil:
 			lastErr = err
-		} else {
-			if res.StatusCode == http.StatusOK {
-				var cr ChatResponseWithTools
-				err := json.NewDecoder(res.Body).Decode(&cr)
-				_ = res.Body.Close()
-				if err != nil {
-					lastErr = err
-				} else if len(cr.Choices) == 0 {
-					lastErr = errors.New("no completion returned")
-				} else {
-					return &cr, nil
-				}
-			} else {
-				lastErr = errors.New(res.Status)
-				_ = res.Body.Close()
+		case res.StatusCode != http.StatusOK:
+			lastErr = errors.New(res.Status)
+			_ = res.Body.Close()
+		default:
+			var cr ChatResponseWithTools
+			err := json.NewDecoder(res.Body).Decode(&cr)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(cr.Choices) == 0:
+				lastErr = errors.New("no completion returned")
+			default:
+				return &cr, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)

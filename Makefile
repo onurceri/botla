@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: up down psql redis-ping migrate-up migrate-down migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker sqlc-generate be-run be-run-no-pdf fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover check-coverage
+.PHONY: up down psql redis-ping migrate-up migrate-down migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover check-coverage
 
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
 MIGRATIONS_DIR ?= db/migrations
@@ -63,8 +63,7 @@ migrate-version-test-docker:
 migrate-force-docker:
 	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) force $(v)
 
-sqlc-generate:
-	 sqlc generate
+
 
 be-run:
 	 CGO_ENABLED=1 go run -tags fitz cmd/server/main.go

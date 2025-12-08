@@ -57,13 +57,13 @@ func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request)
 	var data []analyticsPoint
 	for rows.Next() {
 		var p analyticsPoint
-		if err := rows.Scan(&p.Date, &p.Messages, &p.Conversations); err != nil {
+		if errScan := rows.Scan(&p.Date, &p.Messages, &p.Conversations); errScan != nil {
 			continue
 		}
 		data = append(data, p)
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -74,7 +74,7 @@ func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+	if err = json.NewEncoder(w).Encode(data); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

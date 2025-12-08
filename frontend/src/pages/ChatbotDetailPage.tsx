@@ -25,6 +25,7 @@ import SuggestionsPanel from '@/features/chatbot/components/SuggestionsPanel'
 import PendingURLsPanel from '@/features/chatbot/components/PendingURLsPanel'
 import URLAdvancedSettings from '@/features/chatbot/components/URLAdvancedSettings'
 import BrandingSettings from '@/features/chatbot/components/BrandingSettings'
+import GuardrailsSettings from '@/features/chatbot/components/GuardrailsSettings'
 import ActionList from '@/features/chatbot/components/ActionList'
 
 const ChatbotDetailPage = () => {
@@ -70,6 +71,9 @@ const ChatbotDetailPage = () => {
     setFromServer,
     validate,
     buildPayload,
+    confidenceThreshold, setConfidenceThreshold,
+    fallbackMessages, setFallbackMessages,
+    topicRestrictions, setTopicRestrictions,
   } = useChatbotForm()
   const [userPlan, setUserPlan] = useState('free')
   const [planConfig, setPlanConfig] = useState<{ branding?: { can_hide_branding?: boolean, can_custom_branding?: boolean } }>({});
@@ -175,7 +179,7 @@ const ChatbotDetailPage = () => {
       await api.delete(`/api/v1/chatbots/${id}`)
       toast('Chatbot silindi.', 'success')
       navigate('/chatbots')
-    } catch (error) {
+    } catch {
       toasts.error('Silme işlemi başarısız oldu.')
     } finally {
       setIsDeleting(false)
@@ -197,7 +201,7 @@ const ChatbotDetailPage = () => {
         session_id: sessionId || 'test-playground' 
       })
       setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }])
-    } catch (error) {
+    } catch {
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Bir hata oluştu.' }])
     } finally {
       setChatLoading(false)
@@ -241,6 +245,17 @@ const ChatbotDetailPage = () => {
               setTemperature={setTemperature}
               maxTokens={maxTokens}
               setMaxTokens={setMaxTokens}
+            />
+          </TabsContent>
+
+          <TabsContent value="guardrails" className="mt-0 space-y-6">
+            <GuardrailsSettings
+              confidenceThreshold={confidenceThreshold}
+              setConfidenceThreshold={setConfidenceThreshold}
+              fallbackMessages={fallbackMessages}
+              setFallbackMessages={setFallbackMessages}
+              topicRestrictions={topicRestrictions}
+              setTopicRestrictions={setTopicRestrictions}
             />
           </TabsContent>
 

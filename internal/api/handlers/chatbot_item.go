@@ -87,7 +87,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		if err != nil || plan == nil || !plan.Config.Branding.CanHideBranding {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":            "Your plan does not allow hiding branding",
 				"upgrade_required": true,
 				"feature":          "hide_branding",
@@ -95,13 +95,13 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	
+
 	if req.CustomBranding != nil {
 		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
 		if err != nil || plan == nil || !plan.Config.Branding.CanCustomBranding {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":            "Custom branding requires Enterprise plan",
 				"upgrade_required": true,
 				"feature":          "custom_branding",
@@ -259,6 +259,15 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	}
 	if req.CustomBranding != nil {
 		c.CustomBranding = req.CustomBranding
+	}
+	if req.ConfidenceThreshold != nil {
+		c.ConfidenceThreshold = *req.ConfidenceThreshold
+	}
+	if req.FallbackMessages != nil {
+		c.FallbackMessages = req.FallbackMessages
+	}
+	if req.TopicRestrictions != nil {
+		c.TopicRestrictions = req.TopicRestrictions
 	}
 }
 

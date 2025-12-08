@@ -65,7 +65,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			handlers.PublicChat(pool)(w, r)
+			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
+			ph.PublicChat(w, r)
 			return
 		}
 		handlers.PublicChatbotConfig(pool)(w, r)

@@ -12,7 +12,6 @@ import { ToastProvider } from '@/components/ui/toast'
 const isAuthenticated = () => {
   // In E2E mode, bypass auth gating for visual tests
   // VITE_E2E is set in Playwright webServer env
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   if (import.meta.env && (import.meta.env as any).VITE_E2E) return true
   return !!localStorage.getItem('botla_token')
