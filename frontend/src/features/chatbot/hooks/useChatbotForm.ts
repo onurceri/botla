@@ -27,6 +27,7 @@ export function useChatbotForm() {
   const [includePaths, setIncludePaths] = useState<string[]>([])
   const [excludePaths, setExcludePaths] = useState<string[]>([])
   const [selectorWhitelist, setSelectorWhitelist] = useState<string[]>([])
+  const [discoveryMode, setDiscoveryMode] = useState<'auto' | 'pending' | 'disabled'>('auto')
 
   function setFromServer(data: any) {
     setName(data.name || '')
@@ -55,6 +56,7 @@ export function useChatbotForm() {
     setIncludePaths(Array.isArray(data.include_paths) ? data.include_paths : [])
     setExcludePaths(Array.isArray(data.exclude_paths) ? data.exclude_paths : [])
     setSelectorWhitelist(Array.isArray(data.selector_whitelist) ? data.selector_whitelist : [])
+    setDiscoveryMode(data.discovery_mode || 'auto')
   }
 
   function validate() {
@@ -89,6 +91,7 @@ export function useChatbotForm() {
       include_paths: includePaths,
       exclude_paths: excludePaths,
       selector_whitelist: selectorWhitelist,
+      discovery_mode: discoveryMode,
     }
   }
 
@@ -119,6 +122,7 @@ export function useChatbotForm() {
     includePaths, setIncludePaths,
     excludePaths, setExcludePaths,
     selectorWhitelist, setSelectorWhitelist,
+    discoveryMode, setDiscoveryMode,
     setFromServer,
     validate,
     buildPayload,

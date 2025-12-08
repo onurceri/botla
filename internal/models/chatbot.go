@@ -36,4 +36,5 @@ type Chatbot struct {
 	IncludePaths         []string   `json:"include_paths,omitempty"`
 	ExcludePaths         []string   `json:"exclude_paths,omitempty"`
 	SelectorWhitelist    []string   `json:"selector_whitelist,omitempty"`
+	DiscoveryMode        string     `json:"discovery_mode"` // auto, pending, disabled
 }

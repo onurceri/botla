@@ -191,4 +191,3 @@ func chatTimeout() time.Duration {
 	}
 	return d
 }
-

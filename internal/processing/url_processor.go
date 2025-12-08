@@ -113,8 +113,26 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	return ProcessResult{ChunkCount: len(rc)}
 }
 
+// DiscoveryMode constants for URL discovery behavior
+const (
+	DiscoveryModeAuto     = "auto"     // Default: automatically add discovered URLs as sources
+	DiscoveryModePending  = "pending"  // Add to pending table for user approval
+	DiscoveryModeDisabled = "disabled" // Do not discover sub-pages
+)
+
 // discoverSubPages crawls and discovers sub-pages from the content
 func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSource, bot *models.Chatbot, plan *models.Plan, content string) {
+	// Check discovery mode - default to auto for backward compatibility
+	discoveryMode := bot.DiscoveryMode
+	if discoveryMode == "" {
+		discoveryMode = DiscoveryModeAuto
+	}
+
+	// If disabled, skip discovery entirely
+	if discoveryMode == DiscoveryModeDisabled {
+		return
+	}
+
 	if plan.Config.Scraping.MaxPagesPerCrawl <= 0 {
 		return
 	}
@@ -152,15 +170,37 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 		if added >= limit {
 			break
 		}
-		// Check if link exists
-		exists, _ := db.SourceExists(ctx, p.DB, s.ChatbotID, link)
-		if !exists {
-			// Add new source (will be enqueued separately)
-			_, cerr := db.CreateSource(ctx, p.DB, s.ChatbotID, "url", &link, nil, nil)
-			if cerr == nil {
-				added++
+
+		switch discoveryMode {
+		case DiscoveryModeAuto:
+			// Current behavior: directly create source
+			exists, _ := db.SourceExists(ctx, p.DB, s.ChatbotID, link)
+			if !exists {
+				_, cerr := db.CreateSource(ctx, p.DB, s.ChatbotID, "url", &link, nil, nil)
+				if cerr == nil {
+					added++
+				}
+			}
+		case DiscoveryModePending:
+			// New behavior: add to pending table for approval
+			// Check if already exists as source or in pending
+			exists, _ := db.SourceExists(ctx, p.DB, s.ChatbotID, link)
+			if !exists {
+				sourceID := s.ID
+				if err := db.InsertPendingURL(ctx, p.DB, s.ChatbotID, &sourceID, link); err == nil {
+					added++
+				}
 			}
 		}
+	}
+
+	if added > 0 {
+		p.logInfo("urls_discovered", map[string]any{
+			"source_id":      s.ID,
+			"mode":           discoveryMode,
+			"discovered":     added,
+			"total_found":    len(links),
+		})
 	}
 }
 

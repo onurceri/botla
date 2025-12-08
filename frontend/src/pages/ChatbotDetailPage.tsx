@@ -24,6 +24,8 @@ import PlaygroundPreview from '@/features/chatbot/components/PlaygroundPreview'
 import SuggestionsPanel from '@/features/chatbot/components/SuggestionsPanel'
 import PathFilterSection from '@/features/chatbot/components/PathFilterSection'
 import SitemapImport from '@/features/chatbot/components/SitemapImport'
+import PendingURLsPanel from '@/features/chatbot/components/PendingURLsPanel'
+import DiscoveryModeSection from '@/features/chatbot/components/DiscoveryModeSection'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -55,6 +57,7 @@ const ChatbotDetailPage = () => {
     includePaths, setIncludePaths,
     excludePaths, setExcludePaths,
     selectorWhitelist, setSelectorWhitelist,
+    discoveryMode, setDiscoveryMode,
     setFromServer,
     validate,
     buildPayload,
@@ -198,7 +201,6 @@ const ChatbotDetailPage = () => {
             />
           </TabsContent>
 
-          {/* SOURCES TAB */}
           <TabsContent value="sources" className="space-y-6">
             <Card>
               <CardHeader>
@@ -212,6 +214,10 @@ const ChatbotDetailPage = () => {
                   onUploadText={async (t) => { if(id) { await uploadTextSource(id, t).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                   extraUrlSettings={
                     <>
+                      <DiscoveryModeSection
+                        discoveryMode={discoveryMode}
+                        setDiscoveryMode={setDiscoveryMode}
+                      />
                       <PathFilterSection
                         includePaths={includePaths}
                         setIncludePaths={setIncludePaths}
@@ -226,6 +232,12 @@ const ChatbotDetailPage = () => {
                       />
                     </>
                   }
+                />
+                
+                {/* Pending URLs Panel - shows when discovery mode is 'pending' and there are pending URLs */}
+                <PendingURLsPanel
+                  chatbotId={id}
+                  onSourcesCreated={refreshSources}
                 />
                 
                 {sources.length > 0 ? (

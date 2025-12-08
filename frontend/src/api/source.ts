@@ -86,3 +86,70 @@ export const bulkCreateSources = async (chatbotId: string, urls: string[]): Prom
   })
   return data as BulkCreateResponse
 }
+
+// Pending URLs types
+export interface PendingURL {
+  id: string
+  url: string
+  discovered_at: string
+}
+
+export interface ListPendingURLsResponse {
+  urls: PendingURL[]
+  total: number
+  page: number
+  per_page: number
+}
+
+export interface ApproveResponse {
+  approved_count: number
+  sources_created: number
+}
+
+export interface RejectResponse {
+  rejected_count: number
+}
+
+export interface ClearResponse {
+  cleared_count: number
+}
+
+// List pending URLs for a chatbot
+export const listPendingURLs = async (
+  chatbotId: string,
+  page = 1,
+  perPage = 20
+): Promise<ListPendingURLsResponse> => {
+  const { data } = await api.get(
+    `/api/v1/chatbots/${chatbotId}/pending-urls?page=${page}&per_page=${perPage}`
+  )
+  return data as ListPendingURLsResponse
+}
+
+// Approve pending URLs (create sources from them)
+export const approvePendingURLs = async (
+  chatbotId: string,
+  urlIds: string[]
+): Promise<ApproveResponse> => {
+  const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/pending-urls/approve`, {
+    url_ids: urlIds,
+  })
+  return data as ApproveResponse
+}
+
+// Reject pending URLs
+export const rejectPendingURLs = async (
+  chatbotId: string,
+  urlIds: string[]
+): Promise<RejectResponse> => {
+  const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/pending-urls/reject`, {
+    url_ids: urlIds,
+  })
+  return data as RejectResponse
+}
+
+// Clear all pending URLs
+export const clearPendingURLs = async (chatbotId: string): Promise<ClearResponse> => {
+  const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/pending-urls/clear`)
+  return data as ClearResponse
+}

@@ -17,11 +17,11 @@ import (
 // TestChatbotSources_Unauthorized tests unauthenticated requests
 func TestChatbotSources_Unauthorized(t *testing.T) {
 	sh := &SourcesHandlers{DB: nil, Storage: storage.NewMemoryStorage()}
-	
+
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/abc/sources", nil)
 	rr := httptest.NewRecorder()
 	sh.ChatbotSources(rr, r)
-	
+
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("ChatbotSources() status = %d, want %d", rr.Code, http.StatusUnauthorized)
 	}
@@ -31,7 +31,7 @@ func TestChatbotSources_Unauthorized(t *testing.T) {
 func TestChatbotSources_InvalidPath(t *testing.T) {
 	sh := &SourcesHandlers{DB: nil, Storage: storage.NewMemoryStorage()}
 	ctx := context.WithValue(context.Background(), middleware.ContextKeyUserID, "user-123")
-	
+
 	tests := []struct {
 		path string
 		want int
@@ -39,13 +39,13 @@ func TestChatbotSources_InvalidPath(t *testing.T) {
 		{"/api/v1/chatbots//sources", http.StatusNotFound},
 		{"/api/v1/chatbots/new/sources", http.StatusBadRequest},
 	}
-	
+
 	for _, tc := range tests {
 		r := httptest.NewRequest(http.MethodGet, tc.path, nil)
 		r = r.WithContext(ctx)
 		rr := httptest.NewRecorder()
 		sh.ChatbotSources(rr, r)
-		
+
 		if rr.Code != tc.want {
 			t.Errorf("ChatbotSources(%q) status = %d, want %d", tc.path, rr.Code, tc.want)
 		}
@@ -59,7 +59,7 @@ func TestChatbotSources_MethodNotAllowed(t *testing.T) {
 		t.Skipf("db not available: %v", err)
 	}
 	defer dbx.Close()
-	
+
 	// Create test user and chatbot
 	var uid string
 	var freePlanID string
@@ -71,7 +71,7 @@ func TestChatbotSources_MethodNotAllowed(t *testing.T) {
 		email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
-	
+
 	var botID string
 	if err := dbx.QueryRow(`INSERT INTO chatbots (user_id, name, system_prompt, language_id, model, 
 		theme_color, welcome_message, position, bot_message_color, user_message_color, 
@@ -81,17 +81,17 @@ func TestChatbotSources_MethodNotAllowed(t *testing.T) {
 		'Inter', '#3b82f6', '#ffffff', '#ffffff') RETURNING id`, uid, "Method Test Bot").Scan(&botID); err != nil {
 		t.Fatalf("chatbot: %v", err)
 	}
-	
+
 	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
 	ctx := context.WithValue(context.Background(), middleware.ContextKeyUserID, uid)
-	
+
 	// Test unsupported methods
 	for _, method := range []string{http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		r := httptest.NewRequest(method, "/api/v1/chatbots/"+botID+"/sources", nil)
 		r = r.WithContext(ctx)
 		rr := httptest.NewRecorder()
 		sh.ChatbotSources(rr, r)
-		
+
 		if rr.Code != http.StatusMethodNotAllowed {
 			t.Errorf("ChatbotSources(%s) status = %d, want %d", method, rr.Code, http.StatusMethodNotAllowed)
 		}

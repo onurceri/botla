@@ -59,7 +59,7 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 	var req struct {
 		URLs []string `json:"urls"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -135,8 +135,8 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 			SourceURL:  &url,
 		}
 
-		newID, err := db.CreateDataSource(r.Context(), h.DB, &ds)
-		if err != nil {
+		newID, createErr := db.CreateDataSource(r.Context(), h.DB, &ds)
+		if createErr != nil {
 			errors = append(errors, "Failed to create source for: "+url)
 			continue
 		}

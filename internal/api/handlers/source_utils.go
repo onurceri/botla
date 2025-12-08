@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -140,4 +141,11 @@ func parseBulkSourcesPath(p string) (string, bool) {
 		return "", false
 	}
 	return chatbotID, true
+}
+
+// writeJSON writes a JSON response
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }

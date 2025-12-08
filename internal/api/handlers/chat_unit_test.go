@@ -61,4 +61,3 @@ func TestChat_NoInfoFound(t *testing.T) {
 		t.Fatalf("chat: %d", rr2.Code)
 	}
 }
-

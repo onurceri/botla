@@ -1,0 +1,200 @@
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/middleware"
+)
+
+// ByID handles GET/PUT/DELETE for a specific chatbot
+func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok || userID == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	botID, ok := parseBotIDFromPath(r.URL.Path)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if botID == "new" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	c, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if c == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if c.UserID != userID {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		h.getChatbot(w, c)
+	case http.MethodPut:
+		h.updateChatbot(w, r, c, botID)
+	case http.MethodDelete:
+		h.deleteChatbot(w, r, botID, userID)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// getChatbot returns a single chatbot
+func (h *ChatbotHandlers) getChatbot(w http.ResponseWriter, c *models.Chatbot) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(c); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+// updateChatbot handles PUT request to update a chatbot
+func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, c *models.Chatbot, botID string) {
+	var req createChatbotRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Validate hex color if provided
+	if req.ChatBackgroundColor != nil {
+		s := strings.TrimSpace(*req.ChatBackgroundColor)
+		if s != "" && !isValidHexColor(s) {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Apply updates
+	applyChatbotUpdates(c, req)
+
+	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Re-read for updated_at change
+	c2, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	if err != nil || c2 == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(c2); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+// deleteChatbot handles DELETE request
+func (h *ChatbotHandlers) deleteChatbot(w http.ResponseWriter, r *http.Request, botID, userID string) {
+	if err := db.SoftDeleteChatbot(r.Context(), h.DB, botID, userID); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// applyChatbotUpdates applies request fields to chatbot model
+func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
+	if req.Name != "" {
+		c.Name = strings.TrimSpace(req.Name)
+	}
+	if req.Description != nil {
+		c.Description = req.Description
+	}
+	if req.SystemPrompt != nil {
+		c.SystemPrompt = *req.SystemPrompt
+	}
+	if req.Language != nil {
+		c.LanguageCode = normalizeLocale(*req.Language)
+	}
+	if req.Model != nil {
+		c.Model = *req.Model
+	}
+	if req.Temperature != nil {
+		c.Temperature = *req.Temperature
+	}
+	if req.MaxTokens != nil {
+		c.MaxTokens = *req.MaxTokens
+	}
+	if req.ThemeColor != nil {
+		c.ThemeColor = *req.ThemeColor
+	}
+	if req.WelcomeMessage != nil {
+		c.WelcomeMessage = *req.WelcomeMessage
+	}
+	if req.Position != nil {
+		c.Position = *req.Position
+	}
+	if req.BotMessageColor != nil {
+		c.BotMessageColor = *req.BotMessageColor
+	}
+	if req.UserMessageColor != nil {
+		c.UserMessageColor = *req.UserMessageColor
+	}
+	if req.BotMessageTextColor != nil {
+		c.BotMessageTextColor = *req.BotMessageTextColor
+	}
+	if req.UserMessageTextColor != nil {
+		c.UserMessageTextColor = *req.UserMessageTextColor
+	}
+	if req.ChatFontFamily != nil {
+		c.ChatFontFamily = *req.ChatFontFamily
+	}
+	if req.ChatHeaderColor != nil {
+		c.ChatHeaderColor = *req.ChatHeaderColor
+	}
+	if req.ChatHeaderTextColor != nil {
+		c.ChatHeaderTextColor = *req.ChatHeaderTextColor
+	}
+	if req.ChatBackgroundColor != nil {
+		c.ChatBackgroundColor = *req.ChatBackgroundColor
+	}
+	if req.BotIcon != nil {
+		c.BotIcon = req.BotIcon
+	}
+	if req.BotDisplayName != nil {
+		c.BotDisplayName = req.BotDisplayName
+	}
+	if req.SecureEmbedEnabled != nil {
+		c.SecureEmbedEnabled = *req.SecureEmbedEnabled
+	}
+	if req.AllowedDomains != nil {
+		c.AllowedDomains = req.AllowedDomains
+	}
+	if req.EmbedSecret != nil {
+		c.EmbedSecret = req.EmbedSecret
+	}
+	if req.SuggestedQuestions != nil {
+		c.SuggestedQuestions = normalizeSuggestions(*req.SuggestedQuestions)
+	}
+	if req.SuggestionsEnabled != nil {
+		c.SuggestionsEnabled = *req.SuggestionsEnabled
+	}
+	if req.IncludePaths != nil {
+		c.IncludePaths = normalizePaths(*req.IncludePaths)
+	}
+	if req.ExcludePaths != nil {
+		c.ExcludePaths = normalizePaths(*req.ExcludePaths)
+	}
+	if req.SelectorWhitelist != nil {
+		c.SelectorWhitelist = normalizeSelectors(*req.SelectorWhitelist)
+	}
+}

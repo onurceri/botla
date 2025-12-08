@@ -15,7 +15,8 @@ func TestChatbotsDispatchHandler_Routes(t *testing.T) {
 	ch := &handlers.ChatbotHandlers{}
 	sh := &handlers.SourcesHandlers{}
 	chh := &handlers.ChatHandlers{}
-	h := chatbotsDispatchHandler("secret", ch, sh, chh)
+	puh := &handlers.PendingURLsHandlers{}
+	h := chatbotsDispatchHandler("secret", ch, sh, chh, puh)
 
 	cases := []struct {
 		path string

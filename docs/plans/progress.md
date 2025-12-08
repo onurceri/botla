@@ -27,13 +27,35 @@
   - **Frontend**: Created `SitemapImport` component with bulk selection tools.
 - **Status**: Verified (Parser & API tests passed).
 
+#### ✅ 1.5 URL Checkbox UI (2025-12-08)
+- **Goal**: Allow users to review and select discovered URLs before adding them as sources.
+- **Implementation**:
+  - **DB**: 
+    - Migration `000011_pending_discovered_urls`: Created `pending_discovered_urls` table.
+    - Added `discovery_mode` column to `chatbots` table (auto/pending/disabled).
+  - **Backend**:
+    - Created `internal/db/pending_url.go` with CRUD operations for pending URLs.
+    - Updated `internal/processing/url_processor.go` with discovery mode logic.
+    - Created `internal/api/handlers/pending_urls.go` with endpoints:
+      - `GET /pending-urls` - List pending URLs with pagination
+      - `POST /pending-urls/approve` - Approve and create sources
+      - `POST /pending-urls/reject` - Reject pending URLs
+      - `POST /pending-urls/clear` - Clear all pending URLs
+    - Added routes to `cmd/server/main.go`.
+  - **Frontend**:
+    - Added pending URL API functions to `api/source.ts`.
+    - Created `PendingURLsPanel.tsx` - Checkbox selection UI with approve/reject actions.
+    - Created `DiscoveryModeSection.tsx` - Radio button UI for discovery mode selection.
+    - Updated `useChatbotForm.ts` with `discoveryMode` state.
+    - Integrated components into `ChatbotDetailPage.tsx` Sources tab.
+- **Status**: Verified (Backend builds, frontend builds, unit tests passed).
+
 ---
 
 ## Pending Roadmap
 
 ### Phase 1: Core Product Improvements
 - [ ] 1.1 LLM Client Abstraction
-- [ ] 1.5 URL Checkbox UI
 - [ ] 1.6 Auto-Refresh Scheduler
 - [ ] 1.7 White-Label Branding
 
@@ -48,3 +70,4 @@
 - [ ] 3.1 Multi-Tenant Architecture
 - [ ] 3.2 Custom Domain Routing
 - [ ] 3.3 Advanced Analytics
+

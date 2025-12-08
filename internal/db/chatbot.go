@@ -20,15 +20,15 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
             bot_message_text_color, user_message_text_color,
             chat_font_family, chat_header_color, chat_header_text_color,
             chat_background_color, bot_icon, bot_display_name, suggested_questions, suggestions_enabled,
-            include_paths, exclude_paths, selector_whitelist
-        ) VALUES ($1,$2,$3,$4,(SELECT id FROM languages WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id`,
+            include_paths, exclude_paths, selector_whitelist, discovery_mode
+        ) VALUES ($1,$2,$3,$4,(SELECT id FROM languages WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING id`,
 		bot.UserID, bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
 		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
 		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, bot.SuggestedQuestions, bot.SuggestionsEnabled,
-		bot.IncludePaths, bot.ExcludePaths, bot.SelectorWhitelist,
+		bot.IncludePaths, bot.ExcludePaths, bot.SelectorWhitelist, bot.DiscoveryMode,
 	).Scan(&id)
 	if err != nil {
 		return "", err
@@ -47,7 +47,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                c.chat_background_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.suggestions_enabled,
-               c.include_paths, c.exclude_paths, c.selector_whitelist
+               c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.user_id=$1 AND c.deleted_at IS NULL
@@ -70,7 +70,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 			&c.ChatBackgroundColor,
 			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
 			&sj, &c.SuggestionsEnabled,
-			&ipj, &epj, &swj,
+			&ipj, &epj, &swj, &c.DiscoveryMode,
 		); err != nil {
 			return nil, err
 		}
@@ -115,7 +115,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                c.chat_background_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.suggestions_enabled,
-               c.include_paths, c.exclude_paths, c.selector_whitelist
+               c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.id=$1 AND c.deleted_at IS NULL`, id).
@@ -129,7 +129,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 			&c.ChatBackgroundColor,
 			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
 			&sj, &c.SuggestionsEnabled,
-			&ipj, &epj, &swj,
+			&ipj, &epj, &swj, &c.DiscoveryMode,
 		)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -191,8 +191,9 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             include_paths=$26,
             exclude_paths=$27,
             selector_whitelist=$28,
+            discovery_mode=$29,
             updated_at=NOW()
-        WHERE id=$29 AND user_id=$30 AND deleted_at IS NULL`,
+        WHERE id=$30 AND user_id=$31 AND deleted_at IS NULL`,
 		bot.Name,
 		bot.Description,
 		bot.SystemPrompt,
@@ -221,6 +222,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.IncludePaths,
 		bot.ExcludePaths,
 		bot.SelectorWhitelist,
+		bot.DiscoveryMode,
 		bot.ID,
 		bot.UserID,
 	)

@@ -50,13 +50,13 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 	var req struct {
 		SitemapURL string `json:"sitemap_url"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	// Validate sitemap URL
-	if err := scraper.ValidateSitemapURL(req.SitemapURL); err != nil {
+	if err = scraper.ValidateSitemapURL(req.SitemapURL); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -73,8 +73,8 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 	// Apply path filters if configured
 	var filteredURLs []scraper.SitemapURL
 	if len(chatbot.IncludePaths) > 0 || len(chatbot.ExcludePaths) > 0 {
-		pathFilter, err := scraper.NewPathFilter(chatbot.IncludePaths, chatbot.ExcludePaths)
-		if err == nil {
+		pathFilter, filterErr := scraper.NewPathFilter(chatbot.IncludePaths, chatbot.ExcludePaths)
+		if filterErr == nil {
 			filteredURLs = scraper.FilterURLsByPath(result.URLs, pathFilter)
 		} else {
 			filteredURLs = result.URLs

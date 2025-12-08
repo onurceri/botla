@@ -98,7 +98,7 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Update source for refresh
-	if err := db.UpdateSourceForRefresh(r.Context(), h.DB, sourceID); err != nil {
+	if err = db.UpdateSourceForRefresh(r.Context(), h.DB, sourceID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -10,8 +10,6 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
-
-
 // TestParseSitemapDiscoverPath tests sitemap discover path extraction
 func TestParseSitemapDiscoverPath(t *testing.T) {
 	tests := []struct {
@@ -21,11 +19,11 @@ func TestParseSitemapDiscoverPath(t *testing.T) {
 	}{
 		{"/api/v1/chatbots/abc123/sitemap/discover", "abc123", true},
 		{"/api/v1/chatbots/xyz789/sitemap/discover", "xyz789", true},
-		{"/api/v1/chatbots//sitemap/discover", "", false},         // Empty ID
-		{"/api/v1/chatbots/abc/123/sitemap/discover", "", false},  // ID contains /
-		{"/api/v1/chatbots/abc123/sitemap", "", false},            // Missing /discover
-		{"/api/v1/chatbots/abc123/sources", "", false},            // Wrong endpoint
-		{"/wrong/path/abc123/sitemap/discover", "", false},        // Wrong prefix
+		{"/api/v1/chatbots//sitemap/discover", "", false},        // Empty ID
+		{"/api/v1/chatbots/abc/123/sitemap/discover", "", false}, // ID contains /
+		{"/api/v1/chatbots/abc123/sitemap", "", false},           // Missing /discover
+		{"/api/v1/chatbots/abc123/sources", "", false},           // Wrong endpoint
+		{"/wrong/path/abc123/sitemap/discover", "", false},       // Wrong prefix
 	}
 
 	for _, tt := range tests {
@@ -50,11 +48,11 @@ func TestParseBulkSourcesPath(t *testing.T) {
 	}{
 		{"/api/v1/chatbots/abc123/sources/bulk", "abc123", true},
 		{"/api/v1/chatbots/xyz789/sources/bulk", "xyz789", true},
-		{"/api/v1/chatbots//sources/bulk", "", false},         // Empty ID
-		{"/api/v1/chatbots/abc/123/sources/bulk", "", false},  // ID contains /
-		{"/api/v1/chatbots/abc123/sources", "", false},        // Missing /bulk
-		{"/api/v1/chatbots/abc123/sitemap", "", false},        // Wrong endpoint
-		{"/wrong/path/abc123/sources/bulk", "", false},        // Wrong prefix
+		{"/api/v1/chatbots//sources/bulk", "", false},        // Empty ID
+		{"/api/v1/chatbots/abc/123/sources/bulk", "", false}, // ID contains /
+		{"/api/v1/chatbots/abc123/sources", "", false},       // Missing /bulk
+		{"/api/v1/chatbots/abc123/sitemap", "", false},       // Wrong endpoint
+		{"/wrong/path/abc123/sources/bulk", "", false},       // Wrong prefix
 	}
 
 	for _, tt := range tests {

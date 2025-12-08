@@ -7,9 +7,9 @@ import (
 // TestParseChatbotIDFromPath tests chatbot ID extraction from path
 func TestParseChatbotIDFromPath(t *testing.T) {
 	tests := []struct {
-		path    string
-		wantID  string
-		wantOK  bool
+		path   string
+		wantID string
+		wantOK bool
 	}{
 		{"/api/v1/chatbots/abc/sources", "abc", true},
 		{"/api/v1/chatbots/uuid-123/sources", "uuid-123", true},
@@ -32,9 +32,9 @@ func TestParseChatbotIDFromPath(t *testing.T) {
 // TestParseSourceIDFromPath tests source ID extraction from path
 func TestParseSourceIDFromPath(t *testing.T) {
 	tests := []struct {
-		path    string
-		wantID  string
-		wantOK  bool
+		path   string
+		wantID string
+		wantOK bool
 	}{
 		{"/api/v1/sources/abc", "abc", true},
 		{"/api/v1/sources/uuid-123", "uuid-123", true},
@@ -55,9 +55,9 @@ func TestParseSourceIDFromPath(t *testing.T) {
 // TestParseRefreshSourceIDFromPath tests refresh source ID extraction
 func TestParseRefreshSourceIDFromPath(t *testing.T) {
 	tests := []struct {
-		path    string
-		wantID  string
-		wantOK  bool
+		path   string
+		wantID string
+		wantOK bool
 	}{
 		{"/api/v1/sources/abc/refresh", "abc", true},
 		{"/api/v1/sources/uuid-123/refresh", "uuid-123", true},
@@ -78,9 +78,9 @@ func TestParseRefreshSourceIDFromPath(t *testing.T) {
 // TestIsPDFContentType tests PDF content type detection
 func TestIsPDFContentType(t *testing.T) {
 	tests := []struct {
-		ct      string
-		name    string
-		want    bool
+		ct   string
+		name string
+		want bool
 	}{
 		{"application/pdf", "x.txt", true},
 		{"", "x.pdf", true},

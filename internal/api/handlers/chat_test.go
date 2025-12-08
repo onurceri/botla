@@ -18,4 +18,3 @@ func TestChatTimeoutEnvParsing(t *testing.T) {
 		t.Fatalf("env timeout mismatch")
 	}
 }
-

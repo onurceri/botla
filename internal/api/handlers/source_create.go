@@ -85,7 +85,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 
 	// Check total storage quota
 	userID, _ := middleware.UserIDFromContext(r.Context())
-	if err := h.checkStorageQuota(r, userID, int(header.Size), plan); err != nil {
+	if err = h.checkStorageQuota(r, userID, int(header.Size), plan); err != nil {
 		http.Error(w, err.Error(), http.StatusPaymentRequired)
 		return
 	}
@@ -105,7 +105,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 
 	// Read file into memory to compute hash and then upload
 	buf := new(bytes.Buffer)
-	if _, err := buf.ReadFrom(file); err != nil {
+	if _, err = buf.ReadFrom(file); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
