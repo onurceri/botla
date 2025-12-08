@@ -98,6 +98,33 @@
     - Updated `internal/api/handlers/chatbot.go`: Added branding fields to request struct
     - Updated `internal/api/handlers/chatbot_item.go`: 
       - Plan-based validation for branding changes (403 Forbidden if plan doesn't allow)
+      - Added plan capability checks in `updateChatbot`
+    - Updated `internal/api/handlers/public.go`: Expose branding settings in public config if allowed
+  - **Frontend**:
+    - Created `BrandingSettings.tsx`:
+      - "Powered by Botla'yı Gizle" toggle (locked if plan insufficient)
+      - "Özel Marka" section (locked if plan insufficient)
+    - Updated `ChatbotDetailPage.tsx`:
+      - Added `BrandingSettings` component
+      - Fetch user plan config to control UI locking
+    - Updated `useChatbotForm.ts` with branding state
+    - Updated `PlaygroundPreview.tsx` to reflect branding changes in real-time
+- **Status**: Verified (Backend builds, frontend builds, all tests passed).
+
+#### ✅ 1.1 LLM Client Abstraction (2025-12-08)
+- **Goal**: Support multiple LLM providers (OpenAI, Anthropic, Google) with a unified interface.
+- **Implementation**:
+  - **Backend**:
+    - Created `LLMClient` interface in `internal/rag/llm_client.go`.
+    - Implemented providers: `OpenAIClient`, `AnthropicClient`, `GoogleAIClient`.
+    - Created `ClientFactory` for dynamic client instantiation.
+    - Updated `ChatService` to use `ClientFactory` and support provider-prefixed models (e.g., `anthropic:claude-3-5-sonnet-latest`).
+  - **DB**: 
+    - Migration `000014_model_provider`: Updated `model` column default and format.
+  - **Frontend**:
+    - Updated `OverviewPanel` to include Model selection (OpenAI, Anthropic, Google).
+    - Updated `useChatbotForm` to handle new model format.
+- **Status**: Verified (Backend tests passed, manual verification).
       - Added branding fields to `applyChatbotUpdates()`
     - Updated `internal/api/handlers/public.go`: Added branding fields to public chatbot config response
   - **Widget**:

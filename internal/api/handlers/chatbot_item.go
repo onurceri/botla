@@ -111,6 +111,10 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Apply updates
+	// If branding is explicitly turned off, clear any custom branding
+	if req.HideBranding != nil && !*req.HideBranding {
+		req.CustomBranding = nil
+	}
 	applyChatbotUpdates(c, req)
 
 	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
@@ -249,6 +253,9 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	}
 	if req.HideBranding != nil {
 		c.HideBranding = *req.HideBranding
+		if !*req.HideBranding {
+			c.CustomBranding = nil
+		}
 	}
 	if req.CustomBranding != nil {
 		c.CustomBranding = req.CustomBranding

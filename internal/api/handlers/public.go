@@ -15,22 +15,22 @@ import (
 )
 
 type publicChatbot struct {
-	ID                   string   `json:"id"`
-	ThemeColor           string   `json:"theme_color"`
-	WelcomeMessage       string   `json:"welcome_message"`
-	Position             string   `json:"position"`
-	BotMessageColor      string   `json:"bot_message_color"`
-	UserMessageColor     string   `json:"user_message_color"`
-	BotMessageTextColor  string   `json:"bot_message_text_color"`
-	UserMessageTextColor string   `json:"user_message_text_color"`
-	ChatFontFamily       string   `json:"chat_font_family"`
-	ChatHeaderColor      string   `json:"chat_header_color"`
-	ChatHeaderTextColor  string   `json:"chat_header_text_color"`
-	ChatBackgroundColor  string   `json:"chat_background_color"`
-	BotIcon              *string  `json:"bot_icon,omitempty"`
-	BotDisplayName       *string  `json:"bot_display_name,omitempty"`
-	SuggestedQuestions   []string `json:"suggested_questions,omitempty"`
-	MaxChars             int      `json:"max_chars"`
+	ID                   string                 `json:"id"`
+	ThemeColor           string                 `json:"theme_color"`
+	WelcomeMessage       string                 `json:"welcome_message"`
+	Position             string                 `json:"position"`
+	BotMessageColor      string                 `json:"bot_message_color"`
+	UserMessageColor     string                 `json:"user_message_color"`
+	BotMessageTextColor  string                 `json:"bot_message_text_color"`
+	UserMessageTextColor string                 `json:"user_message_text_color"`
+	ChatFontFamily       string                 `json:"chat_font_family"`
+	ChatHeaderColor      string                 `json:"chat_header_color"`
+	ChatHeaderTextColor  string                 `json:"chat_header_text_color"`
+	ChatBackgroundColor  string                 `json:"chat_background_color"`
+	BotIcon              *string                `json:"bot_icon,omitempty"`
+	BotDisplayName       *string                `json:"bot_display_name,omitempty"`
+	SuggestedQuestions   []string               `json:"suggested_questions,omitempty"`
+	MaxChars             int                    `json:"max_chars"`
 	HideBranding         bool                   `json:"hide_branding"`
 	CustomBranding       *models.CustomBranding `json:"custom_branding,omitempty"`
 }
@@ -76,6 +76,12 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 		} else {
 			final = []string{}
 		}
+		var cb *models.CustomBranding
+		if c.HideBranding {
+			cb = c.CustomBranding
+		} else {
+			cb = nil
+		}
 		out := publicChatbot{
 			ID:                   c.ID,
 			ThemeColor:           c.ThemeColor,
@@ -94,7 +100,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			SuggestedQuestions:   final,
 			MaxChars:             1000,
 			HideBranding:         c.HideBranding,
-			CustomBranding:       c.CustomBranding,
+			CustomBranding:       cb,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -199,11 +205,9 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Delegate to chat service
-	chatReq := services.ChatRequest{
+	chatReq := models.ChatRequest{
 		Message:   req.Message,
 		SessionID: req.SessionID,
-		BotID:     botID,
-		UserID:    nil, // Public/anonymous
 	}
 	result, err := h.ChatService.ProcessChat(ctx, chatReq, cbot, ragConfig)
 	if err != nil {
@@ -229,7 +233,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 	// Create a ChatService for backwards compatibility
 	// Note: This is a transitional pattern; in production, ChatService should be properly initialized
-	svc := services.NewChatService(dbpool, nil, nil, nil)
+	svc := services.NewChatService(dbpool, nil, nil, nil, nil)
 	h := &PublicHandlers{DB: dbpool, ChatService: svc}
 	return h.PublicChat
 }

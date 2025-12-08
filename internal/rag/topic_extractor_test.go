@@ -4,18 +4,28 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/models"
 )
 
 type mockLLM struct{ out string }
 
-func (m mockLLM) CreateCompletion(ctx context.Context, sp, ct, um string, model string, temp float32, max int) (string, int, error) {
-	return m.out, 0, nil
+func (m mockLLM) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
+	return &models.CompletionResult{Content: m.out}, nil
+}
+
+func (m mockLLM) GetModelInfo() models.ModelInfo {
+	return models.ModelInfo{}
 }
 
 type errLLM struct{}
 
-func (e errLLM) CreateCompletion(ctx context.Context, sp, ct, um string, model string, temp float32, max int) (string, int, error) {
-	return "", 0, fmt.Errorf("llm error")
+func (e errLLM) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
+	return nil, fmt.Errorf("llm error")
+}
+
+func (e errLLM) GetModelInfo() models.ModelInfo {
+	return models.ModelInfo{}
 }
 
 func TestExtractIngestionMetadata_JSONHappyPath(t *testing.T) {

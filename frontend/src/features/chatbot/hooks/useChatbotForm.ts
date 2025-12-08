@@ -10,6 +10,7 @@ export function useChatbotForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
+  const [model, setModel] = useState('openai:gpt-4o-mini')
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(512)
   const [themeColor, setThemeColor] = useState('#a78bfa')
@@ -45,6 +46,7 @@ export function useChatbotForm() {
     setName(data.name || '')
     setDescription(data.description || '')
     setSystemPrompt(data.system_prompt || '')
+    setModel(data.model || 'openai:gpt-4o-mini')
     setTemperature(data.temperature ?? 0.7)
     setMaxTokens(data.max_tokens ?? 512)
     setThemeColor(data.theme_color || '#a78bfa')
@@ -86,6 +88,7 @@ export function useChatbotForm() {
       name,
       description,
       system_prompt: systemPrompt,
+      model,
       temperature,
       max_tokens: maxTokens,
       theme_color: themeColor,
@@ -113,7 +116,7 @@ export function useChatbotForm() {
       refresh_policy: refreshPolicy,
       refresh_frequency: refreshFrequency,
       hide_branding: hideBranding,
-      custom_branding: customBranding,
+      custom_branding: hideBranding ? customBranding : null,
     }
   }
 
@@ -154,5 +157,6 @@ export function useChatbotForm() {
     setFromServer,
     validate,
     buildPayload,
+    model, setModel,
   }
 }

@@ -4,7 +4,7 @@ import { ChatDrawer } from './components/ChatDrawer'
 
 type Message = { role: 'user' | 'assistant'; content: string; ts?: number }
 
-export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, positionStrategy = 'fixed' }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; positionStrategy?: 'fixed' | 'absolute' }) {
+export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed' }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute' }) {
   const [open, setOpen] = useState(!!autoOpen)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -45,6 +45,8 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
   }
   const botName = (useOverrides && botNameOverride) || config?.bot_display_name
   const botIcon = sanitizeUrl((useOverrides && botIconOverride) || config?.bot_icon)
+  const hideBrand = (useOverrides && typeof hideBrandingOverride !== 'undefined') ? hideBrandingOverride : config?.hide_branding
+  const customBrand = (useOverrides && customBrandingOverride) ? { ...customBrandingOverride, link: sanitizeUrl(customBrandingOverride.link) } : (config?.custom_branding ? { ...config?.custom_branding, link: sanitizeUrl(config?.custom_branding?.link) } : undefined)
   
   useEffect(() => {
     if (panelRef.current) {
@@ -179,8 +181,8 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
           suggestions={suggestions}
           onPickSuggestion={pickSuggestion}
           maxChars={config?.max_chars}
-          hideBranding={config?.hide_branding}
-          customBranding={config?.custom_branding}
+          hideBranding={hideBrand}
+          customBranding={customBrand}
         />
       ) : (
         <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />

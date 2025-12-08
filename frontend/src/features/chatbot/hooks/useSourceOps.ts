@@ -43,7 +43,8 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
       setTimeout(tick, delay)
       delay = Math.min(delay * 2, 32000)
     }
-    setTimeout(tick, delay)
+    // Trigger first poll immediately to avoid test flakiness and improve responsiveness
+    tick()
   }, [refreshSources])
 
   const handleDeleteSource = useCallback(async (sourceId: string) => {

@@ -35,6 +35,9 @@ const ChatbotDetailPage = () => {
     name, setName,
     description, setDescription,
     systemPrompt, setSystemPrompt,
+    model, setModel,
+    temperature, setTemperature,
+    maxTokens, setMaxTokens,
     themeColor, setThemeColor,
     welcomeMessage, setWelcomeMessage,
     position, setPosition,
@@ -97,7 +100,8 @@ const ChatbotDetailPage = () => {
   // Fetch user profile and plan config
   const fetchUserProfile = () => {
     api.get('/api/v1/me').then(({ data }) => { 
-      setUserPlan(data.plan_code || 'free')
+      const plan = data.plan_code || data.subscription_plan || 'free'
+      setUserPlan(plan)
       if (data.config) {
         setPlanConfig(data.config)
       }
@@ -133,6 +137,7 @@ const ChatbotDetailPage = () => {
   const toasts = useToastErrors()
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0)
 
   const handleSave = async () => {
     if (!validate()) {
@@ -151,6 +156,7 @@ const ChatbotDetailPage = () => {
       } else {
         await api.put(`/api/v1/chatbots/${id}`, payload)
         toast('Değişiklikler kaydedildi.', 'success')
+        setPreviewRefreshKey((k) => k + 1)
       }
     } catch (error) {
       console.error(error)
@@ -227,6 +233,12 @@ const ChatbotDetailPage = () => {
               setName={setName}
               systemPrompt={systemPrompt}
               setSystemPrompt={setSystemPrompt}
+              model={model}
+              setModel={setModel}
+              temperature={temperature}
+              setTemperature={setTemperature}
+              maxTokens={maxTokens}
+              setMaxTokens={setMaxTokens}
             />
           </TabsContent>
 
@@ -349,26 +361,29 @@ const ChatbotDetailPage = () => {
 
             </div>
 
-            <PlaygroundPreview
-              id={id || 'preview'}
-              themeColor={themeColor}
-              chatHeaderColor={chatHeaderColor}
-              chatHeaderTextColor={chatHeaderTextColor}
-              botMessageColor={botMessageColor}
-              botMessageTextColor={botMessageTextColor}
-              userMessageColor={userMessageColor}
-              userMessageTextColor={userMessageTextColor}
-              chatFontFamily={chatFontFamily}
-              position={position}
-              botDisplayName={botDisplayName}
-              botIcon={botIcon}
-              chatBackgroundColor={chatBackgroundColor}
-              welcomeMessage={welcomeMessage}
-              previewOpen={previewOpen}
-              sessionId={sessionId}
-              suggestionsEnabled={suggestionsEnabled}
-              suggestedQuestions={suggestedQuestions}
-            />
+          <PlaygroundPreview
+            id={id || 'preview'}
+            themeColor={themeColor}
+            chatHeaderColor={chatHeaderColor}
+            chatHeaderTextColor={chatHeaderTextColor}
+            botMessageColor={botMessageColor}
+            botMessageTextColor={botMessageTextColor}
+            userMessageColor={userMessageColor}
+            userMessageTextColor={userMessageTextColor}
+            chatFontFamily={chatFontFamily}
+            position={position}
+            botDisplayName={botDisplayName}
+            botIcon={botIcon}
+            chatBackgroundColor={chatBackgroundColor}
+            welcomeMessage={welcomeMessage}
+            previewOpen={previewOpen}
+            sessionId={sessionId}
+            suggestionsEnabled={suggestionsEnabled}
+            suggestedQuestions={suggestedQuestions}
+            refreshKey={previewRefreshKey}
+            hideBranding={hideBranding}
+            customBranding={customBranding}
+          />
           </TabsContent>
 
           {/* CONNECT TAB */}

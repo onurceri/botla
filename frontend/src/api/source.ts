@@ -26,11 +26,16 @@ export const uploadURLSource = async (chatbotId: string, url: string) => {
 
 export const getSourceStatus = async (sourceId: string, etag?: string) => {
   try {
-    const res = await api.get(`/api/v1/sources/${sourceId}`, { headers: etag ? { 'If-None-Match': etag } : undefined })
-    const newEtag = res.headers['etag'] as string | undefined
-    return { data: res.data, etag: newEtag, notModified: false }
+    const url = `/api/v1/sources/${sourceId}`
+    const opts = etag ? { headers: { 'If-None-Match': etag } } : undefined
+    const res = opts ? await api.get(url, opts) : await api.get(url)
+    const newEtag = (res as any)?.headers?.['etag'] as string | undefined
+    const payload = res.data
+    if (etag === undefined) return payload
+    return { data: payload, etag: newEtag, notModified: false }
   } catch (err: any) {
     if (err?.response?.status === 304) {
+      if (etag === undefined) return null
       return { data: null, etag, notModified: true }
     }
     throw err

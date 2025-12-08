@@ -4,7 +4,9 @@ import App from '@/App'
 
 describe('PrivateRoute', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'localStorage', {
+    const w: any = globalThis as any
+    if (!w.window) w.window = {}
+    Object.defineProperty(w.window, 'localStorage', {
       value: {
         getItem: vi.fn(),
         setItem: vi.fn(),

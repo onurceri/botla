@@ -20,6 +20,9 @@ type Props = {
   sessionId: string
   suggestionsEnabled: boolean
   suggestedQuestions: string[]
+  refreshKey?: number
+  hideBranding?: boolean
+  customBranding?: { logo_url?: string; text?: string; link?: string } | null
 }
 
 export default function PlaygroundPreview({
@@ -41,6 +44,9 @@ export default function PlaygroundPreview({
   sessionId,
   suggestionsEnabled,
   suggestedQuestions,
+  refreshKey,
+  hideBranding,
+  customBranding,
 }: Props) {
   return (
     <div className="flex-1 flex flex-col bg-background border border-border rounded-xl shadow-2xl overflow-hidden min-h-[500px]">
@@ -72,6 +78,7 @@ export default function PlaygroundPreview({
           </div>
         </div>
         <WidgetApp
+          key={`${id}:${refreshKey ?? 0}`}
           chatbotId={id || 'preview'}
           apiBase={import.meta.env.VITE_API_BASE_URL || ''}
           themeColor={themeColor}
@@ -92,6 +99,8 @@ export default function PlaygroundPreview({
           resetSession={true}
           sessionIdOverride={sessionId}
           suggestions={suggestionsEnabled ? suggestedQuestions : []}
+          hideBrandingOverride={hideBranding}
+          customBrandingOverride={customBranding || undefined}
           positionStrategy="absolute"
         />
       </div>

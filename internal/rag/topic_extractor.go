@@ -12,11 +12,6 @@ import (
 	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
-// LLMClient defines the interface for interacting with the LLM provider.
-type LLMClient interface {
-	CreateCompletion(ctx context.Context, systemPrompt, contextText, userMessage string, model string, temperature float32, maxTokens int) (string, int, error)
-}
-
 // ExtractTopics remains for backward compatibility.
 func ExtractTopics(ctx context.Context, client LLMClient, content string, langCode string) (string, error) {
 	if len(content) > 2000 {
@@ -26,11 +21,21 @@ func ExtractTopics(ctx context.Context, client LLMClient, content string, langCo
 	sp := cfg.ResponseTemplates.TopicExtractionSystemPrompt
 	ct := fmt.Sprintf("Metin:\n%s", content)
 	um := cfg.ResponseTemplates.TopicExtractionUserPrompt
-	summary, _, err := client.CreateCompletion(ctx, sp, ct, um, "gpt-4o-mini", 0.0, 150)
+
+	params := models.CompletionParams{
+		SystemPrompt: sp,
+		Context:      ct,
+		UserMessage:  um,
+		Model:        "gpt-4o-mini", // Use default or specific model
+		Temperature:  0.0,
+		MaxTokens:    150,
+	}
+
+	result, err := client.CreateCompletion(ctx, params)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate summary: %w", err)
 	}
-	return strings.TrimSpace(summary), nil
+	return strings.TrimSpace(result.Content), nil
 }
 
 var fenceRe = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
@@ -46,10 +51,20 @@ func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content str
 	// Strict JSON instruction; model will often still wrap in fences — we handle both.
 	um := cfg.ResponseTemplates.TopicExtractionUserPrompt + "\n\nYanıtı YALNIZCA JSON olarak ver. Şu formatta:\n{\n  \"capability_summary\": <kısa cümle>,\n  \"suggested_questions\": [<3-6 kısa ve farklı soru>]\n}\nEkstra açıklama, ön/son metin ekleme. Soruları \"" + cfg.Code + "\" dilinde yaz."
 
-	out, _, err := client.CreateCompletion(ctx, sp, ct, um, "gpt-4o-mini", 0.0, 300)
+	params := models.CompletionParams{
+		SystemPrompt: sp,
+		Context:      ct,
+		UserMessage:  um,
+		Model:        "gpt-4o-mini",
+		Temperature:  0.0,
+		MaxTokens:    300,
+	}
+
+	result, err := client.CreateCompletion(ctx, params)
 	if err != nil {
 		return models.IngestionMetadata{}, fmt.Errorf("llm call failed: %w", err)
 	}
+	out := result.Content
 	raw := strings.TrimSpace(out)
 	// If fenced code, extract inner JSON
 	if m := fenceRe.FindStringSubmatch(raw); len(m) == 2 {

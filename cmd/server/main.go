@@ -96,16 +96,17 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	// Sources handler
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
 	// Chat service
+	factory := rag.NewClientFactory()
 	oaiClient, _ := rag.NewOpenAIClientFromEnv()
 	qdClient, _ := rag.NewQdrantClientFromEnv()
-	chatSvc := services.NewChatService(pool, oaiClient, qdClient, log)
+	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	// Composite handler under /api/v1/chatbots/
-    // Per-route limiter for sources endpoints
-    rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
-    // Pending URLs handler
-    puh := &handlers.PendingURLsHandlers{DB: pool, Log: log}
-    mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, rlSources))
+	// Per-route limiter for sources endpoints
+	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
+	// Pending URLs handler
+	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log}
+	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, rlSources))
 
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
@@ -135,49 +136,48 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 }
 
 func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, rlSources *middleware.RateLimiter) http.Handler {
-    return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        const p = "/api/v1/chatbots/"
-        // Pending URLs endpoints
-        if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/pending-urls") {
-            if strings.HasSuffix(r.URL.Path, "/pending-urls/approve") {
-                puh.ApprovePendingURLs(w, r)
-                return
-            }
-            if strings.HasSuffix(r.URL.Path, "/pending-urls/reject") {
-                puh.RejectPendingURLs(w, r)
-                return
-            }
-            if strings.HasSuffix(r.URL.Path, "/pending-urls/clear") {
-                puh.ClearPendingURLs(w, r)
-                return
-            }
-            if strings.HasSuffix(r.URL.Path, "/pending-urls") {
-                puh.ListPendingURLs(w, r)
-                return
-            }
-        }
-        // Sitemap discovery endpoint
-        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {
-            middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.DiscoverSitemap)).ServeHTTP(w, r)
-            return
-        }
-        // Bulk sources creation endpoint
-        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources/bulk") {
-            middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.BulkCreateSources)).ServeHTTP(w, r)
-            return
-        }
-        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
-            middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.ChatbotSources)).ServeHTTP(w, r)
-            return
-        }
-        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-            chh.Chat(w, r)
-            return
-        }
-        ch.ByID(w, r)
-    }))
+	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		const p = "/api/v1/chatbots/"
+		// Pending URLs endpoints
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/pending-urls") {
+			if strings.HasSuffix(r.URL.Path, "/pending-urls/approve") {
+				puh.ApprovePendingURLs(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/pending-urls/reject") {
+				puh.RejectPendingURLs(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/pending-urls/clear") {
+				puh.ClearPendingURLs(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/pending-urls") {
+				puh.ListPendingURLs(w, r)
+				return
+			}
+		}
+		// Sitemap discovery endpoint
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {
+			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.DiscoverSitemap)).ServeHTTP(w, r)
+			return
+		}
+		// Bulk sources creation endpoint
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources/bulk") {
+			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.BulkCreateSources)).ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
+			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.ChatbotSources)).ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
+			chh.Chat(w, r)
+			return
+		}
+		ch.ByID(w, r)
+	}))
 }
-
 
 func newHTTPServer(port string, h http.Handler) *http.Server {
 	return &http.Server{
@@ -209,8 +209,9 @@ func shutdownServer(srv *http.Server, log *logger.Logger, pool *sql.DB) {
 	_ = srv.Shutdown(ctx)
 	_ = pool.Close()
 }
+
 // Backward-compatible dispatcher used by tests
 func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers) http.Handler {
-    rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
-    return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, rlSources)
+	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
+	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, rlSources)
 }

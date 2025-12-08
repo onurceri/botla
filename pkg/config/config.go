@@ -46,8 +46,11 @@ func LoadConfig() *Config {
 		fatalf("QDRANT_URL cannot be empty")
 	}
 
-	if os.Getenv("OPENAI_API_KEY") == "" {
-		fatalf("OPENAI_API_KEY cannot be empty")
+	// Check for at least one LLM provider
+	if os.Getenv("OPENAI_API_KEY") == "" &&
+		os.Getenv("ANTHROPIC_API_KEY") == "" &&
+		os.Getenv("GOOGLE_AI_API_KEY") == "" {
+		fatalf("At least one LLM API key (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_AI_API_KEY) must be provided")
 	}
 
 	if os.Getenv("JWT_SECRET") == "" {
@@ -106,4 +109,17 @@ func ResolveChatbotModel(cfg *Config) string {
 		v = cfg.DEFAULT_CHATBOT_MODEL
 	}
 	return v
+}
+
+func GetDefaultModelForProvider(provider string) string {
+	switch strings.ToLower(provider) {
+	case "openai":
+		return "gpt-4o-mini"
+	case "anthropic":
+		return "claude-3-5-sonnet-20241022"
+	case "google":
+		return "gemini-1.5-flash"
+	default:
+		return "gpt-4o-mini"
+	}
 }

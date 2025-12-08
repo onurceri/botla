@@ -126,7 +126,7 @@ export function ChatDrawer(
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {/* Branding Footer */}
-          {customBranding ? (
+          {hideBranding && customBranding ? (
             <div className="cbw-brand">
               {customBranding.logo_url && <img src={customBranding.logo_url} alt="" style={{ height: '16px', marginRight: '4px', verticalAlign: 'middle' }} />}
               {customBranding.link ? (
@@ -152,4 +152,3 @@ export function ChatDrawer(
     </div>
   )
 }
-

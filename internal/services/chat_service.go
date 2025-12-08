@@ -15,56 +15,45 @@ import (
 
 // ChatService handles core chat logic, shared between authenticated and public endpoints
 type ChatService struct {
-	DB  *sql.DB
-	OAI *rag.OpenAIClient
-	QC  *rag.QdrantClient
-	Log *logger.Logger
+	DB       *sql.DB
+	Factory  *rag.ClientFactory
+	Embedder rag.EmbeddingClient
+	QC       *rag.QdrantClient
+	Log      *logger.Logger
 }
 
-// ChatRequest contains the input for a chat interaction
-type ChatRequest struct {
-	Message   string
-	SessionID string
-	BotID     string
-	UserID    *string // nil for public/anonymous
-}
-
-// SourceUsed represents a source that contributed to the response
-type SourceUsed struct {
-	ChunkIndex int    `json:"chunk_index"`
-	SourceType string `json:"source_type"`
-}
-
-// ChatResult contains the output of a chat interaction
-type ChatResult struct {
-	Response       string
-	TokensUsed     int
-	Sources        []SourceUsed
-	ConversationID string
-	IsNewConv      bool
-}
+// ...
 
 // NewChatService creates a new ChatService instance
-func NewChatService(db *sql.DB, oai *rag.OpenAIClient, qc *rag.QdrantClient, log *logger.Logger) *ChatService {
+func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc *rag.QdrantClient, log *logger.Logger) *ChatService {
+	if factory == nil {
+		factory = rag.NewClientFactory()
+	}
+	if embedder == nil {
+		embedder, _ = rag.NewOpenAIClientFromEnv()
+	}
 	return &ChatService{
-		DB:  db,
-		OAI: oai,
-		QC:  qc,
-		Log: log,
+		DB:       db,
+		Factory:  factory,
+		Embedder: embedder,
+		QC:       qc,
+		Log:      log,
 	}
 }
 
 // ProcessChat handles the complete chat flow: embedding, context retrieval, completion, and storage
-func (s *ChatService) ProcessChat(ctx context.Context, req ChatRequest, bot *models.Chatbot, ragConfig models.RAGConfig) (*ChatResult, error) {
-	// Lazy initialization of clients if not provided
-	oai := s.OAI
-	if oai == nil {
+func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, bot *models.Chatbot, ragConfig models.RAGConfig) (*models.ChatResult, error) {
+	// Ensure embedder is available
+	embedder := s.Embedder
+	if embedder == nil {
 		var err error
-		oai, err = rag.NewOpenAIClientFromEnv()
+		embedder, err = rag.NewOpenAIClientFromEnv()
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	// Lazy initialization of Qdrant
 	qc := s.QC
 	if qc == nil {
 		qc, _ = rag.NewQdrantClientFromEnv() // Proceed without context if Qdrant is unavailable
@@ -86,15 +75,15 @@ func (s *ChatService) ProcessChat(ctx context.Context, req ChatRequest, bot *mod
 	_ = db.IncrementConversationMessageCount(ctx, s.DB, conv.ID)
 
 	// Create embedding and search for context
-	embedding, err := oai.CreateEmbedding(ctx, req.Message)
+	embedding, err := embedder.CreateEmbedding(ctx, req.Message)
 	var contextText string
-	var sources []SourceUsed
+	var sources []models.SourceUsed
 
 	if err == nil && qc != nil {
 		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens)
 		contextText = ctxText
 		for _, m := range metas {
-			sources = append(sources, SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
+			sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
 		}
 	}
 
@@ -111,10 +100,34 @@ func (s *ChatService) ProcessChat(ctx context.Context, req ChatRequest, bot *mod
 		tokens = 0
 	} else {
 		sp := resolveSystemPrompt(bot.SystemPrompt, cfg)
-		ans, tokens, err = oai.CreateCompletion(ctx, sp, contextText, req.Message, bot.Model, bot.Temperature, bot.MaxTokens)
+
+		// Get client for the model
+		client, modelName, err := s.Factory.GetClientForModel(bot.Model)
+		if err != nil {
+			// Fallback to OpenAI if factory fails
+			client, _ = rag.NewOpenAIClientFromEnv()
+			modelName = "gpt-4o-mini"
+		}
+
+		params := models.CompletionParams{
+			SystemPrompt: sp,
+			Context:      contextText,
+			UserMessage:  req.Message,
+			Model:        modelName,
+			Temperature:  bot.Temperature,
+			MaxTokens:    bot.MaxTokens,
+		}
+
+		res, err := client.CreateCompletion(ctx, params)
 		if err != nil {
 			ans = cfg.ResponseTemplates.ErrorMessage
 			tokens = 0
+			if s.Log != nil {
+				s.Log.Error("completion_error", map[string]any{"error": err.Error(), "model": bot.Model})
+			}
+		} else {
+			ans = res.Content
+			tokens = res.UsageTokens
 		}
 	}
 
@@ -133,7 +146,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req ChatRequest, bot *mod
 		}
 	}()
 
-	return &ChatResult{
+	return &models.ChatResult{
 		Response:       ans,
 		TokensUsed:     tokens,
 		Sources:        sources,

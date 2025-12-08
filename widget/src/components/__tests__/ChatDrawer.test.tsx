@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/preact'
+import { render, screen, fireEvent, within } from '@testing-library/preact'
 import { ChatDrawer } from '../ChatDrawer'
 
 describe('ChatDrawer', () => {
@@ -38,5 +38,61 @@ describe('ChatDrawer', () => {
       />
     )
     expect(await screen.findByRole('button', { name: 'S1' })).toBeDefined()
+  })
+
+  it('shows Botla branding when hideBranding is false, even if custom exists', async () => {
+    const { container } = render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[]}
+        loading={false}
+        input=""
+        setInput={() => {}}
+        onSend={() => {}}
+        onClose={() => {}}
+        hideBranding={false}
+        customBranding={{ text: 'ACME', link: 'https://example.com' }}
+      />
+    )
+    const scoped = within(container as HTMLElement)
+    expect(await scoped.findByText(/Powered by/i)).toBeDefined()
+    expect(await scoped.findByText('Botla')).toBeDefined()
+  })
+
+  it('shows custom branding when hideBranding is true and custom exists', async () => {
+    const { container } = render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[]}
+        loading={false}
+        input=""
+        setInput={() => {}}
+        onSend={() => {}}
+        onClose={() => {}}
+        hideBranding={true}
+        customBranding={{ text: 'ACME', link: 'https://example.com' }}
+      />
+    )
+    const scoped = within(container as HTMLElement)
+    expect(await scoped.findByText('ACME')).toBeDefined()
+    // Botla default should not be visible
+    expect(scoped.queryByText(/Powered by/i)).toBeNull()
+  })
+
+  it('shows no branding when hideBranding is true and custom is absent', async () => {
+    const { container } = render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[]}
+        loading={false}
+        input=""
+        setInput={() => {}}
+        onSend={() => {}}
+        onClose={() => {}}
+        hideBranding={true}
+      />
+    )
+    const scoped = within(container as HTMLElement)
+    expect(scoped.queryByText(/Powered by/i)).toBeNull()
   })
 })

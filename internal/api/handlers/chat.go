@@ -117,11 +117,9 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Delegate to chat service
-	chatReq := services.ChatRequest{
+	chatReq := models.ChatRequest{
 		Message:   req.Message,
 		SessionID: req.SessionID,
-		BotID:     botID,
-		UserID:    &userID,
 	}
 	result, err := h.ChatService.ProcessChat(ctx, chatReq, cbot, ragConfig)
 	if err != nil {

@@ -14,31 +14,37 @@ import (
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
-type OpenAIClient struct {
+type OpenRouterClient struct {
 	apiKey       string
 	http         *http.Client
 	base         string
 	defaultModel string
 }
 
-func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
-	k := os.Getenv("OPENAI_API_KEY")
+func NewOpenRouterClientFromEnv() (*OpenRouterClient, error) {
+	k := os.Getenv("OPENROUTER_API_KEY")
+	// Fallback to OPENAI_API_KEY if OPENROUTER_API_KEY is missing.
 	if k == "" {
-		return nil, errors.New("OPENAI_API_KEY is empty")
+		k = os.Getenv("OPENAI_API_KEY")
 	}
-	b := os.Getenv("OPENAI_API_BASE")
+	if k == "" {
+		return nil, errors.New("OPENROUTER_API_KEY (or OPENAI_API_KEY) is empty")
+	}
+
+	b := os.Getenv("OPENROUTER_API_BASE")
 	if b == "" {
-		b = "https://api.openai.com"
+		b = "https://openrouter.ai/api/v1"
 	}
 	to := 30 * time.Second
-	if v := os.Getenv("OPENAI_TIMEOUT_MS"); v != "" {
+	if v := os.Getenv("OPENROUTER_TIMEOUT_MS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			to = time.Duration(n) * time.Millisecond
 		}
 	}
 
 	defModel := config.DefaultChatbotModel()
-	return &OpenAIClient{
+
+	return &OpenRouterClient{
 		apiKey:       k,
 		http:         &http.Client{Timeout: to},
 		base:         b,
@@ -46,30 +52,19 @@ func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
 	}, nil
 }
 
-// Embeddings
-type embeddingRequest struct {
-	Model string `json:"model"`
-	Input string `json:"input"`
-}
-
-type embeddingResponse struct {
-	Data []struct {
-		Embedding []float64 `json:"embedding"`
-	} `json:"data"`
-	Usage struct {
-		PromptTokens int `json:"prompt_tokens"`
-		TotalTokens  int `json:"total_tokens"`
-	} `json:"usage"`
-}
-
-func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
+func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	// Use standard OpenAI-compatible embedding endpoint.
 	body := embeddingRequest{Model: "text-embedding-3-small", Input: text}
 	b, _ := json.Marshal(body)
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
+		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/embeddings", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
+		// OpenRouter specific headers
+		req.Header.Set("HTTP-Referer", "https://botla.co") // Placeholder
+		req.Header.Set("X-Title", "Botla")
+
 		res, err := c.http.Do(req)
 		if err != nil {
 			lastErr = err
@@ -99,13 +94,7 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 	return nil, lastErr
 }
 
-// Batch Embeddings
-type embeddingBatchRequest struct {
-	Model string   `json:"model"`
-	Input []string `json:"input"`
-}
-
-func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float32, error) {
+func (c *OpenRouterClient) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float32, error) {
 	if len(texts) == 0 {
 		return nil, nil
 	}
@@ -113,9 +102,12 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 	b, _ := json.Marshal(body)
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
+		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/embeddings", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("HTTP-Referer", "https://botla.co")
+		req.Header.Set("X-Title", "Botla")
+
 		res, err := c.http.Do(req)
 		if err != nil {
 			lastErr = err
@@ -148,42 +140,21 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 	return nil, lastErr
 }
 
-// Completions
-type chatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type chatRequest struct {
-	Model       string        `json:"model"`
-	Messages    []chatMessage `json:"messages"`
-	Temperature float32       `json:"temperature,omitempty"`
-	MaxTokens   int           `json:"max_tokens,omitempty"`
-}
-
-type chatResponse struct {
-	Choices []struct {
-		Message chatMessage `json:"message"`
-	} `json:"choices"`
-	Usage struct {
-		TotalTokens int `json:"total_tokens"`
-	} `json:"usage"`
-}
-
-func (c *OpenAIClient) GetModelInfo() models.ModelInfo {
+func (c *OpenRouterClient) GetModelInfo() models.ModelInfo {
 	return models.ModelInfo{
-		Name:              "gpt-4o-mini",
-		Provider:          "openai",
+		Name:              "openai/gpt-3.5-turbo", // Default guess
+		Provider:          "openrouter",
 		MaxTokens:         128000,
 		SupportedFeatures: []string{"chat", "tools"},
 	}
 }
 
-func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
+func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
 	model := params.Model
 	if model == "" {
 		model = c.defaultModel
 	}
+	// Assume caller provides correct model ID (e.g. "openai/gpt-4").
 	user := "Context:\n" + params.Context + "\n\nQuestion:\n" + params.UserMessage
 	reqBody := chatRequest{
 		Model: model,
@@ -197,29 +168,32 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 	b, _ := json.Marshal(reqBody)
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
+		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/chat/completions", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("HTTP-Referer", "https://botla.co")
+		req.Header.Set("X-Title", "Botla")
+
 		res, err := c.http.Do(req)
 		if err != nil {
 			lastErr = err
 		} else {
 			if res.StatusCode == http.StatusOK {
 				var cr chatResponse
-				err := json.NewDecoder(res.Body).Decode(&cr)
-				_ = res.Body.Close()
-				if err != nil {
+				if err := json.NewDecoder(res.Body).Decode(&cr); err != nil {
 					lastErr = err
-				} else if len(cr.Choices) == 0 {
-					lastErr = errors.New("no completion returned")
 				} else {
-					return &models.CompletionResult{
-						Content:     cr.Choices[0].Message.Content,
-						UsageTokens: cr.Usage.TotalTokens,
-					}, nil
+					_ = res.Body.Close()
+					if len(cr.Choices) > 0 {
+						return &models.CompletionResult{
+							Content:     cr.Choices[0].Message.Content,
+							UsageTokens: cr.Usage.TotalTokens,
+						}, nil
+					}
+					lastErr = errors.New("no choices in response")
 				}
 			} else {
-				lastErr = errors.New(res.Status)
+				lastErr = errors.New("OpenRouter error: " + res.Status)
 				_ = res.Body.Close()
 			}
 		}

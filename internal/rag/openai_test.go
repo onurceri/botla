@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/models"
 )
 
 func TestNewOpenAIClientFromEnv(t *testing.T) {
@@ -95,7 +97,14 @@ func TestCreateCompletion_NoChoices(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("OPENAI_API_BASE", srv.URL)
 	c, _ := NewOpenAIClientFromEnv()
-	_, _, err := c.CreateCompletion(context.Background(), "sys", "ctx", "q", "gpt-3.5-turbo", 0, 10)
+	_, err := c.CreateCompletion(context.Background(), models.CompletionParams{
+		SystemPrompt: "sys",
+		Context:      "ctx",
+		UserMessage:  "q",
+		Model:        "gpt-3.5-turbo",
+		Temperature:  0,
+		MaxTokens:    10,
+	})
 	if err == nil {
 		t.Fatalf("expected error due to no choices")
 	}
@@ -117,8 +126,15 @@ func TestCreateCompletion_Success(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("OPENAI_API_BASE", srv.URL)
 	c, _ := NewOpenAIClientFromEnv()
-	ans, tokens, err := c.CreateCompletion(context.Background(), "sys", "ctx", "q", "gpt-3.5-turbo", 0, 10)
-	if err != nil || ans == "" || tokens == 0 {
+	res, err := c.CreateCompletion(context.Background(), models.CompletionParams{
+		SystemPrompt: "sys",
+		Context:      "ctx",
+		UserMessage:  "q",
+		Model:        "gpt-3.5-turbo",
+		Temperature:  0,
+		MaxTokens:    10,
+	})
+	if err != nil || res.Content == "" || res.UsageTokens == 0 {
 		t.Fatalf("completion err: %v", err)
 	}
 }

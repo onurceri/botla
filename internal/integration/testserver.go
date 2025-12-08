@@ -35,7 +35,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 	memStore := storage.NewMemoryStorage()
 	q, _ := processing.StartSourceQueue(pool, memStore)
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore}
-	chatSvc := services.NewChatService(pool, nil, nil, nil) // nil clients -> lazy init
+	chatSvc := services.NewChatService(pool, nil, nil, nil, nil) // nil clients -> lazy init
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	mux.Handle("/api/v1/chatbots/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"

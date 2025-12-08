@@ -61,7 +61,12 @@ export default function BrandingSettings({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => canHideBranding && setHideBranding(!hideBranding)}
+                onClick={() => {
+                  if (!canHideBranding) return
+                  const next = !hideBranding
+                  setHideBranding(next)
+                  if (!next) setCustomBranding(null)
+                }}
                 disabled={!canHideBranding}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                   hideBranding ? 'bg-primary' : 'bg-gray-200'
@@ -143,15 +148,7 @@ export default function BrandingSettings({
                     className="bg-background h-8 text-xs"
                   />
                 </div>
-                {(customBranding?.logo_url || customBranding?.text) && (
-                  <button
-                    type="button"
-                    onClick={() => setCustomBranding(null)}
-                    className="text-[10px] text-rose-500 hover:text-rose-600 transition-colors"
-                  >
-                    ✕ Temizle
-                  </button>
-                )}
+                
               </div>
             ) : hideBranding && !canCustomBranding ? (
               <div className="p-3 bg-gray-50 rounded-lg text-center">
@@ -163,47 +160,7 @@ export default function BrandingSettings({
             ) : null}
           </div>
 
-          {/* Preview - improved styling */}
-          {hideBranding && (
-            <div className="pt-3 border-t border-border">
-              <label className="text-[10px] font-medium text-muted-foreground uppercase mb-2 block">
-                Önizleme
-              </label>
-              <div className="bg-gradient-to-b from-gray-50 to-gray-100 rounded-lg p-3 flex items-center justify-center min-h-[40px]">
-                {customBranding && (customBranding.logo_url || customBranding.text) ? (
-                  <div className="flex items-center gap-2">
-                    {customBranding.logo_url && !logoError && (
-                      <img 
-                        src={customBranding.logo_url} 
-                        alt="" 
-                        className="h-5 w-5 object-contain rounded"
-                        onError={() => setLogoError(true)}
-                        onLoad={() => setLogoError(false)}
-                      />
-                    )}
-                    {customBranding.text && (
-                      customBranding.link ? (
-                        <a 
-                          href={customBranding.link} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="text-xs text-primary hover:underline font-medium"
-                        >
-                          {customBranding.text}
-                        </a>
-                      ) : (
-                        <span className="text-xs text-gray-600 font-medium">{customBranding.text}</span>
-                      )
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground italic">
-                    Branding gizli
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+          
         </div>
       )}
     </div>

@@ -39,7 +39,7 @@ func TestChat_NoInfoFound(t *testing.T) {
 		t.Fatalf("user: %v", err)
 	}
 	h := &ChatbotHandlers{DB: dbx}
-	chatSvc := services.NewChatService(dbx, nil, nil, nil) // nil clients -> lazy init
+	chatSvc := services.NewChatService(dbx, nil, nil, nil, nil) // nil clients -> lazy init
 	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
