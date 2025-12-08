@@ -4,9 +4,15 @@ import { Suggestions } from './Suggestions'
 
 type Msg = { role: 'user' | 'assistant'; content: string; ts?: number }
 
+type CustomBranding = {
+  logo_url?: string
+  text?: string
+  link?: string
+}
+
 export function ChatDrawer(
-  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000 }:
-  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number }
+  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding }:
+  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding }
 ) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -119,7 +125,21 @@ export function ChatDrawer(
           </button>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="cbw-brand">Powered by <a href="https://botla.co" target="_blank" rel="noreferrer">Botla</a></div>
+          {/* Branding Footer */}
+          {customBranding ? (
+            <div className="cbw-brand">
+              {customBranding.logo_url && <img src={customBranding.logo_url} alt="" style={{ height: '16px', marginRight: '4px', verticalAlign: 'middle' }} />}
+              {customBranding.link ? (
+                <a href={customBranding.link} target="_blank" rel="noreferrer">{customBranding.text || 'Powered by'}</a>
+              ) : (
+                <span>{customBranding.text || ''}</span>
+              )}
+            </div>
+          ) : !hideBranding ? (
+            <div className="cbw-brand">Powered by <a href="https://botla.co" target="_blank" rel="noreferrer">Botla</a></div>
+          ) : (
+            <div></div>
+          )}
           <div className="cbw-char-limit">{input.length} / {MAX_CHARS}</div>
         </div>
       </div>

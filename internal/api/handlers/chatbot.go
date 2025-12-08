@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 
+	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
@@ -44,4 +45,6 @@ type createChatbotRequest struct {
 	DiscoveryMode        *string   `json:"discovery_mode"`
 	RefreshPolicy        *string   `json:"refresh_policy"`
 	RefreshFrequency     *string   `json:"refresh_frequency"`
+	HideBranding         *bool                   `json:"hide_branding"`
+	CustomBranding       *models.CustomBranding  `json:"custom_branding"`
 }

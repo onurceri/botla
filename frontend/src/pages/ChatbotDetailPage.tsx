@@ -24,6 +24,7 @@ import PlaygroundPreview from '@/features/chatbot/components/PlaygroundPreview'
 import SuggestionsPanel from '@/features/chatbot/components/SuggestionsPanel'
 import PendingURLsPanel from '@/features/chatbot/components/PendingURLsPanel'
 import URLAdvancedSettings from '@/features/chatbot/components/URLAdvancedSettings'
+import BrandingSettings from '@/features/chatbot/components/BrandingSettings'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -60,11 +61,14 @@ const ChatbotDetailPage = () => {
     refreshFrequency, setRefreshFrequency,
     nextRefreshAt,
     lastRefreshAt,
+    hideBranding, setHideBranding,
+    customBranding, setCustomBranding,
     setFromServer,
     validate,
     buildPayload,
   } = useChatbotForm()
   const [userPlan, setUserPlan] = useState('free')
+  const [planConfig, setPlanConfig] = useState<{ branding?: { can_hide_branding?: boolean, can_custom_branding?: boolean } }>({});
   
   const isNew = id === 'new'
   const { sources, refreshSources, pollStatus, handleDeleteSource, handleRefreshSource, refreshingId } = useSourceOps(id, isNew)
@@ -90,14 +94,37 @@ const ChatbotDetailPage = () => {
     } catch {}
   }, [])
 
+  // Fetch user profile and plan config
+  const fetchUserProfile = () => {
+    api.get('/api/v1/me').then(({ data }) => { 
+      setUserPlan(data.plan_code || 'free')
+      if (data.config) {
+        setPlanConfig(data.config)
+      }
+    }).catch(() => {})
+  }
+
   useEffect(() => {
-    api.get('/api/v1/me').then(({ data }) => { setUserPlan(data.subscription_plan || 'free') }).catch(() => {})
+    fetchUserProfile()
+    
+    // Refetch when user returns to tab (in case plan was upgraded)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUserProfile()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
     if (!isNew && id) {
       api.get(`/api/v1/chatbots/${id}`).then(({ data }) => {
         setFromServer(data)
       }).catch(() => {})
       
       refreshSources()
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [id])
 
@@ -309,7 +336,16 @@ const ChatbotDetailPage = () => {
                 setUserMessageTextColor={setUserMessageTextColor}
               />
 
-              
+              <BrandingSettings
+                isExpanded={expandedSection === 'branding'}
+                onToggle={() => setExpandedSection(expandedSection === 'branding' ? null : 'branding')}
+                hideBranding={hideBranding}
+                setHideBranding={setHideBranding}
+                customBranding={customBranding}
+                setCustomBranding={setCustomBranding}
+                canHideBranding={planConfig.branding?.can_hide_branding ?? false}
+                canCustomBranding={planConfig.branding?.can_custom_branding ?? false}
+              />
 
             </div>
 

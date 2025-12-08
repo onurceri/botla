@@ -25,6 +25,7 @@ type PlanConfig struct {
     Files    FilesConfig    `json:"files"`
     Chat     ChatConfig     `json:"chat"`
     Refresh  RefreshConfig  `json:"refresh"`
+    Branding BrandingConfig `json:"branding"`
     MaxMonthlyIngestions     int `json:"max_monthly_ingestions"`
     MaxMonthlyEmbeddingTokens int `json:"max_monthly_embedding_tokens"`
     MinReAddCooldownMinutes   int `json:"min_readd_cooldown_minutes"`
@@ -33,6 +34,12 @@ type PlanConfig struct {
 type RefreshConfig struct {
     Enabled    bool `json:"enabled"`
     MaxMonthly int  `json:"max_monthly"`
+}
+
+// BrandingConfig defines branding customization options per plan
+type BrandingConfig struct {
+    CanHideBranding   bool `json:"can_hide_branding"`   // Pro+ plans can hide "Powered by Botla"
+    CanCustomBranding bool `json:"can_custom_branding"` // Enterprise can use custom branding
 }
 
 type ScrapingConfig struct {

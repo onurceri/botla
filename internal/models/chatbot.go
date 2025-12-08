@@ -41,4 +41,13 @@ type Chatbot struct {
 	RefreshFrequency     *string    `json:"refresh_frequency"` // daily, weekly, monthly (only for auto)
 	NextRefreshAt        *time.Time `json:"next_refresh_at,omitempty"`
 	LastRefreshAt        *time.Time `json:"last_refresh_at,omitempty"`
+	HideBranding         bool            `json:"hide_branding"`
+	CustomBranding       *CustomBranding `json:"custom_branding,omitempty"`
+}
+
+// CustomBranding represents custom branding configuration (Enterprise plan feature)
+type CustomBranding struct {
+	LogoURL string `json:"logo_url,omitempty"`
+	Text    string `json:"text,omitempty"`
+	Link    string `json:"link,omitempty"`
 }

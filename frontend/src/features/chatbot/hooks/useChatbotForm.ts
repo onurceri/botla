@@ -1,5 +1,11 @@
 import { useState } from 'react'
 
+type CustomBranding = {
+  logo_url?: string
+  text?: string
+  link?: string
+}
+
 export function useChatbotForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -32,6 +38,8 @@ export function useChatbotForm() {
   const [refreshFrequency, setRefreshFrequency] = useState<'daily' | 'weekly' | 'monthly' | null>(null)
   const [nextRefreshAt, setNextRefreshAt] = useState<string | null>(null)
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null)
+  const [hideBranding, setHideBranding] = useState(false)
+  const [customBranding, setCustomBranding] = useState<CustomBranding | null>(null)
 
   function setFromServer(data: any) {
     setName(data.name || '')
@@ -65,6 +73,8 @@ export function useChatbotForm() {
     setRefreshFrequency(data.refresh_frequency || null)
     setNextRefreshAt(data.next_refresh_at || null)
     setLastRefreshAt(data.last_refresh_at || null)
+    setHideBranding(!!data.hide_branding)
+    setCustomBranding(data.custom_branding || null)
   }
 
   function validate() {
@@ -102,6 +112,8 @@ export function useChatbotForm() {
       discovery_mode: discoveryMode,
       refresh_policy: refreshPolicy,
       refresh_frequency: refreshFrequency,
+      hide_branding: hideBranding,
+      custom_branding: customBranding,
     }
   }
 
@@ -137,6 +149,8 @@ export function useChatbotForm() {
     refreshFrequency, setRefreshFrequency,
     nextRefreshAt,
     lastRefreshAt,
+    hideBranding, setHideBranding,
+    customBranding, setCustomBranding,
     setFromServer,
     validate,
     buildPayload,

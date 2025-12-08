@@ -51,7 +51,8 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
-               COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at
+               COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
+               COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.user_id=$1 AND c.deleted_at IS NULL
@@ -63,7 +64,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj, ipj, epj, swj []byte
+		var sj, ipj, epj, swj, cbj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -76,6 +77,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 			&sj, &c.SuggestionsEnabled,
 			&ipj, &epj, &swj, &c.DiscoveryMode,
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
+			&c.HideBranding, &cbj,
 		); err != nil {
 			return nil, err
 		}
@@ -99,6 +101,11 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 			_ = json.Unmarshal(swj, &arr)
 			c.SelectorWhitelist = arr
 		}
+		if len(cbj) > 0 {
+			var cb models.CustomBranding
+			_ = json.Unmarshal(cbj, &cb)
+			c.CustomBranding = &cb
+		}
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
@@ -109,7 +116,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 
 func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatbot, error) {
 	var c models.Chatbot
-	var sj, ipj, epj, swj []byte
+	var sj, ipj, epj, swj, cbj []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT c.id, c.user_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
@@ -121,7 +128,8 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
-               COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at
+               COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
+               COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.id=$1 AND c.deleted_at IS NULL`, id).
@@ -137,6 +145,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 			&sj, &c.SuggestionsEnabled,
 			&ipj, &epj, &swj, &c.DiscoveryMode,
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
+			&c.HideBranding, &cbj,
 		)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -164,10 +173,21 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		_ = json.Unmarshal(swj, &arr)
 		c.SelectorWhitelist = arr
 	}
+	if len(cbj) > 0 {
+		var cb models.CustomBranding
+		_ = json.Unmarshal(cbj, &cb)
+		c.CustomBranding = &cb
+	}
 	return &c, nil
 }
 
 func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error {
+	// Serialize custom_branding to JSON
+	var cbJSON interface{}
+	if bot.CustomBranding != nil {
+		cbJSON, _ = json.Marshal(bot.CustomBranding)
+	}
+	
 	_, err := pool.ExecContext(ctx, `
         UPDATE chatbots SET
             name=$1,
@@ -203,8 +223,10 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             refresh_frequency=$31,
             next_refresh_at=$32,
             last_refresh_at=$33,
+            hide_branding=$34,
+            custom_branding=$35,
             updated_at=NOW()
-        WHERE id=$34 AND user_id=$35 AND deleted_at IS NULL`,
+        WHERE id=$36 AND user_id=$37 AND deleted_at IS NULL`,
 		bot.Name,
 		bot.Description,
 		bot.SystemPrompt,
@@ -238,6 +260,8 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.RefreshFrequency,
 		bot.NextRefreshAt,
 		bot.LastRefreshAt,
+		bot.HideBranding,
+		cbJSON,
 		bot.ID,
 		bot.UserID,
 	)
@@ -289,7 +313,8 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
-               COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at
+               COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
+               COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.refresh_policy = 'auto' 
@@ -303,7 +328,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj, ipj, epj, swj []byte
+		var sj, ipj, epj, swj, cbj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -316,6 +341,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 			&sj, &c.SuggestionsEnabled,
 			&ipj, &epj, &swj, &c.DiscoveryMode,
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
+			&c.HideBranding, &cbj,
 		); err != nil {
 			return nil, err
 		}
@@ -338,6 +364,11 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 			var arr []string
 			_ = json.Unmarshal(swj, &arr)
 			c.SelectorWhitelist = arr
+		}
+		if len(cbj) > 0 {
+			var cb models.CustomBranding
+			_ = json.Unmarshal(cbj, &cb)
+			c.CustomBranding = &cb
 		}
 		out = append(out, c)
 	}

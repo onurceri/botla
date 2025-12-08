@@ -288,7 +288,7 @@ export default function URLAdvancedSettings({
             section="refresh" 
             icon={RefreshCw} 
             title="Otomatik Yenileme"
-            badge={refreshPolicy === 'auto' ? refreshFrequency : undefined}
+            badge={refreshPolicy === 'auto' ? (refreshFrequency || undefined) : undefined}
             color="text-blue-500"
             bgColor="bg-blue-50"
           />

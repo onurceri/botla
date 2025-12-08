@@ -84,13 +84,42 @@
 - **Note**: Auto-refresh only applies to URL sources (not PDFs/text) since they are dynamic content.
 - **Status**: Verified (Backend builds, frontend builds, all tests passed).
 
+#### ✅ 1.7 White-Label Branding (2025-12-08)
+- **Goal**: Plan-based "Powered by Botla" removal and customizable branding options.
+- **Implementation**:
+  - **DB**:
+    - Migration `000013_branding_options`: Added columns to `chatbots`:
+      - `hide_branding` (BOOLEAN) - Hide "Powered by Botla" (Pro+ feature)
+      - `custom_branding` (JSONB) - Custom branding config: {logo_url, text, link} (Enterprise feature)
+  - **Backend**:
+    - Updated `internal/models/chatbot.go`: Added `HideBranding` and `CustomBranding` fields
+    - Updated `internal/models/plan.go`: Added `BrandingConfig` with `CanHideBranding` and `CanCustomBranding`
+    - Updated `internal/db/chatbot.go`: All CRUD queries now include branding columns
+    - Updated `internal/api/handlers/chatbot.go`: Added branding fields to request struct
+    - Updated `internal/api/handlers/chatbot_item.go`: 
+      - Plan-based validation for branding changes (403 Forbidden if plan doesn't allow)
+      - Added branding fields to `applyChatbotUpdates()`
+    - Updated `internal/api/handlers/public.go`: Added branding fields to public chatbot config response
+  - **Widget**:
+    - Updated `widget/src/components/ChatDrawer.tsx`:
+      - Added `hideBranding` and `customBranding` props
+      - Conditional rendering: custom branding > hide branding > default Botla branding
+    - Updated `widget/src/widgetApp.tsx`: Passes branding props to ChatDrawer from config
+  - **Frontend**:
+    - Created `BrandingSettings.tsx` component with:
+      - Toggle to hide "Powered by Botla" (locked for Free plan)
+      - Custom branding inputs: logo URL, text, link (locked for non-Enterprise)
+      - Live preview of branding changes
+      - Plan feature indicators (Pro+/Enterprise badges)
+    - Updated `useChatbotForm.ts` with `hideBranding` and `customBranding` state
+- **Status**: Verified (Backend builds, frontend builds, widget builds, unit tests passed).
+
 ---
 
 ## Pending Roadmap
 
 ### Phase 1: Core Product Improvements
 - [ ] 1.1 LLM Client Abstraction
-- [ ] 1.7 White-Label Branding
 
 ### Phase 2: Integrations
 - [ ] 2.1 Function Calling
@@ -103,5 +132,4 @@
 - [ ] 3.1 Multi-Tenant Architecture
 - [ ] 3.2 Custom Domain Routing
 - [ ] 3.3 Advanced Analytics
-
 

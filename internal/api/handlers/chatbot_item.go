@@ -81,6 +81,35 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
+	// Validate branding permissions based on user's plan
+	if req.HideBranding != nil && *req.HideBranding {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil || !plan.Config.Branding.CanHideBranding {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Your plan does not allow hiding branding",
+				"upgrade_required": true,
+				"feature":          "hide_branding",
+			})
+			return
+		}
+	}
+	
+	if req.CustomBranding != nil {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil || !plan.Config.Branding.CanCustomBranding {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Custom branding requires Enterprise plan",
+				"upgrade_required": true,
+				"feature":          "custom_branding",
+			})
+			return
+		}
+	}
+
 	// Apply updates
 	applyChatbotUpdates(c, req)
 
@@ -217,6 +246,12 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 		c.RefreshFrequency = req.RefreshFrequency
 		nextRefresh := calculateNextRefresh(*req.RefreshFrequency)
 		c.NextRefreshAt = &nextRefresh
+	}
+	if req.HideBranding != nil {
+		c.HideBranding = *req.HideBranding
+	}
+	if req.CustomBranding != nil {
+		c.CustomBranding = req.CustomBranding
 	}
 }
 
