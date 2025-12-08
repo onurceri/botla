@@ -28,6 +28,10 @@ export function useChatbotForm() {
   const [excludePaths, setExcludePaths] = useState<string[]>([])
   const [selectorWhitelist, setSelectorWhitelist] = useState<string[]>([])
   const [discoveryMode, setDiscoveryMode] = useState<'auto' | 'pending' | 'disabled'>('auto')
+  const [refreshPolicy, setRefreshPolicy] = useState<'manual' | 'auto'>('manual')
+  const [refreshFrequency, setRefreshFrequency] = useState<'daily' | 'weekly' | 'monthly' | null>(null)
+  const [nextRefreshAt, setNextRefreshAt] = useState<string | null>(null)
+  const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null)
 
   function setFromServer(data: any) {
     setName(data.name || '')
@@ -57,6 +61,10 @@ export function useChatbotForm() {
     setExcludePaths(Array.isArray(data.exclude_paths) ? data.exclude_paths : [])
     setSelectorWhitelist(Array.isArray(data.selector_whitelist) ? data.selector_whitelist : [])
     setDiscoveryMode(data.discovery_mode || 'auto')
+    setRefreshPolicy(data.refresh_policy || 'manual')
+    setRefreshFrequency(data.refresh_frequency || null)
+    setNextRefreshAt(data.next_refresh_at || null)
+    setLastRefreshAt(data.last_refresh_at || null)
   }
 
   function validate() {
@@ -92,6 +100,8 @@ export function useChatbotForm() {
       exclude_paths: excludePaths,
       selector_whitelist: selectorWhitelist,
       discovery_mode: discoveryMode,
+      refresh_policy: refreshPolicy,
+      refresh_frequency: refreshFrequency,
     }
   }
 
@@ -123,6 +133,10 @@ export function useChatbotForm() {
     excludePaths, setExcludePaths,
     selectorWhitelist, setSelectorWhitelist,
     discoveryMode, setDiscoveryMode,
+    refreshPolicy, setRefreshPolicy,
+    refreshFrequency, setRefreshFrequency,
+    nextRefreshAt,
+    lastRefreshAt,
     setFromServer,
     validate,
     buildPayload,

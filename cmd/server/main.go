@@ -46,7 +46,25 @@ func main() {
 	}
 	log.Info("qdrant_collection_ready", nil)
 
-	mux := buildMux(cfg, pool, log)
+	// Initialize storage service
+	var storageService storage.StorageService
+	if cfg.R2_ACCOUNT_ID != "" {
+		var err error
+		storageService, err = storage.NewR2Storage(cfg.R2_ACCOUNT_ID, cfg.R2_ACCESS_KEY_ID, cfg.R2_SECRET_ACCESS_KEY, cfg.R2_BUCKET_NAME)
+		if err != nil {
+			log.Error("storage_init_failed", map[string]any{"error": err.Error()})
+		}
+	}
+
+	// Start source processing queue
+	q, _ := processing.StartSourceQueue(pool, storageService)
+
+	// Start refresh scheduler
+	refreshScheduler := services.NewRefreshScheduler(pool, q, log)
+	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
+	refreshScheduler.Start(schedulerCtx)
+
+	mux := buildMux(cfg, pool, log, q, storageService)
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	rl := middleware.NewRateLimiterFromEnv()
@@ -54,10 +72,14 @@ func main() {
 	srv := newHTTPServer(cfg.PORT, cors(handler))
 	startServerAsync(srv, log, cfg.PORT)
 	waitForShutdownSignal()
+
+	// Graceful shutdown
+	schedulerCancel()
+	refreshScheduler.Stop()
 	shutdownServer(srv, log, pool)
 }
 
-func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeMux {
+func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService) *http.ServeMux {
 	mux := http.NewServeMux()
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	mux.HandleFunc("/health", hh.Health)
@@ -71,19 +93,8 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ch.ListOrCreate)))
-	// Storage
-	var storageService storage.StorageService
-	if cfg.R2_ACCOUNT_ID != "" {
-		var err error
-		storageService, err = storage.NewR2Storage(cfg.R2_ACCOUNT_ID, cfg.R2_ACCESS_KEY_ID, cfg.R2_SECRET_ACCESS_KEY, cfg.R2_BUCKET_NAME)
-		if err != nil {
-			log.Error("storage_init_failed", map[string]any{"error": err.Error()})
-		}
-	}
-
-	// Sources queue
-    q, _ := processing.StartSourceQueue(pool, storageService)
-    sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
+	// Sources handler
+	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
 	// Chat service
 	oaiClient, _ := rag.NewOpenAIClientFromEnv()
 	qdClient, _ := rag.NewQdrantClientFromEnv()

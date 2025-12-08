@@ -50,13 +50,46 @@
     - Integrated components into `ChatbotDetailPage.tsx` Sources tab.
 - **Status**: Verified (Backend builds, frontend builds, unit tests passed).
 
+#### ✅ 1.6 Auto-Refresh Scheduler (2025-12-08)
+- **Goal**: Automatically refresh URL sources at scheduled intervals.
+- **Implementation**:
+  - **DB**:
+    - Migration `000012_auto_refresh_config`: Added columns to `chatbots`:
+      - `refresh_policy` (TEXT) - 'manual' or 'auto'
+      - `refresh_frequency` (TEXT) - 'daily', 'weekly', 'monthly'
+      - `next_refresh_at` (TIMESTAMPTZ) - Next scheduled refresh time
+      - `last_refresh_at` (TIMESTAMPTZ) - Last refresh execution time
+    - Added `auto_refresh_count` to `usage_ingestions` for tracking.
+    - Created index `idx_chatbots_next_refresh` for efficient scheduler queries.
+  - **Backend**:
+    - Created `internal/services/refresh_scheduler.go`:
+      - `RefreshScheduler` service with 5-minute polling loop
+      - `CalculateNextRefresh()` for daily/weekly/monthly scheduling
+      - Plan-based limit checking via `GetAutoRefreshCountForMonth()`
+    - Added scheduler functions in `internal/db/chatbot.go`:
+      - `GetChatbotsDueForRefresh()` - Find bots needing refresh
+      - `UpdateChatbotRefreshTimes()` - Update next/last refresh timestamps
+      - `GetAutoRefreshCountForMonth()` / `IncrementAutoRefreshCount()` - Usage tracking
+      - `GetURLSourcesForChatbot()` - Get URL sources for a chatbot
+    - Updated `internal/models/chatbot.go` with RefreshPolicy, RefreshFrequency, NextRefreshAt, LastRefreshAt
+    - Updated `internal/api/handlers/chatbot.go` and `chatbot_item.go` for API support
+    - Integrated scheduler startup/shutdown in `cmd/server/main.go`
+  - **Frontend**:
+    - Created `RefreshSettings.tsx` component with:
+      - Policy selection (Manual/Auto) with visual cards
+      - Frequency selection (Daily/Weekly/Monthly) buttons
+      - Status display showing last/next refresh times
+    - Updated `useChatbotForm.ts` with refreshPolicy, refreshFrequency, nextRefreshAt, lastRefreshAt
+    - Integrated RefreshSettings into `extraUrlSettings` prop (only visible when "Web Sitesi" URL tab is active)
+- **Note**: Auto-refresh only applies to URL sources (not PDFs/text) since they are dynamic content.
+- **Status**: Verified (Backend builds, frontend builds, all tests passed).
+
 ---
 
 ## Pending Roadmap
 
 ### Phase 1: Core Product Improvements
 - [ ] 1.1 LLM Client Abstraction
-- [ ] 1.6 Auto-Refresh Scheduler
 - [ ] 1.7 White-Label Branding
 
 ### Phase 2: Integrations
@@ -70,4 +103,5 @@
 - [ ] 3.1 Multi-Tenant Architecture
 - [ ] 3.2 Custom Domain Routing
 - [ ] 3.3 Advanced Analytics
+
 

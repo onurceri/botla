@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
@@ -196,5 +197,53 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	}
 	if req.SelectorWhitelist != nil {
 		c.SelectorWhitelist = normalizeSelectors(*req.SelectorWhitelist)
+	}
+	if req.DiscoveryMode != nil {
+		c.DiscoveryMode = *req.DiscoveryMode
+	}
+	if req.RefreshPolicy != nil {
+		c.RefreshPolicy = *req.RefreshPolicy
+		// If switching to auto, calculate next refresh time
+		if *req.RefreshPolicy == "auto" && req.RefreshFrequency != nil {
+			c.RefreshFrequency = req.RefreshFrequency
+			nextRefresh := calculateNextRefresh(*req.RefreshFrequency)
+			c.NextRefreshAt = &nextRefresh
+		} else if *req.RefreshPolicy == "manual" {
+			// Clear next refresh when switching to manual
+			c.NextRefreshAt = nil
+		}
+	}
+	if req.RefreshFrequency != nil && c.RefreshPolicy == "auto" {
+		c.RefreshFrequency = req.RefreshFrequency
+		nextRefresh := calculateNextRefresh(*req.RefreshFrequency)
+		c.NextRefreshAt = &nextRefresh
+	}
+}
+
+// calculateNextRefresh calculates the next refresh time based on frequency
+func calculateNextRefresh(frequency string) time.Time {
+	now := time.Now()
+	switch frequency {
+	case "daily":
+		next := now.Add(24 * time.Hour)
+		return time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, now.Location())
+	case "weekly":
+		daysUntilSunday := (7 - int(now.Weekday())) % 7
+		if daysUntilSunday == 0 {
+			daysUntilSunday = 7
+		}
+		next := now.Add(time.Duration(daysUntilSunday) * 24 * time.Hour)
+		return time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, now.Location())
+	case "monthly":
+		next := now.AddDate(0, 1, 0)
+		return time.Date(next.Year(), next.Month(), 1, 0, 0, 0, 0, now.Location())
+	default:
+		// Default to weekly
+		daysUntilSunday := (7 - int(now.Weekday())) % 7
+		if daysUntilSunday == 0 {
+			daysUntilSunday = 7
+		}
+		next := now.Add(time.Duration(daysUntilSunday) * 24 * time.Hour)
+		return time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, now.Location())
 	}
 }

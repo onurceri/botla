@@ -22,10 +22,8 @@ import { useChatbotForm } from '@/features/chatbot/hooks/useChatbotForm'
 import { useToastErrors } from '@/features/chatbot/hooks/useToastErrors'
 import PlaygroundPreview from '@/features/chatbot/components/PlaygroundPreview'
 import SuggestionsPanel from '@/features/chatbot/components/SuggestionsPanel'
-import PathFilterSection from '@/features/chatbot/components/PathFilterSection'
-import SitemapImport from '@/features/chatbot/components/SitemapImport'
 import PendingURLsPanel from '@/features/chatbot/components/PendingURLsPanel'
-import DiscoveryModeSection from '@/features/chatbot/components/DiscoveryModeSection'
+import URLAdvancedSettings from '@/features/chatbot/components/URLAdvancedSettings'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -58,6 +56,10 @@ const ChatbotDetailPage = () => {
     excludePaths, setExcludePaths,
     selectorWhitelist, setSelectorWhitelist,
     discoveryMode, setDiscoveryMode,
+    refreshPolicy, setRefreshPolicy,
+    refreshFrequency, setRefreshFrequency,
+    nextRefreshAt,
+    lastRefreshAt,
     setFromServer,
     validate,
     buildPayload,
@@ -213,24 +215,24 @@ const ChatbotDetailPage = () => {
                   onUploadURL={async (u) => { if(id) { await uploadURLSource(id, u).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                   onUploadText={async (t) => { if(id) { await uploadTextSource(id, t).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                   extraUrlSettings={
-                    <>
-                      <DiscoveryModeSection
-                        discoveryMode={discoveryMode}
-                        setDiscoveryMode={setDiscoveryMode}
-                      />
-                      <PathFilterSection
-                        includePaths={includePaths}
-                        setIncludePaths={setIncludePaths}
-                        excludePaths={excludePaths}
-                        setExcludePaths={setExcludePaths}
-                        selectorWhitelist={selectorWhitelist}
-                        setSelectorWhitelist={setSelectorWhitelist}
-                      />
-                      <SitemapImport
-                        chatbotId={id}
-                        onImportComplete={refreshSources}
-                      />
-                    </>
+                    <URLAdvancedSettings
+                      discoveryMode={discoveryMode}
+                      setDiscoveryMode={setDiscoveryMode}
+                      refreshPolicy={refreshPolicy}
+                      refreshFrequency={refreshFrequency}
+                      nextRefreshAt={nextRefreshAt}
+                      lastRefreshAt={lastRefreshAt}
+                      onRefreshPolicyChange={setRefreshPolicy}
+                      onRefreshFrequencyChange={setRefreshFrequency}
+                      includePaths={includePaths}
+                      setIncludePaths={setIncludePaths}
+                      excludePaths={excludePaths}
+                      setExcludePaths={setExcludePaths}
+                      selectorWhitelist={selectorWhitelist}
+                      setSelectorWhitelist={setSelectorWhitelist}
+                      chatbotId={id}
+                      onImportComplete={refreshSources}
+                    />
                   }
                 />
                 

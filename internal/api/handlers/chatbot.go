@@ -41,4 +41,7 @@ type createChatbotRequest struct {
 	IncludePaths         *[]string `json:"include_paths"`
 	ExcludePaths         *[]string `json:"exclude_paths"`
 	SelectorWhitelist    *[]string `json:"selector_whitelist"`
+	DiscoveryMode        *string   `json:"discovery_mode"`
+	RefreshPolicy        *string   `json:"refresh_policy"`
+	RefreshFrequency     *string   `json:"refresh_frequency"`
 }
