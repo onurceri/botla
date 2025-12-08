@@ -18,6 +18,11 @@ type TopicConfig = {
   blocked_message?: string
 }
 
+type HandoffConfig = {
+  email_to?: string
+  email_subject?: string
+}
+
 export function useChatbotForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -56,6 +61,9 @@ export function useChatbotForm() {
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.7)
   const [fallbackMessages, setFallbackMessages] = useState<FallbackMessages | null>(null)
   const [topicRestrictions, setTopicRestrictions] = useState<TopicConfig | null>(null)
+  const [handoffEnabled, setHandoffEnabled] = useState(false)
+  const [handoffType, setHandoffType] = useState<'email'>('email')
+  const [handoffConfig, setHandoffConfig] = useState<HandoffConfig | null>(null)
 
   function setFromServer(data: any) {
     setName(data.name || '')
@@ -95,6 +103,9 @@ export function useChatbotForm() {
     setConfidenceThreshold(data.confidence_threshold ?? 0.7)
     setFallbackMessages(data.fallback_messages || null)
     setTopicRestrictions(data.topic_restrictions || null)
+    setHandoffEnabled(!!data.handoff_enabled)
+    setHandoffType(data.handoff_type || 'email')
+    setHandoffConfig(data.handoff_config || null)
   }
 
   function validate() {
@@ -138,6 +149,9 @@ export function useChatbotForm() {
       confidence_threshold: confidenceThreshold,
       fallback_messages: fallbackMessages,
       topic_restrictions: topicRestrictions,
+      handoff_enabled: handoffEnabled,
+      handoff_type: handoffType,
+      handoff_config: handoffEnabled ? handoffConfig : null,
     }
   }
 
@@ -182,5 +196,8 @@ export function useChatbotForm() {
     confidenceThreshold, setConfidenceThreshold,
     fallbackMessages, setFallbackMessages,
     topicRestrictions, setTopicRestrictions,
+    handoffEnabled, setHandoffEnabled,
+    handoffType, setHandoffType,
+    handoffConfig, setHandoffConfig,
   }
 }

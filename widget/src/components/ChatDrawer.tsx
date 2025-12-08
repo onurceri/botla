@@ -11,8 +11,8 @@ type CustomBranding = {
 }
 
 export function ChatDrawer(
-  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding }:
-  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding }
+  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, handoffEnabled = false, onRequestHandoff }:
+  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; handoffEnabled?: boolean; onRequestHandoff?: () => void }
 ) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -62,6 +62,22 @@ export function ChatDrawer(
         </div>
         <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">×</button>
       </div>
+      {/* Handoff button */}
+      {handoffEnabled && onRequestHandoff && (
+        <div className="cbw-handoff-bar">
+          <button 
+            className="cbw-handoff-btn" 
+            onClick={onRequestHandoff} 
+            disabled={loading}
+            aria-label="İnsan desteği iste"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/>
+            </svg>
+            İnsan Desteği İste
+          </button>
+        </div>
+      )}
       <div className="cbw-messages">
         {messages.map((m, i) => <MsgComp key={i} m={m} />)}
         {(!messages || messages.filter(m => m.role === 'user').length === 0) && suggestions && suggestions.length > 0 && (

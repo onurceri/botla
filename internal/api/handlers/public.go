@@ -1,17 +1,18 @@
 package handlers
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
-	"net/http"
-	"strings"
-	"time"
+    "context"
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "strings"
+    "time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/internal/services"
+    "github.com/onurceri/botla-co/internal/db"
+    "github.com/onurceri/botla-co/internal/models"
+    "github.com/onurceri/botla-co/internal/scraper"
+    "github.com/onurceri/botla-co/internal/services"
+    "github.com/onurceri/botla-co/internal/api"
 )
 
 type publicChatbot struct {
@@ -33,6 +34,7 @@ type publicChatbot struct {
 	MaxChars             int                    `json:"max_chars"`
 	HideBranding         bool                   `json:"hide_branding"`
 	CustomBranding       *models.CustomBranding `json:"custom_branding,omitempty"`
+	HandoffEnabled       bool                   `json:"handoff_enabled"`
 }
 
 func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
@@ -101,6 +103,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			MaxChars:             1000,
 			HideBranding:         c.HideBranding,
 			CustomBranding:       cb,
+			HandoffEnabled:       c.HandoffEnabled,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -167,11 +170,13 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		ragConfig = plan.Config.Chat.RAG
 		// Check monthly token limit
 		if plan.Config.Chat.MaxMonthlyTokens > 0 {
-			used, uerr := db.GetMonthlyTokenUsage(r.Context(), h.DB, cbot.UserID)
-			if uerr == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
-				http.Error(w, "Monthly token limit exceeded", http.StatusPaymentRequired)
-				return
-			}
+            used, uerr := db.GetMonthlyTokenUsage(r.Context(), h.DB, cbot.UserID)
+            if uerr == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
+                base := api.BaseLang(cbot.LanguageCode)
+                cfg := api.ConfigFromBase(base)
+                api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
+                return
+            }
 		}
 		// Enforce allowed model if set
 		if len(plan.Config.Chat.AllowedModels) > 0 {

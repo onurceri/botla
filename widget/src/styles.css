@@ -320,3 +320,42 @@
 .cbw-suggestion:active {
   transform: scale(0.98);
 }
+
+/* Handoff Bar */
+.cbw-handoff-bar {
+  display: flex;
+  justify-content: center;
+  padding: 8px 16px;
+  background: rgba(245, 158, 11, 0.1);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.cbw-handoff-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.cbw-handoff-btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+}
+
+.cbw-handoff-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.cbw-handoff-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -1,4 +1,4 @@
-import { Settings, Database, Play, Code, MessageSquare, Zap, Shield } from 'lucide-react'
+import { Settings, Database, Play, Code, MessageSquare, Zap, Shield, Headphones } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ChatbotSidebarProps {
@@ -13,6 +13,7 @@ export function ChatbotSidebar({ activeTab, onTabChange }: ChatbotSidebarProps) 
       items: [
         { id: 'overview', label: 'Genel Ayarlar', icon: Settings },
         { id: 'guardrails', label: 'Güvenlik & Sınırlar', icon: Shield },
+        { id: 'handoff', label: 'İnsan Desteği', icon: Headphones },
       ]
     },
     {

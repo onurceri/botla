@@ -193,11 +193,11 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 	}
 
 	// Get or create conversation
-	conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, bot.ID, req.SessionID)
+    conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, bot.ID, req.SessionID)
 	if err != nil || conv == nil {
 		return nil, err
 	}
-	isNewConv := conv.MessageCount == 0
+    isNewConv := conv.MessageCount == 0
 
 	// Save user message
 	um := &models.Message{ConversationID: conv.ID, Role: "user", Content: req.Message, TokensUsed: 0}
@@ -308,9 +308,13 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 		}
 	}
 
-	if finalResponse == "" {
-		finalResponse = "İşlem tamamlanamadı veya çok uzun sürdü."
-	}
+    if finalResponse == "" {
+        fr := cfg.ResponseTemplates.Errors["CHAT_TIMEOUT_OR_INCOMPLETE"]
+        if fr == "" {
+            fr = cfg.ResponseTemplates.ErrorMessage
+        }
+        finalResponse = fr
+    }
 
 	// Save assistant message
 	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: finalResponse, TokensUsed: totalTokens}
@@ -359,8 +363,8 @@ func normalizeLangCode(code string) string {
 
 // resolveSystemPrompt returns the custom prompt or falls back to the language default
 func resolveSystemPrompt(customPrompt string, cfg langconfig.LanguageConfig) string {
-	if strings.TrimSpace(customPrompt) == "" {
-		return cfg.ResponseTemplates.DefaultSystemPrompt
-	}
-	return customPrompt
+    if strings.TrimSpace(customPrompt) == "" {
+        return cfg.ResponseTemplates.DefaultSystemPrompt
+    }
+    return customPrompt
 }

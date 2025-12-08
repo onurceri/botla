@@ -27,6 +27,7 @@ import URLAdvancedSettings from '@/features/chatbot/components/URLAdvancedSettin
 import BrandingSettings from '@/features/chatbot/components/BrandingSettings'
 import GuardrailsSettings from '@/features/chatbot/components/GuardrailsSettings'
 import ActionList from '@/features/chatbot/components/ActionList'
+import HandoffSettings from '@/features/chatbot/components/HandoffSettings'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -74,6 +75,9 @@ const ChatbotDetailPage = () => {
     confidenceThreshold, setConfidenceThreshold,
     fallbackMessages, setFallbackMessages,
     topicRestrictions, setTopicRestrictions,
+    handoffEnabled, setHandoffEnabled,
+    handoffType, setHandoffType,
+    handoffConfig, setHandoffConfig,
   } = useChatbotForm()
   const [userPlan, setUserPlan] = useState('free')
   const [planConfig, setPlanConfig] = useState<{ branding?: { can_hide_branding?: boolean, can_custom_branding?: boolean } }>({});
@@ -256,6 +260,17 @@ const ChatbotDetailPage = () => {
               setFallbackMessages={setFallbackMessages}
               topicRestrictions={topicRestrictions}
               setTopicRestrictions={setTopicRestrictions}
+            />
+          </TabsContent>
+
+          <TabsContent value="handoff" className="mt-0 space-y-6">
+            <HandoffSettings
+              handoffEnabled={handoffEnabled}
+              setHandoffEnabled={setHandoffEnabled}
+              handoffType={handoffType}
+              setHandoffType={setHandoffType}
+              handoffConfig={handoffConfig}
+              setHandoffConfig={setHandoffConfig}
             />
           </TabsContent>
 

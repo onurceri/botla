@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/middleware"
@@ -114,6 +115,12 @@ func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request, botID stri
 }
 
 func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID string) {
+	bot, _ := db.GetChatbotByID(r.Context(), h.DB, botID)
+	base := "tr"
+	if bot != nil {
+		base = api.BaseLang(bot.LanguageCode)
+	}
+	cfg := api.ConfigFromBase(base)
 	var req createActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -121,7 +128,7 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID st
 	}
 
 	if req.Name == "" || req.ActionType == "" {
-		http.Error(w, "name and action_type are required", http.StatusBadRequest)
+		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrNameAndActionTypeRequired, cfg)
 		return
 	}
 

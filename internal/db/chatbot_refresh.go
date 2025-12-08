@@ -24,7 +24,8 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
-               c.confidence_threshold, c.fallback_messages, c.topic_restrictions
+               c.confidence_threshold, c.fallback_messages, c.topic_restrictions,
+               COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.refresh_policy = 'auto' 
@@ -38,7 +39,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj, ipj, epj, swj, cbj, fmj, trj []byte
+		var sj, ipj, epj, swj, cbj, fmj, trj, hcj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -53,6 +54,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 			&c.HideBranding, &cbj,
 			&c.ConfidenceThreshold, &fmj, &trj,
+			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		); err != nil {
 			return nil, err
 		}
@@ -90,6 +92,11 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 			var tr models.TopicConfig
 			_ = json.Unmarshal(trj, &tr)
 			c.TopicRestrictions = &tr
+		}
+		if len(hcj) > 0 {
+			var hc models.HandoffConfig
+			_ = json.Unmarshal(hcj, &hc)
+			c.HandoffConfig = &hc
 		}
 		out = append(out, c)
 	}

@@ -42,6 +42,14 @@
   - **Goal**: Native support for Zapier Webhook actions.
   - **Status**: Verified. Implemented as a supported Action type.
 
-- ✅ **2.3 Guardrails & Confidence Thresholds (2025-12-08)**
+- ✅ **2.3 Operator Handoff (2025-12-08)**
+  - **Goal**: Allow human agent transfer when bot can't answer or user requests support.
+  - **Status**: Verified. Implemented DB migrations, HandoffService, API endpoints, Frontend HandoffSettings UI, and Widget handoff button.
+
+- ✅ **2.4 Guardrails UI (2025-12-08)**
   - **Goal**: Allow admins to set confidence thresholds and fallback messages to prevent hallucinations.
   - **Status**: Verified. Implemented DB schema, API updates, and Frontend UI.
+
+- ✅ **2.5 Temperature/MaxTokens UI (2025-12-08)**
+  - **Goal**: UI controls for model temperature and max tokens.
+  - **Status**: Verified. Integrated into OverviewPanel.

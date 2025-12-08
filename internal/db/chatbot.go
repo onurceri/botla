@@ -64,7 +64,8 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
-               c.confidence_threshold, c.fallback_messages, c.topic_restrictions
+               c.confidence_threshold, c.fallback_messages, c.topic_restrictions,
+               COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.user_id=$1 AND c.deleted_at IS NULL
@@ -76,7 +77,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj, ipj, epj, swj, cbj, fmj, trj []byte
+		var sj, ipj, epj, swj, cbj, fmj, trj, hcj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -91,6 +92,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 			&c.HideBranding, &cbj,
 			&c.ConfidenceThreshold, &fmj, &trj,
+			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		); err != nil {
 			return nil, err
 		}
@@ -129,6 +131,11 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 			_ = json.Unmarshal(trj, &tr)
 			c.TopicRestrictions = &tr
 		}
+		if len(hcj) > 0 {
+			var hc models.HandoffConfig
+			_ = json.Unmarshal(hcj, &hc)
+			c.HandoffConfig = &hc
+		}
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
@@ -139,7 +146,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 
 func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatbot, error) {
 	var c models.Chatbot
-	var sj, ipj, epj, swj, cbj, fmj, trj []byte
+	var sj, ipj, epj, swj, cbj, fmj, trj, hcj []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT c.id, c.user_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
@@ -153,7 +160,8 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
-               c.confidence_threshold, c.fallback_messages, c.topic_restrictions
+               c.confidence_threshold, c.fallback_messages, c.topic_restrictions,
+               COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.id=$1 AND c.deleted_at IS NULL`, id).
@@ -171,6 +179,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 			&c.HideBranding, &cbj,
 			&c.ConfidenceThreshold, &fmj, &trj,
+			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -213,6 +222,11 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		_ = json.Unmarshal(trj, &tr)
 		c.TopicRestrictions = &tr
 	}
+	if len(hcj) > 0 {
+		var hc models.HandoffConfig
+		_ = json.Unmarshal(hcj, &hc)
+		c.HandoffConfig = &hc
+	}
 	return &c, nil
 }
 
@@ -223,12 +237,15 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		cbJSON, _ = json.Marshal(bot.CustomBranding)
 	}
 	// Serialize new fields
-	var fmJSON, trJSON interface{}
+	var fmJSON, trJSON, hcJSON interface{}
 	if bot.FallbackMessages != nil {
 		fmJSON, _ = json.Marshal(bot.FallbackMessages)
 	}
 	if bot.TopicRestrictions != nil {
 		trJSON, _ = json.Marshal(bot.TopicRestrictions)
+	}
+	if bot.HandoffConfig != nil {
+		hcJSON, _ = json.Marshal(bot.HandoffConfig)
 	}
 
 	_, err := pool.ExecContext(ctx, `
@@ -271,8 +288,11 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             confidence_threshold=$36,
             fallback_messages=$37,
             topic_restrictions=$38,
+            handoff_enabled=$39,
+            handoff_type=$40,
+            handoff_config=$41,
             updated_at=NOW()
-        WHERE id=$39 AND user_id=$40 AND deleted_at IS NULL`,
+        WHERE id=$42 AND user_id=$43 AND deleted_at IS NULL`,
 		bot.Name,
 		bot.Description,
 		bot.SystemPrompt,
@@ -311,6 +331,9 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.ConfidenceThreshold,
 		fmJSON,
 		trJSON,
+		bot.HandoffEnabled,
+		bot.HandoffType,
+		hcJSON,
 		bot.ID,
 		bot.UserID,
 	)

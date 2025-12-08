@@ -50,4 +50,7 @@ type createChatbotRequest struct {
 	ConfidenceThreshold  *float64                 `json:"confidence_threshold"`
 	FallbackMessages     *models.FallbackMessages `json:"fallback_messages"`
 	TopicRestrictions    *models.TopicConfig      `json:"topic_restrictions"`
+	HandoffEnabled       *bool                    `json:"handoff_enabled"`
+	HandoffType          *string                  `json:"handoff_type"`
+	HandoffConfig        *models.HandoffConfig    `json:"handoff_config"`
 }

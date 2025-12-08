@@ -269,6 +269,15 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	if req.TopicRestrictions != nil {
 		c.TopicRestrictions = req.TopicRestrictions
 	}
+	if req.HandoffEnabled != nil {
+		c.HandoffEnabled = *req.HandoffEnabled
+	}
+	if req.HandoffType != nil {
+		c.HandoffType = *req.HandoffType
+	}
+	if req.HandoffConfig != nil {
+		c.HandoffConfig = req.HandoffConfig
+	}
 }
 
 // calculateNextRefresh calculates the next refresh time based on frequency

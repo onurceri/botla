@@ -46,6 +46,9 @@ type Chatbot struct {
 	ConfidenceThreshold  float64         `json:"confidence_threshold"`
 	FallbackMessages     *FallbackMessages `json:"fallback_messages,omitempty"`
 	TopicRestrictions    *TopicConfig    `json:"topic_restrictions,omitempty"`
+	HandoffEnabled       bool            `json:"handoff_enabled"`
+	HandoffType          string          `json:"handoff_type"`
+	HandoffConfig        *HandoffConfig  `json:"handoff_config,omitempty"`
 }
 
 // CustomBranding represents custom branding configuration (Enterprise plan feature)

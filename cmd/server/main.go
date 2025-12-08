@@ -105,10 +105,17 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log}
 	// Action handler
 	acth := &handlers.ActionHandlers{DB: pool}
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, rlSources))
+	// Handoff handler
+	hoh := &handlers.HandoffHandlers{DB: pool, Log: log}
+	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, rlSources))
 
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") {
+			// Public handoff request
+			hoh.PublicRequestHandoff(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
 			// Public handlers
 			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
@@ -136,7 +143,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	return mux
 }
 
-func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, rlSources *middleware.RateLimiter) http.Handler {
+func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, rlSources *middleware.RateLimiter) http.Handler {
 	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		// Pending URLs endpoints
@@ -179,6 +186,19 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 		// Actions endpoint
 		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/actions") {
 			acth.Dispatch(w, r)
+			return
+		}
+		// Handoff requests endpoint
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff-requests") {
+			// Has request ID if path contains more segments after handoff-requests
+			parts := strings.Split(r.URL.Path, "/")
+			if len(parts) >= 6 && parts[5] != "" {
+				// Update specific request: PATCH /api/v1/chatbots/:id/handoff-requests/:requestId
+				hoh.UpdateHandoffRequest(w, r)
+			} else {
+				// List requests: GET /api/v1/chatbots/:id/handoff-requests
+				hoh.ListHandoffRequests(w, r)
+			}
 			return
 		}
 		ch.ByID(w, r)

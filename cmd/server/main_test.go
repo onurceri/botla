@@ -61,5 +61,6 @@ func TestStartAndShutdownServer(t *testing.T) {
 func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers) http.Handler {
 	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
 	acth := &handlers.ActionHandlers{DB: ch.DB}
-	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, rlSources)
+	hoh := &handlers.HandoffHandlers{DB: ch.DB}
+	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, hoh, rlSources)
 }
