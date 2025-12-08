@@ -24,6 +24,9 @@ export function useChatbotForm() {
   const [embedSecret, setEmbedSecret] = useState('')
   const [suggestionsEnabled, setSuggestionsEnabled] = useState(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
+  const [includePaths, setIncludePaths] = useState<string[]>([])
+  const [excludePaths, setExcludePaths] = useState<string[]>([])
+  const [selectorWhitelist, setSelectorWhitelist] = useState<string[]>([])
 
   function setFromServer(data: any) {
     setName(data.name || '')
@@ -49,6 +52,9 @@ export function useChatbotForm() {
     setSecureEmbedEnabled(!!data.secure_embed_enabled)
     setSuggestionsEnabled(!!data.suggestions_enabled)
     setSuggestedQuestions(Array.isArray(data.suggested_questions) ? data.suggested_questions : [])
+    setIncludePaths(Array.isArray(data.include_paths) ? data.include_paths : [])
+    setExcludePaths(Array.isArray(data.exclude_paths) ? data.exclude_paths : [])
+    setSelectorWhitelist(Array.isArray(data.selector_whitelist) ? data.selector_whitelist : [])
   }
 
   function validate() {
@@ -80,6 +86,9 @@ export function useChatbotForm() {
       embed_secret: secureEmbedEnabled ? embedSecret : undefined,
       suggestions_enabled: suggestionsEnabled,
       suggested_questions: suggestedQuestions,
+      include_paths: includePaths,
+      exclude_paths: excludePaths,
+      selector_whitelist: selectorWhitelist,
     }
   }
 
@@ -107,6 +116,9 @@ export function useChatbotForm() {
     embedSecret, setEmbedSecret,
     suggestionsEnabled, setSuggestionsEnabled,
     suggestedQuestions, setSuggestedQuestions,
+    includePaths, setIncludePaths,
+    excludePaths, setExcludePaths,
+    selectorWhitelist, setSelectorWhitelist,
     setFromServer,
     validate,
     buildPayload,

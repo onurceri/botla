@@ -51,3 +51,38 @@ export const refreshSource = async (sourceId: string) => {
   const { data } = await api.post(`/api/v1/sources/${sourceId}/refresh`)
   return data as { id: string }
 }
+
+// Sitemap types
+export interface SitemapURL {
+  loc: string
+  lastmod?: string
+  changefreq?: string
+  priority?: number
+}
+
+export interface DiscoverSitemapResponse {
+  urls: SitemapURL[]
+  total_count: number
+}
+
+export interface BulkCreateResponse {
+  created_count: number
+  skipped_count: number
+  errors: string[]
+}
+
+// Discover URLs from a sitemap
+export const discoverSitemap = async (chatbotId: string, sitemapUrl: string): Promise<DiscoverSitemapResponse> => {
+  const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/sitemap/discover`, {
+    sitemap_url: sitemapUrl,
+  })
+  return data as DiscoverSitemapResponse
+}
+
+// Bulk create URL sources
+export const bulkCreateSources = async (chatbotId: string, urls: string[]): Promise<BulkCreateResponse> => {
+  const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/sources/bulk`, {
+    urls,
+  })
+  return data as BulkCreateResponse
+}

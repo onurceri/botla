@@ -22,6 +22,8 @@ import { useChatbotForm } from '@/features/chatbot/hooks/useChatbotForm'
 import { useToastErrors } from '@/features/chatbot/hooks/useToastErrors'
 import PlaygroundPreview from '@/features/chatbot/components/PlaygroundPreview'
 import SuggestionsPanel from '@/features/chatbot/components/SuggestionsPanel'
+import PathFilterSection from '@/features/chatbot/components/PathFilterSection'
+import SitemapImport from '@/features/chatbot/components/SitemapImport'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -50,6 +52,9 @@ const ChatbotDetailPage = () => {
     embedSecret, setEmbedSecret,
     suggestionsEnabled, setSuggestionsEnabled,
     suggestedQuestions, setSuggestedQuestions,
+    includePaths, setIncludePaths,
+    excludePaths, setExcludePaths,
+    selectorWhitelist, setSelectorWhitelist,
     setFromServer,
     validate,
     buildPayload,
@@ -205,6 +210,22 @@ const ChatbotDetailPage = () => {
                   onUploadPDF={async (file) => { if(id) { await uploadPDFSource(id, file).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                   onUploadURL={async (u) => { if(id) { await uploadURLSource(id, u).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                   onUploadText={async (t) => { if(id) { await uploadTextSource(id, t).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
+                  extraUrlSettings={
+                    <>
+                      <PathFilterSection
+                        includePaths={includePaths}
+                        setIncludePaths={setIncludePaths}
+                        excludePaths={excludePaths}
+                        setExcludePaths={setExcludePaths}
+                        selectorWhitelist={selectorWhitelist}
+                        setSelectorWhitelist={setSelectorWhitelist}
+                      />
+                      <SitemapImport
+                        chatbotId={id}
+                        onImportComplete={refreshSources}
+                      />
+                    </>
+                  }
                 />
                 
                 {sources.length > 0 ? (

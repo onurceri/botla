@@ -33,4 +33,7 @@ type Chatbot struct {
 	SecureEmbedEnabled   bool       `json:"secure_embed_enabled"`
 	SuggestedQuestions   []string   `json:"suggested_questions,omitempty"`
 	SuggestionsEnabled   bool       `json:"suggestions_enabled"`
+	IncludePaths         []string   `json:"include_paths,omitempty"`
+	ExcludePaths         []string   `json:"exclude_paths,omitempty"`
+	SelectorWhitelist    []string   `json:"selector_whitelist,omitempty"`
 }

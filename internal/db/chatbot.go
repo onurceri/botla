@@ -19,14 +19,16 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
             position, bot_message_color, user_message_color,
             bot_message_text_color, user_message_text_color,
             chat_font_family, chat_header_color, chat_header_text_color,
-            chat_background_color, bot_icon, bot_display_name, suggested_questions, suggestions_enabled
-        ) VALUES ($1,$2,$3,$4,(SELECT id FROM languages WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
+            chat_background_color, bot_icon, bot_display_name, suggested_questions, suggestions_enabled,
+            include_paths, exclude_paths, selector_whitelist
+        ) VALUES ($1,$2,$3,$4,(SELECT id FROM languages WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id`,
 		bot.UserID, bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
 		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
 		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, bot.SuggestedQuestions, bot.SuggestionsEnabled,
+		bot.IncludePaths, bot.ExcludePaths, bot.SelectorWhitelist,
 	).Scan(&id)
 	if err != nil {
 		return "", err
@@ -44,7 +46,8 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
                c.chat_background_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.suggestions_enabled
+               c.suggested_questions, c.suggestions_enabled,
+               c.include_paths, c.exclude_paths, c.selector_whitelist
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.user_id=$1 AND c.deleted_at IS NULL
@@ -56,7 +59,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj []byte
+		var sj, ipj, epj, swj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -67,6 +70,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 			&c.ChatBackgroundColor,
 			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
 			&sj, &c.SuggestionsEnabled,
+			&ipj, &epj, &swj,
 		); err != nil {
 			return nil, err
 		}
@@ -74,6 +78,21 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 			var arr []string
 			_ = json.Unmarshal(sj, &arr)
 			c.SuggestedQuestions = arr
+		}
+		if len(ipj) > 0 {
+			var arr []string
+			_ = json.Unmarshal(ipj, &arr)
+			c.IncludePaths = arr
+		}
+		if len(epj) > 0 {
+			var arr []string
+			_ = json.Unmarshal(epj, &arr)
+			c.ExcludePaths = arr
+		}
+		if len(swj) > 0 {
+			var arr []string
+			_ = json.Unmarshal(swj, &arr)
+			c.SelectorWhitelist = arr
 		}
 		out = append(out, c)
 	}
@@ -85,7 +104,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 
 func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatbot, error) {
 	var c models.Chatbot
-	var sj []byte
+	var sj, ipj, epj, swj []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT c.id, c.user_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
@@ -95,7 +114,8 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
                c.chat_background_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.suggestions_enabled
+               c.suggested_questions, c.suggestions_enabled,
+               c.include_paths, c.exclude_paths, c.selector_whitelist
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.id=$1 AND c.deleted_at IS NULL`, id).
@@ -109,6 +129,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 			&c.ChatBackgroundColor,
 			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
 			&sj, &c.SuggestionsEnabled,
+			&ipj, &epj, &swj,
 		)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -120,6 +141,21 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		var arr []string
 		_ = json.Unmarshal(sj, &arr)
 		c.SuggestedQuestions = arr
+	}
+	if len(ipj) > 0 {
+		var arr []string
+		_ = json.Unmarshal(ipj, &arr)
+		c.IncludePaths = arr
+	}
+	if len(epj) > 0 {
+		var arr []string
+		_ = json.Unmarshal(epj, &arr)
+		c.ExcludePaths = arr
+	}
+	if len(swj) > 0 {
+		var arr []string
+		_ = json.Unmarshal(swj, &arr)
+		c.SelectorWhitelist = arr
 	}
 	return &c, nil
 }
@@ -152,8 +188,11 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             secure_embed_enabled=$23,
             suggested_questions=$24,
             suggestions_enabled=$25,
+            include_paths=$26,
+            exclude_paths=$27,
+            selector_whitelist=$28,
             updated_at=NOW()
-        WHERE id=$26 AND user_id=$27 AND deleted_at IS NULL`,
+        WHERE id=$29 AND user_id=$30 AND deleted_at IS NULL`,
 		bot.Name,
 		bot.Description,
 		bot.SystemPrompt,
@@ -179,6 +218,9 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.SecureEmbedEnabled,
 		bot.SuggestedQuestions,
 		bot.SuggestionsEnabled,
+		bot.IncludePaths,
+		bot.ExcludePaths,
+		bot.SelectorWhitelist,
 		bot.ID,
 		bot.UserID,
 	)

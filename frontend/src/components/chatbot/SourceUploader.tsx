@@ -8,9 +8,10 @@ interface SourceUploaderProps {
   onUploadPDF: (file: File) => Promise<void>
   onUploadURL: (url: string) => Promise<void>
   onUploadText: (text: string) => Promise<void>
+  extraUrlSettings?: React.ReactNode
 }
 
-const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUploaderProps) => {
+const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText, extraUrlSettings }: SourceUploaderProps) => {
   const { 
     activeMode, setActiveMode,
     loading,
@@ -101,16 +102,19 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText }: SourceUpload
             )}
 
             {activeMode === 'url' && (
-              <div className="flex gap-2">
-                <Input 
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="https://example.com"
-                  className="flex-1"
-                />
-                <Button onClick={handleSubmit} disabled={loading} className="rounded-full">
-                  {loading ? 'Ekleniyor...' : 'Ekle'}
-                </Button>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input 
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="https://example.com"
+                    className="flex-1"
+                  />
+                  <Button onClick={handleSubmit} disabled={loading} className="rounded-full">
+                    {loading ? 'Ekleniyor...' : 'Ekle'}
+                  </Button>
+                </div>
+                {extraUrlSettings}
               </div>
             )}
 

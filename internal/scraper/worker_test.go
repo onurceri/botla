@@ -16,7 +16,7 @@ func TestScrapeURLVisibleText(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	out, err := ScrapeURL(ScrapingTask{URL: srv.URL + "/"}, CollectorConfig{})
+	out, err := ScrapeURL(ScrapingTask{URL: srv.URL + "/"}, CollectorConfig{}, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestExtractLinks(t *testing.T) {
 	// url.URL.Host usually includes port if present.
 	// "example.com" == "example.com".
 
-	links, err := ExtractLinks(htmlContent, baseURL)
+	links, err := ExtractLinks(htmlContent, baseURL, nil) // nil filter for backward compatibility
 	if err != nil {
 		t.Fatalf("ExtractLinks failed: %v", err)
 	}
@@ -74,5 +74,106 @@ func TestExtractLinks(t *testing.T) {
 		if !expected[link] {
 			t.Errorf("unexpected link found: %s", link)
 		}
+	}
+}
+
+func TestExtractLinks_WithFilter(t *testing.T) {
+	htmlContent := `
+<html>
+<body>
+  <a href="/blog/post-1">Blog Post 1</a>
+  <a href="/blog/post-2">Blog Post 2</a>
+  <a href="/docs/intro">Docs Intro</a>
+  <a href="/admin/users">Admin Users</a>
+  <a href="/tag/golang">Tag Golang</a>
+  <a href="/about">About</a>
+</body>
+</html>
+`
+	baseURL := "http://example.com/"
+
+	testCases := []struct {
+		name     string
+		include  []string
+		exclude  []string
+		expected map[string]bool
+	}{
+		{
+			name:    "include blog only",
+			include: []string{"/blog/*"},
+			exclude: nil,
+			expected: map[string]bool{
+				"http://example.com/blog/post-1": true,
+				"http://example.com/blog/post-2": true,
+			},
+		},
+		{
+			name:    "exclude admin and tag",
+			include: nil,
+			exclude: []string{"/admin/*", "/tag/*"},
+			expected: map[string]bool{
+				"http://example.com/blog/post-1": true,
+				"http://example.com/blog/post-2": true,
+				"http://example.com/docs/intro":  true,
+				"http://example.com/about":       true,
+			},
+		},
+		{
+			name:    "include blog and docs, exclude nothing",
+			include: []string{"/blog/*", "/docs/*"},
+			exclude: nil,
+			expected: map[string]bool{
+				"http://example.com/blog/post-1": true,
+				"http://example.com/blog/post-2": true,
+				"http://example.com/docs/intro":  true,
+			},
+		},
+		{
+			name:    "include all, exclude admin",
+			include: nil,
+			exclude: []string{"/admin/*"},
+			expected: map[string]bool{
+				"http://example.com/blog/post-1": true,
+				"http://example.com/blog/post-2": true,
+				"http://example.com/docs/intro":  true,
+				"http://example.com/tag/golang":  true,
+				"http://example.com/about":       true,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			filter, err := NewPathFilter(tc.include, tc.exclude)
+			if err != nil {
+				t.Fatalf("Failed to create filter: %v", err)
+			}
+
+			links, err := ExtractLinks(htmlContent, baseURL, filter)
+			if err != nil {
+				t.Fatalf("ExtractLinks failed: %v", err)
+			}
+
+			if len(links) != len(tc.expected) {
+				t.Errorf("expected %d links, got %d: %v", len(tc.expected), len(links), links)
+			}
+
+			for _, link := range links {
+				if !tc.expected[link] {
+					t.Errorf("unexpected link found: %s", link)
+				}
+			}
+
+			// Also check that expected links are present
+			linkMap := make(map[string]bool)
+			for _, link := range links {
+				linkMap[link] = true
+			}
+			for expectedLink := range tc.expected {
+				if !linkMap[expectedLink] {
+					t.Errorf("expected link not found: %s", expectedLink)
+				}
+			}
+		})
 	}
 }

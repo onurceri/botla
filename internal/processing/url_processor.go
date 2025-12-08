@@ -44,10 +44,19 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 		return ProcessResult{Error: &ProcessingError{Msg: "empty_url"}}
 	}
 
+	// Create scrape config with CSS selectors if defined
+	var scrapeConfig *scraper.ScrapeConfig
+	if len(bot.SelectorWhitelist) > 0 {
+		scrapeConfig = &scraper.ScrapeConfig{
+			Selectors: bot.SelectorWhitelist,
+		}
+	}
+
 	content, err := scraper.ScrapeURLWithFallback(
 		scraper.ScrapingTask{URL: *s.SourceURL},
 		scraper.DefaultCollectorConfig(),
 		plan.Config.Scraping.DynamicEnabled,
+		scrapeConfig,
 	)
 	if err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
@@ -116,8 +125,22 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 		return
 	}
 
-	// Extract links
-	links, lerr := scraper.ExtractLinks(content, *s.SourceURL)
+	// Create path filter from chatbot settings
+	var filter *scraper.PathFilter
+	if len(bot.IncludePaths) > 0 || len(bot.ExcludePaths) > 0 {
+		filter, err = scraper.NewPathFilter(bot.IncludePaths, bot.ExcludePaths)
+		if err != nil {
+			p.logWarn("path_filter_creation_failed", map[string]any{
+				"source_id": s.ID,
+				"error":     err.Error(),
+			})
+			// Continue without filter rather than failing completely
+			filter = nil
+		}
+	}
+
+	// Extract links with filter
+	links, lerr := scraper.ExtractLinks(content, *s.SourceURL, filter)
 	if lerr != nil {
 		return
 	}

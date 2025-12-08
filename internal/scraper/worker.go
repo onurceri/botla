@@ -43,7 +43,10 @@ func visibleText(sel *goquery.Selection) string {
 	return t
 }
 
-func ScrapeURL(task ScrapingTask, cfg CollectorConfig) (string, error) {
+// ScrapeURL scrapes content from a URL.
+// If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
+// Otherwise, the entire body is scraped.
+func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfig) (string, error) {
 	l := logger.New("INFO")
 	cache := NewCache()
 	k := keyFor(task.URL)
@@ -60,7 +63,15 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig) (string, error) {
 
 	c.OnHTML("body", func(e *colly.HTMLElement) {
 		sel := e.DOM
-		txt := visibleText(sel)
+		
+		// Use CSS selectors if provided, otherwise use full body
+		var txt string
+		if scrapeConfig != nil && len(scrapeConfig.Selectors) > 0 {
+			txt = ExtractBySelectors(sel, scrapeConfig.Selectors)
+		} else {
+			txt = visibleText(sel)
+		}
+		
 		n, _ := NormalizeText(txt)
 		content = strings.Join(strings.Fields(n), " ")
 	})
@@ -85,8 +96,9 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig) (string, error) {
 }
 
 // ExtractLinks finds all links in the HTML content that belong to the same domain as baseURL.
-// It returns a list of absolute URLs.
-func ExtractLinks(htmlContent string, baseURL string) ([]string, error) {
+// It returns a list of absolute URLs, optionally filtered by the provided PathFilter.
+// If filter is nil, all same-domain links are returned (backward compatibility).
+func ExtractLinks(htmlContent string, baseURL string, filter *PathFilter) ([]string, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
@@ -120,6 +132,12 @@ func ExtractLinks(htmlContent string, baseURL string) ([]string, error) {
 						// But safer is same host.
 						if u.Host == base.Host {
 							s := u.String()
+							
+							// Apply path filter if provided
+							if filter != nil && !filter.Match(u.Path) {
+								continue
+							}
+							
 							if !seen[s] && s != baseURL {
 								seen[s] = true
 								links = append(links, s)
@@ -137,7 +155,9 @@ func ExtractLinks(htmlContent string, baseURL string) ([]string, error) {
 	return links, nil
 }
 
-func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic bool) (string, error) {
+// ScrapeURLWithFallback tries static scraping first, then falls back to dynamic if enabled.
+// If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
+func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
 	l := logger.New("INFO")
 	cache := NewCache()
 	k := keyFor(task.URL)
@@ -145,7 +165,7 @@ func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic 
 		return v, nil
 	}
 	// First try static
-	s, err := ScrapeURL(task, cfg)
+	s, err := ScrapeURL(task, cfg, scrapeConfig)
 	if err == nil && s != "" {
 		if len(s) > 1000 {
 			_ = cache.Set(k, s, 7*24*time.Hour)
@@ -167,7 +187,7 @@ func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic 
 		return "", nil
 	}
 
-	// Fallback to dynamic
+	// Fallback to dynamic (dynamic doesn't support selectors yet)
 	dc := DefaultDynamicConfig()
 	ds, derr := ScrapeDynamicURL(task.URL, dc)
 	if derr == nil && ds != "" {

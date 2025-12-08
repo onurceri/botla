@@ -46,6 +46,9 @@ type createChatbotRequest struct {
 	EmbedSecret          *string   `json:"embed_secret"`
 	SuggestedQuestions   *[]string `json:"suggested_questions"`
 	SuggestionsEnabled   *bool     `json:"suggestions_enabled"`
+	IncludePaths         *[]string `json:"include_paths"`
+	ExcludePaths         *[]string `json:"exclude_paths"`
+	SelectorWhitelist    *[]string `json:"selector_whitelist"`
 }
 
 // ListOrCreate handles GET (list) and POST (create) for chatbots
@@ -148,6 +151,9 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, req createChatbotReques
 		EmbedSecret:          req.EmbedSecret,
 		SuggestedQuestions:   suggestionsValue(req.SuggestedQuestions),
 		SuggestionsEnabled:   boolValue(req.SuggestionsEnabled, false),
+		IncludePaths:         pathsValue(req.IncludePaths),
+		ExcludePaths:         pathsValue(req.ExcludePaths),
+		SelectorWhitelist:    selectorsValue(req.SelectorWhitelist),
 	}
 }
 
@@ -329,6 +335,15 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	if req.SuggestionsEnabled != nil {
 		c.SuggestionsEnabled = *req.SuggestionsEnabled
 	}
+	if req.IncludePaths != nil {
+		c.IncludePaths = normalizePaths(*req.IncludePaths)
+	}
+	if req.ExcludePaths != nil {
+		c.ExcludePaths = normalizePaths(*req.ExcludePaths)
+	}
+	if req.SelectorWhitelist != nil {
+		c.SelectorWhitelist = normalizeSelectors(*req.SelectorWhitelist)
+	}
 }
 
 // --- Helper functions ---
@@ -414,6 +429,69 @@ func suggestionsValue(p *[]string) []string {
 		return normalizeSuggestions(*p)
 	}
 	return nil
+}
+
+func pathsValue(p *[]string) []string {
+	if p != nil {
+		return normalizePaths(*p)
+	}
+	return nil
+}
+
+func selectorsValue(p *[]string) []string {
+	if p != nil {
+		return normalizeSelectors(*p)
+	}
+	return nil
+}
+
+func normalizePaths(in []string) []string {
+	if len(in) == 0 {
+		return []string{}
+	}
+	out := make([]string, 0, len(in))
+	seen := map[string]struct{}{}
+	for _, path := range in {
+		t := strings.TrimSpace(path)
+		if t == "" {
+			continue
+		}
+		// Ensure path starts with /
+		if !strings.HasPrefix(t, "/") {
+			t = "/" + t
+		}
+		k := strings.ToLower(t)
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}
+
+// normalizeSelectors cleans and deduplicates CSS selectors
+func normalizeSelectors(in []string) []string {
+	if len(in) == 0 {
+		return []string{}
+	}
+	out := make([]string, 0, len(in))
+	seen := map[string]struct{}{}
+	for _, sel := range in {
+		t := strings.TrimSpace(sel)
+		if t == "" {
+			continue
+		}
+		// Normalize internal whitespace
+		t = strings.Join(strings.Fields(t), " ")
+		k := strings.ToLower(t)
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, t)
+	}
+	return out
 }
 
 func normalizeLocale(code string) string {

@@ -124,6 +124,16 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger) *http.ServeM
 func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, rlSources *middleware.RateLimiter) http.Handler {
     return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         const p = "/api/v1/chatbots/"
+        // Sitemap discovery endpoint
+        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {
+            middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.DiscoverSitemap)).ServeHTTP(w, r)
+            return
+        }
+        // Bulk sources creation endpoint
+        if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources/bulk") {
+            middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.BulkCreateSources)).ServeHTTP(w, r)
+            return
+        }
         if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
             middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.ChatbotSources)).ServeHTTP(w, r)
             return
@@ -135,6 +145,7 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
         ch.ByID(w, r)
     }))
 }
+
 
 func newHTTPServer(port string, h http.Handler) *http.Server {
 	return &http.Server{
