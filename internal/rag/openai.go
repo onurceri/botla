@@ -227,3 +227,77 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 	}
 	return nil, lastErr
 }
+
+type ChatRequestWithTools struct {
+	Model       string        `json:"model"`
+	Messages    []ChatMessage `json:"messages"`
+	Tools       []Tool        `json:"tools,omitempty"`
+	ToolChoice  string        `json:"tool_choice,omitempty"` // "auto", "none"
+	Temperature float32       `json:"temperature,omitempty"`
+	MaxTokens   int           `json:"max_tokens,omitempty"`
+}
+
+type ChatResponseWithTools struct {
+	Choices []struct {
+		Message      ChatMessage `json:"message"`
+		FinishReason string      `json:"finish_reason"`
+	} `json:"choices"`
+	Usage struct {
+		TotalTokens int `json:"total_tokens"`
+	} `json:"usage"`
+}
+
+// CreateCompletionWithTools sends a completion request with tool support
+func (c *OpenAIClient) CreateCompletionWithTools(
+	ctx context.Context,
+	messages []ChatMessage,
+	tools []Tool,
+	model string,
+	temperature float32,
+	maxTokens int,
+) (*ChatResponseWithTools, error) {
+	if model == "" {
+		model = c.defaultModel
+	}
+
+	reqBody := ChatRequestWithTools{
+		Model:       model,
+		Messages:    messages,
+		Tools:       tools,
+		Temperature: temperature,
+		MaxTokens:   maxTokens,
+	}
+	if len(tools) > 0 {
+		reqBody.ToolChoice = "auto"
+	}
+
+	b, _ := json.Marshal(reqBody)
+	var lastErr error
+	for attempt := 0; attempt < 4; attempt++ {
+		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		res, err := c.http.Do(req)
+		if err != nil {
+			lastErr = err
+		} else {
+			if res.StatusCode == http.StatusOK {
+				var cr ChatResponseWithTools
+				err := json.NewDecoder(res.Body).Decode(&cr)
+				_ = res.Body.Close()
+				if err != nil {
+					lastErr = err
+				} else if len(cr.Choices) == 0 {
+					lastErr = errors.New("no completion returned")
+				} else {
+					return &cr, nil
+				}
+			} else {
+				lastErr = errors.New(res.Status)
+				_ = res.Body.Close()
+			}
+		}
+		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+	}
+	return nil, lastErr
+}

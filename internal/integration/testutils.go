@@ -107,17 +107,33 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS language_id UUID REFERENCES languages(id)`)
 	// ensure analytics has total_tokens_used
 	_, _ = db.Exec(`ALTER TABLE analytics ADD COLUMN IF NOT EXISTS total_tokens_used INTEGER DEFAULT 0`)
-    _, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language_id UUID`)
+	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language_id UUID`)
 	// ensure columns exist for tests
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS allowed_domains TEXT`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS embed_secret VARCHAR(255)`)
-    _, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS secure_embed_enabled BOOLEAN DEFAULT false`)
-    // ensure new source columns exist for tests
-    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
-    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
-    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
-    // create usage_ingestions table for tests
-    _, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS secure_embed_enabled BOOLEAN DEFAULT false`)
+	// Add missing columns for tests
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS include_paths JSONB`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS exclude_paths JSONB`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS selector_whitelist JSONB`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS discovery_mode TEXT DEFAULT 'auto'`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS refresh_policy TEXT DEFAULT 'manual'`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS refresh_frequency TEXT`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS next_refresh_at TIMESTAMPTZ`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS last_refresh_at TIMESTAMPTZ`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS bot_icon TEXT`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS bot_display_name TEXT`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS suggested_questions JSONB`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS suggestions_enabled BOOLEAN DEFAULT false`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS hide_branding BOOLEAN DEFAULT false`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS custom_branding JSONB`)
+
+	// ensure new source columns exist for tests
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
+	// create usage_ingestions table for tests
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
         user_id VARCHAR(64) NOT NULL,
         period_month DATE NOT NULL,
         sources_count INT NOT NULL DEFAULT 0,
@@ -126,10 +142,24 @@ func SetupTestEnv() (*TestEnv, error) {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
         PRIMARY KEY (user_id, period_month)
     )`)
-    // Add refresh tracking columns
-    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
-    _, _ = db.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)
-    mux := NewTestMux(cfg, db)
+	// Add refresh tracking columns
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
+	_, _ = db.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)
+	// Create chatbot_actions table
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS chatbot_actions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        chatbot_id UUID NOT NULL REFERENCES chatbots(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        description TEXT,
+        action_type TEXT NOT NULL,
+        config JSONB,
+        parameters JSONB,
+        enabled BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ,
+        deleted_at TIMESTAMPTZ
+    )`)
+	mux := NewTestMux(cfg, db)
 	srv := httptest.NewServer(mux)
 	return &TestEnv{Cfg: cfg, DB: db, Server: srv}, nil
 }

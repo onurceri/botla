@@ -37,6 +37,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore}
 	chatSvc := services.NewChatService(pool, nil, nil, nil, nil) // nil clients -> lazy init
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
+	acth := &handlers.ActionHandlers{DB: pool}
 	mux.Handle("/api/v1/chatbots/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
@@ -45,6 +46,10 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
 			middleware.RateLimitMiddleware(rl)(http.HandlerFunc(chh.Chat)).ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/actions") {
+			acth.Dispatch(w, r)
 			return
 		}
 		ch.ByID(w, r)

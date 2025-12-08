@@ -106,7 +106,9 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
 	// Pending URLs handler
 	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log}
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, rlSources))
+	// Action handler
+	acth := &handlers.ActionHandlers{DB: pool}
+	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, rlSources))
 
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
@@ -135,7 +137,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	return mux
 }
 
-func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, rlSources *middleware.RateLimiter) http.Handler {
+func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, rlSources *middleware.RateLimiter) http.Handler {
 	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		// Pending URLs endpoints
@@ -173,6 +175,11 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
 			chh.Chat(w, r)
+			return
+		}
+		// Actions endpoint
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/actions") {
+			acth.Dispatch(w, r)
 			return
 		}
 		ch.ByID(w, r)
@@ -213,5 +220,6 @@ func shutdownServer(srv *http.Server, log *logger.Logger, pool *sql.DB) {
 // Backward-compatible dispatcher used by tests
 func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers) http.Handler {
 	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
-	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, rlSources)
+	acth := &handlers.ActionHandlers{DB: ch.DB}
+	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, rlSources)
 }

@@ -24,8 +24,8 @@ describe('ChatbotDetailPage connect tab domain/secret updates', () => {
       </ToastProvider>
     )
     const view = within(utils.container)
-    const connectTrigger = await view.findByRole('tab', { name: /Entegrasyon/ })
-    await userEvent.click(connectTrigger)
+    const connectTriggers = await view.findAllByRole('tab', { name: /Entegrasyon/ })
+    await userEvent.click(connectTriggers[0])
     const toggle = await view.findByLabelText('Güvenli Embed')
     await userEvent.click(toggle)
     const domainsInput = await view.findByPlaceholderText('example.com, another.com')

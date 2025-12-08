@@ -66,7 +66,7 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 
 	newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

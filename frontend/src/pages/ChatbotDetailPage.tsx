@@ -8,7 +8,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import SourceUploader from '@/components/chatbot/SourceUploader'
 import { useToast } from '@/components/ui/toast'
 import HeaderActions from '@/features/chatbot/components/HeaderActions'
-import TabsHeader from '@/features/chatbot/components/TabsHeader'
+import { ChatbotSidebar } from '@/features/chatbot/components/ChatbotSidebar'
 import EmbeddingCodePanel from '@/features/chatbot/components/EmbeddingCodePanel'
 import NewChatbotForm from '@/features/chatbot/components/NewChatbotForm'
 import OverviewPanel from '@/features/chatbot/components/OverviewPanel'
@@ -25,6 +25,7 @@ import SuggestionsPanel from '@/features/chatbot/components/SuggestionsPanel'
 import PendingURLsPanel from '@/features/chatbot/components/PendingURLsPanel'
 import URLAdvancedSettings from '@/features/chatbot/components/URLAdvancedSettings'
 import BrandingSettings from '@/features/chatbot/components/BrandingSettings'
+import ActionList from '@/features/chatbot/components/ActionList'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -223,11 +224,12 @@ const ChatbotDetailPage = () => {
           onDescriptionChange={setDescription}
         />
       ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsHeader />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col lg:flex-row gap-8 items-start">
+          <ChatbotSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
+          <div className="flex-1 w-full min-w-0">
           {/* OVERVIEW TAB */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="mt-0 space-y-6">
             <OverviewPanel
               name={name}
               setName={setName}
@@ -242,7 +244,7 @@ const ChatbotDetailPage = () => {
             />
           </TabsContent>
 
-          <TabsContent value="sources" className="space-y-6">
+          <TabsContent value="sources" className="mt-0 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Bilgi Bankası</CardTitle>
@@ -303,7 +305,7 @@ const ChatbotDetailPage = () => {
           </TabsContent>
 
           {/* PLAYGROUND TAB */}
-          <TabsContent value="playground" className="flex flex-col lg:flex-row gap-6 h-auto lg:h-[650px]">
+          <TabsContent value="playground" className="mt-0 flex flex-col lg:flex-row gap-6 h-auto lg:h-[650px]">
             {/* Settings Column */}
             <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto pr-2">
               
@@ -386,8 +388,13 @@ const ChatbotDetailPage = () => {
           />
           </TabsContent>
 
+          {/* ACTIONS TAB */}
+          <TabsContent value="actions" className="mt-0 space-y-6">
+            <ActionList chatbotId={id || ''} />
+          </TabsContent>
+
           {/* CONNECT TAB */}
-          <TabsContent value="connect">
+          <TabsContent value="connect" className="mt-0">
             <EmbeddingCodePanel
               id={id || ''}
               userPlan={userPlan}
@@ -402,7 +409,7 @@ const ChatbotDetailPage = () => {
           </TabsContent>
 
           {/* SUGGESTIONS TAB */}
-          <TabsContent value="suggestions" className="space-y-6">
+          <TabsContent value="suggestions" className="mt-0 space-y-6">
             <SuggestionsPanel 
               suggestionsEnabled={suggestionsEnabled}
               setSuggestionsEnabled={setSuggestionsEnabled}
@@ -410,6 +417,7 @@ const ChatbotDetailPage = () => {
               setSuggestedQuestions={setSuggestedQuestions}
             />
           </TabsContent>
+          </div>
         </Tabs>
       )}
       {import.meta.env.MODE === 'test' && (
