@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
 import { api } from '@/api/client'
@@ -28,10 +28,13 @@ import BrandingSettings from '@/features/chatbot/components/BrandingSettings'
 import GuardrailsSettings from '@/features/chatbot/components/GuardrailsSettings'
 import ActionList from '@/features/chatbot/components/ActionList'
 import HandoffSettings from '@/features/chatbot/components/HandoffSettings'
+import { useOrganization } from '@/features/organization/context/OrganizationContext'
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { currentWorkspace } = useOrganization()
+  const prevWorkspaceIdRef = useRef<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
   
   const {
@@ -105,6 +108,15 @@ const ChatbotDetailPage = () => {
       }
     } catch {}
   }, [])
+
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      if (prevWorkspaceIdRef.current && prevWorkspaceIdRef.current !== currentWorkspace.id) {
+        navigate('/chatbots')
+      }
+      prevWorkspaceIdRef.current = currentWorkspace.id
+    }
+  }, [currentWorkspace, navigate])
 
   // Fetch user profile and plan config
   const fetchUserProfile = () => {

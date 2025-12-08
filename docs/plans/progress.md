@@ -53,3 +53,14 @@
 - ✅ **2.5 Temperature/MaxTokens UI (2025-12-08)**
   - **Goal**: UI controls for model temperature and max tokens.
   - **Status**: Verified. Integrated into OverviewPanel.
+
+### Phase 3: Agency & White-Label
+
+- ✅ **3.1 Multi-Tenant Architecture (Core) (2025-12-08)**
+  - **Goal**: Support multiple organizations and workspaces for agency use cases.
+  - **Status**: Verified. Backend (DB migrations, Services, Middleware, APIs) and Frontend (Context, Switcher UI, Header injection) completed.
+
+- ✅ **3.2 Multi-Tenant Management (2025-12-08)**
+  - **Goal**: Allow users to update/delete organizations/workspaces and manage members.
+  - **Plan**: `docs/plans/13-multi-tenant-management.md`
+  - **Status**: Verified. Backend endpoints (Update/Delete/Member Management) implemented and tested. Frontend settings pages (Organization/Workspace) and navigation integration completed.

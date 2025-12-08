@@ -30,9 +30,19 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// listChatbots returns all chatbots for a user
+// listChatbots returns all chatbots for a user or workspace
 func (h *ChatbotHandlers) listChatbots(w http.ResponseWriter, r *http.Request, userID string) {
-	bots, err := db.GetChatbotsByUserID(r.Context(), h.DB, userID)
+	var bots []models.Chatbot
+	var err error
+
+	// Check for workspace context from header
+	if wsID, ok := middleware.WorkspaceIDFromContext(r.Context()); ok && wsID != "" {
+		bots, err = db.GetChatbotsByWorkspace(r.Context(), h.DB, wsID)
+	} else {
+		// Fallback to user-based query for backward compatibility
+		bots, err = db.GetChatbotsByUserID(r.Context(), h.DB, userID)
+	}
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -62,7 +72,16 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 	baseLang := baseLangCode(langCodeBCP)
 	langCfg := langconfig.Get(baseLang)
 
-	bot := h.buildNewChatbot(userID, req, langCodeBCP, langCfg)
+	// Get workspace/org context from headers
+	var wsID, orgID *string
+	if ws, ok := middleware.WorkspaceIDFromContext(r.Context()); ok && ws != "" {
+		wsID = &ws
+	}
+	if org, ok := middleware.OrgIDFromContext(r.Context()); ok && org != "" {
+		orgID = &org
+	}
+
+	bot := h.buildNewChatbot(userID, wsID, orgID, req, langCodeBCP, langCfg)
 
 	newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
 	if err != nil {
@@ -84,9 +103,11 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 }
 
 // buildNewChatbot constructs a new chatbot with defaults
-func (h *ChatbotHandlers) buildNewChatbot(userID string, req createChatbotRequest, langCode string, langCfg langconfig.LanguageConfig) *models.Chatbot {
+func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, req createChatbotRequest, langCode string, langCfg langconfig.LanguageConfig) *models.Chatbot {
 	return &models.Chatbot{
 		UserID:               userID,
+		WorkspaceID:          wsID,
+		OrganizationID:       orgID,
 		Name:                 req.Name,
 		Description:          req.Description,
 		SystemPrompt:         defaultString(req.SystemPrompt, langCfg.ResponseTemplates.DefaultPersonaPrompt),

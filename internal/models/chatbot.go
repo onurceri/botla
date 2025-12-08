@@ -5,6 +5,8 @@ import "time"
 type Chatbot struct {
 	ID                   string     `json:"id"`
 	UserID               string     `json:"user_id"`
+	WorkspaceID          *string    `json:"workspace_id,omitempty"`
+	OrganizationID       *string    `json:"organization_id,omitempty"`
 	Name                 string     `json:"name"`
 	Description          *string    `json:"description,omitempty"`
 	SystemPrompt         string     `json:"system_prompt"`

@@ -97,15 +97,16 @@ func (h *MeHandlers) Me(w http.ResponseWriter, r *http.Request) {
 
 // getPlanInfo retrieves plan details with translations
 func (h *MeHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planInfo, error) {
-	if !u.PlanID.Valid || u.PlanID.String == "" {
+	if u.PlanID == nil || *u.PlanID == "" {
 		return nil, &planError{msg: "no plan assigned"}
 	}
 
 	langID := u.PreferredLanguageID
-	if !langID.Valid {
-		_ = h.DB.QueryRow(`SELECT id FROM languages WHERE code='tr-TR'`).Scan(&langID.String)
-		if langID.String != "" {
-			langID.Valid = true
+	if langID == nil {
+		var defaultID string
+		_ = h.DB.QueryRow(`SELECT id FROM languages WHERE code='tr-TR'`).Scan(&defaultID)
+		if defaultID != "" {
+			langID = &defaultID
 		}
 	}
 
@@ -121,7 +122,7 @@ func (h *MeHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planInfo
 		FROM plans p
 		LEFT JOIN plan_translations pt ON pt.plan_id=p.id AND pt.language_id=$2
 		WHERE p.id=$1
-	`, u.PlanID.String, nullStringValue(langID)).Scan(&planCode, &name, &desc, &planPrice, &planCurrency, &config)
+	`, u.PlanID, langID).Scan(&planCode, &name, &desc, &planPrice, &planCurrency, &config)
 
 	if err != nil {
 		planCode = "free"
@@ -131,7 +132,7 @@ func (h *MeHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planInfo
 	applyConfigDefaults(&config, planCode)
 
 	return &planInfo{
-		ID:          u.PlanID.String,
+		ID:          *u.PlanID,
 		Code:        planCode,
 		Name:        nullStringPtr(name),
 		Description: nullStringPtr(desc),
@@ -170,8 +171,8 @@ func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage
 	return MeResponse{
 		ID:              u.ID,
 		Email:           u.Email,
-		FullName:        nullStringPtr(u.FullName),
-		AvatarURL:       nullStringPtr(u.AvatarURL),
+		FullName:        u.FullName,
+		AvatarURL:       u.AvatarURL,
 		PlanID:          plan.ID,
 		PlanCode:        plan.Code,
 		PlanName:        plan.Name,

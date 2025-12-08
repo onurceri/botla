@@ -1,0 +1,419 @@
+package services
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/logger"
+)
+
+type OrganizationService struct {
+	DB  *sql.DB
+	Log *logger.Logger
+}
+
+// RBAC role constants
+const (
+	RoleOwner  = "owner"
+	RoleAdmin  = "admin"
+	RoleMember = "member"
+)
+
+// isValidRole checks if the given role is valid
+func isValidRole(role string) bool {
+	switch role {
+	case RoleOwner, RoleAdmin, RoleMember:
+		return true
+	}
+	return false
+}
+
+// roleWeight returns the weight of a role for comparison
+func roleWeight(role string) int {
+	switch role {
+	case RoleMember:
+		return 1
+	case RoleAdmin:
+		return 2
+	case RoleOwner:
+		return 3
+	}
+	return 0
+}
+
+// hasHigherRole checks if newRole is higher than currentRole
+func hasHigherRole(newRole, currentRole string) bool {
+	return roleWeight(newRole) > roleWeight(currentRole)
+}
+
+func NewOrganizationService(db *sql.DB, log *logger.Logger) *OrganizationService {
+	return &OrganizationService{
+		DB:  db,
+		Log: log,
+	}
+}
+
+// CreateOrganization creates a new organization with the owner
+func (s *OrganizationService) CreateOrganization(ctx context.Context, name, slug, ownerID string) (*models.Organization, error) {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Check if slug exists
+	var exists bool
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM organizations WHERE slug = $1)", slug).Scan(&exists)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, fmt.Errorf("organization slug already exists")
+	}
+
+	org := &models.Organization{
+		Name:    name,
+		Slug:    slug,
+		OwnerID: ownerID,
+		PlanID:  "agency_starter",
+	}
+
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO organizations (name, slug, owner_id, plan_id)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at, updated_at
+	`, org.Name, org.Slug, org.OwnerID, org.PlanID).Scan(&org.ID, &org.CreatedAt, &org.UpdatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Add owner as member with 'owner' role
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO memberships (organization_id, user_id, role)
+		VALUES ($1, $2, 'owner')
+	`, org.ID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return org, nil
+}
+
+// UpdateOrganization updates organization details
+func (s *OrganizationService) UpdateOrganization(ctx context.Context, id, name, slug string) error {
+	var exists bool
+	err := s.DB.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM organizations WHERE slug = $1 AND id != $2)", slug, id).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("organization slug already exists")
+	}
+
+	_, err = s.DB.ExecContext(ctx, "UPDATE organizations SET name = $1, slug = $2, updated_at = NOW() WHERE id = $3", name, slug, id)
+	return err
+}
+
+// DeleteOrganization deletes an organization
+func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string) error {
+	// Get owner_id
+	var ownerID string
+	err := s.DB.QueryRowContext(ctx, "SELECT owner_id FROM organizations WHERE id = $1", id).Scan(&ownerID)
+	if err != nil {
+		return err
+	}
+
+	// Check total organizations count for the owner
+	var count int
+	err = s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM organizations WHERE owner_id = $1", ownerID).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count <= 1 {
+		return fmt.Errorf("cannot delete the last organization")
+	}
+
+	_, err = s.DB.ExecContext(ctx, "DELETE FROM organizations WHERE id = $1", id)
+	return err
+}
+
+// CreateWorkspace creates a new workspace
+func (s *OrganizationService) CreateWorkspace(ctx context.Context, orgID, name, slug string, clientName *string) (*models.Workspace, error) {
+	ws := &models.Workspace{
+		OrganizationID: orgID,
+		Name:           name,
+		Slug:           slug,
+		ClientName:     clientName,
+	}
+
+	err := s.DB.QueryRowContext(ctx, `
+		INSERT INTO workspaces (organization_id, name, slug, client_name)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at
+	`, ws.OrganizationID, ws.Name, ws.Slug, ws.ClientName).Scan(&ws.ID, &ws.CreatedAt)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "unique constraint") {
+			return nil, fmt.Errorf("workspace slug already exists in this organization")
+		}
+		return nil, err
+	}
+
+	return ws, nil
+}
+
+// UpdateWorkspace updates workspace details
+func (s *OrganizationService) UpdateWorkspace(ctx context.Context, wsID, name, slug string, clientName *string) error {
+	_, err := s.DB.ExecContext(ctx, `
+		UPDATE workspaces 
+		SET name = $1, slug = $2, client_name = $3 
+		WHERE id = $4
+	`, name, slug, clientName, wsID)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "unique constraint") {
+			return fmt.Errorf("workspace slug already exists in this organization")
+		}
+		return err
+	}
+	return nil
+}
+
+// DeleteWorkspace deletes a workspace
+func (s *OrganizationService) DeleteWorkspace(ctx context.Context, wsID string) error {
+	// Get organization_id first
+	var orgID string
+	err := s.DB.QueryRowContext(ctx, "SELECT organization_id FROM workspaces WHERE id = $1", wsID).Scan(&orgID)
+	if err != nil {
+		return err
+	}
+
+	// Check total workspaces count
+	var count int
+	err = s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM workspaces WHERE organization_id = $1", orgID).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count <= 1 {
+		return fmt.Errorf("cannot delete the last workspace in the organization")
+	}
+
+	_, err = s.DB.ExecContext(ctx, "DELETE FROM workspaces WHERE id = $1", wsID)
+	return err
+}
+
+// GetUserOrganizations returns all organizations a user belongs to
+func (s *OrganizationService) GetUserOrganizations(ctx context.Context, userID string) ([]*models.Organization, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT o.id, o.name, o.slug, o.owner_id, o.plan_id, o.branding, o.created_at, o.updated_at
+		FROM organizations o
+		JOIN memberships m ON o.id = m.organization_id
+		WHERE m.user_id = $1
+		ORDER BY o.name
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var orgs []*models.Organization
+	for rows.Next() {
+		var org models.Organization
+		var brandingBytes []byte // To handle JSONB
+		err := rows.Scan(
+			&org.ID, &org.Name, &org.Slug, &org.OwnerID, &org.PlanID, &brandingBytes,
+			&org.CreatedAt, &org.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(brandingBytes) > 0 {
+			var cb models.CustomBranding
+			if err := json.Unmarshal(brandingBytes, &cb); err == nil {
+				org.Branding = &cb
+			}
+		}
+		orgs = append(orgs, &org)
+	}
+	return orgs, nil
+}
+
+// CheckMembership checks if user is a member of the organization
+func (s *OrganizationService) CheckMembership(ctx context.Context, userID, orgID string) (*models.Membership, error) {
+	var m models.Membership
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT id, organization_id, user_id, role, created_at
+		FROM memberships
+		WHERE organization_id = $1 AND user_id = $2
+	`, orgID, userID).Scan(&m.ID, &m.OrganizationID, &m.UserID, &m.Role, &m.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &m, nil
+}
+
+// GetMembers returns all members of an organization
+func (s *OrganizationService) GetMembers(ctx context.Context, orgID string) ([]*models.MembershipWithUser, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT m.id, m.organization_id, m.user_id, m.role, m.created_at,
+		       u.id, u.email, u.full_name, u.avatar_url
+		FROM memberships m
+		JOIN users u ON m.user_id = u.id
+		WHERE m.organization_id = $1
+		ORDER BY m.created_at DESC
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var members []*models.MembershipWithUser
+	for rows.Next() {
+		var m models.MembershipWithUser
+		err := rows.Scan(
+			&m.ID, &m.OrganizationID, &m.UserID, &m.Role, &m.CreatedAt,
+			&m.User.ID, &m.User.Email, &m.User.FullName, &m.User.AvatarURL,
+		)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, &m)
+	}
+	return members, nil
+}
+
+// AddMember adds a user to the organization
+func (s *OrganizationService) AddMember(ctx context.Context, orgID, userID, role string) error {
+	_, err := s.DB.ExecContext(ctx, `
+		INSERT INTO memberships (organization_id, user_id, role)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (organization_id, user_id) DO UPDATE SET role = $3
+	`, orgID, userID, role)
+	return err
+}
+
+// RemoveMember removes a user from the organization with RBAC validation
+func (s *OrganizationService) RemoveMember(ctx context.Context, orgID, callerID, targetUserID string) error {
+	// 1. Get target's current membership
+	targetMembership, err := s.CheckMembership(ctx, targetUserID, orgID)
+	if err != nil {
+		return err
+	}
+	if targetMembership == nil {
+		return fmt.Errorf("target user is not a member of this organization")
+	}
+
+	// 2. Prevent removing the last owner
+	if targetMembership.Role == RoleOwner {
+		ownerCount, err := s.countOwnersInOrg(ctx, orgID)
+		if err != nil {
+			return err
+		}
+		if ownerCount <= 1 {
+			return fmt.Errorf("cannot remove the last owner")
+		}
+	}
+
+	// 3. Execute removal
+	_, err = s.DB.ExecContext(ctx, "DELETE FROM memberships WHERE organization_id = $1 AND user_id = $2", orgID, targetUserID)
+	return err
+}
+
+// UpdateMemberRole updates a member's role with comprehensive RBAC validation
+func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, callerID, targetUserID, newRole string) error {
+	// 1. Validate role
+	if !isValidRole(newRole) {
+		return fmt.Errorf("invalid role: %s", newRole)
+	}
+
+	// 2. Get caller's membership
+	callerMembership, err := s.CheckMembership(ctx, callerID, orgID)
+	if err != nil {
+		return err
+	}
+	if callerMembership == nil {
+		return fmt.Errorf("caller is not a member of this organization")
+	}
+
+	// 3. Get target's current membership
+	targetMembership, err := s.CheckMembership(ctx, targetUserID, orgID)
+	if err != nil {
+		return err
+	}
+	if targetMembership == nil {
+		return fmt.Errorf("target user is not a member of this organization")
+	}
+
+	// 4. Prevent self-promotion (member→admin, admin→owner)
+	if callerID == targetUserID && hasHigherRole(newRole, callerMembership.Role) {
+		return fmt.Errorf("cannot promote yourself")
+	}
+
+	// 5. Prevent owner demotion if last owner
+	if targetMembership.Role == RoleOwner && newRole != RoleOwner {
+		ownerCount, err := s.countOwnersInOrg(ctx, orgID)
+		if err != nil {
+			return err
+		}
+		if ownerCount <= 1 {
+			return fmt.Errorf("cannot demote the last owner")
+		}
+	}
+
+	// 6. Only owners can assign owner role
+	if newRole == RoleOwner && callerMembership.Role != RoleOwner {
+		return fmt.Errorf("only owners can assign owner role")
+	}
+
+	// 7. Execute update
+	_, err = s.DB.ExecContext(ctx, "UPDATE memberships SET role = $1 WHERE organization_id = $2 AND user_id = $3", newRole, orgID, targetUserID)
+	return err
+}
+
+// countOwnersInOrg returns the number of owners in an organization
+func (s *OrganizationService) countOwnersInOrg(ctx context.Context, orgID string) (int, error) {
+	var count int
+	err := s.DB.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM memberships WHERE organization_id = $1 AND role = 'owner'",
+		orgID).Scan(&count)
+	return count, err
+}
+
+// GetWorkspaces returns all workspaces of an organization
+func (s *OrganizationService) GetWorkspaces(ctx context.Context, orgID string) ([]*models.Workspace, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT id, organization_id, name, slug, client_name, created_at
+		FROM workspaces
+		WHERE organization_id = $1
+		ORDER BY name
+	`, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var workspaces []*models.Workspace
+	for rows.Next() {
+		var ws models.Workspace
+		if err := rows.Scan(&ws.ID, &ws.OrganizationID, &ws.Name, &ws.Slug, &ws.ClientName, &ws.CreatedAt); err != nil {
+			return nil, err
+		}
+		workspaces = append(workspaces, &ws)
+	}
+	return workspaces, nil
+}

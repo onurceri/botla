@@ -80,7 +80,9 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	mux := http.NewServeMux()
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	mux.HandleFunc("/health", hh.Health)
-	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET}
+	// Organization service (needed by auth for auto-workspace creation)
+	orgSvc := services.NewOrganizationService(pool, log)
+	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc}
 	mux.HandleFunc("/api/v1/auth/register", ah.RegisterHandler)
 	mux.HandleFunc("/api/v1/auth/login", ah.LoginHandler)
 	mux.HandleFunc("/api/v1/auth/refresh", ah.RefreshHandler)
@@ -89,7 +91,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	mh := &handlers.MeHandlers{DB: pool}
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg}
-	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ch.ListOrCreate)))
+	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
 	// Sources handler
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
 	// Chat service
@@ -139,6 +141,35 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 
 	anh := &handlers.AnalyticsHandlers{DB: pool}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
+
+	// Organization routes
+	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
+	auth := middleware.AuthMiddleware(cfg.JWT_SECRET)
+	
+	// Helper middlewares
+	requireMember := middleware.RequireOrganizationAccess(orgSvc, "member")
+	requireAdmin := middleware.RequireOrganizationAccess(orgSvc, "admin")
+	requireOwner := middleware.RequireOrganizationAccess(orgSvc, "owner")
+
+	// Org List/Create
+	mux.Handle("GET /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
+	mux.Handle("POST /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
+	
+	// Org Management
+	mux.Handle("PATCH /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.UpdateOrganization))))
+	mux.Handle("DELETE /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.DeleteOrganization))))
+
+	// Workspaces
+	mux.Handle("GET /api/v1/organizations/{id}/workspaces", auth(requireMember(http.HandlerFunc(oh.Workspaces))))
+	mux.Handle("POST /api/v1/organizations/{id}/workspaces", auth(requireAdmin(http.HandlerFunc(oh.Workspaces))))
+	mux.Handle("PATCH /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(oh.UpdateWorkspace))))
+	mux.Handle("DELETE /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(oh.DeleteWorkspace))))
+
+	// Members
+	mux.Handle("GET /api/v1/organizations/{id}/members", auth(requireMember(http.HandlerFunc(oh.GetMembers))))
+	mux.Handle("POST /api/v1/organizations/{id}/members", auth(requireAdmin(http.HandlerFunc(oh.AddMember))))
+	mux.Handle("DELETE /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.RemoveMember))))
+	mux.Handle("PATCH /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.UpdateMemberRole))))
 
 	return mux
 }

@@ -24,7 +24,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 	err := pool.QueryRowContext(
 		ctx,
 		`INSERT INTO chatbots (
-            user_id, name, description, system_prompt, language_id, model,
+            user_id, workspace_id, organization_id, name, description, system_prompt, language_id, model,
             temperature, max_tokens, theme_color, welcome_message,
             position, bot_message_color, user_message_color,
             bot_message_text_color, user_message_text_color,
@@ -33,8 +33,8 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
             include_paths, exclude_paths, selector_whitelist, discovery_mode,
             refresh_policy, refresh_frequency, next_refresh_at, last_refresh_at,
             confidence_threshold, fallback_messages, topic_restrictions
-        ) VALUES ($1,$2,$3,$4,(SELECT id FROM languages WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34) RETURNING id`,
-		bot.UserID, bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
+        ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36) RETURNING id`,
+		bot.UserID, bot.WorkspaceID, bot.OrganizationID, bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
@@ -52,7 +52,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 
 func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]models.Chatbot, error) {
 	rows, err := pool.QueryContext(ctx, `
-        SELECT c.id, c.user_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
+        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
                c.created_at, c.updated_at, c.deleted_at,
                c.position, c.bot_message_color, c.user_message_color,
@@ -74,12 +74,45 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
+	return scanChatbots(rows)
+}
+
+// GetChatbotsByWorkspace returns all chatbots for a specific workspace
+func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID string) ([]models.Chatbot, error) {
+	rows, err := pool.QueryContext(ctx, `
+        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
+               temperature, max_tokens, theme_color, welcome_message,
+               c.created_at, c.updated_at, c.deleted_at,
+               c.position, c.bot_message_color, c.user_message_color,
+               c.bot_message_text_color, c.user_message_text_color,
+               c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
+               c.chat_background_color,
+               c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
+               c.suggested_questions, c.suggestions_enabled,
+               c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
+               COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
+               COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
+               c.confidence_threshold, c.fallback_messages, c.topic_restrictions,
+               COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
+        FROM chatbots c
+        LEFT JOIN languages l ON l.id = c.language_id
+        WHERE c.workspace_id=$1 AND c.deleted_at IS NULL
+        ORDER BY c.created_at DESC`, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	return scanChatbots(rows)
+}
+
+// scanChatbots is a helper function to scan chatbot rows
+func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
 		var sj, ipj, epj, swj, cbj, fmj, trj, hcj []byte
 		if err := rows.Scan(
-			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
+			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
 			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
@@ -148,7 +181,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 	var c models.Chatbot
 	var sj, ipj, epj, swj, cbj, fmj, trj, hcj []byte
 	err := pool.QueryRowContext(ctx, `
-        SELECT c.id, c.user_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
+        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
                c.created_at, c.updated_at, c.deleted_at,
                c.position, c.bot_message_color, c.user_message_color,
@@ -166,7 +199,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.id=$1 AND c.deleted_at IS NULL`, id).
 		Scan(
-			&c.ID, &c.UserID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
+			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
 			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 			&c.Position, &c.BotMessageColor, &c.UserMessageColor,

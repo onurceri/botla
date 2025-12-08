@@ -61,7 +61,7 @@ const (
 
 // Domain-specific error codes
 const (
-	ErrMonthlyTokensExceeded     = "ERR_MONTHLY_TOKENS_EXCEEDED"
+	ErrMonthlyTokensExceeded     = "ERR_MONTHLY_TOKENS_EXCEEDED" //nolint:gosec
 	ErrNameAndActionTypeRequired = "ERR_NAME_AND_ACTION_TYPE_REQUIRED"
 	ErrPdfLimitReached           = "ERR_PDF_LIMIT_REACHED"
 	ErrFileTooLarge              = "ERR_FILE_TOO_LARGE"

@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { api } from '@/api/client'
+import { OrganizationSwitcher } from '@/features/organization/components/OrganizationSwitcher'
 
 const SidebarItem = ({ 
   icon: Icon, 
@@ -92,8 +93,8 @@ const DashboardLayout = () => {
   }, [])
 
   const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
-    { icon: Bot, label: 'Chatbots', to: '/chatbots' },
+    { icon: LayoutDashboard, label: 'Panel', to: '/' },
+    { icon: Bot, label: 'Chatbotlar', to: '/chatbots' },
   ]
 
   const settingsItems = [
@@ -199,7 +200,7 @@ const DashboardLayout = () => {
             onClick={handleLogout}
           >
             <LogOut className={cn("w-4 h-4", isCollapsed ? "lg:group-hover/sidebar:mr-2" : "mr-2")} />
-            <span className={cn(isCollapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>Logout</span>
+            <span className={cn(isCollapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>Çıkış Yap</span>
           </Button>
         </div>
       </aside>
@@ -221,12 +222,14 @@ const DashboardLayout = () => {
               <span>Botla</span>
               <ChevronRight className="w-4 h-4 mx-1" />
               <span className="text-foreground font-medium">
-                {navItems.find(i => location.pathname.startsWith(i.to) && i.to !== '/')?.label || 'Dashboard'}
+                {navItems.find(i => location.pathname.startsWith(i.to) && i.to !== '/')?.label || 'Panel'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4" />
+          <div className="flex items-center gap-4">
+            <OrganizationSwitcher />
+          </div>
         </header>
 
         {/* Page Content */}

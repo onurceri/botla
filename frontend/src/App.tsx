@@ -8,6 +8,9 @@ import PlanPage from '@/pages/PlanPage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import { ToastProvider } from '@/components/ui/toast'
+import { OrganizationProvider } from '@/features/organization/context/OrganizationContext'
+import { OrganizationSettingsPage } from '@/features/organization/pages/OrganizationSettingsPage'
+import { WorkspaceSettingsPage } from '@/features/organization/pages/WorkspaceSettingsPage'
 
 const isAuthenticated = () => {
   // In E2E mode, bypass auth gating for visual tests
@@ -33,7 +36,9 @@ function App() {
           {/* Protected Routes */}
           <Route path="/" element={
             <PrivateRoute>
-              <DashboardLayout />
+              <OrganizationProvider>
+                <DashboardLayout />
+              </OrganizationProvider>
             </PrivateRoute>
           }>
             <Route index element={<DashboardPage />} />
@@ -41,6 +46,8 @@ function App() {
             <Route path="chatbots/:id" element={<ChatbotDetailPage />} />
             <Route path="settings" element={<Navigate to="/settings/profile" replace />} />
             <Route path="settings/profile" element={<ProfilePage />} />
+            <Route path="settings/organization" element={<OrganizationSettingsPage />} />
+            <Route path="settings/workspace" element={<WorkspaceSettingsPage />} />
             <Route path="settings/plan" element={<PlanPage />} />
           </Route>
           

@@ -12,6 +12,15 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
+    
+    const orgId = localStorage.getItem('botla_last_org_id')
+    if (orgId) {
+      config.headers['X-Organization-ID'] = orgId
+      const wsId = localStorage.getItem(`botla_last_ws_id_${orgId}`)
+      if (wsId) {
+        config.headers['X-Workspace-ID'] = wsId
+      }
+    }
   }
   return config
 })

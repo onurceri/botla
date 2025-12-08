@@ -9,16 +9,22 @@ import (
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 	mux := http.NewServeMux()
+	log := logger.New("INFO")
 	rl := middleware.NewRateLimiterFromEnv()
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/health", middleware.RateLimitMiddleware(rl)(http.HandlerFunc(hh.Health)))
-	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET}
+	
+	// Org Service
+	orgSvc := services.NewOrganizationService(pool, log)
+
+	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc}
 	mux.HandleFunc("/api/v1/auth/register", ah.RegisterHandler)
 	mux.HandleFunc("/api/v1/auth/login", ah.LoginHandler)
 	mux.HandleFunc("/api/v1/auth/refresh", ah.RefreshHandler)
@@ -29,6 +35,28 @@ func NewTestMux(cfg *config.Config, pool *sql.DB) http.Handler {
 
 	anh := &handlers.AnalyticsHandlers{DB: pool}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
+
+	// Organization routes
+	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
+	auth := middleware.AuthMiddleware(cfg.JWT_SECRET)
+	requireMember := middleware.RequireOrganizationAccess(orgSvc, "member")
+	requireAdmin := middleware.RequireOrganizationAccess(orgSvc, "admin")
+	requireOwner := middleware.RequireOrganizationAccess(orgSvc, "owner")
+
+	mux.Handle("GET /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
+	mux.Handle("POST /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
+	mux.Handle("PATCH /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.UpdateOrganization))))
+	mux.Handle("DELETE /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.DeleteOrganization))))
+
+	mux.Handle("GET /api/v1/organizations/{id}/workspaces", auth(requireMember(http.HandlerFunc(oh.Workspaces))))
+	mux.Handle("POST /api/v1/organizations/{id}/workspaces", auth(requireAdmin(http.HandlerFunc(oh.Workspaces))))
+	mux.Handle("PATCH /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(oh.UpdateWorkspace))))
+	mux.Handle("DELETE /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(oh.DeleteWorkspace))))
+
+	mux.Handle("GET /api/v1/organizations/{id}/members", auth(requireMember(http.HandlerFunc(oh.GetMembers))))
+	mux.Handle("POST /api/v1/organizations/{id}/members", auth(requireAdmin(http.HandlerFunc(oh.AddMember))))
+	mux.Handle("DELETE /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.RemoveMember))))
+	mux.Handle("PATCH /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.UpdateMemberRole))))
 
 	ch := &handlers.ChatbotHandlers{DB: pool}
 	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ch.ListOrCreate)))

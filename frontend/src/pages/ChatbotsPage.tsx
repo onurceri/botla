@@ -4,18 +4,29 @@ import { Plus, Bot, MoreHorizontal, Trash2 } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import { useOrganization } from '@/features/organization/context/OrganizationContext'
 
 const ChatbotsPage = () => {
+  const { currentWorkspace, isLoading: isOrgLoading } = useOrganization()
   const [bots, setBots] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null)
 
   useEffect(() => {
+    if (isOrgLoading) return
+
+    if (!currentWorkspace) {
+      setLoading(false)
+      setBots([])
+      return
+    }
+
+    setLoading(true)
     api.get('/api/v1/chatbots')
       .then(({ data }) => setBots(Array.isArray(data) ? data : []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false))
-  }, [])
+  }, [currentWorkspace, isOrgLoading])
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -50,8 +61,17 @@ const ChatbotsPage = () => {
     }
   }
 
-  if (loading) {
+  if (isOrgLoading || (loading && currentWorkspace)) {
     return <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
+  }
+
+  if (!currentWorkspace) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <h2 className="text-2xl font-semibold">Çalışma Alanı Seçin</h2>
+        <p className="text-muted-foreground">Chatbotlarınızı görüntülemek için lütfen bir çalışma alanı seçin veya oluşturun.</p>
+      </div>
+    )
   }
 
   return (

@@ -5,11 +5,15 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/auth"
+	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/langconfig"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -20,8 +24,9 @@ func hashToken(token string) string {
 }
 
 type AuthHandlers struct {
-	DB     *sql.DB
-	Secret string
+	DB         *sql.DB
+	Secret     string
+	OrgService *services.OrganizationService
 }
 
 type registerRequest struct {
@@ -93,7 +98,35 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create default personal organization and workspace
+	if h.OrgService != nil {
+		// Use default language (tr) for localized strings
+		cfg := langconfig.Get("tr")
+		orgName := cfg.ResponseTemplates.DefaultOrgName
+		if req.FullName != "" {
+			orgName = fmt.Sprintf(cfg.ResponseTemplates.DefaultOrgNameFormat, req.FullName)
+		}
+		orgSlug := slugifyEmail(req.Email)
+		org, err := h.OrgService.CreateOrganization(r.Context(), orgName, orgSlug, userID)
+		if err == nil && org != nil {
+			_, _ = h.OrgService.CreateWorkspace(r.Context(), org.ID, cfg.ResponseTemplates.DefaultWorkspaceName, "default", nil)
+		}
+	}
+
 	h.generateAndSendTokens(w, r, userID, http.StatusCreated)
+}
+
+// slugifyEmail converts email to URL-safe slug
+func slugifyEmail(email string) string {
+	// Take part before @
+	parts := strings.Split(email, "@")
+	slug := parts[0]
+	// Replace non-alphanumeric with hyphen
+	reg := regexp.MustCompile(`[^a-z0-9]+`)
+	slug = reg.ReplaceAllString(strings.ToLower(slug), "-")
+	// Trim hyphens
+	slug = strings.Trim(slug, "-")
+	return slug
 }
 
 func (h *AuthHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
