@@ -84,12 +84,12 @@ func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Req
 	page := 1
 	perPage := 20
 	if p := r.URL.Query().Get("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+		if parsed, err2 := strconv.Atoi(p); err2 == nil && parsed > 0 {
 			page = parsed
 		}
 	}
 	if pp := r.URL.Query().Get("per_page"); pp != "" {
-		if parsed, err := strconv.Atoi(pp); err == nil && parsed > 0 && parsed <= 100 {
+		if parsed, err2 := strconv.Atoi(pp); err2 == nil && parsed > 0 && parsed <= 100 {
 			perPage = parsed
 		}
 	}
@@ -157,7 +157,7 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 
 	// Parse request body
 	var req ApproveRejectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err2 := json.NewDecoder(r.Body).Decode(&req); err2 != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
 		return
 	}
@@ -179,11 +179,11 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	sourcesCreated := 0
 	for _, pu := range pendingURLs {
 		url := pu.URL
-		_, err := db.CreateSource(r.Context(), h.DB, chatbotID, "url", &url, nil, nil)
-		if err == nil {
+		_, err2 := db.CreateSource(r.Context(), h.DB, chatbotID, "url", &url, nil, nil)
+		if err2 == nil {
 			sourcesCreated++
 		} else {
-			h.logWarn("create_source_failed", map[string]any{"url": url, "error": err.Error()})
+			h.logWarn("create_source_failed", map[string]any{"url": url, "error": err2.Error()})
 		}
 	}
 
@@ -229,7 +229,7 @@ func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.R
 
 	// Parse request body
 	var req ApproveRejectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err2 := json.NewDecoder(r.Body).Decode(&req); err2 != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
 		return
 	}

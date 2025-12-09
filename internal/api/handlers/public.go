@@ -129,6 +129,7 @@ type publicSourceUsed struct {
 
 type publicChatResponse struct {
 	Response    string             `json:"response"`
+	MessageID   string             `json:"message_id"`
 	TokensUsed  int                `json:"tokens_used"`
 	SourcesUsed []publicSourceUsed `json:"sources_used"`
 }
@@ -228,7 +229,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(publicChatResponse{Response: result.Response, TokensUsed: result.TokensUsed, SourcesUsed: sources}); err != nil {
+	if err = json.NewEncoder(w).Encode(publicChatResponse{Response: result.Response, MessageID: result.MessageID, TokensUsed: result.TokensUsed, SourcesUsed: sources}); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
@@ -242,4 +243,63 @@ func PublicChat(dbpool *sql.DB) http.HandlerFunc {
 	svc := services.NewChatService(dbpool, nil, nil, nil, nil)
 	h := &PublicHandlers{DB: dbpool, ChatService: svc}
 	return h.PublicChat
+}
+
+// SubmitFeedback handles POST /api/v1/public/chatbots/:id/feedback
+func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract bot ID from path
+	// Path: /api/v1/public/chatbots/:id/feedback
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 6 { // ["", "api", "v1", "public", "chatbots", "{id}", "feedback"]
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if len(parts) < 7 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	botID := parts[5]
+
+	var req struct {
+		MessageID string `json:"message_id"`
+		ThumbsUp  bool   `json:"thumbs_up"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Verify message belongs to bot (optional but good)
+	// For now, simpler: UpdateMessageFeedback checks ID.
+	// We need to return the chatbotID for analytics increment, but UpdateMessageFeedback returns it.
+	chatbotID, err := db.UpdateMessageFeedback(r.Context(), h.DB, req.MessageID, req.ThumbsUp)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Verify the message belongs to the bot in the path
+	if chatbotID != botID {
+		w.WriteHeader(http.StatusBadRequest) // mismatch
+		return
+	}
+
+	// Update analytics asynchronously
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), req.ThumbsUp)
+	}()
+
+	w.WriteHeader(http.StatusOK)
 }

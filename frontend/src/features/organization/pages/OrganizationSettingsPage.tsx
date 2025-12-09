@@ -71,7 +71,7 @@ export const OrganizationSettingsPage: React.FC = () => {
   }
 
   // Check available roles for the role selector
-  const getAvailableRolesForMember = (member: Member) => {
+  const getAvailableRolesForMember = (_member: Member) => {
     if (callerRole === 'owner') {
       return ['member', 'admin', 'owner']
     }

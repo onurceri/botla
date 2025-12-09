@@ -42,6 +42,7 @@ func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.Embeddi
 
 // ProcessChat handles the complete chat flow: embedding, context retrieval, completion, and storage
 func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, bot *models.Chatbot, ragConfig models.RAGConfig) (*models.ChatResult, error) {
+	startTime := time.Now()
 	// Check if we should use tool-enabled flow
 	// For now, let's check if there are any enabled actions for this bot
 	actions, err := db.GetEnabledActions(ctx, s.DB, bot.ID)
@@ -52,7 +53,6 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	// Ensure embedder is available
 	embedder := s.Embedder
 	if embedder == nil {
-		var err error
 		embedder, err = rag.NewOpenAIClientFromEnv()
 		if err != nil {
 			return nil, err
@@ -84,10 +84,12 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	embedding, err := embedder.CreateEmbedding(ctx, req.Message)
 	var contextText string
 	var sources []models.SourceUsed
+	var chunkMetas []models.ChunkMetadata
 
 	if err == nil && qc != nil {
 		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens, bot.ConfidenceThreshold)
 		contextText = ctxText
+		chunkMetas = metas
 		for _, m := range metas {
 			sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
 		}
@@ -152,16 +154,31 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 
 	// Save assistant message
 	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: ans, TokensUsed: tokens}
-	if _, err = db.CreateMessage(ctx, s.DB, am); err == nil {
+	var amID string
+	if id, err := db.CreateMessage(ctx, s.DB, am); err == nil {
+		amID = id
 		_ = db.IncrementConversationMessageCount(ctx, s.DB, conv.ID)
+
+		// Save source usage
+		if len(chunkMetas) > 0 {
+			if err := db.SaveMessageSources(ctx, s.DB, amID, chunkMetas); err != nil && s.Log != nil {
+				s.Log.Warn("save_message_sources_error", map[string]any{"message_id": amID, "error": err.Error()})
+			}
+		}
 	}
 
 	// Update analytics asynchronously
+	isUnanswered := strings.TrimSpace(contextText) == ""
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, time.Now(), isNewConv, tokens); err != nil && s.Log != nil {
+		responseTime := int(time.Since(startTime).Milliseconds())
+		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, time.Now(), isNewConv, tokens, false, responseTime); err != nil && s.Log != nil {
 			s.Log.Warn("analytics_error", map[string]any{"chatbot_id": bot.ID, "error": err.Error()})
+		}
+
+		if isUnanswered {
+			_ = db.TrackUnansweredQuery(bgCtx, s.DB, bot.ID, req.Message)
 		}
 	}()
 
@@ -170,12 +187,14 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 		TokensUsed:     tokens,
 		Sources:        sources,
 		ConversationID: conv.ID,
+		MessageID:      amID,
 		IsNewConv:      isNewConv,
 	}, nil
 }
 
 // ProcessChatWithTools handles the chat flow with tool support
 func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatRequest, bot *models.Chatbot, ragConfig models.RAGConfig, actions []*models.ChatbotAction) (*models.ChatResult, error) {
+	startTime := time.Now()
 	// Ensure embedder is available
 	embedder := s.Embedder
 	if embedder == nil {
@@ -193,11 +212,11 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 	}
 
 	// Get or create conversation
-    conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, bot.ID, req.SessionID)
+	conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, bot.ID, req.SessionID)
 	if err != nil || conv == nil {
 		return nil, err
 	}
-    isNewConv := conv.MessageCount == 0
+	isNewConv := conv.MessageCount == 0
 
 	// Save user message
 	um := &models.Message{ConversationID: conv.ID, Role: "user", Content: req.Message, TokensUsed: 0}
@@ -210,10 +229,12 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 	embedding, err := embedder.CreateEmbedding(ctx, req.Message)
 	var contextText string
 	var sources []models.SourceUsed
+	var chunkMetas []models.ChunkMetadata
 
 	if err == nil && qc != nil {
 		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens, bot.ConfidenceThreshold)
 		contextText = ctxText
+		chunkMetas = metas
 		for _, m := range metas {
 			sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
 		}
@@ -308,25 +329,35 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 		}
 	}
 
-    if finalResponse == "" {
-        fr := cfg.ResponseTemplates.Errors["CHAT_TIMEOUT_OR_INCOMPLETE"]
-        if fr == "" {
-            fr = cfg.ResponseTemplates.ErrorMessage
-        }
-        finalResponse = fr
-    }
+	if finalResponse == "" {
+		fr := cfg.ResponseTemplates.Errors["CHAT_TIMEOUT_OR_INCOMPLETE"]
+		if fr == "" {
+			fr = cfg.ResponseTemplates.ErrorMessage
+		}
+		finalResponse = fr
+	}
 
 	// Save assistant message
 	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: finalResponse, TokensUsed: totalTokens}
-	if _, err = db.CreateMessage(ctx, s.DB, am); err == nil {
+	var amID string
+	if id, err := db.CreateMessage(ctx, s.DB, am); err == nil {
+		amID = id
 		_ = db.IncrementConversationMessageCount(ctx, s.DB, conv.ID)
+
+		// Save source usage
+		if len(chunkMetas) > 0 {
+			if err := db.SaveMessageSources(ctx, s.DB, amID, chunkMetas); err != nil && s.Log != nil {
+				s.Log.Warn("save_message_sources_error", map[string]any{"message_id": amID, "error": err.Error()})
+			}
+		}
 	}
 
 	// Update analytics asynchronously
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, time.Now(), isNewConv, totalTokens); err != nil && s.Log != nil {
+		responseTime := int(time.Since(startTime).Milliseconds())
+		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, time.Now(), isNewConv, totalTokens, false, responseTime); err != nil && s.Log != nil {
 			s.Log.Warn("analytics_error", map[string]any{"chatbot_id": bot.ID, "error": err.Error()})
 		}
 	}()
@@ -336,6 +367,7 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 		TokensUsed:     totalTokens,
 		Sources:        sources,
 		ConversationID: conv.ID,
+		MessageID:      amID,
 		IsNewConv:      isNewConv,
 	}, nil
 }
@@ -363,8 +395,8 @@ func normalizeLangCode(code string) string {
 
 // resolveSystemPrompt returns the custom prompt or falls back to the language default
 func resolveSystemPrompt(customPrompt string, cfg langconfig.LanguageConfig) string {
-    if strings.TrimSpace(customPrompt) == "" {
-        return cfg.ResponseTemplates.DefaultSystemPrompt
-    }
-    return customPrompt
+	if strings.TrimSpace(customPrompt) == "" {
+		return cfg.ResponseTemplates.DefaultSystemPrompt
+	}
+	return customPrompt
 }

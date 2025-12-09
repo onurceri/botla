@@ -320,9 +320,9 @@ func (s *OrganizationService) RemoveMember(ctx context.Context, orgID, callerID,
 
 	// 2. Prevent removing the last owner
 	if targetMembership.Role == RoleOwner {
-		ownerCount, err := s.countOwnersInOrg(ctx, orgID)
-		if err != nil {
-			return err
+		ownerCount, err2 := s.countOwnersInOrg(ctx, orgID)
+		if err2 != nil {
+			return err2
 		}
 		if ownerCount <= 1 {
 			return fmt.Errorf("cannot remove the last owner")
@@ -366,9 +366,9 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 
 	// 5. Prevent owner demotion if last owner
 	if targetMembership.Role == RoleOwner && newRole != RoleOwner {
-		ownerCount, err := s.countOwnersInOrg(ctx, orgID)
-		if err != nil {
-			return err
+		ownerCount, err2 := s.countOwnersInOrg(ctx, orgID)
+		if err2 != nil {
+			return err2
 		}
 		if ownerCount <= 1 {
 			return fmt.Errorf("cannot demote the last owner")
@@ -416,4 +416,21 @@ func (s *OrganizationService) GetWorkspaces(ctx context.Context, orgID string) (
 		workspaces = append(workspaces, &ws)
 	}
 	return workspaces, nil
+}
+
+// GetWorkspace returns a workspace by ID
+func (s *OrganizationService) GetWorkspace(ctx context.Context, id string) (*models.Workspace, error) {
+	var ws models.Workspace
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT id, organization_id, name, slug, client_name, created_at
+		FROM workspaces
+		WHERE id = $1
+	`, id).Scan(&ws.ID, &ws.OrganizationID, &ws.Name, &ws.Slug, &ws.ClientName, &ws.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &ws, nil
 }

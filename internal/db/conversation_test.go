@@ -32,8 +32,8 @@ func TestConversation_Messages_DB(t *testing.T) {
 		t.Fatalf("create msg: %v", err)
 	}
 	// increment count
-	if err := IncrementConversationMessageCount(context.Background(), db, conv.ID); err != nil {
-		t.Fatalf("inc count: %v", err)
+	if err2 := IncrementConversationMessageCount(context.Background(), db, conv.ID); err2 != nil {
+		t.Fatalf("inc count: %v", err2)
 	}
 	// list recent
 	msgs, err := ListRecentMessages(context.Background(), db, conv.ID, 5)

@@ -62,5 +62,7 @@ func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *ha
 	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
 	acth := &handlers.ActionHandlers{DB: ch.DB}
 	hoh := &handlers.HandoffHandlers{DB: ch.DB}
-	return chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, hoh, rlSources)
+	// Create handler
+	h := chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, hoh, nil, rlSources)
+	return h
 }

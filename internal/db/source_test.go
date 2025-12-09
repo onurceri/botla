@@ -32,27 +32,27 @@ func TestDataSource_CRUD_DB(t *testing.T) {
 	// update processing
 	now := time.Now()
 	em := ""
-	if err := UpdateSourceProcessing(context.Background(), db, sid, "completed", &em, 3, &now); err != nil {
-		t.Fatalf("update processing: %v", err)
+	if err2 := UpdateSourceProcessing(context.Background(), db, sid, "completed", &em, 3, &now); err2 != nil {
+		t.Fatalf("update processing: %v", err2)
 	}
-	got, err := GetSourceByID(context.Background(), db, sid)
-	if err != nil || got == nil || got.Status != "completed" {
-		t.Fatalf("get source: %v", err)
+	got, err2 := GetSourceByID(context.Background(), db, sid)
+	if err2 != nil || got == nil || got.Status != "completed" {
+		t.Fatalf("get source: %v", err2)
 	}
 	// update capability and suggestions
-	if err := UpdateSourceCapability(context.Background(), db, sid, "summary"); err != nil {
-		t.Fatalf("cap: %v", err)
+	if err3 := UpdateSourceCapability(context.Background(), db, sid, "summary"); err3 != nil {
+		t.Fatalf("cap: %v", err3)
 	}
-	if err := UpdateSourceSuggestions(context.Background(), db, sid, []string{"q1", "q2"}); err != nil {
-		t.Fatalf("sugg: %v", err)
+	if err3 := UpdateSourceSuggestions(context.Background(), db, sid, []string{"q1", "q2"}); err3 != nil {
+		t.Fatalf("sugg: %v", err3)
 	}
 	// delete
-	if err := DeleteSource(context.Background(), db, sid); err != nil {
-		t.Fatalf("delete: %v", err)
+	if err3 := DeleteSource(context.Background(), db, sid); err3 != nil {
+		t.Fatalf("delete: %v", err3)
 	}
-	gone, err := GetSourceByID(context.Background(), db, sid)
-	if err != nil {
-		t.Fatalf("get after delete: %v", err)
+	gone, err3 := GetSourceByID(context.Background(), db, sid)
+	if err3 != nil {
+		t.Fatalf("get after delete: %v", err3)
 	}
 	if gone != nil {
 		t.Fatalf("expected nil after delete")

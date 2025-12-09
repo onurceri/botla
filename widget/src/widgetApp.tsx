@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChatBubble } from './components/ChatBubble'
 import { ChatDrawer } from './components/ChatDrawer'
 
-type Message = { role: 'user' | 'assistant'; content: string; ts?: number }
+type Message = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean }
 
 export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed' }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute' }) {
   const [open, setOpen] = useState(!!autoOpen)
@@ -131,7 +131,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       const ans: string = data.response || 'Merhaba!'
-      const am = { role: 'assistant', content: ans, ts: Date.now() } as Message
+      const am = { id: data.message_id, role: 'assistant', content: ans, ts: Date.now() } as Message
       setMessages((m) => {
         const nm = [...m, am]
         saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })
@@ -192,6 +192,23 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     }
   }
 
+  const handleFeedback = async (id: string, isPositive: boolean) => {
+    // Optimistic update
+    setMessages((prev) => prev.map(m => m.id === id ? { ...m, feedback: isPositive } : m))
+    
+    try {
+      const base = apiBase || ''
+      const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}/feedback`
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: id, thumbs_up: isPositive }),
+      })
+    } catch {
+      // Revert if failed? Or silent fail. Silent fail is better for feedback.
+    }
+  }
+
   const toggle = () => setOpen((v) => {
     const nv = !v
     if (nv) setUnread(0)
@@ -218,6 +235,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
           customBranding={customBrand}
           handoffEnabled={handoffEnabled}
           onRequestHandoff={requestHandoff}
+          onFeedback={handleFeedback}
         />
       ) : (
         <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />

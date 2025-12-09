@@ -21,8 +21,8 @@ func TestMemoryStorage_Basic(t *testing.T) {
 	if string(b) != "x" {
 		t.Fatalf("bad content")
 	}
-	if err := m.DeleteFile(context.Background(), "k"); err != nil {
-		t.Fatalf("delete err: %v", err)
+	if err2 := m.DeleteFile(context.Background(), "k"); err2 != nil {
+		t.Fatalf("delete err: %v", err2)
 	}
 	r2, err := m.DownloadFile(context.Background(), "k")
 	if err != nil {

@@ -18,5 +18,6 @@ type ChatResult struct {
 	TokensUsed     int          `json:"tokens_used"`
 	Sources        []SourceUsed `json:"sources"`
 	ConversationID string       `json:"conversation_id"`
+	MessageID      string       `json:"message_id"`
 	IsNewConv      bool         `json:"is_new_conversation"`
 }

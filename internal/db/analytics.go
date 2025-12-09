@@ -3,12 +3,15 @@ package db
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/models"
 )
 
 // IncrementAnalytics updates the analytics table for a given chatbot and date.
 // It uses an UPSERT (INSERT ... ON CONFLICT DO UPDATE) to ensure the row exists.
-func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, date time.Time, isNewConversation bool, tokens int) error {
+func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, date time.Time, isNewConversation bool, tokens int, isHandoff bool, responseTimeMs int) error {
 	// Format date as YYYY-MM-DD
 	dateStr := date.Format("2006-01-02")
 
@@ -19,17 +22,24 @@ func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, dat
 		convInc = 1
 	}
 
+	handoffInc := 0
+	if isHandoff {
+		handoffInc = 1
+	}
+
+
 	query := `
-		INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations, total_tokens_used)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations, total_tokens_used, handoff_count)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (chatbot_id, analytics_date)
 		DO UPDATE SET
 			total_messages = analytics.total_messages + EXCLUDED.total_messages,
 			total_conversations = analytics.total_conversations + EXCLUDED.total_conversations,
-			total_tokens_used = analytics.total_tokens_used + EXCLUDED.total_tokens_used
+			total_tokens_used = analytics.total_tokens_used + EXCLUDED.total_tokens_used,
+			handoff_count = analytics.handoff_count + EXCLUDED.handoff_count
 	`
 
-	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, msgInc, convInc, tokens)
+	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, msgInc, convInc, tokens, handoffInc)
 	return err
 }
 
@@ -76,4 +86,185 @@ func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, date
 
 	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, upInc, downInc)
 	return err
+}
+
+// GetAnalyticsOverview returns aggregated stats for a chatbot for the last 30 days
+func GetAnalyticsOverview(ctx context.Context, pool *sql.DB, chatbotID string) (*models.AnalyticsOverview, error) {
+	query := `
+		SELECT 
+			COALESCE(SUM(total_messages), 0)::INT,
+			COALESCE(SUM(total_conversations), 0)::INT,
+			COALESCE(SUM(total_tokens_used), 0)::INT,
+			COALESCE(SUM(thumbs_up_count), 0)::INT,
+			COALESCE(SUM(thumbs_down_count), 0)::INT,
+			COALESCE(SUM(handoff_count), 0)::INT
+		FROM analytics
+		WHERE chatbot_id = $1 AND analytics_date >= CURRENT_DATE - INTERVAL '30 days'
+	`
+	var stats models.AnalyticsOverview
+	row := pool.QueryRowContext(ctx, query, chatbotID)
+	err := row.Scan(
+		&stats.TotalMessages,
+		&stats.TotalConversations,
+		&stats.TotalTokensUsed,
+		&stats.PositiveFeedback,
+		&stats.NegativeFeedback,
+		&stats.HandoffCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	totalFeedback := stats.PositiveFeedback + stats.NegativeFeedback
+	if totalFeedback > 0 {
+		stats.FeedbackRate = (float64(stats.PositiveFeedback) / float64(totalFeedback)) * 100
+	}
+
+	return &stats, nil
+}
+
+// GetAnalyticsTrends returns daily stats for a chatbot for the last N days
+func GetAnalyticsTrends(ctx context.Context, pool *sql.DB, chatbotID string, days int) ([]models.DailyAnalytics, error) {
+	if days <= 0 {
+		days = 30
+	}
+	query := `
+		WITH dates AS (
+			SELECT generate_series(
+				CURRENT_DATE - ($2 || ' days')::interval,
+				CURRENT_DATE,
+				'1 day'::interval
+			)::date AS date
+		)
+		SELECT 
+			to_char(d.date, 'YYYY-MM-DD') as date,
+			COALESCE(a.total_messages, 0),
+			COALESCE(a.total_conversations, 0),
+			COALESCE(a.total_tokens_used, 0),
+			COALESCE(a.thumbs_up_count, 0),
+			COALESCE(a.thumbs_down_count, 0),
+			COALESCE(a.handoff_count, 0),
+			a.avg_response_time_ms -- can be null
+		FROM dates d
+		LEFT JOIN analytics a ON a.analytics_date = d.date AND a.chatbot_id = $1
+		ORDER BY d.date
+	`
+	rows, err := pool.QueryContext(ctx, query, chatbotID, days-1) // days-1 because inclusive range
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var results []models.DailyAnalytics
+	for rows.Next() {
+		var da models.DailyAnalytics
+		if err := rows.Scan(
+			&da.Date,
+			&da.TotalMessages,
+			&da.TotalConversations,
+			&da.TotalTokensUsed,
+			&da.ThumbsUpCount,
+			&da.ThumbsDownCount,
+			&da.HandoffCount,
+			&da.AvgResponseTimeMs,
+		); err != nil {
+			return nil, err
+		}
+		results = append(results, da)
+	}
+	return results, rows.Err()
+}
+
+// TrackUnansweredQuery records a query that had low confidence
+func TrackUnansweredQuery(ctx context.Context, pool *sql.DB, chatbotID, queryText string) error {
+	queryText = strings.TrimSpace(queryText)
+	if queryText == "" {
+		return nil
+	}
+
+	query := `
+		INSERT INTO unanswered_queries (chatbot_id, query, occurrence_count, last_occurred_at)
+		VALUES ($1, $2, 1, NOW())
+		ON CONFLICT (chatbot_id, query)
+		DO UPDATE SET
+			occurrence_count = unanswered_queries.occurrence_count + 1,
+			last_occurred_at = NOW()
+	`
+	_, err := pool.ExecContext(ctx, query, chatbotID, queryText)
+	return err
+}
+
+// GetGlobalAnalytics returns aggregated analytics for a scope (User, Workspace, or Org)
+func GetGlobalAnalytics(ctx context.Context, pool *sql.DB, userID string, orgID, wsID *string) ([]AnalyticsPoint, error) {
+	// Construct WHERE clause based on scope
+	var whereClause string
+	var args []interface{}
+	
+	switch {
+	case wsID != nil:
+		whereClause = "c.workspace_id = $1"
+		args = append(args, *wsID)
+	case orgID != nil:
+		whereClause = "c.organization_id = $1" // Assuming chatbots have direct org link or via workspace
+		args = append(args, *orgID)
+	default:
+		// Personal scope: UserID matches AND not in any workspace/org
+		whereClause = "c.user_id = $1 AND c.workspace_id IS NULL AND c.organization_id IS NULL"
+		args = append(args, userID)
+	}
+
+	//nolint:gosec // whereClause is constructed from constant strings
+	query := `
+		WITH dates AS (
+			SELECT generate_series(
+				CURRENT_DATE - INTERVAL '6 days',
+				CURRENT_DATE,
+				'1 day'::interval
+			)::date AS date
+		),
+		user_analytics AS (
+			SELECT a.analytics_date, a.total_messages, a.total_conversations, a.total_tokens_used, a.thumbs_up_count, a.thumbs_down_count, a.handoff_count
+			FROM analytics a
+			JOIN chatbots c ON a.chatbot_id = c.id
+			WHERE ` + whereClause + `
+		)
+		SELECT 
+			to_char(d.date, 'YYYY-MM-DD') as date,
+			COALESCE(SUM(ua.total_messages), 0)::INTEGER as messages,
+			COALESCE(SUM(ua.total_conversations), 0)::INTEGER as conversations,
+			COALESCE(SUM(ua.total_tokens_used), 0)::INTEGER as tokens,
+			COALESCE(SUM(ua.thumbs_up_count), 0)::INTEGER as thumbs_up,
+			COALESCE(SUM(ua.thumbs_down_count), 0)::INTEGER as thumbs_down,
+			COALESCE(SUM(ua.handoff_count), 0)::INTEGER as handoffs
+		FROM dates d
+		LEFT JOIN user_analytics ua ON ua.analytics_date = d.date
+		GROUP BY d.date
+		ORDER BY d.date
+	`
+
+	rows, err := pool.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var data []AnalyticsPoint
+	for rows.Next() {
+		var p AnalyticsPoint
+		if err := rows.Scan(&p.Date, &p.Messages, &p.Conversations, &p.Tokens, &p.ThumbsUp, &p.ThumbsDown, &p.Handoffs); err != nil {
+			return nil, err
+		}
+		data = append(data, p)
+	}
+	return data, rows.Err()
+}
+
+type AnalyticsPoint struct {
+	Date          string `json:"date"`
+	Messages      int    `json:"messages"`
+	Conversations int    `json:"conversations"`
+	Tokens        int    `json:"tokens,omitempty"`
+	ThumbsUp      int    `json:"thumbs_up,omitempty"`
+	ThumbsDown    int    `json:"thumbs_down,omitempty"`
+	Handoffs      int    `json:"handoffs,omitempty"`
 }

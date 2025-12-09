@@ -45,7 +45,7 @@ func RequireOrganizationAccess(orgService *services.OrganizationService, minRole
 
 			if !hasMinRole(membership.Role, minRole) {
 				w.WriteHeader(http.StatusForbidden)
-				_, _ = w.Write([]byte(fmt.Sprintf(`{"error": "insufficient role: have %s, need %s"}`, membership.Role, minRole)))
+				_, _ = fmt.Fprintf(w, `{"error": "insufficient role: have %s, need %s"}`, membership.Role, minRole)
 				return
 			}
 

@@ -154,6 +154,14 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		})
 	}
 
+	// Update analytics asynchronously
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		// isHandoff=true, tokens=0, responseTime=0 (not applicable for handoff event itself)
+		_ = db.IncrementAnalytics(bgCtx, s.DB, bot.ID, time.Now(), false, 0, true, 0)
+	}()
+
 	// TODO: Implement actual email sending when SMTP service is available
 	// For now, we just log the request and consider it successful
 	// This allows the feature to work (creates handoff request) without email infra

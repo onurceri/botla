@@ -109,7 +109,9 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	acth := &handlers.ActionHandlers{DB: pool}
 	// Handoff handler
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log}
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, rlSources))
+	// Analytics handler for chatbot-specific routes
+	anhSpec := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc}
+	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, rlSources))
 
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
@@ -122,6 +124,11 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 			// Public handlers
 			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
 			ph.PublicChat(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/feedback") {
+			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
+			ph.SubmitFeedback(w, r)
 			return
 		}
 		handlers.PublicChatbotConfig(pool)(w, r)
@@ -139,7 +146,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 		sh.GetSourceStatusOrDelete(w, r)
 	}))))
 
-	anh := &handlers.AnalyticsHandlers{DB: pool}
+	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
 
 	// Organization routes
@@ -174,7 +181,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	return mux
 }
 
-func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, rlSources *middleware.RateLimiter) http.Handler {
+func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, rlSources *middleware.RateLimiter) http.Handler {
 	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		// Pending URLs endpoints
@@ -231,6 +238,21 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 				hoh.ListHandoffRequests(w, r)
 			}
 			return
+		}
+		// Analytics endpoints
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/analytics") {
+			if strings.HasSuffix(r.URL.Path, "/analytics/overview") {
+				anh.GetChatbotAnalyticsOverview(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/analytics/trends") {
+				anh.GetChatbotAnalyticsTrends(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/analytics/sources") {
+				anh.GetSourceUsage(w, r)
+				return
+			}
 		}
 		ch.ByID(w, r)
 	}))

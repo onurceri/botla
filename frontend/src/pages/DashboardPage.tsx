@@ -15,7 +15,8 @@ import {
   Zap, 
   ArrowUpRight, 
   Plus,
-  Bot
+  Bot,
+  ThumbsUp
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -62,6 +63,9 @@ const DashboardPage = () => {
   const [stats, setStats] = useState({
     totalConversations: 0,
     totalMessages: 0,
+    totalTokens: 0,
+    positiveFeedback: 0,
+    negativeFeedback: 0,
     activeBots: 0
   })
   const [chartData, setChartData] = useState<any[]>([])
@@ -79,6 +83,9 @@ const DashboardPage = () => {
         // Calculate totals from analytics
         const totalConv = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.conversations ?? 0), 0)
         const totalMsg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.messages ?? 0), 0)
+        const totalTok = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.tokens_used ?? 0), 0)
+        const totalPos = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.positive_feedback ?? 0), 0)
+        const totalNeg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.negative_feedback ?? 0), 0)
 
         // Fetch Bots for count and recent list
         const { data } = await api.get('/api/v1/chatbots')
@@ -88,6 +95,9 @@ const DashboardPage = () => {
         setStats({
           totalConversations: totalConv,
           totalMessages: totalMsg,
+          totalTokens: totalTok,
+          positiveFeedback: totalPos,
+          negativeFeedback: totalNeg,
           activeBots: bots.length
         })
       } catch (error) {
@@ -120,7 +130,7 @@ const DashboardPage = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Toplam Konuşma</CardTitle>
@@ -128,11 +138,8 @@ const DashboardPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalConversations}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center">
-              <span className="text-emerald-400 flex items-center mr-1">
-                <ArrowUpRight className="w-3 h-3 mr-0.5" /> +12%
-              </span>
-              geçen haftaya göre
+            <p className="text-xs text-muted-foreground mt-1">
+              Tüm botlarınızdaki toplam
             </p>
           </CardContent>
         </Card>
@@ -144,24 +151,38 @@ const DashboardPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalMessages}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center">
-              <span className="text-emerald-400 flex items-center mr-1">
-                <ArrowUpRight className="w-3 h-3 mr-0.5" /> +8%
-              </span>
-              geçen haftaya göre
+            <p className="text-xs text-muted-foreground mt-1">
+              İşlenen toplam mesaj
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aktif Botlar</CardTitle>
+            <CardTitle className="text-sm font-medium">Harcanan Token</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activeBots}</div>
+            <div className="text-2xl font-bold">{(stats.totalTokens / 1000).toFixed(1)}k</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Sistemde kayıtlı asistanlarınız
+              Tahmini maliyet: ${((stats.totalTokens / 1000) * 0.002).toFixed(3)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Memnuniyet</CardTitle>
+            <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.positiveFeedback + stats.negativeFeedback > 0 
+                ? Math.round((stats.positiveFeedback / (stats.positiveFeedback + stats.negativeFeedback)) * 100)
+                : 0}%
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.positiveFeedback} olumlu, {stats.negativeFeedback} olumsuz
             </p>
           </CardContent>
         </Card>

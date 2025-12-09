@@ -211,12 +211,6 @@ func nullStringPtr(ns sql.NullString) *string {
 }
 
 // nullStringValue returns the value or nil for sql.NullString
-func nullStringValue(ns sql.NullString) interface{} {
-	if ns.Valid {
-		return ns.String
-	}
-	return nil
-}
 
 // planError represents a plan-related error
 type planError struct {

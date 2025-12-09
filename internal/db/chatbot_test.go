@@ -87,23 +87,23 @@ func TestChatbot_CRUD_DB(t *testing.T) {
 		t.Fatalf("suggestions not read")
 	}
 	// update suggestions
-	if err := UpdateChatbotSuggestions(context.Background(), db, id, []string{"A", "B"}); err != nil {
-		t.Fatalf("update sugg: %v", err)
+	if err2 := UpdateChatbotSuggestions(context.Background(), db, id, []string{"A", "B"}); err2 != nil {
+		t.Fatalf("update sugg: %v", err2)
 	}
-	got2, err := GetChatbotByID(context.Background(), db, id)
-	if err != nil || got2 == nil {
-		t.Fatalf("get2: %v", err)
+	got2, err2 := GetChatbotByID(context.Background(), db, id)
+	if err2 != nil || got2 == nil {
+		t.Fatalf("get2: %v", err2)
 	}
 	if len(got2.SuggestedQuestions) != 2 {
 		t.Fatalf("suggestions not updated")
 	}
 	// soft delete
-	if err := SoftDeleteChatbot(context.Background(), db, id, uid); err != nil {
-		t.Fatalf("soft delete: %v", err)
+	if err3 := SoftDeleteChatbot(context.Background(), db, id, uid); err3 != nil {
+		t.Fatalf("soft delete: %v", err3)
 	}
-	got3, err := GetChatbotByID(context.Background(), db, id)
-	if err != nil {
-		t.Fatalf("get3: %v", err)
+	got3, err3 := GetChatbotByID(context.Background(), db, id)
+	if err3 != nil {
+		t.Fatalf("get3: %v", err3)
 	}
 	if got3 != nil {
 		t.Fatalf("expected nil after delete")

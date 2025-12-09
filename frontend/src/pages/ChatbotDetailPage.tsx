@@ -26,9 +26,12 @@ import PendingURLsPanel from '@/features/chatbot/components/PendingURLsPanel'
 import URLAdvancedSettings from '@/features/chatbot/components/URLAdvancedSettings'
 import BrandingSettings from '@/features/chatbot/components/BrandingSettings'
 import GuardrailsSettings from '@/features/chatbot/components/GuardrailsSettings'
-import ActionList from '@/features/chatbot/components/ActionList'
 import HandoffSettings from '@/features/chatbot/components/HandoffSettings'
+import ActionList from '@/features/chatbot/components/ActionList'
+import { ChatbotAnalytics } from '@/features/analytics/ChatbotAnalytics'
 import { useOrganization } from '@/features/organization/context/OrganizationContext'
+
+// ... existing imports ...
 
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
@@ -262,6 +265,11 @@ const ChatbotDetailPage = () => {
               maxTokens={maxTokens}
               setMaxTokens={setMaxTokens}
             />
+          </TabsContent>
+
+          {/* ANALYTICS TAB */}
+          <TabsContent value="analytics" className="mt-0 space-y-6">
+             <ChatbotAnalytics chatbotId={id || ''} />
           </TabsContent>
 
           <TabsContent value="guardrails" className="mt-0 space-y-6">

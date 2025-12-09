@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Message as MsgComp } from './Message'
 import { Suggestions } from './Suggestions'
 
-type Msg = { role: 'user' | 'assistant'; content: string; ts?: number }
+type Msg = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean }
 
 type CustomBranding = {
   logo_url?: string
@@ -11,8 +11,8 @@ type CustomBranding = {
 }
 
 export function ChatDrawer(
-  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, handoffEnabled = false, onRequestHandoff }:
-  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; handoffEnabled?: boolean; onRequestHandoff?: () => void }
+  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, handoffEnabled = false, onRequestHandoff, onFeedback }:
+  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; handoffEnabled?: boolean; onRequestHandoff?: () => void; onFeedback?: (id: string, isPositive: boolean) => void }
 ) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -79,7 +79,7 @@ export function ChatDrawer(
         </div>
       )}
       <div className="cbw-messages">
-        {messages.map((m, i) => <MsgComp key={i} m={m} />)}
+        {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} />)}
         {(!messages || messages.filter(m => m.role === 'user').length === 0) && suggestions && suggestions.length > 0 && (
           <div className="cbw-msg-row assistant" style={{ justifyContent: 'flex-start', alignItems: 'flex-start' }}>
             <div className="cbw-avatar" style={{ marginTop: '4px' }}>
