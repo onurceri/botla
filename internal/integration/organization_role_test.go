@@ -27,7 +27,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+ownerToken)
 	req.Header.Set("Content-Type", "application/json")
 	res, _ := http.DefaultClient.Do(req)
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create org: %d", res.StatusCode)
 	}
 	var org struct {

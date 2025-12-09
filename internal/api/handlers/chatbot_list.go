@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/config"
@@ -72,6 +73,25 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 	baseLang := baseLangCode(langCodeBCP)
 	langCfg := langconfig.Get(baseLang)
 
+	// Check plan limits
+	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if plan != nil && plan.Config.MaxChatbots > 0 {
+		count, countErr := db.CountChatbotsByUserID(r.Context(), h.DB, userID)
+		if countErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if count >= plan.Config.MaxChatbots {
+			api.WriteLocalizedError(w, http.StatusForbidden, api.ErrMaxChatbotsExceeded, langCfg)
+			return
+		}
+	}
+
 	// Get workspace/org context from headers
 	var wsID, orgID *string
 	if ws, ok := middleware.WorkspaceIDFromContext(r.Context()); ok && ws != "" {
@@ -114,7 +134,7 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, re
 		LanguageCode:         langCode,
 		Model:                defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
 		Temperature:          defaultFloat32(req.Temperature, 0.7),
-		MaxTokens:            defaultInt(req.MaxTokens, 512),
+		MaxTokens:            defaultInt(req.MaxTokens, 4096),
 		ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),
 		WelcomeMessage:       defaultString(req.WelcomeMessage, langCfg.ResponseTemplates.WelcomeMessage),
 		Position:             defaultString(req.Position, "bottom-right"),

@@ -182,9 +182,10 @@ const ChatbotDetailPage = () => {
         toast('Değişiklikler kaydedildi.', 'success')
         setPreviewRefreshKey((k) => k + 1)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      toasts.error('Bir hata oluştu. Lütfen tekrar deneyin.')
+      const msg = error.response?.data?.error || 'Bir hata oluştu. Lütfen tekrar deneyin.'
+      toasts.error(msg)
     } finally {
       setIsSaving(false)
     }

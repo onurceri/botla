@@ -21,7 +21,8 @@
       ]
     },
     "types": [
-      "vite/client"
+      "vite/client",
+      "node"
     ],
     "strict": true,
     "skipLibCheck": true,
@@ -30,6 +31,7 @@
     "noUnusedParameters": true
   },
   "include": [
-    "src"
+    "src",
+    "e2e"
   ]
 }

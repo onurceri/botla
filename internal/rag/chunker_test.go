@@ -114,3 +114,58 @@ func TestChunkText_EmptyAndInvalidTarget(t *testing.T) {
 		t.Fatalf("expected error for invalid targetTokens")
 	}
 }
+
+func TestChunkText_TurkishSentenceEndings(t *testing.T) {
+	// TRK-022, TRK-023, TRK-024
+	cases := []struct {
+		name     string
+		input    string
+		expected int // expected minimum chunks (sentences)
+	}{
+		{"Dot", "Bu birinci cümle. Bu ikinci cümle.", 2},
+		{"Question", "Nasılsınız? İyiyim.", 2},
+		{"Exclamation", "Dikkat et! Tehlike var.", 2},
+		{"Mixed", "Geliyor musun bu akşam? Evet, kesinlikle geleceğim. Harika, o zaman görüşürüz!", 3},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Use a very small token limit to force splitting if sentences are detected
+			chunks, err := ChunkText(tc.input, 5, "tr")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(chunks) < tc.expected {
+				t.Errorf("Expected at least %d chunks for input %q, got %d", tc.expected, tc.input, len(chunks))
+			}
+		})
+	}
+}
+
+func TestChunkText_MixedLanguage(t *testing.T) {
+	// TRK-025
+	text := "This is an English sentence. Bu bir Türkçe cümle. Another English one."
+	chunks, err := ChunkText(text, 5, "tr")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(chunks) < 3 {
+		t.Errorf("Expected 3 chunks for mixed language, got %d", len(chunks))
+	}
+}
+
+func TestChunkText_TurkishCharacters(t *testing.T) {
+	// TRK-001
+	specialChars := "şŞğĞıİöÖüÜçÇ"
+	text := "Bu cümlede özel karakterler var: " + specialChars
+	chunks, err := ChunkText(text, 100, "tr")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(chunks) == 0 {
+		t.Fatalf("no chunks produced")
+	}
+	if !strings.Contains(chunks[0].Text, specialChars) {
+		t.Errorf("Special characters not preserved. Expected to contain %q, got %q", specialChars, chunks[0].Text)
+	}
+}

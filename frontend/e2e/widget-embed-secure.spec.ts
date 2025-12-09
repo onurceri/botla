@@ -3,13 +3,15 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 import path from 'path'
 
-test.skip('Widget embed secure: auto-open shows input', async ({ page }) => {
+test('Widget embed secure: auto-open shows input', async ({ page }) => {
   await page.route('http://api.test/api/v1/public/chatbots/bot1', async route => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-      id: 'bot1', theme_color: '#3b82f6', welcome_message: 'Merhaba!', position: 'bottom-right',
-      bot_message_color: '#3b82f6', user_message_color: '#f3f4f6', bot_message_text_color: '#ffffff', user_message_text_color: '#1f2937',
-      chat_font_family: 'Inter, sans-serif', chat_header_color: '#3b82f6', chat_header_text_color: '#ffffff'
-    }) })
+    await route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({
+        id: 'bot1', theme_color: '#3b82f6', welcome_message: 'Merhaba!', position: 'bottom-right',
+        bot_message_color: '#3b82f6', user_message_color: '#f3f4f6', bot_message_text_color: '#ffffff', user_message_text_color: '#1f2937',
+        chat_font_family: 'Inter, sans-serif', chat_header_color: '#3b82f6', chat_header_text_color: '#ffffff'
+      })
+    })
   })
   await page.route('http://api.test/api/v1/public/chatbots/bot1/chat', async route => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ response: 'OK', tokens_used: 1, sources_used: [] }) })
@@ -33,15 +35,16 @@ test.skip('Widget embed secure: auto-open shows input', async ({ page }) => {
     const h = document.getElementById('chatbot-widget-host')
     return !!h && !!h.shadowRoot
   })
-  // Ensure open: click bubble if input not visible
-  const bubble = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-bubble'))
-  await (bubble.asElement()!)?.click()
-  const input = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-input input'))
-  const inputEl = input.asElement()
-  if (inputEl) {
-    expect(await inputEl.isVisible()).toBeTruthy()
+
+  // Check if already open (auto-open=1)
+  const input = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-input-field'))
+  if (input.asElement()) {
+    expect(await input.asElement()!.isVisible()).toBeTruthy()
   } else {
-    // Fallback: bubble should be visible if input is not yet present
-    expect(await (bubble.asElement()!).isVisible()).toBeTruthy()
+    // If not open, click bubble
+    const bubble = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-bubble'))
+    await (bubble.asElement()!)?.click()
+    const input2 = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-input-field'))
+    expect(await input2.asElement()!.isVisible()).toBeTruthy()
   }
 })

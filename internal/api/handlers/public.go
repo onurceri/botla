@@ -1,18 +1,21 @@
 package handlers
 
 import (
-    "context"
-    "database/sql"
-    "encoding/json"
-    "net/http"
-    "strings"
-    "time"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"slices"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/scraper"
-    "github.com/onurceri/botla-co/internal/services"
-    "github.com/onurceri/botla-co/internal/api"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/onurceri/botla-co/internal/api"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/internal/services"
 )
 
 type publicChatbot struct {
@@ -164,6 +167,74 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Secure Embed Enforcement
+	if cbot.SecureEmbedEnabled {
+		// 1. Origin Check
+		if cbot.AllowedDomains != nil && *cbot.AllowedDomains != "" {
+			origin := r.Header.Get("Origin")
+			// If no origin provided, block if restriction is enabled?
+			// Usually browsers send Origin. If called from non-browser, it might be empty.
+			// Let's require it if domains are restricted.
+			if origin == "" {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			allowed := false
+			domains := strings.Split(*cbot.AllowedDomains, ",")
+			for _, d := range domains {
+				d = strings.TrimSpace(d)
+				if d == "" {
+					continue
+				}
+				// Simple check: origin contains the allowed domain
+				// e.g. "example.com" matches "https://example.com" and "https://sub.example.com"
+				if strings.Contains(origin, d) {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+
+		// 2. Token Check
+		tokenStr := r.Header.Get("X-Embed-Token")
+		if tokenStr == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		secret := ""
+		if cbot.EmbedSecret != nil {
+			secret = *cbot.EmbedSecret
+		}
+
+		token, errParse := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(secret), nil
+		})
+
+		if errParse != nil || !token.Valid {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			// Check chatbot_id matches
+			if cid, ok := claims["chatbot_id"].(string); !ok || cid != cbot.ID {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	}
+
 	// Plan and limits
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, cbot.UserID)
 	var ragConfig models.RAGConfig
@@ -171,23 +242,17 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		ragConfig = plan.Config.Chat.RAG
 		// Check monthly token limit
 		if plan.Config.Chat.MaxMonthlyTokens > 0 {
-            used, uerr := db.GetMonthlyTokenUsage(r.Context(), h.DB, cbot.UserID)
-            if uerr == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
-                base := api.BaseLang(cbot.LanguageCode)
-                cfg := api.ConfigFromBase(base)
-                api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
-                return
-            }
+			used, uerr := db.GetMonthlyTokenUsage(r.Context(), h.DB, cbot.UserID)
+			if uerr == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
+				base := api.BaseLang(cbot.LanguageCode)
+				cfg := api.ConfigFromBase(base)
+				api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
+				return
+			}
 		}
 		// Enforce allowed model if set
 		if len(plan.Config.Chat.AllowedModels) > 0 {
-			allowed := false
-			for _, m := range plan.Config.Chat.AllowedModels {
-				if m == cbot.Model {
-					allowed = true
-					break
-				}
-			}
+			allowed := slices.Contains(plan.Config.Chat.AllowedModels, cbot.Model)
 			if !allowed {
 				cbot.Model = plan.Config.Chat.AllowedModels[0]
 			}

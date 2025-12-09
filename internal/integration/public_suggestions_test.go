@@ -20,7 +20,7 @@ func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 	defer TeardownTestEnv(te)
-	mux := NewTestMux(te.Cfg, te.DB)
+	mux := NewTestMux(te.Cfg, te.DB, nil)
 
 	// Create user and bot
 	userID := createTestUser(t, te.DB)

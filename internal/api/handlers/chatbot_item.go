@@ -138,10 +138,21 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 
 // deleteChatbot handles DELETE request
 func (h *ChatbotHandlers) deleteChatbot(w http.ResponseWriter, r *http.Request, botID, userID string) {
-	if err := db.SoftDeleteChatbot(r.Context(), h.DB, botID, userID); err != nil {
+	sourceIDs, err := db.SoftDeleteChatbot(r.Context(), h.DB, botID, userID)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	// Clean up vectors if any sources were deleted
+	if len(sourceIDs) > 0 && h.VectorStore != nil {
+		// Best effort cleanup - run in background or parallel if many sources
+		// For now, simple loop
+		for _, sid := range sourceIDs {
+			_ = h.VectorStore.DeleteBySourceID(r.Context(), sid)
+		}
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -26,10 +26,15 @@ func NewGoogleAIClientFromEnv() (*GoogleAIClient, error) {
 		return nil, errors.New("GOOGLE_AI_API_KEY is empty")
 	}
 
+	b := os.Getenv("GOOGLE_AI_API_BASE")
+	if b == "" {
+		b = "https://generativelanguage.googleapis.com/v1beta"
+	}
+
 	return &GoogleAIClient{
 		apiKey:       k,
 		http:         &http.Client{Timeout: 60 * time.Second},
-		base:         "https://generativelanguage.googleapis.com/v1beta",
+		base:         b,
 		defaultModel: "gemini-1.5-flash",
 	}, nil
 }

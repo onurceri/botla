@@ -82,3 +82,68 @@ func TestGenerateEmbeddingsForSource_UpsertError(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 }
+
+// EMB-001: Generate embeddings for 0 chunks
+func TestGenerateEmbeddings_Empty(t *testing.T) {
+	err := GenerateEmbeddings(nil, "cb")
+	if err != nil {
+		t.Fatalf("expected nil error for empty input, got %v", err)
+	}
+	err = GenerateEmbeddings([]models.Chunk{}, "cb")
+	if err != nil {
+		t.Fatalf("expected nil error for empty chunks, got %v", err)
+	}
+}
+
+// EMB-003: Generate embeddings for 26 chunks (batching)
+func TestGenerateEmbeddings_Batching(t *testing.T) {
+	// Mock OpenAI to count requests
+	reqCount := 0
+	oaiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqCount++
+		// Decode body to check batch size if we want, but just counting requests is enough
+		// We expect 2 requests for 26 chunks (25 + 1)
+		
+		var req map[string]any
+		json.NewDecoder(r.Body).Decode(&req)
+		inputs, _ := req["input"].([]any)
+		
+		respEmbeddings := make([]map[string]any, len(inputs))
+		for i := range inputs {
+			respEmbeddings[i] = map[string]any{"embedding": []float64{0.1}}
+		}
+
+		json.NewEncoder(w).Encode(map[string]any{
+			"data":  respEmbeddings,
+			"usage": map[string]int{"total_tokens": 10},
+		})
+	}))
+	defer oaiSrv.Close()
+	t.Setenv("OPENAI_API_BASE", oaiSrv.URL)
+	t.Setenv("OPENAI_API_KEY", "dummy")
+
+	// Mock Qdrant to accept upserts
+	qdrSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer qdrSrv.Close()
+	t.Setenv("QDRANT_URL", qdrSrv.URL)
+
+	chunks := make([]models.Chunk, 26)
+	for i := 0; i < 26; i++ {
+		chunks[i] = models.Chunk{Text: "a", TokenCount: 1}
+	}
+
+	// We need to speed up the ticker or wait. 
+	// The code uses time.NewTicker(time.Second / 58) which is ~17ms.
+	// 2 batches = ~34ms wait. This is fast enough for a test.
+	
+	err := GenerateEmbeddings(chunks, "cb")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if reqCount != 2 {
+		t.Errorf("expected 2 OpenAI requests (batches), got %d", reqCount)
+	}
+}

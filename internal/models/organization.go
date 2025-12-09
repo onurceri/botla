@@ -11,6 +11,7 @@ type Organization struct {
 	OwnerID   string          `json:"owner_id"`
 	PlanID    string          `json:"plan_id"`
 	Branding  *CustomBranding `json:"branding,omitempty"`
+	Role      string          `json:"role,omitempty"` // Role of the current user in this organization (only populated in list context)
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
 }

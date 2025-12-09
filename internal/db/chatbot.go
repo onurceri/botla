@@ -197,23 +197,22 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
-        WHERE c.id=$1 AND c.deleted_at IS NULL`, id).
-		Scan(
-			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
-			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
-			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
-			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
-			&c.BotMessageTextColor, &c.UserMessageTextColor,
-			&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
-			&c.ChatBackgroundColor,
-			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
-			&sj, &c.SuggestionsEnabled,
-			&ipj, &epj, &swj, &c.DiscoveryMode,
-			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
-			&c.HideBranding, &cbj,
-			&c.ConfidenceThreshold, &fmj, &trj,
-			&c.HandoffEnabled, &c.HandoffType, &hcj,
-		)
+        WHERE c.id=$1 AND c.deleted_at IS NULL`, id).Scan(
+		&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
+		&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
+		&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
+		&c.Position, &c.BotMessageColor, &c.UserMessageColor,
+		&c.BotMessageTextColor, &c.UserMessageTextColor,
+		&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
+		&c.ChatBackgroundColor,
+		&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
+		&sj, &c.SuggestionsEnabled,
+		&ipj, &epj, &swj, &c.DiscoveryMode,
+		&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
+		&c.HideBranding, &cbj,
+		&c.ConfidenceThreshold, &fmj, &trj,
+		&c.HandoffEnabled, &c.HandoffType, &hcj,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -263,132 +262,172 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 	return &c, nil
 }
 
-func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error {
-	// Serialize custom_branding to JSON
-	var cbJSON interface{}
-	if bot.CustomBranding != nil {
-		cbJSON, _ = json.Marshal(bot.CustomBranding)
+func GetUserByBotID(ctx context.Context, pool *sql.DB, botID string) (*models.User, error) {
+	var u models.User
+	err := pool.QueryRowContext(ctx, `
+        SELECT u.id, u.email, u.full_name, u.plan_id, u.preferred_language_id
+        FROM users u
+        JOIN chatbots c ON c.user_id = u.id
+        WHERE c.id = $1`, botID).Scan(
+		&u.ID, &u.Email, &u.FullName, &u.PlanID, &u.PreferredLanguageID,
+	)
+	if err != nil {
+		return nil, err
 	}
-	// Serialize new fields
-	var fmJSON, trJSON, hcJSON interface{}
+	return &u, nil
+}
+
+func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error {
+	var sj, ipj, epj, swj, cbj, fmj, trj, hcj interface{}
+	if bot.SuggestedQuestions != nil {
+		sj, _ = json.Marshal(bot.SuggestedQuestions)
+	}
+	if bot.IncludePaths != nil {
+		ipj, _ = json.Marshal(bot.IncludePaths)
+	}
+	if bot.ExcludePaths != nil {
+		epj, _ = json.Marshal(bot.ExcludePaths)
+	}
+	if bot.SelectorWhitelist != nil {
+		swj, _ = json.Marshal(bot.SelectorWhitelist)
+	}
+	if bot.CustomBranding != nil {
+		cbj, _ = json.Marshal(bot.CustomBranding)
+	}
 	if bot.FallbackMessages != nil {
-		fmJSON, _ = json.Marshal(bot.FallbackMessages)
+		fmj, _ = json.Marshal(bot.FallbackMessages)
 	}
 	if bot.TopicRestrictions != nil {
-		trJSON, _ = json.Marshal(bot.TopicRestrictions)
+		trj, _ = json.Marshal(bot.TopicRestrictions)
 	}
 	if bot.HandoffConfig != nil {
-		hcJSON, _ = json.Marshal(bot.HandoffConfig)
+		hcj, _ = json.Marshal(bot.HandoffConfig)
 	}
 
 	_, err := pool.ExecContext(ctx, `
         UPDATE chatbots SET
-            name=$1,
-            description=$2,
-            system_prompt=$3,
-            language_id=(SELECT id FROM languages WHERE code=$4),
-            model=$5,
-            temperature=$6,
-            max_tokens=$7,
-            theme_color=$8,
-            welcome_message=$9,
-            position=$10,
-            bot_message_color=$11,
-            user_message_color=$12,
-            bot_message_text_color=$13,
-            user_message_text_color=$14,
-            chat_font_family=$15,
-            chat_header_color=$16,
-            chat_header_text_color=$17,
-            chat_background_color=$18,
-            bot_icon=$19,
-            bot_display_name=$20,
-            allowed_domains=$21,
-            embed_secret=$22,
-            secure_embed_enabled=$23,
-            suggested_questions=$24,
-            suggestions_enabled=$25,
-            include_paths=$26,
-            exclude_paths=$27,
-            selector_whitelist=$28,
-            discovery_mode=$29,
-            refresh_policy=$30,
-            refresh_frequency=$31,
-            next_refresh_at=$32,
-            last_refresh_at=$33,
-            hide_branding=$34,
-            custom_branding=$35,
-            confidence_threshold=$36,
-            fallback_messages=$37,
-            topic_restrictions=$38,
-            handoff_enabled=$39,
-            handoff_type=$40,
-            handoff_config=$41,
-            updated_at=NOW()
-        WHERE id=$42 AND user_id=$43 AND deleted_at IS NULL`,
-		bot.Name,
-		bot.Description,
-		bot.SystemPrompt,
-		normalizeLocale(bot.LanguageCode),
-		bot.Model,
-		bot.Temperature,
-		bot.MaxTokens,
-		bot.ThemeColor,
-		bot.WelcomeMessage,
-		bot.Position,
-		bot.BotMessageColor,
-		bot.UserMessageColor,
-		bot.BotMessageTextColor,
-		bot.UserMessageTextColor,
-		bot.ChatFontFamily,
-		bot.ChatHeaderColor,
-		bot.ChatHeaderTextColor,
-		bot.ChatBackgroundColor,
-		bot.BotIcon,
-		bot.BotDisplayName,
-		bot.AllowedDomains,
-		bot.EmbedSecret,
-		bot.SecureEmbedEnabled,
-		bot.SuggestedQuestions,
-		bot.SuggestionsEnabled,
-		bot.IncludePaths,
-		bot.ExcludePaths,
-		bot.SelectorWhitelist,
-		bot.DiscoveryMode,
-		bot.RefreshPolicy,
-		bot.RefreshFrequency,
-		bot.NextRefreshAt,
-		bot.LastRefreshAt,
-		bot.HideBranding,
-		cbJSON,
-		bot.ConfidenceThreshold,
-		fmJSON,
-		trJSON,
-		bot.HandoffEnabled,
-		bot.HandoffType,
-		hcJSON,
+            name=$1, description=$2, system_prompt=$3, language_id=(SELECT id FROM languages WHERE code=$4), model=$5,
+            temperature=$6, max_tokens=$7, theme_color=$8, welcome_message=$9,
+            position=$10, bot_message_color=$11, user_message_color=$12,
+            bot_message_text_color=$13, user_message_text_color=$14,
+            chat_font_family=$15, chat_header_color=$16, chat_header_text_color=$17,
+            chat_background_color=$18, bot_icon=$19, bot_display_name=$20,
+            updated_at=NOW(), allowed_domains=$21, embed_secret=$22, secure_embed_enabled=$23,
+            suggested_questions=$24, suggestions_enabled=$25,
+            include_paths=$26, exclude_paths=$27, selector_whitelist=$28, discovery_mode=$29,
+            refresh_policy=$30, refresh_frequency=$31,
+            hide_branding=$32, custom_branding=$33,
+            confidence_threshold=$34, fallback_messages=$35, topic_restrictions=$36,
+            handoff_enabled=$37, handoff_type=$38, handoff_config=$39
+        WHERE id=$40`,
+		bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
+		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
+		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
+		bot.BotMessageTextColor, bot.UserMessageTextColor,
+		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
+		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName,
+		bot.AllowedDomains, bot.EmbedSecret, bot.SecureEmbedEnabled,
+		sj, bot.SuggestionsEnabled,
+		ipj, epj, swj, bot.DiscoveryMode,
+		bot.RefreshPolicy, bot.RefreshFrequency,
+		bot.HideBranding, cbj,
+		bot.ConfidenceThreshold, fmj, trj,
+		bot.HandoffEnabled, bot.HandoffType, hcj,
 		bot.ID,
-		bot.UserID,
 	)
 	return err
 }
 
-func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, chatbotID string, suggestions []string) error {
-	var js any
-	if suggestions == nil {
-		js = nil
-	} else {
-		js = suggestions
+func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, id string, suggestions []string) error {
+	js, err := json.Marshal(suggestions)
+	if err != nil {
+		return err
 	}
-	_, err := pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, updated_at=NOW() WHERE id=$2 AND deleted_at IS NULL`, js, chatbotID)
+	_, err = pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, updated_at=NOW() WHERE id=$2`, js, id)
 	return err
 }
 
-func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) error {
-	_, err := pool.ExecContext(ctx, `
+func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]string, error) {
+	tx, err := pool.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// 1. Mark chatbot as deleted
+	res, err := tx.ExecContext(ctx, `
         UPDATE chatbots SET deleted_at=NOW()
         WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL`, id, userID)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if rows == 0 {
+		return nil, nil
+	}
+
+	// 2. Get source IDs before soft deleting them
+	// We only care about sources that are not already deleted
+	sourceRows, err := tx.QueryContext(ctx, `
+		SELECT id FROM data_sources 
+		WHERE chatbot_id=$1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer sourceRows.Close()
+
+	var sourceIDs []string
+	for sourceRows.Next() {
+		var sid string
+		if scanErr := sourceRows.Scan(&sid); scanErr != nil {
+			return nil, scanErr
+		}
+		sourceIDs = append(sourceIDs, sid)
+	}
+	if rowsErr := sourceRows.Err(); rowsErr != nil {
+		return nil, rowsErr
+	}
+
+	// 3. Cascade soft delete sources
+	_, err = tx.ExecContext(ctx, `
+        UPDATE data_sources SET deleted_at=NOW()
+        WHERE chatbot_id=$1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Hard delete analytics (since they don't support soft delete and we want to cascade)
+	_, err = tx.ExecContext(ctx, `DELETE FROM analytics WHERE chatbot_id=$1`, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return sourceIDs, nil
+}
+
+func CountChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) (int, error) {
+	var count int
+	err := pool.QueryRowContext(ctx, `
+        SELECT COUNT(*) FROM chatbots
+        WHERE user_id=$1 AND deleted_at IS NULL
+    `, userID).Scan(&count)
+	return count, err
+}
+
+func CountChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID string) (int, error) {
+	var count int
+	err := pool.QueryRowContext(ctx, `
+        SELECT COUNT(*) FROM chatbots
+        WHERE workspace_id=$1 AND deleted_at IS NULL
+    `, workspaceID).Scan(&count)
+	return count, err
 }
 
 func normalizeLocale(code string) string {

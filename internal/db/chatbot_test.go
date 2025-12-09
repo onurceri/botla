@@ -15,14 +15,14 @@ func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn := "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable"
 	db, err := sql.Open("pgx", dsn)
-    if err != nil {
-        t.Fatalf("open db: %v", err)
-    }
-    // Ensure new columns exist for sources
-    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
-    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
-    _, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
-    return db
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	// Ensure new columns exist for sources
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
+	return db
 }
 
 func createUser(t *testing.T, db *sql.DB) string {
@@ -98,7 +98,7 @@ func TestChatbot_CRUD_DB(t *testing.T) {
 		t.Fatalf("suggestions not updated")
 	}
 	// soft delete
-	if err3 := SoftDeleteChatbot(context.Background(), db, id, uid); err3 != nil {
+	if _, err3 := SoftDeleteChatbot(context.Background(), db, id, uid); err3 != nil {
 		t.Fatalf("soft delete: %v", err3)
 	}
 	got3, err3 := GetChatbotByID(context.Background(), db, id)

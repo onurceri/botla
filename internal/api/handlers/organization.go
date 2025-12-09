@@ -85,11 +85,32 @@ func (h *OrganizationHandlers) ListOrCreate(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(org)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func (h *OrganizationHandlers) GetOrganization(w http.ResponseWriter, r *http.Request) {
+	orgID, ok := middleware.OrgIDFromContext(r.Context())
+	if !ok || orgID == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	org, err := h.OrgService.GetOrganization(r.Context(), orgID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if org == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(org)
 }
 
 func (h *OrganizationHandlers) UpdateOrganization(w http.ResponseWriter, r *http.Request) {
@@ -173,6 +194,7 @@ func (h *OrganizationHandlers) Workspaces(w http.ResponseWriter, r *http.Request
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(ws)
 
 	default:

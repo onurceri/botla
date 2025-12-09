@@ -127,6 +127,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 			return nil, fmt.Errorf("model client unavailable")
 		}
 
+		// Prepare completion params
 		params := models.CompletionParams{
 			SystemPrompt: sp,
 			Context:      contextText,

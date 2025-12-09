@@ -1,16 +1,23 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
+// VectorStore interface for vector operations
+type VectorStore interface {
+	DeleteBySourceID(ctx context.Context, sourceID string) error
+}
+
 // ChatbotHandlers handles chatbot-related HTTP endpoints
 type ChatbotHandlers struct {
-	DB  *sql.DB
-	Cfg *config.Config
+	DB          *sql.DB
+	Cfg         *config.Config
+	VectorStore VectorStore
 }
 
 type createChatbotRequest struct {

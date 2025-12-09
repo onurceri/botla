@@ -1,20 +1,37 @@
 package integration
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http/httptest"
 	"os"
+	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
 	dbpkg "github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
+// MockVectorStore for testing
+type MockVectorStore struct {
+	mu               sync.Mutex
+	DeletedSourceIDs []string
+}
+
+func (m *MockVectorStore) DeleteBySourceID(ctx context.Context, sourceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.DeletedSourceIDs = append(m.DeletedSourceIDs, sourceID)
+	return nil
+}
+
 type TestEnv struct {
-	Cfg    *config.Config
-	DB     *sql.DB
-	Server *httptest.Server
+	Cfg         *config.Config
+	DB          *sql.DB
+	Server      *httptest.Server
+	VectorStore *MockVectorStore
 }
 
 func SetupTestEnv() (*TestEnv, error) {
@@ -159,9 +176,16 @@ func SetupTestEnv() (*TestEnv, error) {
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ
     )`)
-	mux := NewTestMux(cfg, db)
+	// ensure cascade deletes are set up for tests
+	_, _ = db.Exec(`ALTER TABLE chatbots DROP CONSTRAINT IF EXISTS chatbots_workspace_id_fkey`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD CONSTRAINT chatbots_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE`)
+	_, _ = db.Exec(`ALTER TABLE chatbots DROP CONSTRAINT IF EXISTS chatbots_organization_id_fkey`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD CONSTRAINT chatbots_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE`)
+
+	vs := &MockVectorStore{}
+	mux := NewTestMux(cfg, db, vs)
 	srv := httptest.NewServer(mux)
-	return &TestEnv{Cfg: cfg, DB: db, Server: srv}, nil
+	return &TestEnv{Cfg: cfg, DB: db, Server: srv, VectorStore: vs}, nil
 }
 
 func TeardownTestEnv(te *TestEnv) {
@@ -169,7 +193,7 @@ func TeardownTestEnv(te *TestEnv) {
 		return
 	}
 	if te.DB != nil {
-		_, _ = te.DB.Exec("TRUNCATE TABLE refresh_tokens, messages, conversations, analytics, payments, data_sources, chatbots, users RESTART IDENTITY CASCADE")
+		_, _ = te.DB.Exec("TRUNCATE TABLE refresh_tokens, messages, conversations, analytics, payments, data_sources, chatbots, users, organizations, memberships, workspaces RESTART IDENTITY CASCADE")
 	}
 	if te.Server != nil {
 		te.Server.Close()

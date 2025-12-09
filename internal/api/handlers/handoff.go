@@ -110,11 +110,12 @@ func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Req
 
 	// Extract chatbot ID from path
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 4 {
+	// /api/v1/chatbots/:id/handoff-requests
+	if len(parts) < 5 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	botID := parts[3]
+	botID := parts[4]
 
 	// Verify ownership
 	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
@@ -148,14 +149,14 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Extract IDs from path: /api/chatbots/:id/handoff-requests/:requestId
+	// Extract IDs from path: /api/v1/chatbots/:id/handoff-requests/:requestId
 	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 6 {
+	if len(parts) < 7 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	botID := parts[3]
-	requestID := parts[5]
+	botID := parts[4]
+	requestID := parts[6]
 
 	// Verify ownership
 	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)

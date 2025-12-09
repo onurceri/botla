@@ -27,7 +27,6 @@ func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, dat
 		handoffInc = 1
 	}
 
-
 	query := `
 		INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations, total_tokens_used, handoff_count)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -131,7 +130,7 @@ func GetAnalyticsTrends(ctx context.Context, pool *sql.DB, chatbotID string, day
 	query := `
 		WITH dates AS (
 			SELECT generate_series(
-				CURRENT_DATE - ($2 || ' days')::interval,
+				CURRENT_DATE - make_interval(days => $2),
 				CURRENT_DATE,
 				'1 day'::interval
 			)::date AS date
@@ -199,7 +198,7 @@ func GetGlobalAnalytics(ctx context.Context, pool *sql.DB, userID string, orgID,
 	// Construct WHERE clause based on scope
 	var whereClause string
 	var args []interface{}
-	
+
 	switch {
 	case wsID != nil:
 		whereClause = "c.workspace_id = $1"

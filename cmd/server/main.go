@@ -65,7 +65,7 @@ func main() {
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	rl := middleware.NewRateLimiterFromEnv()
-	handler := middleware.RequestLogger(log)(middleware.RateLimitMiddleware(rl)(mux))
+	handler := middleware.RecoveryMiddleware(log)(middleware.RequestLogger(log)(middleware.RateLimitMiddleware(rl)(mux)))
 	srv := newHTTPServer(cfg.PORT, cors(handler))
 	startServerAsync(srv, log, cfg.PORT)
 	waitForShutdownSignal()

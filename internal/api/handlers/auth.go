@@ -61,7 +61,7 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Email = strings.TrimSpace(req.Email)
 	req.FullName = strings.TrimSpace(req.FullName)
-	if req.Email == "" || req.Password == "" {
+	if req.Email == "" || len(req.Password) < 8 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

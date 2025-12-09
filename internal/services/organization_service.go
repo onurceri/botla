@@ -123,6 +123,33 @@ func (s *OrganizationService) UpdateOrganization(ctx context.Context, id, name, 
 	return err
 }
 
+// GetOrganization returns an organization by ID
+func (s *OrganizationService) GetOrganization(ctx context.Context, id string) (*models.Organization, error) {
+	var org models.Organization
+	var brandingBytes []byte
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT id, name, slug, owner_id, plan_id, branding, created_at, updated_at
+		FROM organizations
+		WHERE id = $1
+	`, id).Scan(
+		&org.ID, &org.Name, &org.Slug, &org.OwnerID, &org.PlanID, &brandingBytes,
+		&org.CreatedAt, &org.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if len(brandingBytes) > 0 {
+		var cb models.CustomBranding
+		if err := json.Unmarshal(brandingBytes, &cb); err == nil {
+			org.Branding = &cb
+		}
+	}
+	return &org, nil
+}
+
 // DeleteOrganization deletes an organization
 func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string) error {
 	// Get owner_id
@@ -216,7 +243,7 @@ func (s *OrganizationService) DeleteWorkspace(ctx context.Context, wsID string) 
 // GetUserOrganizations returns all organizations a user belongs to
 func (s *OrganizationService) GetUserOrganizations(ctx context.Context, userID string) ([]*models.Organization, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT o.id, o.name, o.slug, o.owner_id, o.plan_id, o.branding, o.created_at, o.updated_at
+		SELECT o.id, o.name, o.slug, o.owner_id, o.plan_id, o.branding, o.created_at, o.updated_at, m.role
 		FROM organizations o
 		JOIN memberships m ON o.id = m.organization_id
 		WHERE m.user_id = $1
@@ -233,7 +260,7 @@ func (s *OrganizationService) GetUserOrganizations(ctx context.Context, userID s
 		var brandingBytes []byte // To handle JSONB
 		err := rows.Scan(
 			&org.ID, &org.Name, &org.Slug, &org.OwnerID, &org.PlanID, &brandingBytes,
-			&org.CreatedAt, &org.UpdatedAt,
+			&org.CreatedAt, &org.UpdatedAt, &org.Role,
 		)
 		if err != nil {
 			return nil, err

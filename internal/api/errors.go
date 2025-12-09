@@ -78,4 +78,5 @@ const (
 	ErrMonthlyIngestionExceeded  = "ERR_MONTHLY_INGESTION_EXCEEDED"
 	ErrSitemapParseFailed        = "ERR_SITEMAP_PARSE_FAILED"
 	ErrInvalidStatus             = "ERR_INVALID_STATUS"
+	ErrMaxChatbotsExceeded       = "ERR_MAX_CHATBOTS_EXCEEDED"
 )
