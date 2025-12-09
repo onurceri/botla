@@ -313,11 +313,12 @@ func (h *OrganizationHandlers) RemoveMember(w http.ResponseWriter, r *http.Reque
 
 	if err := h.OrgService.RemoveMember(r.Context(), orgID, callerID, targetUserID); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		if strings.Contains(err.Error(), "cannot remove the last owner") {
+		switch {
+		case strings.Contains(err.Error(), "cannot remove the last owner"):
 			w.WriteHeader(http.StatusForbidden)
-		} else if strings.Contains(err.Error(), "not a member") {
+		case strings.Contains(err.Error(), "not a member"):
 			w.WriteHeader(http.StatusNotFound)
-		} else {
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
@@ -350,14 +351,15 @@ func (h *OrganizationHandlers) UpdateMemberRole(w http.ResponseWriter, r *http.R
 	if err := h.OrgService.UpdateMemberRole(r.Context(), orgID, callerID, targetUserID, req.Role); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		// Return appropriate status codes based on error type
-		if strings.Contains(err.Error(), "invalid role") ||
-			strings.Contains(err.Error(), "cannot promote") ||
-			strings.Contains(err.Error(), "cannot demote") ||
-			strings.Contains(err.Error(), "only owners can") {
+		switch {
+		case strings.Contains(err.Error(), "invalid role"),
+			strings.Contains(err.Error(), "cannot promote"),
+			strings.Contains(err.Error(), "cannot demote"),
+			strings.Contains(err.Error(), "only owners can"):
 			w.WriteHeader(http.StatusForbidden)
-		} else if strings.Contains(err.Error(), "not a member") {
+		case strings.Contains(err.Error(), "not a member"):
 			w.WriteHeader(http.StatusNotFound)
-		} else {
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})

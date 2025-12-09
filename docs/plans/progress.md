@@ -64,3 +64,15 @@
   - **Goal**: Allow users to update/delete organizations/workspaces and manage members.
   - **Plan**: `docs/plans/13-multi-tenant-management.md`
   - **Status**: Verified. Backend endpoints (Update/Delete/Member Management) implemented and tested. Frontend settings pages (Organization/Workspace) and navigation integration completed.
+
+- ✅ **3.3 Advanced Analytics (2025-12-09)**
+  - **Goal**: Implement detailed analytics dashboard including source usage, feedback tracking, and daily trends.
+  - **Plan**: `docs/plans/15-advanced-analytics.md`
+  - **Status**: Verified. Backend (Source tracking, Feedback, Trends API) and Frontend (Analytics Dashboard, Source Usage Widget) completed and tested.
+
+### Phase 4: Future Features (Postponed)
+
+- ⏸️ **Custom Domain Support**
+  - **Goal**: Allow users to serve their chatbots on custom domains.
+  - **Plan**: `docs/plans/14-custom-domain.md`
+  - **Status**: Postponed by user request.

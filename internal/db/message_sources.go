@@ -27,7 +27,7 @@ func SaveMessageSources(ctx context.Context, pool *sql.DB, messageID string, sou
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, src := range sources {
 		if src.SourceID == "" {
@@ -54,7 +54,7 @@ func GetMessageSources(ctx context.Context, pool *sql.DB, messageID string) ([]m
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sources []models.MessageSource
 	for rows.Next() {

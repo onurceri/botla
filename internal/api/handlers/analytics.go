@@ -290,5 +290,7 @@ func (h *AnalyticsHandlers) GetSourceUsage(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
