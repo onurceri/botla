@@ -32,6 +32,12 @@ type DiscoveryMode = 'auto' | 'pending' | 'disabled'
 type RefreshPolicy = 'manual' | 'auto'
 type RefreshFrequency = 'daily' | 'weekly' | 'monthly'
 
+interface PlanScrapingConfig {
+  max_pages_per_crawl?: number
+  max_urls_per_bot?: number
+  dynamic_enabled?: boolean
+}
+
 interface URLAdvancedSettingsProps {
   // Discovery Mode
   discoveryMode: DiscoveryMode
@@ -53,6 +59,8 @@ interface URLAdvancedSettingsProps {
   // Sitemap
   chatbotId: string
   onImportComplete: () => void
+  // Plan Config (optional - for showing disabled features)
+  planScrapingConfig?: PlanScrapingConfig
 }
 
 type SectionKey = 'discovery' | 'refresh' | 'filters' | 'sitemap' | null
@@ -74,6 +82,7 @@ export default function URLAdvancedSettings({
   setSelectorWhitelist,
   chatbotId,
   onImportComplete,
+  planScrapingConfig,
 }: URLAdvancedSettingsProps) {
   const [expandedSection, setExpandedSection] = useState<SectionKey>(null)
   
@@ -90,15 +99,45 @@ export default function URLAdvancedSettings({
   const [discoveredUrls, setDiscoveredUrls] = useState<SitemapURL[]>([])
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set())
 
+  // Check if URL discovery is enabled based on plan
+  const isDiscoveryEnabled = (planScrapingConfig?.max_pages_per_crawl ?? 0) > 0
+
   const toggleSection = (section: SectionKey) => {
     setExpandedSection(expandedSection === section ? null : section)
   }
 
-  // Discovery mode options
+  // Discovery mode options - with disabled state based on plan
   const discoveryModes = [
-    { value: 'auto' as const, label: 'Otomatik', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-    { value: 'pending' as const, label: 'Onay Bekle', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
-    { value: 'disabled' as const, label: 'Kapalı', icon: Ban, color: 'text-gray-400', bg: 'bg-gray-50', border: 'border-gray-200' },
+    { 
+      value: 'auto' as const, 
+      label: 'Otomatik', 
+      icon: Zap, 
+      color: 'text-emerald-500', 
+      bg: 'bg-emerald-50', 
+      border: 'border-emerald-200',
+      requiresDiscovery: true,
+      description: 'Keşfedilen URL\'ler otomatik eklenir'
+    },
+    { 
+      value: 'pending' as const, 
+      label: 'Onay Bekle', 
+      icon: Clock, 
+      color: 'text-amber-500', 
+      bg: 'bg-amber-50', 
+      border: 'border-amber-200',
+      requiresDiscovery: true,
+      description: 'URL\'ler onayınızı bekler'
+    },
+    { 
+      value: 'disabled' as const, 
+      label: 'Kapalı', 
+      icon: Ban, 
+      color: 'text-gray-400', 
+      bg: 'bg-gray-50', 
+      border: 'border-gray-200',
+      requiresDiscovery: false,
+      description: 'Alt sayfa keşfi yapılmaz'
+    },
   ]
 
   // Refresh frequency options
@@ -245,7 +284,7 @@ export default function URLAdvancedSettings({
             section="discovery" 
             icon={Link2} 
             title="Sayfa Keşif Modu"
-            badge={discoveryMode !== 'auto' ? discoveryMode === 'pending' ? 'Onay' : 'Kapalı' : undefined}
+            badge={!isDiscoveryEnabled ? 'Pro' : (discoveryMode !== 'auto' ? discoveryMode === 'pending' ? 'Onay' : 'Kapalı' : undefined)}
             color="text-indigo-500"
             bgColor="bg-indigo-50"
           />
@@ -254,24 +293,50 @@ export default function URLAdvancedSettings({
               <p className="text-xs text-gray-500 mb-3">
                 Bir URL eklediğinizde, sayfadaki bağlantıların nasıl işleneceğini belirleyin.
               </p>
+              
+              {/* Show upgrade notice when discovery is disabled by plan */}
+              {!isDiscoveryEnabled && (
+                <div className="mb-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="flex items-center gap-2 text-amber-700">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-xs font-medium">Alt sayfa keşfi Pro planda aktif</span>
+                  </div>
+                  <p className="text-[10px] text-amber-600 mt-1 ml-5">
+                    Pro plana yükselterek eklediğiniz URL'lerdeki tüm alt sayfaları otomatik keşfedebilirsiniz.
+                  </p>
+                </div>
+              )}
+              
               <div className="grid grid-cols-3 gap-2">
                 {discoveryModes.map((mode) => {
                   const Icon = mode.icon
                   const isSelected = discoveryMode === mode.value
+                  const isDisabled = mode.requiresDiscovery && !isDiscoveryEnabled
                   return (
                     <button
                       key={mode.value}
                       type="button"
-                      onClick={() => setDiscoveryMode(mode.value)}
+                      onClick={() => !isDisabled && setDiscoveryMode(mode.value)}
+                      disabled={isDisabled}
                       className={cn(
-                        "flex flex-col items-center p-3 rounded-lg border-2 transition-all",
-                        isSelected 
-                          ? `${mode.border} ${mode.bg}` 
-                          : "border-gray-100 bg-white hover:border-gray-200"
+                        "flex flex-col items-center p-3 rounded-lg border-2 transition-all relative",
+                        isDisabled 
+                          ? "border-gray-100 bg-gray-50 cursor-not-allowed opacity-60"
+                          : isSelected 
+                            ? `${mode.border} ${mode.bg}` 
+                            : "border-gray-100 bg-white hover:border-gray-200"
                       )}
                     >
-                      <Icon className={cn("w-4 h-4 mb-1.5", isSelected ? mode.color : "text-gray-400")} />
-                      <span className={cn("text-xs font-medium", isSelected ? "text-gray-700" : "text-gray-500")}>
+                      {isDisabled && (
+                        <Badge 
+                          variant="outline" 
+                          className="absolute -top-2 -right-2 text-[8px] px-1.5 py-0 h-4 bg-violet-100 text-violet-700 border-violet-200"
+                        >
+                          Pro
+                        </Badge>
+                      )}
+                      <Icon className={cn("w-4 h-4 mb-1.5", isDisabled ? "text-gray-300" : isSelected ? mode.color : "text-gray-400")} />
+                      <span className={cn("text-xs font-medium", isDisabled ? "text-gray-400" : isSelected ? "text-gray-700" : "text-gray-500")}>
                         {mode.label}
                       </span>
                     </button>
@@ -281,6 +346,7 @@ export default function URLAdvancedSettings({
             </div>
           )}
         </div>
+
 
         {/* 2. Auto Refresh Section */}
         <div>

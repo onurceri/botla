@@ -115,9 +115,9 @@ func SetupTestEnv() (*TestEnv, error) {
         ('en-US','English (United States)',false)
         ON CONFLICT (code) DO NOTHING`)
 	_, _ = db.Exec(`INSERT INTO plans (code, status, billing_cycle, price, currency, trial_days, config) VALUES
-        ('free','active','lifetime',0,'TRY',0,'{}'::jsonb),
-        ('pro','active','monthly',199,'TRY',7,'{}'::jsonb)
-        ON CONFLICT (code) DO NOTHING`)
+        ('free','active','lifetime',0,'TRY',0,'{"scraping": {"max_pages_per_crawl": 10, "max_urls_per_bot": 100}}'::jsonb),
+        ('pro','active','monthly',199,'TRY',7,'{"scraping": {"max_pages_per_crawl": 100, "max_urls_per_bot": 1000}}'::jsonb)
+        ON CONFLICT (code) DO UPDATE SET config = EXCLUDED.config`)
 	// ensure users has plan_id column for tests
 	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_id UUID`)
 	// ensure chatbots has language_id column for tests
@@ -149,16 +149,27 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS is_discovered BOOLEAN DEFAULT false`)
 	// create usage_ingestions table for tests
 	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
-        user_id VARCHAR(64) NOT NULL,
-        period_month DATE NOT NULL,
-        sources_count INT NOT NULL DEFAULT 0,
-        embedding_tokens INT NOT NULL DEFAULT 0,
-        refresh_count INT NOT NULL DEFAULT 0,
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (user_id, period_month)
-    )`)
+		user_id VARCHAR(64) NOT NULL,
+		period_month DATE NOT NULL,
+		sources_count INT NOT NULL DEFAULT 0,
+		embedding_tokens INT NOT NULL DEFAULT 0,
+		refresh_count INT NOT NULL DEFAULT 0,
+		updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+		PRIMARY KEY (user_id, period_month)
+	)`)
+	// Create pending_discovered_urls table for tests
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS pending_discovered_urls (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		chatbot_id UUID NOT NULL REFERENCES chatbots(id) ON DELETE CASCADE,
+		source_id UUID REFERENCES data_sources(id) ON DELETE SET NULL,
+		url TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		discovered_at TIMESTAMPTZ DEFAULT NOW(),
+		UNIQUE (chatbot_id, url)
+	)`)
 	// Add refresh tracking columns
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
 	_, _ = db.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)

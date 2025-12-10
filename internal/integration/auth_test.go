@@ -42,7 +42,12 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 	if res2.StatusCode != http.StatusConflict {
 		t.Fatalf("expected 409, got %d", res2.StatusCode)
 	}
+	var errResp map[string]string
+	_ = json.NewDecoder(res2.Body).Decode(&errResp)
 	res2.Body.Close()
+	if errResp["error"] != "Email already exists" {
+		t.Fatalf("expected 'Email already exists', got %v", errResp["error"])
+	}
 
 	// login
 	loginBody := map[string]string{"email": email, "password": "pass1234"}

@@ -18,4 +18,5 @@ type DataSource struct {
     DeletedAt        *time.Time `json:"deleted_at,omitempty"`
     SizeBytes        int64      `json:"size_bytes"`
     LastRefreshedAt  *time.Time `json:"last_refreshed_at,omitempty"`
+    IsDiscovered     bool       `json:"is_discovered"`
 }

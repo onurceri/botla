@@ -36,7 +36,7 @@ import { useOrganization } from '@/features/organization/context/OrganizationCon
 const ChatbotDetailPage = () => {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const { currentWorkspace } = useOrganization()
+  const { currentWorkspace, isLoading: isOrgLoading } = useOrganization()
   const prevWorkspaceIdRef = useRef<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
   
@@ -86,7 +86,10 @@ const ChatbotDetailPage = () => {
     handoffConfig, setHandoffConfig,
   } = useChatbotForm()
   const [userPlan, setUserPlan] = useState('free')
-  const [planConfig, setPlanConfig] = useState<{ branding?: { can_hide_branding?: boolean, can_custom_branding?: boolean } }>({});
+  const [planConfig, setPlanConfig] = useState<{ 
+    branding?: { can_hide_branding?: boolean, can_custom_branding?: boolean },
+    scraping?: { max_pages_per_crawl?: number, max_urls_per_bot?: number, dynamic_enabled?: boolean }
+  }>({});
   
   const isNew = id === 'new'
   const { sources, refreshSources, pollStatus, handleDeleteSource, handleRefreshSource, refreshingId } = useSourceOps(id, isNew)
@@ -236,6 +239,7 @@ const ChatbotDetailPage = () => {
         name={name}
         isDeleting={isDeleting}
         isSaving={isSaving}
+        disabled={isOrgLoading}
         onDelete={handleDelete}
         onSave={handleSave}
       />
@@ -324,6 +328,7 @@ const ChatbotDetailPage = () => {
                       setSelectorWhitelist={setSelectorWhitelist}
                       chatbotId={id}
                       onImportComplete={refreshSources}
+                      planScrapingConfig={planConfig.scraping}
                     />
                   }
                 />

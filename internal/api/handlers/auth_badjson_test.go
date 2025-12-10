@@ -15,6 +15,10 @@ func TestRegisterHandler_BadJSON(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400, got %d", rr.Code)
 	}
+	// Also check for JSON error
+	if !strings.Contains(rr.Body.String(), "error") {
+		t.Errorf("expected error in body, got %s", rr.Body.String())
+	}
 }
 
 func TestLoginHandler_BadJSON(t *testing.T) {
@@ -54,5 +58,9 @@ func TestRegisterHandler_MethodNotAllowed(t *testing.T) {
 	h.RegisterHandler(rr, req)
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("want 405, got %d", rr.Code)
+	}
+	// Also check for JSON error
+	if !strings.Contains(rr.Body.String(), "error") {
+		t.Errorf("expected error in body, got %s", rr.Body.String())
 	}
 }

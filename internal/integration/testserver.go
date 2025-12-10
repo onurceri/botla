@@ -71,9 +71,28 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	acth := &handlers.ActionHandlers{DB: pool}
 	handh := &handlers.HandoffHandlers{DB: pool, Log: log}
+	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q}
 
 	mux.Handle("/api/v1/chatbots/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/pending-urls") {
+			if strings.HasSuffix(r.URL.Path, "/pending-urls/approve") {
+				puh.ApprovePendingURLs(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/pending-urls/reject") {
+				puh.RejectPendingURLs(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/pending-urls/clear") {
+				puh.ClearPendingURLs(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, "/pending-urls") {
+				puh.ListPendingURLs(w, r)
+				return
+			}
+		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
 			sh.ChatbotSources(w, r)
 			return

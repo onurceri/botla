@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { api } from '@/api/client'
 import { getAnalytics } from '@/api/analytics'
+import { useOrganization } from '@/features/organization/context/OrganizationContext'
 
 export const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -60,6 +61,7 @@ export const formatXAxisTick = (value: string) => {
 export const formatYAxisTick = (value: number) => `${value}`
 
 const DashboardPage = () => {
+  const { currentWorkspace, isLoading: isOrgLoading } = useOrganization()
   const [stats, setStats] = useState({
     totalConversations: 0,
     totalMessages: 0,
@@ -73,10 +75,21 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Abort controller to cancel in-flight requests on cleanup
+    const abortController = new AbortController()
+    let isMounted = true
+
     const fetchData = async () => {
+      // Wait for org context to be ready (at least tried to load)
+      if (isOrgLoading) return
+
       try {
         // Fetch Analytics
         const analyticsRaw = await getAnalytics()
+        
+        // Check if component is still mounted before setting state
+        if (!isMounted) return
+        
         const analyticsData = Array.isArray(analyticsRaw) ? analyticsRaw : []
         setChartData(analyticsData)
 
@@ -89,6 +102,10 @@ const DashboardPage = () => {
 
         // Fetch Bots for count and recent list
         const { data } = await api.get('/api/v1/chatbots')
+        
+        // Check again before setting state
+        if (!isMounted) return
+        
         const bots = Array.isArray(data) ? data : []
         setRecentBots(bots.slice(0, 3))
         
@@ -101,14 +118,24 @@ const DashboardPage = () => {
           activeBots: bots.length
         })
       } catch (error) {
+        // Ignore abort errors
+        if (error instanceof Error && error.name === 'AbortError') return
         console.error('Failed to fetch dashboard data', error)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchData()
-  }, [])
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+      abortController.abort()
+    }
+  }, [currentWorkspace, isOrgLoading])
 
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>

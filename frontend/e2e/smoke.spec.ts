@@ -4,8 +4,8 @@ test.describe('E2E Smoke', () => {
   const isReal = !!process.env.E2E_API_BASE
   test.skip(!isReal, 'Skipped on stubbed backend to avoid flakiness')
   test('Login → Create Chatbot → Add Text Source → Chat', async ({ page }) => {
-    const botId = 'e2e-bot'
-    const isReal = !!process.env.E2E_API_BASE
+    let botId = 'e2e-bot'
+    // Use the outer `isReal` variable from describe scope
     if (!isReal) {
       await page.route('**/api/v1/auth/register', async (route) => {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
@@ -18,7 +18,7 @@ test.describe('E2E Smoke', () => {
           await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
         } else {
           await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: botId }) })
-  }
+        }
       })
       await page.route(`**/api/v1/chatbots/${botId}`, async (route) => {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: botId, name: 'E2E Bot' }) })
@@ -46,26 +46,48 @@ test.describe('E2E Smoke', () => {
       })
     }
 
-    // Register
+    // Registration
+    const email = `e2e-${Date.now()}@example.com`
     await page.goto('/register')
-    await page.getByLabel('Ad Soyad').fill('E2E User')
-    await page.getByLabel('Email').fill(`e2e-${Date.now()}@example.com`)
+    await page.getByLabel('Ad Soyad').fill('Test User')
+    await page.getByLabel('Email').fill(email)
     await page.getByLabel('Şifre').fill('password123')
     await page.getByRole('button', { name: 'Kayıt Ol' }).click()
-    await expect(page).toHaveURL(/.*login/)
+
+    // Wait for redirect to login (success)
+    await expect(page).toHaveURL(/.*login/, { timeout: 10000 })
 
     // Login
-    await page.getByLabel('Email').fill('e2e@example.com')
+    await page.getByLabel('Email').fill(email)
     await page.getByLabel('Şifre').fill('password123')
     await page.getByRole('button', { name: 'Giriş Yap' }).click()
-    await expect(page).toHaveURL(/.*\//)
+
+    // Wait for successful login and redirect to dashboard (NOT login page)
+    await expect(page).toHaveURL(/^(?!.*\/login).*\/$/, { timeout: 10000 })
+
+    // Verify we are authenticated by checking for Dashboard elements
+    // We might be redirected back to login if auth fails, so we should check for that too
+    try {
+      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 10000 })
+    } catch (e) {
+      // If dashboard is not visible, check if we are back at login or if there was an error
+      if (page.url().includes('login')) {
+        throw new Error('Redirected back to login page after login - Auth failed')
+      }
+      throw e
+    }
 
     // Create chatbot
-    await page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first().click()
+    const createBtn = page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first()
+    await createBtn.waitFor({ state: 'visible', timeout: 10000 })
+    await createBtn.click()
     await page.getByPlaceholder('Örn: Müşteri Temsilcisi').fill('E2E Bot')
-    // UI create action can be flaky under stubs; proceed directly to detail page
-    await page.goto(`/chatbots/${botId}`)
-    await expect(page).toHaveURL(new RegExp(`/chatbots/${botId}$`))
+    const saveBtn = page.getByRole('button', { name: 'Oluştur' })
+    await saveBtn.click()
+    await expect(page.getByText('Chatbot başarıyla oluşturuldu.')).toBeVisible({ timeout: 10000 })
+    await expect(page).not.toHaveURL(/\/chatbots\/new$/)
+    await expect(page).toHaveURL(/\/chatbots\/[a-zA-Z0-9_-]+$/)
+    botId = new URL(page.url()).pathname.split('/').pop() || botId
 
     // Add text source
     await page.getByRole('tab', { name: 'Veri Kaynakları' }).click()
@@ -84,19 +106,21 @@ test.describe('E2E Smoke', () => {
 
     // Chat
     await page.getByRole('tab', { name: 'Playground' }).click()
-    await page.getByTestId('widget-bubble').click()
+    await page.getByRole('button', { name: 'Sohbeti aç' }).click()
     const input = page.getByPlaceholder('Mesaj yazın...')
     await input.fill('merhaba')
     await input.press('Enter')
     if (isReal) {
-      // Real backend may return fallback; assert any assistant message appears
-      await expect(page.locator('[class*=rounded-2xl]').filter({ hasText: /Merhaba|hata|bilgi/ })).toBeVisible()
-      // Navigate to Dashboard and confirm analytics totals increased
+      // Real backend may return fallback; assert any assistant message appears in widget
+      await expect(page.locator('.cbw-msg.assistant').filter({ hasText: /Merhaba|hata|bilgi/i })).toBeVisible({ timeout: 10000 })
+      // Navigate to Dashboard and confirm the bot appears in "Son Botlarınız"
       await page.goto('/')
-      await expect(page.getByText('Toplam Mesaj')).toBeVisible()
-      // Numbers should be >= 1
-      const totalMsg = await page.getByText(/Toplam Mesaj/).locator('xpath=..').locator('text=/\d+/').first()
-      await expect(totalMsg).toBeVisible()
+
+      // Check if the bot appears in "Son Botlarınız" list
+      // This confirms the bot was created and associated with the user correctly
+      const recentBotsCard = page.locator('div.col-span-3').filter({ has: page.getByText(/^Son Botlarınız$/) }).first()
+      await expect(recentBotsCard).toBeVisible()
+      await expect(recentBotsCard.getByText('E2E Bot')).toBeVisible()
     } else {
       await expect(page.getByText('Merhaba!')).toBeVisible()
     }

@@ -6,6 +6,7 @@ type HeaderActionsProps = {
   name: string
   isDeleting: boolean
   isSaving: boolean
+  disabled?: boolean
   onDelete: () => void
   onSave: () => void
 }
@@ -15,6 +16,7 @@ export default function HeaderActions({
   name,
   isDeleting,
   isSaving,
+  disabled,
   onDelete,
   onSave,
 }: HeaderActionsProps) {
@@ -41,7 +43,7 @@ export default function HeaderActions({
             <Trash2 className="w-4 h-4" />
           </Button>
         )}
-        <Button onClick={onSave} className="gap-2" isLoading={isSaving} aria-label={isNew ? 'Oluştur' : 'Değişiklikleri Kaydet'}>
+        <Button onClick={onSave} className="gap-2" isLoading={isSaving} disabled={disabled} aria-label={isNew ? 'Oluştur' : 'Değişiklikleri Kaydet'}>
           <Save className="w-4 h-4" />
           {isNew ? 'Oluştur' : 'Değişiklikleri Kaydet'}
         </Button>

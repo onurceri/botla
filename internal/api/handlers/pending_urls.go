@@ -8,14 +8,16 @@ import (
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // PendingURLsHandlers handles pending URL operations
 type PendingURLsHandlers struct {
-	DB  *sql.DB
-	Log *logger.Logger
+	DB    *sql.DB
+	Queue *processing.SourceQueue
+	Log   *logger.Logger
 }
 
 // PendingURLResponse represents a pending URL in the response
@@ -175,15 +177,19 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Create sources for each approved URL
+	// Create sources for each approved URL and enqueue them for processing
+	// Use CreateDiscoveredSource so these URLs won't crawl further (1-level depth)
 	sourcesCreated := 0
 	for _, pu := range pendingURLs {
-		url := pu.URL
-		_, err2 := db.CreateSource(r.Context(), h.DB, chatbotID, "url", &url, nil, nil)
+		newID, err2 := db.CreateDiscoveredSource(r.Context(), h.DB, chatbotID, pu.URL)
 		if err2 == nil {
 			sourcesCreated++
+			// Enqueue for processing
+			if h.Queue != nil {
+				h.Queue.Enqueue(newID)
+			}
 		} else {
-			h.logWarn("create_source_failed", map[string]any{"url": url, "error": err2.Error()})
+			h.logWarn("create_source_failed", map[string]any{"url": pu.URL, "error": err2.Error()})
 		}
 	}
 

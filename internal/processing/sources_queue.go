@@ -64,6 +64,9 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService) (*SourceQueue, 
 		cancel()
 	}
 
+	// Recover pending sources at startup
+	go q.recoverPendingSources()
+
 	return q, nil
 }
 
@@ -88,6 +91,47 @@ func (q *SourceQueue) Stop() {
 		return
 	}
 	close(q.stopCh)
+}
+
+// recoverPendingSources finds and enqueues sources stuck in 'pending' status at startup
+func (q *SourceQueue) recoverPendingSources() {
+	if q == nil || q.db == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Find sources with pending status (stuck from previous runs)
+	rows, err := q.db.QueryContext(ctx, `
+		SELECT id FROM data_sources 
+		WHERE status = 'pending' AND deleted_at IS NULL 
+		ORDER BY created_at ASC
+		LIMIT 100
+	`)
+	if err != nil {
+		if q.log != nil {
+			q.log.Warn("recover_pending_sources_query_failed", map[string]any{"error": err.Error()})
+		}
+		return
+	}
+	defer rows.Close()
+
+	var recovered int
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			continue
+		}
+		q.Enqueue(id)
+		recovered++
+	}
+
+	if recovered > 0 && q.log != nil {
+		q.log.Info("recover_pending_sources_completed", map[string]any{
+			"recovered_count": recovered,
+		})
+	}
 }
 
 // worker processes sources from the queue
@@ -117,6 +161,15 @@ func (q *SourceQueue) processSource(id string) {
 		return
 	}
 
+	if q.log != nil {
+		q.log.Info("source_processing_dispatch", map[string]any{
+			"source_id":   id,
+			"source_type": s.SourceType,
+			"chatbot_id":  s.ChatbotID,
+			"lang_code":   langCode,
+		})
+	}
+
 	var result ProcessResult
 
 	switch s.SourceType {
@@ -138,8 +191,20 @@ func (q *SourceQueue) processSource(id string) {
 		return
 	}
 
+	// Log warning when source completes with 0 chunks
+	if result.ChunkCount == 0 && !result.Skipped {
+		if q.log != nil {
+			q.log.Warn("source_processing_empty_content", map[string]any{
+				"source_id":   id,
+				"source_type": s.SourceType,
+				"hint":        "Source completed but extracted 0 chunks - content may be empty or inaccessible",
+			})
+		}
+	}
+
 	q.complete(id, result.ChunkCount)
 }
+
 
 // enqueueNewURLSources discovers and enqueues pending URL sources
 func (q *SourceQueue) enqueueNewURLSources(chatbotID string) {

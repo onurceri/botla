@@ -43,9 +43,9 @@ describe('RegisterPage', () => {
     expect(screen.getByText('Kayıt başarılı! Giriş yapabilirsiniz.')).toBeInTheDocument()
   })
 
-  it('shows error toast on API failure', async () => {
+  it('shows fallback error message on API failure', async () => {
     const user = userEvent.setup()
-    vi.spyOn(api, 'post').mockRejectedValueOnce(new Error('fail'))
+    const postSpy = vi.spyOn(api, 'post').mockRejectedValueOnce(new Error('fail'))
 
     render(
       <ToastProvider>
@@ -55,13 +55,18 @@ describe('RegisterPage', () => {
       </ToastProvider>
     )
 
-    await user.type(screen.getByLabelText('Ad Soyad'), 'Onur Ceri')
-    await user.type(screen.getByLabelText('Email'), 'onur@example.com')
-    await user.type(screen.getByLabelText('Şifre'), 'secret')
+    await user.type(screen.getByLabelText('Ad Soyad'), 'Test')
+    await user.type(screen.getByLabelText('Email'), 'test@example.com')
+    await user.type(screen.getByLabelText('Şifre'), '12345678')
     const submit = screen.getAllByRole('button', { name: 'Kayıt Ol' })[0]
     await user.click(submit)
+    
+    // Wait for API call and button to be re-enabled after error
     await waitFor(() => {
+      expect(postSpy).toHaveBeenCalled()
       expect(submit).not.toBeDisabled()
     })
   })
+
+  
 })

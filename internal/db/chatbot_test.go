@@ -13,10 +13,14 @@ import (
 
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	dsn := "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable"
+	dsn := "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable&options=-c%20search_path%3Dtest"
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
+	}
+	// Explicitly set search_path in case connection options don't work
+	if _, err := db.Exec("SET search_path TO test"); err != nil {
+		t.Fatalf("set search_path: %v", err)
 	}
 	// Ensure new columns exist for sources
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)

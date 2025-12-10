@@ -49,35 +49,46 @@ type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// respondError sends a JSON error response
+func respondError(w http.ResponseWriter, code int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
 func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	req.Email = strings.TrimSpace(req.Email)
 	req.FullName = strings.TrimSpace(req.FullName)
-	if req.Email == "" || len(req.Password) < 8 {
-		w.WriteHeader(http.StatusBadRequest)
+	if req.Email == "" {
+		respondError(w, http.StatusBadRequest, "Email is required")
+		return
+	}
+	if len(req.Password) < 8 {
+		respondError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
 		return
 	}
 	var existing string
 	err := h.DB.QueryRowContext(r.Context(), "SELECT id FROM users WHERE email=$1", req.Email).Scan(&existing)
 	if err == nil && existing != "" {
-		w.WriteHeader(http.StatusConflict)
+		respondError(w, http.StatusConflict, "Email already exists")
 		return
 	}
 	if err != nil && err != sql.ErrNoRows {
-		w.WriteHeader(http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	hash, err := auth.HashPassword(req.Password)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "Failed to hash password")
 		return
 	}
 	var userID string
@@ -94,7 +105,7 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		}(),
 	).Scan(&userID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
 

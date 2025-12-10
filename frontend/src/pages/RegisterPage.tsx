@@ -14,6 +14,7 @@ const RegisterPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,13 +23,16 @@ const RegisterPage = () => {
       return
     }
 
+    setErrorMsg(null)
     setIsLoading(true)
     try {
       await api.post('/api/v1/auth/register', { full_name: name, email, password })
       toast('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
       navigate('/login')
-    } catch {
-      toast('Kayıt başarısız. Lütfen tekrar deneyin.', 'error')
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Kayıt başarısız. Lütfen tekrar deneyin.'
+      toast(errorMessage, 'error')
+      setErrorMsg(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -71,6 +75,9 @@ const RegisterPage = () => {
             <CardDescription>Hemen başlayın</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
+            {errorMsg && (
+              <div className="mb-4 text-sm text-red-600" role="alert">{errorMsg}</div>
+            )}
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="name">

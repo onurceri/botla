@@ -104,7 +104,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	// Per-route limiter for sources endpoints
 	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
 	// Pending URLs handler
-	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log}
+	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log}
 	// Action handler
 	acth := &handlers.ActionHandlers{DB: pool}
 	// Handoff handler

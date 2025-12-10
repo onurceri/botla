@@ -95,6 +95,40 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 	return content, nil
 }
 
+// FetchRawHTML fetches raw HTML content from a URL for link extraction purposes.
+// This is separate from ScrapeURL which extracts visible text.
+func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
+	l := logger.New("INFO")
+
+	bundle, err := NewCollector(cfg)
+	if err != nil {
+		return "", err
+	}
+	c := bundle.Collector
+	var rawHTML string
+
+	c.OnResponse(func(r *colly.Response) {
+		rawHTML = string(r.Body)
+	})
+
+	err = bundle.Queue.AddURL(targetURL)
+	if err != nil {
+		return "", err
+	}
+	if err := bundle.Queue.Run(c); err != nil {
+		return "", err
+	}
+	c.Wait()
+
+	if rawHTML == "" {
+		l.Warn("fetch_raw_html_empty", map[string]any{"url": targetURL})
+		return "", nil
+	}
+
+	l.Info("fetch_raw_html_success", map[string]any{"url": targetURL, "len": len(rawHTML)})
+	return rawHTML, nil
+}
+
 // ExtractLinks finds all links in the HTML content that belong to the same domain as baseURL.
 // It returns a list of absolute URLs, optionally filtered by the provided PathFilter.
 // If filter is nil, all same-domain links are returned (backward compatibility).

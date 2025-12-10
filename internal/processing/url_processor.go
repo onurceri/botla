@@ -41,8 +41,16 @@ type ProcessResult struct {
 // Process processes a URL source
 func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
 	if s.SourceURL == nil || *s.SourceURL == "" {
+		p.logWarn("url_processing_empty_url", map[string]any{"source_id": s.ID})
 		return ProcessResult{Error: &ProcessingError{Msg: "empty_url"}}
 	}
+
+	p.logInfo("url_processing_started", map[string]any{
+		"source_id":      s.ID,
+		"url":            *s.SourceURL,
+		"discovery_mode": bot.DiscoveryMode,
+		"chatbot_id":     s.ChatbotID,
+	})
 
 	// Create scrape config with CSS selectors if defined
 	var scrapeConfig *scraper.ScrapeConfig
@@ -50,8 +58,35 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 		scrapeConfig = &scraper.ScrapeConfig{
 			Selectors: bot.SelectorWhitelist,
 		}
+		p.logInfo("url_processing_selectors_configured", map[string]any{
+			"source_id": s.ID,
+			"selectors": bot.SelectorWhitelist,
+		})
 	}
 
+	// Step 1: Fetch raw HTML for link discovery (always, regardless of text extraction)
+	rawHTML, htmlErr := scraper.FetchRawHTML(*s.SourceURL, scraper.DefaultCollectorConfig())
+	if htmlErr != nil {
+		p.logWarn("url_processing_fetch_html_failed", map[string]any{
+			"source_id": s.ID,
+			"url":       *s.SourceURL,
+			"error":     htmlErr.Error(),
+		})
+	} else if rawHTML != "" {
+		p.logInfo("url_processing_html_fetched", map[string]any{
+			"source_id":  s.ID,
+			"html_bytes": len(rawHTML),
+		})
+		// Attempt sub-page discovery using raw HTML
+		p.discoverSubPages(ctx, s, bot, plan, rawHTML)
+	} else {
+		p.logWarn("url_processing_html_empty", map[string]any{
+			"source_id": s.ID,
+			"url":       *s.SourceURL,
+		})
+	}
+
+	// Step 2: Extract text content for embedding
 	content, err := scraper.ScrapeURLWithFallback(
 		scraper.ScrapingTask{URL: *s.SourceURL},
 		scraper.DefaultCollectorConfig(),
@@ -59,14 +94,31 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 		scrapeConfig,
 	)
 	if err != nil {
+		p.logWarn("url_processing_scrape_failed", map[string]any{
+			"source_id": s.ID,
+			"url":       *s.SourceURL,
+			"error":     err.Error(),
+		})
 		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
 	}
+
+	// Step 3: Handle empty content case
 	if content == "" {
+		p.logWarn("url_processing_content_empty", map[string]any{
+			"source_id":           s.ID,
+			"url":                 *s.SourceURL,
+			"dynamic_enabled":     plan.Config.Scraping.DynamicEnabled,
+			"selectors_used":      len(bot.SelectorWhitelist) > 0,
+			"hint":                "Website may require JavaScript rendering or has anti-bot protection",
+		})
+		// Return 0 chunks but not an error - discovery may have still succeeded
 		return ProcessResult{ChunkCount: 0}
 	}
 
-	// Crawler Logic - discover sub-pages
-	p.discoverSubPages(ctx, s, bot, plan, content)
+	p.logInfo("url_processing_content_extracted", map[string]any{
+		"source_id":     s.ID,
+		"content_bytes": len(content),
+	})
 
 	content = text.NormalizeTR(content)
 
@@ -76,14 +128,26 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 
 	// Check if content has changed (for refresh - skip re-embedding if unchanged)
 	if s.Hash != nil && *s.Hash == newHash {
-		p.logInfo("source_content_unchanged", map[string]any{"source_id": s.ID, "url": *s.SourceURL})
+		p.logInfo("url_processing_content_unchanged", map[string]any{
+			"source_id": s.ID,
+			"url":       *s.SourceURL,
+			"hash":      newHash[:16], // First 16 chars of hash for brevity
+		})
 		return ProcessResult{ChunkCount: s.ChunkCount, Skipped: true}
 	}
 
 	// Content changed or new source - delete old vectors first if this is a refresh
 	if s.Hash != nil {
+		p.logInfo("url_processing_content_changed", map[string]any{
+			"source_id": s.ID,
+			"old_hash":  (*s.Hash)[:16],
+			"new_hash":  newHash[:16],
+		})
 		if err := DeleteSourceVectors(ctx, s.ID); err != nil {
-			p.logWarn("source_delete_vectors_error", map[string]any{"source_id": s.ID, "error": err.Error()})
+			p.logWarn("url_processing_delete_vectors_error", map[string]any{
+				"source_id": s.ID,
+				"error":     err.Error(),
+			})
 		}
 	}
 
@@ -91,11 +155,31 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	p.persistIngestionMetadata(ctx, content, langCode, s)
 
 	// Chunk and embed
+	p.logInfo("url_processing_chunking_started", map[string]any{
+		"source_id":     s.ID,
+		"content_bytes": len(content),
+		"lang_code":     langCode,
+	})
+
 	rc, rerr := rag.ChunkText(content, 512, langCode)
 	if rerr != nil {
+		p.logWarn("url_processing_chunking_failed", map[string]any{
+			"source_id": s.ID,
+			"error":     rerr.Error(),
+		})
 		return ProcessResult{Error: &ProcessingError{Msg: rerr.Error()}}
 	}
+
+	p.logInfo("url_processing_embedding_started", map[string]any{
+		"source_id":   s.ID,
+		"chunk_count": len(rc),
+	})
+
 	if err := rag.GenerateEmbeddingsForSource(rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+		p.logWarn("url_processing_embedding_failed", map[string]any{
+			"source_id": s.ID,
+			"error":     err.Error(),
+		})
 		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
 	}
 
@@ -110,8 +194,16 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	_ = db.IncrementSuccessfulIngestion(ctx, p.DB, bot.UserID, time.Now(), 1)
 	_ = db.AddEmbeddingTokens(ctx, p.DB, bot.UserID, time.Now(), tokens)
 
+	p.logInfo("url_processing_completed", map[string]any{
+		"source_id":    s.ID,
+		"url":          *s.SourceURL,
+		"chunk_count":  len(rc),
+		"total_tokens": tokens,
+	})
+
 	return ProcessResult{ChunkCount: len(rc)}
 }
+
 
 // DiscoveryMode constants for URL discovery behavior
 const (
@@ -120,26 +212,65 @@ const (
 	DiscoveryModeDisabled = "disabled" // Do not discover sub-pages
 )
 
-// discoverSubPages crawls and discovers sub-pages from the content
-func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSource, bot *models.Chatbot, plan *models.Plan, content string) {
+// discoverSubPages crawls and discovers sub-pages from the raw HTML content
+func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSource, bot *models.Chatbot, plan *models.Plan, rawHTML string) {
+	// Skip discovery for sources that were themselves discovered via crawling
+	// This implements 1-level depth crawling (only user-added URLs discover sub-pages)
+	if s.IsDiscovered {
+		p.logInfo("url_discovery_skipped_is_discovered", map[string]any{
+			"source_id": s.ID,
+			"url":       *s.SourceURL,
+			"reason":    "Source was discovered via crawling, not manually added",
+		})
+		return
+	}
+
 	// Check discovery mode - default to auto for backward compatibility
 	discoveryMode := bot.DiscoveryMode
 	if discoveryMode == "" {
 		discoveryMode = DiscoveryModeAuto
 	}
 
+	p.logInfo("url_discovery_started", map[string]any{
+		"source_id":      s.ID,
+		"url":            *s.SourceURL,
+		"discovery_mode": discoveryMode,
+		"html_length":    len(rawHTML),
+	})
+
 	// If disabled, skip discovery entirely
 	if discoveryMode == DiscoveryModeDisabled {
+		p.logInfo("url_discovery_disabled", map[string]any{
+			"source_id": s.ID,
+		})
 		return
 	}
 
 	if plan.Config.Scraping.MaxPagesPerCrawl <= 0 {
+		p.logInfo("url_discovery_skipped_no_crawl_limit", map[string]any{
+			"source_id":          s.ID,
+			"max_pages_per_crawl": plan.Config.Scraping.MaxPagesPerCrawl,
+		})
 		return
 	}
 
 	// Only crawl if we haven't reached the limit
 	cnt, err := db.CountSourcesByType(ctx, p.DB, s.ChatbotID, "url")
-	if err != nil || cnt >= plan.Config.Scraping.MaxPagesPerCrawl+plan.Config.Scraping.MaxURLsPerBot {
+	if err != nil {
+		p.logWarn("url_discovery_count_sources_failed", map[string]any{
+			"source_id": s.ID,
+			"error":     err.Error(),
+		})
+		return
+	}
+
+	maxTotal := plan.Config.Scraping.MaxPagesPerCrawl + plan.Config.Scraping.MaxURLsPerBot
+	if cnt >= maxTotal {
+		p.logInfo("url_discovery_skipped_limit_reached", map[string]any{
+			"source_id":         s.ID,
+			"current_count":     cnt,
+			"max_total":         maxTotal,
+		})
 		return
 	}
 
@@ -148,38 +279,80 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 	if len(bot.IncludePaths) > 0 || len(bot.ExcludePaths) > 0 {
 		filter, err = scraper.NewPathFilter(bot.IncludePaths, bot.ExcludePaths)
 		if err != nil {
-			p.logWarn("path_filter_creation_failed", map[string]any{
-				"source_id": s.ID,
-				"error":     err.Error(),
+			p.logWarn("url_discovery_path_filter_failed", map[string]any{
+				"source_id":     s.ID,
+				"include_paths": bot.IncludePaths,
+				"exclude_paths": bot.ExcludePaths,
+				"error":         err.Error(),
 			})
 			// Continue without filter rather than failing completely
 			filter = nil
+		} else {
+			p.logInfo("url_discovery_path_filter_created", map[string]any{
+				"source_id":     s.ID,
+				"include_paths": bot.IncludePaths,
+				"exclude_paths": bot.ExcludePaths,
+			})
 		}
 	}
 
 	// Extract links with filter
-	links, lerr := scraper.ExtractLinks(content, *s.SourceURL, filter)
+	links, lerr := scraper.ExtractLinks(rawHTML, *s.SourceURL, filter)
 	if lerr != nil {
+		p.logWarn("url_discovery_extract_links_failed", map[string]any{
+			"source_id": s.ID,
+			"url":       *s.SourceURL,
+			"error":     lerr.Error(),
+		})
+		return
+	}
+
+	p.logInfo("url_discovery_links_extracted", map[string]any{
+		"source_id":    s.ID,
+		"links_found":  len(links),
+		"filter_used":  filter != nil,
+	})
+
+	if len(links) == 0 {
+		p.logInfo("url_discovery_no_links_found", map[string]any{
+			"source_id": s.ID,
+			"url":       *s.SourceURL,
+			"hint":      "No internal links found on this page",
+		})
 		return
 	}
 
 	added := 0
+	skipped := 0
 	limit := plan.Config.Scraping.MaxPagesPerCrawl
 
 	for _, link := range links {
 		if added >= limit {
+			p.logInfo("url_discovery_limit_reached", map[string]any{
+				"source_id": s.ID,
+				"added":     added,
+				"limit":     limit,
+			})
 			break
 		}
 
 		switch discoveryMode {
 		case DiscoveryModeAuto:
-			// Current behavior: directly create source
+			// Create discovered source (will not crawl further due to is_discovered=true)
 			exists, _ := db.SourceExists(ctx, p.DB, s.ChatbotID, link)
 			if !exists {
-				_, cerr := db.CreateSource(ctx, p.DB, s.ChatbotID, "url", &link, nil, nil)
+				_, cerr := db.CreateDiscoveredSource(ctx, p.DB, s.ChatbotID, link)
 				if cerr == nil {
 					added++
+				} else {
+					p.logWarn("url_discovery_create_source_failed", map[string]any{
+						"source_id": s.ID,
+						"link":      link,
+						"error":     cerr.Error(),
+					})
 				}
+			} else {
+				skipped++
 			}
 		case DiscoveryModePending:
 			// New behavior: add to pending table for approval
@@ -189,20 +362,29 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 				sourceID := s.ID
 				if err := db.InsertPendingURL(ctx, p.DB, s.ChatbotID, &sourceID, link); err == nil {
 					added++
+				} else {
+					p.logWarn("url_discovery_insert_pending_failed", map[string]any{
+						"source_id": s.ID,
+						"link":      link,
+						"error":     err.Error(),
+					})
 				}
+			} else {
+				skipped++
 			}
 		}
 	}
 
-	if added > 0 {
-		p.logInfo("urls_discovered", map[string]any{
-			"source_id":      s.ID,
-			"mode":           discoveryMode,
-			"discovered":     added,
-			"total_found":    len(links),
-		})
-	}
+	p.logInfo("url_discovery_completed", map[string]any{
+		"source_id":     s.ID,
+		"mode":          discoveryMode,
+		"links_found":   len(links),
+		"added":         added,
+		"skipped":       skipped,
+		"limit":         limit,
+	})
 }
+
 
 // persistIngestionMetadata extracts and saves metadata for the source
 func (p *URLProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource) {
