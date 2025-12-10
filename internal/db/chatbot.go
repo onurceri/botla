@@ -6,14 +6,18 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/lib/pq"
 	"github.com/onurceri/botla-co/internal/models"
 )
 
 func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (string, error) {
 	var id string
 
-	// Serialize JSON fields
-	var fmJSON, trJSON interface{}
+	// Serialize JSONB fields
+	var sqJSON, fmJSON, trJSON interface{}
+	if bot.SuggestedQuestions != nil {
+		sqJSON, _ = json.Marshal(bot.SuggestedQuestions)
+	}
 	if bot.FallbackMessages != nil {
 		fmJSON, _ = json.Marshal(bot.FallbackMessages)
 	}
@@ -39,8 +43,8 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
 		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
-		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, bot.SuggestedQuestions, bot.SuggestionsEnabled,
-		bot.IncludePaths, bot.ExcludePaths, bot.SelectorWhitelist, bot.DiscoveryMode,
+		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, sqJSON, bot.SuggestionsEnabled,
+		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 		bot.RefreshPolicy, bot.RefreshFrequency, bot.NextRefreshAt, bot.LastRefreshAt,
 		bot.ConfidenceThreshold, fmJSON, trJSON,
 	).Scan(&id)
@@ -278,19 +282,14 @@ func GetUserByBotID(ctx context.Context, pool *sql.DB, botID string) (*models.Us
 }
 
 func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error {
-	var sj, ipj, epj, swj, cbj, fmj, trj, hcj interface{}
+	// suggested_questions is JSONB, so marshal to JSON
+	var sj []byte
 	if bot.SuggestedQuestions != nil {
 		sj, _ = json.Marshal(bot.SuggestedQuestions)
 	}
-	if bot.IncludePaths != nil {
-		ipj, _ = json.Marshal(bot.IncludePaths)
-	}
-	if bot.ExcludePaths != nil {
-		epj, _ = json.Marshal(bot.ExcludePaths)
-	}
-	if bot.SelectorWhitelist != nil {
-		swj, _ = json.Marshal(bot.SelectorWhitelist)
-	}
+
+	// For struct pointer fields (JSONB), keep as interface{} to allow NULL
+	var cbj, fmj, trj, hcj interface{}
 	if bot.CustomBranding != nil {
 		cbj, _ = json.Marshal(bot.CustomBranding)
 	}
@@ -304,6 +303,8 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		hcj, _ = json.Marshal(bot.HandoffConfig)
 	}
 
+	// include_paths, exclude_paths, selector_whitelist are TEXT[] columns
+	// Use pq.Array() to convert Go slices to PostgreSQL array format
 	_, err := pool.ExecContext(ctx, `
         UPDATE chatbots SET
             name=$1, description=$2, system_prompt=$3, language_id=(SELECT id FROM languages WHERE code=$4), model=$5,
@@ -328,7 +329,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName,
 		bot.AllowedDomains, bot.EmbedSecret, bot.SecureEmbedEnabled,
 		sj, bot.SuggestionsEnabled,
-		ipj, epj, swj, bot.DiscoveryMode,
+		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 		bot.RefreshPolicy, bot.RefreshFrequency,
 		bot.HideBranding, cbj,
 		bot.ConfidenceThreshold, fmj, trj,
@@ -352,7 +353,7 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// 1. Mark chatbot as deleted
 	res, err := tx.ExecContext(ctx, `
@@ -377,7 +378,7 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer sourceRows.Close()
+	defer func() { _ = sourceRows.Close() }()
 
 	var sourceIDs []string
 	for sourceRows.Next() {

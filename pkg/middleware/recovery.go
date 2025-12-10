@@ -26,11 +26,11 @@ func RecoveryMiddleware(log *logger.Logger) func(http.Handler) http.Handler {
 					// In dev, show stack trace in response
 					if os.Getenv("GO_ENV") == "development" {
 						w.Header().Set("Content-Type", "text/plain")
-						fmt.Fprintf(w, "Panic recovered: %v\n\n%s", err, stack)
+						_, _ = fmt.Fprintf(w, "Panic recovered: %v\n\n%s", err, stack)
 					} else {
 						// In prod, generic JSON error
 						w.Header().Set("Content-Type", "application/json")
-						w.Write([]byte(`{"error": "Internal Server Error", "code": "INTERNAL_ERROR"}`))
+						_, _ = w.Write([]byte(`{"error": "Internal Server Error", "code": "INTERNAL_ERROR"}`))
 					}
 				}
 			}()

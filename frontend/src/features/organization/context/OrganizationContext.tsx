@@ -86,7 +86,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedWsId = localStorage.getItem(`botla_last_ws_id_${orgId}`)
       const targetWs = ws.find(w => w.id === savedWsId) || ws[0]
       if (targetWs) {
-        selectWorkspace(targetWs.id, ws)
+        selectWorkspace(targetWs.id, ws, orgId)
       }
     } catch (error) {
       console.error('Failed to load workspaces', error)
@@ -94,12 +94,14 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
-  const selectWorkspace = (workspaceId: string, wsList = workspaces) => {
+  const selectWorkspace = (workspaceId: string, wsList = workspaces, orgId?: string) => {
     const ws = wsList.find((w) => w.id === workspaceId)
     if (ws) {
       setCurrentWorkspace(ws)
-      if (currentOrganization) {
-        localStorage.setItem(`botla_last_ws_id_${currentOrganization.id}`, workspaceId)
+      // Use orgId parameter if provided (during org switch), otherwise use currentOrganization
+      const targetOrgId = orgId || currentOrganization?.id
+      if (targetOrgId) {
+        localStorage.setItem(`botla_last_ws_id_${targetOrgId}`, workspaceId)
       }
     }
   }

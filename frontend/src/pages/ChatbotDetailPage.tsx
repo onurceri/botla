@@ -88,7 +88,8 @@ const ChatbotDetailPage = () => {
   const [userPlan, setUserPlan] = useState('free')
   const [planConfig, setPlanConfig] = useState<{ 
     branding?: { can_hide_branding?: boolean, can_custom_branding?: boolean },
-    scraping?: { max_pages_per_crawl?: number, max_urls_per_bot?: number, dynamic_enabled?: boolean }
+    scraping?: { max_pages_per_crawl?: number, max_urls_per_bot?: number, dynamic_enabled?: boolean },
+    security?: { secure_embed_enabled?: boolean }
   }>({});
   
   const isNew = id === 'new'
@@ -169,6 +170,12 @@ const ChatbotDetailPage = () => {
   const handleSave = async () => {
     if (!validate()) {
       toasts.error('Lütfen bir bot ismi girin.')
+      return
+    }
+
+    // Ensure workspace is selected before creating a new chatbot
+    if (isNew && !currentWorkspace) {
+      toasts.error('Lütfen önce bir çalışma alanı seçin.')
       return
     }
 
@@ -453,7 +460,7 @@ const ChatbotDetailPage = () => {
           <TabsContent value="connect" className="mt-0">
             <EmbeddingCodePanel
               id={id || ''}
-              userPlan={userPlan}
+              secureEmbedPlanEnabled={!!planConfig?.security?.secure_embed_enabled}
               secureEmbedEnabled={secureEmbedEnabled}
               allowedDomains={allowedDomains}
               embedSecret={embedSecret}

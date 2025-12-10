@@ -262,8 +262,8 @@ type AnalyticsPoint struct {
 	Date          string `json:"date"`
 	Messages      int    `json:"messages"`
 	Conversations int    `json:"conversations"`
-	Tokens        int    `json:"tokens,omitempty"`
-	ThumbsUp      int    `json:"thumbs_up,omitempty"`
-	ThumbsDown    int    `json:"thumbs_down,omitempty"`
-	Handoffs      int    `json:"handoffs,omitempty"`
+	Tokens        int    `json:"tokens"`
+	ThumbsUp      int    `json:"thumbs_up"`
+	ThumbsDown    int    `json:"thumbs_down"`
+	Handoffs      int    `json:"handoffs"`
 }

@@ -12,6 +12,11 @@ interface PlanConfig {
     can_hide_branding: boolean
     can_custom_branding: boolean
   }
+  security?: {
+    secure_embed_enabled: boolean
+  }
+  max_monthly_ingestions: number
+  max_monthly_embedding_tokens: number
   scraping: {
     dynamic_enabled: boolean
     max_urls_per_bot: number
@@ -45,6 +50,8 @@ interface Usage {
   urls_count: number
   max_urls_count_in_one_bot: number
   tokens_used: number
+  ingestions_used: number
+  ingestion_embedding_tokens: number
   refresh_count?: number
 }
 
@@ -197,7 +204,7 @@ const PlanPage = () => {
                    </div>
                    <div>
                       <p className="text-xs text-muted-foreground">Güvenli Embed</p>
-                      <div className="mt-1">{userPlan !== 'free' ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> : <InactiveBadge />}</div>
+                      <div className="mt-1">{planConfig?.security?.secure_embed_enabled ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> : <InactiveBadge />}</div>
                    </div>
                 </div>
              </div>
@@ -360,6 +367,24 @@ const PlanPage = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+               <div className="space-y-2 py-2 border-b last:border-0">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Aylık Kaynak Ekleme</span>
+                    <span className="text-muted-foreground">
+                      {usage?.ingestions_used ?? 0} / {planConfig?.max_monthly_ingestions ?? 0} kullanıldı
+                    </span>
+                  </div>
+                  <Progress value={calculatePercentage(usage?.ingestions_used ?? 0, planConfig?.max_monthly_ingestions ?? 0)} className="h-2" />
+               </div>
+               <div className="space-y-2 py-2 border-b last:border-0">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Aylık Embedding Token Kullanımı</span>
+                    <span className="text-muted-foreground">
+                      {(usage?.ingestion_embedding_tokens ?? 0).toLocaleString()} / {(planConfig?.max_monthly_embedding_tokens ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <Progress value={calculatePercentage(usage?.ingestion_embedding_tokens ?? 0, planConfig?.max_monthly_embedding_tokens ?? 0)} className="h-2" />
+               </div>
                <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>API Hız Limiti (Dakikalık)</span>

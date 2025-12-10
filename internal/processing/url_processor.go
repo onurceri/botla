@@ -66,20 +66,21 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 
 	// Step 1: Fetch raw HTML for link discovery (always, regardless of text extraction)
 	rawHTML, htmlErr := scraper.FetchRawHTML(*s.SourceURL, scraper.DefaultCollectorConfig())
-	if htmlErr != nil {
+	switch {
+	case htmlErr != nil:
 		p.logWarn("url_processing_fetch_html_failed", map[string]any{
 			"source_id": s.ID,
 			"url":       *s.SourceURL,
 			"error":     htmlErr.Error(),
 		})
-	} else if rawHTML != "" {
+	case rawHTML != "":
 		p.logInfo("url_processing_html_fetched", map[string]any{
 			"source_id":  s.ID,
 			"html_bytes": len(rawHTML),
 		})
 		// Attempt sub-page discovery using raw HTML
 		p.discoverSubPages(ctx, s, bot, plan, rawHTML)
-	} else {
+	default:
 		p.logWarn("url_processing_html_empty", map[string]any{
 			"source_id": s.ID,
 			"url":       *s.SourceURL,

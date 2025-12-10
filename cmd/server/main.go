@@ -147,7 +147,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	}))))
 
 	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc}
-	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
+	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(anh.GetAnalytics))))
 
 	// Organization routes
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}

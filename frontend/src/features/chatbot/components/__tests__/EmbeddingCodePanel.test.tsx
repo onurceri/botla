@@ -12,7 +12,7 @@ describe('EmbeddingCodePanel', () => {
     render(
       <EmbeddingCodePanel
         id="123"
-        userPlan="pro"
+        secureEmbedPlanEnabled={true}
         secureEmbedEnabled={false}
         allowedDomains=""
         embedSecret=""
@@ -34,7 +34,7 @@ describe('EmbeddingCodePanel', () => {
     render(
       <EmbeddingCodePanel
         id="abc"
-        userPlan="free"
+        secureEmbedPlanEnabled={false}
         secureEmbedEnabled={false}
         allowedDomains=""
         embedSecret=""
@@ -58,7 +58,7 @@ describe('EmbeddingCodePanel', () => {
     render(
       <EmbeddingCodePanel
         id="123"
-        userPlan="pro"
+        secureEmbedPlanEnabled={true}
         secureEmbedEnabled={true}
         allowedDomains="example.com"
         embedSecret="secret"

@@ -31,7 +31,17 @@ export const ChatbotAnalytics = ({ chatbotId }: ChatbotAnalyticsProps) => {
           getChatbotAnalyticsTrends(chatbotId, 30) // Default 30 days
         ])
         setOverview(overviewData)
-        setTrends(trendsData?.daily || [])
+        // Transform trends data to match Dashboard format for CustomTooltip compatibility
+        const normalizedTrends = (trendsData?.daily || []).map((item: any) => ({
+          date: item.date,
+          messages: item.total_messages || 0,
+          conversations: item.total_conversations || 0,
+          tokens: item.total_tokens_used || 0,
+          thumbs_up: item.thumbs_up_count || 0,
+          thumbs_down: item.thumbs_down_count || 0,
+          handoffs: item.handoff_count || 0
+        }))
+        setTrends(normalizedTrends)
       } catch (error) {
         console.error('Failed to fetch analytics:', error)
       } finally {
@@ -103,29 +113,56 @@ export const ChatbotAnalytics = ({ chatbotId }: ChatbotAnalyticsProps) => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorMsgs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                  <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorConversations" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} strokeOpacity={0.5} />
                 <XAxis 
                   dataKey="date" 
                   tickFormatter={formatXAxisTick} 
-                  stroke="#888888"
+                  stroke="#94a3b8"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
+                  dy={10}
                 />
                 <YAxis 
-                  stroke="#888888"
+                  stroke="#94a3b8"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={formatYAxisTick}
+                  dx={-10}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="total_messages" stroke="#8884d8" fillOpacity={1} fill="url(#colorMsgs)" name="Mesajlar" />
+                <Area 
+                  type="monotone" 
+                  dataKey="conversations" 
+                  name="Konuşma"
+                  stroke="#8b5cf6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorConversations)" 
+                  dot={false}
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#8b5cf6' }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="messages" 
+                  name="Mesaj"
+                  stroke="#f59e0b" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorMessages)" 
+                  dot={false}
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>

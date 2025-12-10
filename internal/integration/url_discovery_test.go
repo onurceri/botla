@@ -200,8 +200,8 @@ func TestURLDiscovery_PendingMode(t *testing.T) {
 			ID  string
 			URL string
 		}
-		if err := rows.Scan(&u.ID, &u.URL); err != nil {
-			t.Fatalf("failed to scan pending url: %v", err)
+		if scanErr := rows.Scan(&u.ID, &u.URL); scanErr != nil {
+			t.Fatalf("failed to scan pending url: %v", scanErr)
 		}
 		pendingURLs = append(pendingURLs, u)
 	}

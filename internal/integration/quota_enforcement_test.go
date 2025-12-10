@@ -36,10 +36,11 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	// Update free plan to have very low token limit
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100') WHERE code='free'`)
+	// Update free plan to have very low token limit (ensure chat config exists)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = COALESCE(config, '{}'::jsonb) || '{"chat": {"max_monthly_tokens": 100, "allowed_models": ["gpt-4o-mini"]}}'::jsonb WHERE code='free'`)
 
 	token := authToken(t, te.Server.URL, "chatquota@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "chatquota@example.com")
 
 	// Create chatbot
 	create := map[string]any{"name": "Chat Quota Bot"}
@@ -98,6 +99,7 @@ func TestQuota_RefreshExceeded(t *testing.T) {
     ) WHERE code='free'`)
 
 	token := authToken(t, te.Server.URL, "refreshquota@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "refreshquota@example.com")
 	userID := getUserIdFromToken(t, te.DB, "refreshquota@example.com")
 
 	// Manually increment refresh count (manual refresh uses refresh_count column)
@@ -157,6 +159,7 @@ func TestQuota_IngestionExceeded(t *testing.T) {
 	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"max_monthly_ingestions": 1}'::jsonb WHERE code='free'`)
 
 	token := authToken(t, te.Server.URL, "ingestionquota@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "ingestionquota@example.com")
 	userID := getUserIdFromToken(t, te.DB, "ingestionquota@example.com")
 
 	// Manually increment sources count

@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/middleware"
@@ -31,6 +33,7 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 
 	c, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil {
+		log.Printf("[ERROR] ByID GetChatbotByID failed: botID=%s, err=%v", botID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -110,6 +113,43 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
+	if req.RefreshPolicy != nil && *req.RefreshPolicy == "auto" {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil || !plan.Config.Refresh.Enabled {
+			base := api.BaseLang(c.LanguageCode)
+			cfg := api.ConfigFromBase(base)
+			api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPlanRefreshUnavailable, cfg)
+			return
+		}
+	}
+
+	if req.DiscoveryMode != nil && *req.DiscoveryMode != "disabled" {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil || plan.Config.Scraping.MaxPagesPerCrawl <= 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Discovery mode is not available on your plan",
+				"upgrade_required": true,
+			})
+			return
+		}
+	}
+
+	if req.SecureEmbedEnabled != nil && *req.SecureEmbedEnabled {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil || !plan.Config.Security.SecureEmbedEnabled {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Secure embed is not available on your plan",
+				"upgrade_required": true,
+				"feature":          "secure_embed",
+			})
+			return
+		}
+	}
+
 	// Apply updates
 	// If branding is explicitly turned off, clear any custom branding
 	if req.HideBranding != nil && !*req.HideBranding {
@@ -118,6 +158,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 	applyChatbotUpdates(c, req)
 
 	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
+		log.Printf("[ERROR] UpdateChatbot failed: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -125,6 +166,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 	// Re-read for updated_at change
 	c2, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil || c2 == nil {
+		log.Printf("[ERROR] GetChatbotByID after update failed: err=%v, c2=%v", err, c2)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

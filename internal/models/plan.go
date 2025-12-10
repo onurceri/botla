@@ -25,11 +25,16 @@ type PlanConfig struct {
 	Files                     FilesConfig    `json:"files"`
 	Chat                      ChatConfig     `json:"chat"`
 	Refresh                   RefreshConfig  `json:"refresh"`
+	Security                  SecurityConfig `json:"security"`
 	Branding                  BrandingConfig `json:"branding"`
 	MaxChatbots               int            `json:"max_chatbots"`
 	MaxMonthlyIngestions      int            `json:"max_monthly_ingestions"`
 	MaxMonthlyEmbeddingTokens int            `json:"max_monthly_embedding_tokens"`
 	MinReAddCooldownMinutes   int            `json:"min_readd_cooldown_minutes"`
+}
+
+type SecurityConfig struct {
+	SecureEmbedEnabled bool `json:"secure_embed_enabled"`
 }
 
 type RefreshConfig struct {

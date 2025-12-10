@@ -5,7 +5,7 @@ import { Info } from 'lucide-react'
 
 type Props = {
   id: string
-  userPlan: string
+  secureEmbedPlanEnabled: boolean
   secureEmbedEnabled: boolean
   allowedDomains: string
   embedSecret: string
@@ -17,7 +17,7 @@ type Props = {
 
 export default function EmbeddingCodePanel({
   id,
-  userPlan,
+  secureEmbedPlanEnabled,
   secureEmbedEnabled,
   allowedDomains,
   embedSecret,
@@ -33,13 +33,13 @@ export default function EmbeddingCodePanel({
         <CardDescription>Aşağıdaki kodu sitenizin &lt;body&gt; etiketinin sonuna yapıştırın.</CardDescription>
       </CardHeader>
       <CardContent>
-        {userPlan !== 'free' && (
+        {secureEmbedPlanEnabled && (
           <div className="mb-4 flex items-center gap-3">
             <label htmlFor="secure-embed-checkbox" className="text-sm font-medium">Güvenli Embed</label>
             <input id="secure-embed-checkbox" type="checkbox" checked={secureEmbedEnabled} onChange={(e) => onToggleSecure(e.target.checked)} />
           </div>
         )}
-        {userPlan !== 'free' && secureEmbedEnabled && (
+        {secureEmbedPlanEnabled && secureEmbedEnabled && (
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">İzinli Alan Adları (virgülle ayırın)</label>
@@ -49,7 +49,7 @@ export default function EmbeddingCodePanel({
               <label className="text-sm font-medium">Embed Secret</label>
               <div className="flex gap-2">
                 <Input value={embedSecret} onChange={(e) => onSecretChange(e.target.value)} placeholder="Gizli anahtar" />
-                <Button type="button" variant="secondary" onClick={onSecretRefresh}>Yenile</Button>
+                <Button size="sm" onClick={onSecretRefresh}>Yenile</Button>
               </div>
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function EmbeddingCodePanel({
             Kopyala
           </Button>
         </div>
-        {userPlan === 'free' && (
+        {!secureEmbedPlanEnabled && (
           <div className="mt-4 text-xs text-muted-foreground">Güvenli embed (izinli alan adı ve secret) özellikleri ücretli planlarda aktif edilir.</div>
         )}
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">

@@ -26,26 +26,56 @@ import { useOrganization } from '@/features/organization/context/OrganizationCon
 
 export const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    const data = payload[0]?.payload || {}
     return (
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-xl">
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-xl min-w-[180px]">
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
           {new Date(label).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
-        <div className="space-y-1">
+        <div className="space-y-2">
+          {/* Chart data (colored) */}
           {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2 text-sm">
-              <div 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="font-medium text-slate-700 dark:text-slate-200">
-                {entry.name}:
-              </span>
-              <span className="font-bold text-slate-900 dark:text-white">
+            <div key={index} className="flex items-center justify-between gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-2 h-2 rounded-full" 
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-slate-600 dark:text-slate-300">
+                  {entry.name}
+                </span>
+              </div>
+              <span className="font-semibold text-slate-900 dark:text-white">
                 {entry.value}
               </span>
             </div>
           ))}
+          
+          {/* Additional data */}
+          {(data.tokens > 0 || data.thumbs_up > 0 || data.thumbs_down > 0 || data.handoffs > 0) && (
+            <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+              {data.tokens > 0 && (
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>Token</span>
+                  <span className="font-medium">{data.tokens.toLocaleString()}</span>
+                </div>
+              )}
+              {(data.thumbs_up > 0 || data.thumbs_down > 0) && (
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>Geri Bildirim</span>
+                  <span className="font-medium">
+                    👍 {data.thumbs_up} / 👎 {data.thumbs_down}
+                  </span>
+                </div>
+              )}
+              {data.handoffs > 0 && (
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>İnsan Desteği</span>
+                  <span className="font-medium">{data.handoffs}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     )
@@ -96,9 +126,9 @@ const DashboardPage = () => {
         // Calculate totals from analytics
         const totalConv = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.conversations ?? 0), 0)
         const totalMsg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.messages ?? 0), 0)
-        const totalTok = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.tokens_used ?? 0), 0)
-        const totalPos = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.positive_feedback ?? 0), 0)
-        const totalNeg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.negative_feedback ?? 0), 0)
+        const totalTok = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.tokens ?? 0), 0)
+        const totalPos = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.thumbs_up ?? 0), 0)
+        const totalNeg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.thumbs_down ?? 0), 0)
 
         // Fetch Bots for count and recent list
         const { data } = await api.get('/api/v1/chatbots')
@@ -320,7 +350,11 @@ const DashboardPage = () => {
           <CardContent>
             <div className="space-y-4">
               {recentBots.map((bot) => (
-                <div key={bot.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                <Link 
+                  key={bot.id} 
+                  to={`/chatbots/${bot.id}`}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer group"
+                >
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/10">
                     <Bot className="w-5 h-5" />
                   </div>
@@ -328,12 +362,10 @@ const DashboardPage = () => {
                     <p className="text-sm font-medium leading-none truncate text-foreground">{bot.name}</p>
                     <p className="text-xs text-muted-foreground mt-1 truncate">{bot.model}</p>
                   </div>
-                  <Link to={`/chatbots/${bot.id}`}>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                </div>
+                  <div className="h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                    <ArrowUpRight className="w-4 h-4" />
+                  </div>
+                </Link>
               ))}
               {recentBots.length === 0 && (
                 <div className="text-center text-sm text-muted-foreground py-8">

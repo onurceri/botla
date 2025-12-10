@@ -115,7 +115,7 @@ func (q *SourceQueue) recoverPendingSources() {
 		}
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var recovered int
 	for rows.Next() {
@@ -204,7 +204,6 @@ func (q *SourceQueue) processSource(id string) {
 
 	q.complete(id, result.ChunkCount)
 }
-
 
 // enqueueNewURLSources discovers and enqueues pending URL sources
 func (q *SourceQueue) enqueueNewURLSources(chatbotID string) {
