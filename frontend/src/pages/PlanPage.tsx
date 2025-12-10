@@ -8,6 +8,10 @@ import { HardDrive, Globe, Cpu, Zap, Shield, Check, X, LayoutDashboard } from 'l
 import { api } from '@/api/client'
 
 interface PlanConfig {
+  branding?: {
+    can_hide_branding: boolean
+    can_custom_branding: boolean
+  }
   scraping: {
     dynamic_enabled: boolean
     max_urls_per_bot: number
@@ -321,6 +325,29 @@ const PlanPage = () => {
                   <span className="text-sm">RAG Bağlamı (Context)</span>
                   <span className="font-medium">{planConfig?.chat.rag.max_context_tokens} token</span>
                </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <LayoutDashboard className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Marka ve Özelleştirme</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center py-2 border-b last:border-0">
+                <span className="text-sm">‘Powered by Botla’ kaldırma</span>
+                {planConfig?.branding?.can_hide_branding
+                  ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge>
+                  : <InactiveBadge />}
+              </div>
+              <div className="flex justify-between items-center py-2 border-b last:border-0">
+                <span className="text-sm">Özel Branding (Logo/Bağlantı)</span>
+                {planConfig?.branding?.can_custom_branding
+                  ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge>
+                  : <InactiveBadge />}
+              </div>
             </CardContent>
           </Card>
 
