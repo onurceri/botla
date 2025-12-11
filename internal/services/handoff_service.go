@@ -50,6 +50,16 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	}
 
 	// Create handoff request in database
+	// Check for existing active handoff request
+	exists, err := db.HasActiveHandoffRequest(ctx, s.DB, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing handoff: %w", err)
+	}
+	if exists {
+		// Return specific error that can be handled by caller
+		return nil, errors.New(cfg.ResponseTemplates.Errors["HANDOFF_ALREADY_EXISTS"])
+	}
+
 	req := &models.HandoffRequest{
 		ChatbotID:      bot.ID,
 		ConversationID: conversationID,

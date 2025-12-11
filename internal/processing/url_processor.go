@@ -33,9 +33,10 @@ func NewURLProcessor(db *sql.DB, oai rag.LLMClient, log *logger.Logger) *URLProc
 
 // ProcessResult contains the result of source processing
 type ProcessResult struct {
-	ChunkCount int
-	Skipped    bool
-	Error      error
+	ChunkCount   int
+	Skipped      bool
+	Error        error
+	NewSourceIDs []string
 }
 
 // Process processes a URL source
@@ -106,11 +107,11 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	// Step 3: Handle empty content case
 	if content == "" {
 		p.logWarn("url_processing_content_empty", map[string]any{
-			"source_id":           s.ID,
-			"url":                 *s.SourceURL,
-			"dynamic_enabled":     plan.Config.Scraping.DynamicEnabled,
-			"selectors_used":      len(bot.SelectorWhitelist) > 0,
-			"hint":                "Website may require JavaScript rendering or has anti-bot protection",
+			"source_id":       s.ID,
+			"url":             *s.SourceURL,
+			"dynamic_enabled": plan.Config.Scraping.DynamicEnabled,
+			"selectors_used":  len(bot.SelectorWhitelist) > 0,
+			"hint":            "Website may require JavaScript rendering or has anti-bot protection",
 		})
 		// Return 0 chunks but not an error - discovery may have still succeeded
 		return ProcessResult{ChunkCount: 0}
@@ -128,7 +129,8 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	newHash := hex.EncodeToString(hashBytes[:])
 
 	// Check if content has changed (for refresh - skip re-embedding if unchanged)
-	if s.Hash != nil && *s.Hash == newHash {
+	// Also ensure we have chunks - if count is 0, we should reprocess even if hash matches
+	if s.Hash != nil && *s.Hash == newHash && s.ChunkCount > 0 {
 		p.logInfo("url_processing_content_unchanged", map[string]any{
 			"source_id": s.ID,
 			"url":       *s.SourceURL,
@@ -205,7 +207,6 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	return ProcessResult{ChunkCount: len(rc)}
 }
 
-
 // DiscoveryMode constants for URL discovery behavior
 const (
 	DiscoveryModeAuto     = "auto"     // Default: automatically add discovered URLs as sources
@@ -214,7 +215,8 @@ const (
 )
 
 // discoverSubPages crawls and discovers sub-pages from the raw HTML content
-func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSource, bot *models.Chatbot, plan *models.Plan, rawHTML string) {
+func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSource, bot *models.Chatbot, plan *models.Plan, rawHTML string) []string {
+	var newIDs []string
 	// Skip discovery for sources that were themselves discovered via crawling
 	// This implements 1-level depth crawling (only user-added URLs discover sub-pages)
 	if s.IsDiscovered {
@@ -223,7 +225,7 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 			"url":       *s.SourceURL,
 			"reason":    "Source was discovered via crawling, not manually added",
 		})
-		return
+		return nil
 	}
 
 	// Check discovery mode - default to auto for backward compatibility
@@ -244,15 +246,15 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 		p.logInfo("url_discovery_disabled", map[string]any{
 			"source_id": s.ID,
 		})
-		return
+		return nil
 	}
 
 	if plan.Config.Scraping.MaxPagesPerCrawl <= 0 {
 		p.logInfo("url_discovery_skipped_no_crawl_limit", map[string]any{
-			"source_id":          s.ID,
+			"source_id":           s.ID,
 			"max_pages_per_crawl": plan.Config.Scraping.MaxPagesPerCrawl,
 		})
-		return
+		return nil
 	}
 
 	// Only crawl if we haven't reached the limit
@@ -262,17 +264,17 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 			"source_id": s.ID,
 			"error":     err.Error(),
 		})
-		return
+		return nil
 	}
 
 	maxTotal := plan.Config.Scraping.MaxPagesPerCrawl + plan.Config.Scraping.MaxURLsPerBot
 	if cnt >= maxTotal {
 		p.logInfo("url_discovery_skipped_limit_reached", map[string]any{
-			"source_id":         s.ID,
-			"current_count":     cnt,
-			"max_total":         maxTotal,
+			"source_id":     s.ID,
+			"current_count": cnt,
+			"max_total":     maxTotal,
 		})
-		return
+		return nil
 	}
 
 	// Create path filter from chatbot settings
@@ -305,13 +307,13 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 			"url":       *s.SourceURL,
 			"error":     lerr.Error(),
 		})
-		return
+		return nil
 	}
 
 	p.logInfo("url_discovery_links_extracted", map[string]any{
-		"source_id":    s.ID,
-		"links_found":  len(links),
-		"filter_used":  filter != nil,
+		"source_id":   s.ID,
+		"links_found": len(links),
+		"filter_used": filter != nil,
 	})
 
 	if len(links) == 0 {
@@ -320,7 +322,7 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 			"url":       *s.SourceURL,
 			"hint":      "No internal links found on this page",
 		})
-		return
+		return nil
 	}
 
 	added := 0
@@ -342,9 +344,10 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 			// Create discovered source (will not crawl further due to is_discovered=true)
 			exists, _ := db.SourceExists(ctx, p.DB, s.ChatbotID, link)
 			if !exists {
-				_, cerr := db.CreateDiscoveredSource(ctx, p.DB, s.ChatbotID, link)
+				newID, cerr := db.CreateDiscoveredSource(ctx, p.DB, s.ChatbotID, link)
 				if cerr == nil {
 					added++
+					newIDs = append(newIDs, newID)
 				} else {
 					p.logWarn("url_discovery_create_source_failed", map[string]any{
 						"source_id": s.ID,
@@ -377,15 +380,15 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 	}
 
 	p.logInfo("url_discovery_completed", map[string]any{
-		"source_id":     s.ID,
-		"mode":          discoveryMode,
-		"links_found":   len(links),
-		"added":         added,
-		"skipped":       skipped,
-		"limit":         limit,
+		"source_id":   s.ID,
+		"mode":        discoveryMode,
+		"links_found": len(links),
+		"added":       added,
+		"skipped":     skipped,
+		"limit":       limit,
 	})
+	return newIDs
 }
-
 
 // persistIngestionMetadata extracts and saves metadata for the source
 func (p *URLProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource) {

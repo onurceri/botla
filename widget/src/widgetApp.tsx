@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChatBubble } from './components/ChatBubble'
 import { ChatDrawer } from './components/ChatDrawer'
 
-type Message = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean }
+type Message = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal' }
 
 export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed' }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute' }) {
   const [open, setOpen] = useState(!!autoOpen)
@@ -94,7 +94,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       setMessages(s.messages)
     } else if (welcome || config?.welcome_message) {
       const msg = welcome || config?.welcome_message
-      const wm = { role: 'assistant', content: msg, ts: Date.now() } as Message
+      const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as Message
       setMessages([wm])
       saveSession(chatbotId, { sessionId: s.sessionId, messages: [wm] })
     }
@@ -174,7 +174,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       const handoffMsg = data.message || 'Talebiniz alındı. En kısa sürede bir temsilcimiz sizinle iletişime geçecektir.'
-      const hm = { role: 'assistant', content: handoffMsg, ts: Date.now() } as Message
+      const hm = { role: 'assistant', content: handoffMsg, ts: Date.now(), type: 'handoff' } as Message
       setMessages((m) => {
         const nm = [...m, hm]
         saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })

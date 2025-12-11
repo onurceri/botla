@@ -29,7 +29,9 @@ func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.Embeddi
 		factory = rag.NewClientFactory()
 	}
 	if embedder == nil {
-		embedder, _ = rag.NewOpenAIClientFromEnv()
+		if client, err := rag.NewOpenAIClientFromEnv(); err == nil {
+			embedder = client
+		}
 	}
 	return &ChatService{
 		DB:       db,

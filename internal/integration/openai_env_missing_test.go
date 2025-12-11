@@ -12,6 +12,11 @@ func TestChat_OpenAIEnvMissing_500(t *testing.T) {
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
+
+	// Ensure OPENAI_API_KEY is missing, but satisfy LoadConfig with another key
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("ANTHROPIC_API_KEY", "dummy")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -19,8 +24,6 @@ func TestChat_OpenAIEnvMissing_500(t *testing.T) {
 	defer TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
-	// Ensure OPENAI_API_KEY is missing to trigger server-side 500
-	t.Setenv("OPENAI_API_KEY", "")
 
 	token := authToken(t, te.Server.URL, "envmissing@example.com")
 	create := map[string]any{"name": "Env Bot"}

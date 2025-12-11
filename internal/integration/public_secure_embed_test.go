@@ -19,6 +19,13 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 
 	// Create chatbot
 	token := authToken(t, te.Server.URL, "secure_owner@example.com")
+
+	// Enable secure embed for free plan (or upgrade user) to allow testing the feature logic
+	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code='free'`)
+	if err != nil {
+		t.Fatalf("failed to update plan config: %v", err)
+	}
+
 	secret := "my-secret-key-123"
 	create := map[string]any{
 		"name": "Secure Bot",

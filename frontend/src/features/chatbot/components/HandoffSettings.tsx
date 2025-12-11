@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Headphones, Mail, AlertCircle } from 'lucide-react'
+import { Headphones, Mail, AlertCircle, Info, CheckCircle2 } from 'lucide-react'
 
 type HandoffConfig = {
   email_to?: string
@@ -32,111 +32,175 @@ export default function HandoffSettings({
 
   return (
     <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Headphones className="w-5 h-5 text-primary" />
-            <CardTitle>İnsan Desteği Ayarları</CardTitle>
-          </div>
-          <CardDescription>
-            Bot cevaplayamadığında veya kullanıcı istediğinde insan operatöre devir ayarları.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Enable Toggle */}
+      <Card className="border-muted-foreground/20 shadow-sm overflow-hidden">
+        <CardHeader className="bg-muted/30 pb-6">
           <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">İnsan Desteğini Aktifleştir</label>
-              <p className="text-xs text-muted-foreground">
-                Kullanıcılar asistandan istediğinde temsilciye aktarım talebinde bulunabilir.
-              </p>
+            <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-violet-500/10 rounded-xl text-violet-600 ring-1 ring-violet-500/20">
+                    <Headphones className="w-6 h-6" />
+                </div>
+                <div>
+                    <CardTitle className="text-xl">İnsan Desteği Ayarları</CardTitle>
+                    <CardDescription className="text-base mt-1">
+                        Bot cevaplayamadığında veya kullanıcı istediğinde insan operatöre devir süreçlerini yönetin.
+                    </CardDescription>
+                </div>
             </div>
-            <Switch
-              checked={handoffEnabled}
-              onCheckedChange={setHandoffEnabled}
-            />
+            <div className="flex items-center gap-3 bg-background px-4 py-2 rounded-full border shadow-sm">
+                <span className="text-sm font-medium">Aktif</span>
+                <Switch
+                  checked={handoffEnabled}
+                  onCheckedChange={setHandoffEnabled}
+                />
+            </div>
           </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          {!handoffEnabled ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-2xl bg-muted/10 space-y-4">
+               <div className="p-4 bg-muted rounded-full">
+                  <Headphones className="w-8 h-8 text-muted-foreground/50" />
+               </div>
+               <div className="max-w-md space-y-2">
+                 <h3 className="text-lg font-semibold">İnsan Desteği Kapalı</h3>
+                 <p className="text-muted-foreground">
+                    Şu anda kullanıcılar bir temsilciye bağlanma talebinde bulunamaz. Sadece bot yanıtları aktiftir.
+                 </p>
+               </div>
+            </div>
+          ) : (
+            <div className="space-y-8 animate-in slide-in-from-top-4 duration-300">
+              
+              {/* Channel Selection (Only Email for now) */}
+              <div className="space-y-4">
+                 <label className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary"></span>
+                    İletişim Kanalı
+                 </label>
+                 <div className="grid md:grid-cols-2 gap-4">
+                    <div className="relative flex items-center gap-4 p-4 border-2 border-primary bg-primary/5 rounded-xl cursor-pointer shadow-sm">
+                       <div className="p-3 bg-background rounded-full border shadow-sm text-primary">
+                          <Mail className="w-5 h-5" />
+                       </div>
+                       <div>
+                          <p className="font-semibold text-foreground">E-posta Bildirimi</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Konuşma dökümünü e-posta ile gönder.</p>
+                       </div>
+                       <div className="absolute top-4 right-4">
+                          <CheckCircle2 className="w-5 h-5 text-primary fill-primary/10" />
+                       </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 p-4 border rounded-xl opacity-50 cursor-not-allowed bg-muted/20">
+                        <div className="p-3 bg-background rounded-full border shadow-sm text-muted-foreground">
+                            <Headphones className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-foreground">Canlı Destek (Yakında)</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Intercom, Zendesk vb. entegrasyonlar.</p>
+                        </div>
+                    </div>
+                 </div>
+              </div>
 
-          {handoffEnabled && (
-            <>
-              <div className="border-t pt-6 space-y-4">
-                {/* Handoff Type - Email only for now */}
-                <div className="flex items-center gap-3 p-4 border rounded-lg bg-primary/5">
-                  <Mail className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">E-posta ile Bildirim</p>
-                    <p className="text-xs text-muted-foreground">
-                      Kullanıcı destek istediğinde konuşma dökümü e-posta ile gönderilir.
-                    </p>
-                  </div>
-                </div>
+              <div className="border-t border-border/50" />
 
-                {/* Email Configuration */}
-                <div className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Alıcı E-posta Adresi</label>
-                    <Input
-                      type="email"
-                      placeholder="destek@firmaniz.com"
-                      value={handoffConfig?.email_to || ''}
-                      onChange={(e) => handleConfigChange('email_to', e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Destek talepleri bu adrese gönderilir.
-                    </p>
-                  </div>
+              {/* Email Configuration */}
+              <div className="space-y-6">
+                 <div className="space-y-1">
+                    <label className="text-base font-semibold text-foreground">E-posta Yapılandırması</label>
+                    <p className="text-sm text-muted-foreground">Destek taleplerinin iletileceği adres ve format ayarları.</p>
+                 </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">E-posta Başlığı (Opsiyonel)</label>
-                    <Input
-                      type="text"
-                      placeholder="[Botla] Yeni Destek Talebi - {bot_name}"
-                      value={handoffConfig?.email_subject || ''}
-                      onChange={(e) => handleConfigChange('email_subject', e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Boş bırakılırsa varsayılan başlık kullanılır.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Warning if no email configured */}
-                {!handoffConfig?.email_to && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
-                    <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-amber-800 dark:text-amber-200">
-                      <p className="font-medium">E-posta adresi gerekli</p>
-                      <p className="text-xs mt-1">
-                        İnsan desteği özelliğinin çalışması için bir e-posta adresi girmeniz gerekiyor.
+                 <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                         Alıcı E-posta Adresi <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        className="h-11 bg-background/50"
+                        type="email"
+                        placeholder="destek@firmaniz.com"
+                        value={handoffConfig?.email_to || ''}
+                        onChange={(e) => handleConfigChange('email_to', e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Tüm destek talepleri bu adrese yönlendirilir.
                       </p>
                     </div>
-                  </div>
-                )}
+
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">E-posta Başlığı (Opsiyonel)</label>
+                      <Input
+                        className="h-11 bg-background/50"
+                        type="text"
+                        placeholder="[Botla] Yeni Destek Talebi - {bot_name}"
+                        value={handoffConfig?.email_subject || ''}
+                        onChange={(e) => handleConfigChange('email_subject', e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Boş bırakılırsa varsayılan şablon kullanılır.
+                      </p>
+                    </div>
+                 </div>
+
+                 {/* Warning if no email configured */}
+                  {!handoffConfig?.email_to && (
+                    <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-semibold">E-posta adresi gerekli</p>
+                        <p className="mt-1 opacity-90">
+                          İnsan desteği özelliğinin çalışması için geçerli bir e-posta adresi girmeniz gerekmektedir. Aksi takdirde talepler iletilemez.
+                        </p>
+                      </div>
+                    </div>
+                  )}
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* Info Card */}
-      <Card className="bg-muted/30">
-        <CardContent className="pt-6">
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">Nasıl Çalışır?</h4>
-            <ul className="text-sm text-muted-foreground space-y-2">
-              <li className="flex items-start gap-2">
-                <span className="text-primary font-bold">1.</span>
-                <span>Kullanıcı chat widget&apos;ında &quot;İnsan Desteği İste&quot; butonuna basar.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary font-bold">2.</span>
-                <span>Konuşma dökümü otomatik olarak belirtilen e-posta adresine gönderilir.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary font-bold">3.</span>
-                <span>Kullanıcıya talebinin alındığı ve en kısa sürede iletişime geçileceği bildirilir.</span>
-              </li>
-            </ul>
+      <Card className="bg-gradient-to-br from-muted/50 to-muted/10 border-muted-foreground/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+             <div className="p-2 bg-background rounded-lg shadow-sm text-primary border">
+                 <Info className="w-5 h-5" />
+             </div>
+             <div className="space-y-4">
+                <h4 className="text-base font-semibold">Süreç Nasıl İşler?</h4>
+                <div className="grid md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs">1</span>
+                            Talep Oluşturma
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            Kullanıcı sohbet esnasında "İnsan Desteği" butonuna tıklar veya temsilciyle görüşmek istediğini belirtir.
+                        </p>
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs">2</span>
+                            Bildirim Gönderimi
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            Tüm konuşma geçmişi ve kullanıcı bilgileri, belirlediğiniz e-posta adresine anında raporlanır.
+                        </p>
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs">3</span>
+                            Kullanıcı Bilgilendirmesi
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            Kullanıcıya talebinin alındığı ve en kısa sürede dönüş yapılacağı bilgisi verilir.
+                        </p>
+                    </div>
+                </div>
+             </div>
           </div>
         </CardContent>
       </Card>

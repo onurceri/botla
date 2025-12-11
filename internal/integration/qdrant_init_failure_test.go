@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func startQdrantInitFailStub() *httptest.Server {
@@ -97,6 +98,7 @@ func TestStartup_QdrantCollectionInitFailure_StillWorks(t *testing.T) {
 			completed = true
 			break
 		}
+		time.Sleep(50 * time.Millisecond)
 	}
 	if !completed {
 		t.Fatalf("expected completed despite init failure")

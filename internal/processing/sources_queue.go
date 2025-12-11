@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -163,6 +164,11 @@ func (q *SourceQueue) worker() {
 			}
 			return
 		case id := <-q.ch:
+			// Add a small delay to prevent rapid-fire API calls (rate limiting)
+			// Skip in tests to avoid timeouts
+			if os.Getenv("GO_ENV") != "test" {
+				time.Sleep(500 * time.Millisecond)
+			}
 			q.processSource(id)
 		}
 	}
@@ -191,14 +197,12 @@ func (q *SourceQueue) processSource(id string) {
 	switch s.SourceType {
 	case "url":
 		result = q.urlProcessor.Process(context.Background(), s, bot, langCode, plan)
-		// Enqueue discovered sub-pages (URL processor creates them but doesn't enqueue)
-		q.enqueueNewURLSources(s.ChatbotID)
 	case "pdf":
 		result = q.pdfProcessor.Process(context.Background(), s, bot, langCode, plan)
 	case "text":
 		result = q.textProcessor.Process(context.Background(), s, bot, langCode)
 	default:
-		q.fail(id, "unsupported_type")
+		q.fail(id, "unknown_source_type")
 		return
 	}
 
@@ -207,31 +211,16 @@ func (q *SourceQueue) processSource(id string) {
 		return
 	}
 
-	// Log warning when source completes with 0 chunks
-	if result.ChunkCount == 0 && !result.Skipped {
-		if q.log != nil {
-			q.log.Warn("source_processing_empty_content", map[string]any{
-				"source_id":   id,
-				"source_type": s.SourceType,
-				"hint":        "Source completed but extracted 0 chunks - content may be empty or inaccessible",
-			})
-		}
-	}
-
-	q.complete(id, result.ChunkCount)
-}
-
-// enqueueNewURLSources discovers and enqueues pending URL sources
-func (q *SourceQueue) enqueueNewURLSources(chatbotID string) {
-	ctx := context.Background()
-	sources, err := db.ListSourcesByChatbotID(ctx, q.db, chatbotID)
-	if err != nil {
+	if result.Skipped {
+		q.complete(id, result.ChunkCount) // No tokens used if skipped
 		return
 	}
-	for _, s := range sources {
-		if s.SourceType == "url" && s.Status == "pending" {
-			q.Enqueue(s.ID)
-		}
+
+	q.complete(id, result.ChunkCount) // Tokens are tracked inside Process
+
+	// Enqueue any newly discovered sources
+	for _, newID := range result.NewSourceIDs {
+		q.Enqueue(newID)
 	}
 }
 

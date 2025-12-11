@@ -31,7 +31,6 @@ export const getSourceStatus = async (sourceId: string, etag?: string) => {
     const res = opts ? await api.get(url, opts) : await api.get(url)
     const newEtag = (res as any)?.headers?.['etag'] as string | undefined
     const payload = res.data
-    if (etag === undefined) return payload
     return { data: payload, etag: newEtag, notModified: false }
   } catch (err: any) {
     if (err?.response?.status === 304) {

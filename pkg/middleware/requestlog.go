@@ -11,6 +11,11 @@ type statusRecorder struct {
 	http.ResponseWriter
 	status int
 	bytes  int
+	userID string
+}
+
+func (sr *statusRecorder) SetUserID(id string) {
+	sr.userID = id
 }
 
 func (sr *statusRecorder) WriteHeader(code int) {
@@ -34,7 +39,13 @@ func RequestLogger(log *logger.Logger) func(http.Handler) http.Handler {
 			sr := &statusRecorder{ResponseWriter: w}
 			next.ServeHTTP(sr, r)
 			dur := time.Since(start)
-			uid, _ := UserIDFromContext(r.Context())
+			
+			// Use userID from recorder if set (by AuthMiddleware), otherwise try context
+			uid := sr.userID
+			if uid == "" {
+				uid, _ = UserIDFromContext(r.Context())
+			}
+			
 			log.Info("http_request", map[string]any{
 				"method":      r.Method,
 				"path":        r.URL.Path,

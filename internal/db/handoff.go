@@ -97,3 +97,20 @@ func CountPendingHandoffRequests(ctx context.Context, pool *sql.DB, chatbotID st
 	}
 	return count, nil
 }
+
+// HasActiveHandoffRequest checks if there is any pending or assigned handoff request for the conversation
+func HasActiveHandoffRequest(ctx context.Context, pool *sql.DB, conversationID string) (bool, error) {
+	var exists bool
+	err := pool.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM handoff_requests
+			WHERE conversation_id = $1
+			AND status IN ($2, $3)
+		)`,
+		conversationID, models.HandoffStatusPending, models.HandoffStatusAssigned,
+	).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}

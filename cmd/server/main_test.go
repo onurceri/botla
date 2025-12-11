@@ -24,6 +24,7 @@ func TestChatbotsDispatchHandler_Routes(t *testing.T) {
 		code int
 	}{
 		{"/api/v1/chatbots/x/sources", http.StatusUnauthorized},
+		{"/api/v1/chatbots/x/analytics/sources", http.StatusUnauthorized},
 		{"/api/v1/chatbots/x/chat", http.StatusUnauthorized},
 		{"/api/v1/chatbots/x", http.StatusUnauthorized},
 	}

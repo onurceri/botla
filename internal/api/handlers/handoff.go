@@ -39,12 +39,12 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	}
 
 	// Extract bot ID from path
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 4 {
+	const prefix = "/api/v1/public/chatbots/"
+	botID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, prefix), "/handoff")
+	if botID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	botID := parts[3]
 
 	// Parse request
 	var req publicHandoffRequest

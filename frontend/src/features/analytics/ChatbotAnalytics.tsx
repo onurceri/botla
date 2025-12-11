@@ -109,8 +109,8 @@ export const ChatbotAnalytics = ({ chatbotId }: ChatbotAnalyticsProps) => {
           <CardTitle>Aktivite Grafiği (Son 30 Gün)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="min-w-0">
+            <ResponsiveContainer width="100%" height={300} minWidth={0}>
               <AreaChart data={trends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">

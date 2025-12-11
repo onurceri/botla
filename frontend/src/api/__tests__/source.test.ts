@@ -38,7 +38,7 @@ describe('api/source', () => {
   it('getSourceStatus fetches by id', async () => {
     const get = vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: 's1', status: 'ready' } } as any)
     const data = await getSourceStatus('s1')
-    expect(data).toEqual({ id: 's1', status: 'ready' })
+    expect(data).toEqual({ data: { id: 's1', status: 'ready' }, etag: undefined, notModified: false })
     expect(get).toHaveBeenCalledWith('/api/v1/sources/s1')
   })
 

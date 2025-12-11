@@ -93,10 +93,6 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 				return
 			}
 		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
-			sh.ChatbotSources(w, r)
-			return
-		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
 			middleware.RateLimitMiddleware(rl)(http.HandlerFunc(chh.Chat)).ServeHTTP(w, r)
 			return
@@ -123,6 +119,14 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 			anh.GetChatbotAnalyticsOverview(w, r)
 			return
 		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/analytics/sources") {
+			anh.GetSourceUsage(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") && !strings.Contains(r.URL.Path, "/analytics/") {
+			sh.ChatbotSources(w, r)
+			return
+		}
 		ch.ByID(w, r)
 	})))
 	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -135,6 +139,10 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") {
+			handh.PublicRequestHandoff(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
 			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
 			ph.PublicChat(w, r)
@@ -142,7 +150,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 		}
 		handlers.PublicChatbotConfig(pool)(w, r)
 	}))
-	mux.Handle("/api/public/", http.HandlerFunc(handh.PublicRequestHandoff))
+	// mux.Handle("/api/public/", http.HandlerFunc(handh.PublicRequestHandoff))
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	return cors(mux)

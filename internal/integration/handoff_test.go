@@ -84,7 +84,7 @@ func TestHandoff_Flow(t *testing.T) {
 	// Note: public endpoint usually doesn't need auth, but it depends on implementation.
 	// The handler calls `db.GetChatbotByID` and `db.GetOrCreateConversationBySessionID`.
 	// Path: /api/public/:botId/handoff
-	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/public/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
 	resH, _ := http.DefaultClient.Do(reqH)
 	if resH.StatusCode != http.StatusOK {
@@ -190,7 +190,7 @@ func TestHandoff_Analytics(t *testing.T) {
 		"message":    "Human please",
 	}
 	hr, _ := json.Marshal(handoffReq)
-	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/public/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
 	resH, _ := http.DefaultClient.Do(reqH)
 	if resH.StatusCode != http.StatusOK {
@@ -318,7 +318,7 @@ func TestHandoff_EdgeCases(t *testing.T) {
 		"message":    "Human please",
 	}
 	hr, _ := json.Marshal(handoffReq)
-	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/public/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
 	resH, _ := http.DefaultClient.Do(reqH)
 
@@ -352,7 +352,7 @@ func TestHandoff_EdgeCases(t *testing.T) {
 	resU.Body.Close()
 
 	// Request Handoff again
-	reqH2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/public/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH2.Header.Set("Content-Type", "application/json")
 	resH2, _ := http.DefaultClient.Do(reqH2)
 
@@ -433,7 +433,7 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 		"message":    "Status check",
 	}
 	hr, _ := json.Marshal(handoffReq)
-	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/public/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
 	resH, _ := http.DefaultClient.Do(reqH)
 	var hRes struct {
@@ -492,4 +492,101 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	if listRes.Requests[0].Status != "resolved" {
 		t.Fatalf("expected resolved, got %s", listRes.Requests[0].Status)
 	}
+}
+
+func TestHandoff_DuplicateRequest(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	token := authTokenForHandoff(t, te.Server.URL, "handoff_dup@example.com")
+
+	// 1. Create Bot & Enable Handoff
+	createBot := map[string]any{"name": "Dup Bot", "language": "en-US"}
+	cb, _ := json.Marshal(createBot)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	var bot struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	updateBot := map[string]any{
+		"handoff_enabled": true,
+		"handoff_type":    "email",
+		"handoff_config": map[string]string{
+			"email_to": "support@example.com",
+		},
+	}
+	ub, _ := json.Marshal(updateBot)
+	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
+	reqU.Header.Set("Authorization", "Bearer "+token)
+	reqU.Header.Set("Content-Type", "application/json")
+	http.DefaultClient.Do(reqU)
+
+	// 2. Make First Request
+	handoffReq := map[string]any{
+		"session_id": "dup-session",
+		"message":    "First request",
+	}
+	hr, _ := json.Marshal(handoffReq)
+	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH.Header.Set("Content-Type", "application/json")
+	resH, _ := http.DefaultClient.Do(reqH)
+	if resH.StatusCode != http.StatusOK {
+		t.Fatalf("first handoff failed: %d", resH.StatusCode)
+	}
+	var resBody1 struct {
+		RequestID string `json:"request_id"`
+	}
+	json.NewDecoder(resH.Body).Decode(&resBody1)
+	resH.Body.Close()
+
+	// 3. Make Second Request (Should Fail)
+	reqH2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH2.Header.Set("Content-Type", "application/json")
+	resH2, _ := http.DefaultClient.Do(reqH2)
+	
+	// Expect failure because pending request exists
+	if resH2.StatusCode != http.StatusInternalServerError {
+		// Note: The service returns generic error, which handler maps to 500 currently. 
+		// Ideally it should be 400 or 409, but based on current implementation:
+		// Service returns error -> Handler logs it -> Handler returns 500 "failed to create handoff request"
+		t.Logf("Got status code %d for duplicate request", resH2.StatusCode)
+	}
+	// We can check the body to be sure it's the expected error if we propagated it,
+	// but currently handler masks errors unless we update it too.
+	// For now, let's just ensure we can't create another one easily or check response.
+	// Actually, wait, let's verify if the error returned is indeed what we expect.
+	// The service returns "HANDOFF_ALREADY_EXISTS" (from config).
+	// The public handler does: 
+	// if err != nil { w.WriteHeader(http.StatusInternalServerError); ... "error": "failed to create handoff request" }
+	// So we expect 500.
+
+	if resH2.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected 500 for duplicate request, got %d", resH2.StatusCode)
+	}
+	resH2.Body.Close()
+
+	// 4. Resolve First Request
+	updateReq := map[string]string{"status": "resolved"}
+	ur, _ := json.Marshal(updateReq)
+	reqUp, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+resBody1.RequestID, bytes.NewReader(ur))
+	reqUp.Header.Set("Authorization", "Bearer "+token)
+	reqUp.Header.Set("Content-Type", "application/json")
+	http.DefaultClient.Do(reqUp)
+
+	// 5. Make Third Request (Should Succeed)
+	reqH3, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH3.Header.Set("Content-Type", "application/json")
+	resH3, _ := http.DefaultClient.Do(reqH3)
+	if resH3.StatusCode != http.StatusOK {
+		t.Errorf("expected success for new request after resolution, got %d", resH3.StatusCode)
+	}
+	resH3.Body.Close()
 }

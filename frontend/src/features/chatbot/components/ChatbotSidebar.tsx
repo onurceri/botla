@@ -1,13 +1,16 @@
 import { Settings, Database, Play, Code, MessageSquare, Zap, Shield, Headphones, BarChart3 } from 'lucide-react'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
-interface ChatbotSidebarProps {
-  activeTab: string
-  onTabChange: (tab: string) => void
-}
+export function ChatbotSidebar() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  
+  // Extract active tab from URL path
+  // path format: /chatbots/:id/overview
+  const activeTab = location.pathname.split('/').pop() || 'overview'
 
-export function ChatbotSidebar({ activeTab, onTabChange }: ChatbotSidebarProps) {
   const groups = [
     {
       label: 'Genel',
@@ -42,10 +45,8 @@ export function ChatbotSidebar({ activeTab, onTabChange }: ChatbotSidebarProps) 
 
   return (
     <>
-      {/* Mobile View - Horizontal Scroll */}
-      {/* Mobile View - Dropdown Menu */}
       <div className="lg:hidden w-full pb-6">
-        <Select value={activeTab} onValueChange={onTabChange}>
+        <Select value={activeTab} onValueChange={(val) => navigate(val)}>
           <SelectTrigger className="w-full bg-background h-12">
              <SelectValue placeholder="Menü Seçin" />
           </SelectTrigger>
@@ -69,7 +70,6 @@ export function ChatbotSidebar({ activeTab, onTabChange }: ChatbotSidebarProps) 
         </Select>
       </div>
 
-      {/* Desktop View - Vertical Sidebar */}
       <nav className="hidden lg:flex flex-col gap-8 w-64 flex-shrink-0 sticky top-0">
         {groups.map((group) => (
           <div key={group.label} className="space-y-2">
@@ -78,21 +78,19 @@ export function ChatbotSidebar({ activeTab, onTabChange }: ChatbotSidebarProps) 
             </h3>
             <div className="space-y-1">
               {group.items.map((item) => (
-                <button
+                <NavLink
                   key={item.id}
-                  role="tab"
-                  aria-selected={activeTab === item.id}
-                  onClick={() => onTabChange(item.id)}
-                  className={cn(
+                  to={item.id}
+                  className={({ isActive }) => cn(
                     "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-left",
-                    activeTab === item.id
+                    isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <item.icon className="w-4 h-4" />
                   {item.label}
-                </button>
+                </NavLink>
               ))}
             </div>
           </div>

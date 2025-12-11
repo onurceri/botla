@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func startQdrantUpsertErrorStub() *httptest.Server {
@@ -103,6 +104,7 @@ func TestSources_Text_QdrantUpsertError_FailedStatus(t *testing.T) {
 			failed = true
 			break
 		}
+		time.Sleep(50 * time.Millisecond)
 	}
 	if !failed {
 		t.Fatalf("expected failed status due to upsert error")

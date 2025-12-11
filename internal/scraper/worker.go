@@ -60,10 +60,15 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 	}
 	c := bundle.Collector
 	var content string
+	var scrapeErr error
+
+	c.OnError(func(r *colly.Response, e error) {
+		scrapeErr = e
+	})
 
 	c.OnHTML("body", func(e *colly.HTMLElement) {
 		sel := e.DOM
-		
+
 		// Use CSS selectors if provided, otherwise use full body
 		var txt string
 		if scrapeConfig != nil && len(scrapeConfig.Selectors) > 0 {
@@ -71,7 +76,7 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 		} else {
 			txt = visibleText(sel)
 		}
-		
+
 		n, _ := NormalizeText(txt)
 		content = strings.Join(strings.Fields(n), " ")
 	})
@@ -84,6 +89,10 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 		return "", err
 	}
 	c.Wait()
+
+	if scrapeErr != nil {
+		return "", scrapeErr
+	}
 
 	if content == "" {
 		l.Warn("scraper_empty", map[string]any{"url": task.URL})
@@ -106,6 +115,11 @@ func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
 	}
 	c := bundle.Collector
 	var rawHTML string
+	var scrapeErr error
+
+	c.OnError(func(r *colly.Response, e error) {
+		scrapeErr = e
+	})
 
 	c.OnResponse(func(r *colly.Response) {
 		rawHTML = string(r.Body)
@@ -119,6 +133,10 @@ func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
 		return "", err
 	}
 	c.Wait()
+
+	if scrapeErr != nil {
+		return "", scrapeErr
+	}
 
 	if rawHTML == "" {
 		l.Warn("fetch_raw_html_empty", map[string]any{"url": targetURL})
@@ -166,12 +184,12 @@ func ExtractLinks(htmlContent string, baseURL string, filter *PathFilter) ([]str
 						// But safer is same host.
 						if u.Host == base.Host {
 							s := u.String()
-							
+
 							// Apply path filter if provided
 							if filter != nil && !filter.Match(u.Path) {
 								continue
 							}
-							
+
 							if !seen[s] && s != baseURL {
 								seen[s] = true
 								links = append(links, s)

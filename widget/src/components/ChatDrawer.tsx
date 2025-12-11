@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Message as MsgComp } from './Message'
 import { Suggestions } from './Suggestions'
 
-type Msg = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean }
+type Msg = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal' }
 
 type CustomBranding = {
   logo_url?: string
@@ -53,6 +53,10 @@ export function ChatDrawer(
     }
   }
 
+  const hasUserMessages = messages.some(m => m.role === 'user')
+  const hasHandoffRequest = messages.some(m => m.type === 'handoff')
+  const isHandoffDisabled = loading || !hasUserMessages || hasHandoffRequest
+
   return (
     <div className="cbw-panel" role="dialog" aria-label="Chatbot">
       <div className="cbw-header">
@@ -68,8 +72,12 @@ export function ChatDrawer(
           <button 
             className="cbw-handoff-btn" 
             onClick={onRequestHandoff} 
-            disabled={loading}
+            disabled={isHandoffDisabled}
             aria-label="İnsan desteği iste"
+            style={{ 
+              opacity: isHandoffDisabled ? 0.5 : 1, 
+              cursor: isHandoffDisabled ? 'not-allowed' : 'pointer' 
+            }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/>
@@ -80,7 +88,7 @@ export function ChatDrawer(
       )}
       <div className="cbw-messages">
         {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} />)}
-        {(!messages || messages.filter(m => m.role === 'user').length === 0) && suggestions && suggestions.length > 0 && (
+        {(!messages || (messages.filter(m => m.role === 'user').length === 0 && !messages.some(m => m.type === 'handoff'))) && suggestions && suggestions.length > 0 && (
           <div className="cbw-msg-row assistant" style={{ justifyContent: 'flex-start', alignItems: 'flex-start' }}>
             <div className="cbw-avatar" style={{ marginTop: '4px' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

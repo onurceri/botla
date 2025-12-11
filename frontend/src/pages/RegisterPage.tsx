@@ -47,9 +47,7 @@ const RegisterPage = () => {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
         
         <div className="relative z-10 flex items-center gap-2 font-bold text-2xl">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
-            <Bot className="w-6 h-6" />
-          </div>
+          <img src="/logo-128.png" alt="Botla Logo" className="w-10 h-10 rounded-xl shadow-lg shadow-primary/20" />
           <span className="text-foreground">Botla.co</span>
         </div>
 

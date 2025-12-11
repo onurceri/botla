@@ -62,7 +62,7 @@ func SetupTestEnv() (*TestEnv, error) {
 	if os.Getenv("PORT") == "" {
 		_ = os.Setenv("PORT", "8080")
 	}
-	if os.Getenv("OPENAI_API_KEY") == "" {
+	if _, ok := os.LookupEnv("OPENAI_API_KEY"); !ok {
 		_ = os.Setenv("OPENAI_API_KEY", "test-key")
 	}
 

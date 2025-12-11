@@ -3,26 +3,29 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 // SourceUsageStats represents usage statistics for a data source
 type SourceUsageStats struct {
-	SourceID         string  `json:"source_id"`
-	SourceName       string  `json:"source_name"`
-	SourceType       string  `json:"source_type"`
-	TimesUsed        int     `json:"times_used"`
-	AvgRelevance     float64 `json:"avg_relevance"`
-	PositiveFeedback int     `json:"positive_feedback"`
-	NegativeFeedback int     `json:"negative_feedback"`
-	LastUsed         string  `json:"last_used"`
+	SourceID         string    `json:"source_id"`
+	SourceName       string    `json:"source_name"`
+	SourceType       string    `json:"source_type"`
+	TimesUsed        int       `json:"times_used"`
+	AvgRelevance     float64   `json:"avg_relevance"`
+	PositiveFeedback int       `json:"positive_feedback"`
+	NegativeFeedback int       `json:"negative_feedback"`
+	LastUsed         time.Time `json:"last_used"`
 }
 
 // GetSourceUsageStats returns usage statistics for sources of a chatbot
 func GetSourceUsageStats(ctx context.Context, pool *sql.DB, chatbotID string, days int) ([]SourceUsageStats, error) {
+	cutoff := time.Now().AddDate(0, 0, -days)
+
 	query := `
         SELECT 
             ds.id as source_id,
-            ds.name as source_name,
+            COALESCE(ds.original_filename, ds.source_url, 'Unknown Source') as source_name,
             ds.source_type,
             COUNT(DISTINCT ms.message_id) as times_used,
             AVG(ms.relevance_score) as avg_relevance,
@@ -34,12 +37,12 @@ func GetSourceUsageStats(ctx context.Context, pool *sql.DB, chatbotID string, da
         INNER JOIN messages m ON ms.message_id = m.id
         INNER JOIN conversations c ON m.conversation_id = c.id
         WHERE c.chatbot_id = $1
-          AND ms.created_at >= CURRENT_DATE - ($2 || ' days')::interval
-        GROUP BY ds.id, ds.name, ds.source_type
+          AND ms.created_at >= $2
+        GROUP BY ds.id, ds.original_filename, ds.source_url, ds.source_type
         ORDER BY times_used DESC
     `
 
-	rows, err := pool.QueryContext(ctx, query, chatbotID, days)
+	rows, err := pool.QueryContext(ctx, query, chatbotID, cutoff)
 	if err != nil {
 		return nil, err
 	}

@@ -152,7 +152,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	// Organization routes
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
 	auth := middleware.AuthMiddleware(cfg.JWT_SECRET)
-	
+
 	// Helper middlewares
 	requireMember := middleware.RequireOrganizationAccess(orgSvc, "member")
 	requireAdmin := middleware.RequireOrganizationAccess(orgSvc, "admin")
@@ -161,7 +161,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	// Org List/Create
 	mux.Handle("GET /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
 	mux.Handle("POST /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
-	
+
 	// Org Management
 	mux.Handle("PATCH /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.UpdateOrganization))))
 	mux.Handle("DELETE /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.DeleteOrganization))))
@@ -203,20 +203,6 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 				return
 			}
 		}
-		// Sitemap discovery endpoint
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {
-			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.DiscoverSitemap)).ServeHTTP(w, r)
-			return
-		}
-		// Bulk sources creation endpoint
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources/bulk") {
-			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.BulkCreateSources)).ServeHTTP(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") {
-			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.ChatbotSources)).ServeHTTP(w, r)
-			return
-		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
 			chh.Chat(w, r)
 			return
@@ -253,6 +239,20 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 				anh.GetSourceUsage(w, r)
 				return
 			}
+		}
+		// Sitemap discovery endpoint
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {
+			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.DiscoverSitemap)).ServeHTTP(w, r)
+			return
+		}
+		// Bulk sources creation endpoint
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources/bulk") {
+			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.BulkCreateSources)).ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") && !strings.Contains(r.URL.Path, "/analytics/") {
+			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.ChatbotSources)).ServeHTTP(w, r)
+			return
 		}
 		ch.ByID(w, r)
 	}))

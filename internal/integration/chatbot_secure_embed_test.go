@@ -15,6 +15,13 @@ func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "secure@example.com")
+
+	// Enable secure embed for free plan to allow testing
+	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code='free'`)
+	if err != nil {
+		t.Fatalf("failed to update plan config: %v", err)
+	}
+
 	create := map[string]any{"name": "Secure Bot"}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSources_PDF_Ingest_Failure_NoFitz(t *testing.T) {
@@ -64,10 +65,12 @@ func TestSources_PDF_Ingest_Failure_NoFitz(t *testing.T) {
 		var st map[string]any
 		json.NewDecoder(resG.Body).Decode(&st)
 		resG.Body.Close()
-		if st["status"].(string) == "failed" {
+		status := st["status"].(string)
+		if status == "failed" {
 			failed = true
 			break
 		}
+		time.Sleep(50 * time.Millisecond)
 	}
 	if !failed {
 		t.Fatalf("expected failed status without fitz")
