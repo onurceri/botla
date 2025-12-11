@@ -440,7 +440,8 @@ func TestModelRestrictions(t *testing.T) {
 	token := authToken(t, te.Server.URL, "restricted_test@example.com")
 
 	// Update plan to allow ONLY gpt-4o-mini
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,allowed_models}', '["gpt-4o-mini"]') WHERE code='free'`)
+	// We set the entire 'chat' object to ensure it exists, avoiding jsonb_set limitation with missing parents
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o-mini"]}') WHERE code='free'`)
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "restricted_test@example.com")
 
 	// Try to create chatbot with forbidden model

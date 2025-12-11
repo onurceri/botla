@@ -23,7 +23,7 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText, extraUrlSettin
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => setActiveMode(activeMode === 'pdf' ? null : 'pdf')}
           className={cn(

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 // ClientFactory manages LLM client creation
@@ -37,6 +38,10 @@ func (f *ClientFactory) GetClient(provider string) (LLMClient, error) {
 
 // GetClientForModel parses the model string (provider:model) and returns the appropriate client
 func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string, error) {
+	if !config.IsModelSupported(modelString) {
+		return nil, "", errors.New("unsupported model: " + modelString)
+	}
+
 	parts := strings.SplitN(modelString, ":", 2)
 	var provider, modelName string
 

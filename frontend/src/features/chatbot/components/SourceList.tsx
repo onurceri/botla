@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { CheckCircle2, RefreshCw, AlertCircle, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -17,27 +18,21 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
   const canRefresh = userPlan !== 'free'
 
   return (
-    <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
-      <table className="w-full text-sm text-left">
-        <thead className="bg-muted/40 text-muted-foreground font-medium">
-          <tr>
-            <th className="px-4 py-3">Tip</th>
-            <th className="px-4 py-3">Kaynak Adı</th>
-            <th className="px-4 py-3">Durum</th>
-            <th className="px-4 py-3">Parçalar</th>
-            <th className="px-4 py-3 text-right">İşlem</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {sources.map((s) => (
-            <tr key={s.id} className="hover:bg-muted/50 transition-colors">
-              <td className="px-4 py-3 uppercase text-xs font-bold text-muted-foreground">{s.source_type}</td>
-              <td className="px-4 py-3 font-medium truncate max-w-[200px] text-foreground" title={s.original_filename || s.source_url}>
-                {s.original_filename || s.source_url}
-              </td>
-              <td className="px-4 py-3">
+    <div className="space-y-4">
+      {/* Mobile View: Cards */}
+      <div className="md:hidden space-y-4">
+        {sources.map((s) => (
+          <Card key={s.id}>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-muted-foreground uppercase">{s.source_type}</div>
+                  <CardTitle className="text-base break-all line-clamp-2" title={s.original_filename || s.source_url}>
+                    {s.original_filename || s.source_url}
+                  </CardTitle>
+                </div>
                 <span className={cn(
-                  'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium',
+                  'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium shrink-0',
                   s.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
                   s.status === 'processing' ? 'bg-blue-100 text-blue-700' :
                   s.status === 'failed' ? 'bg-red-100 text-red-700' :
@@ -46,50 +41,132 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
                   {s.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
                   {s.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
                   {s.status === 'failed' && <AlertCircle className="w-3 h-3" />}
+                  {s.status === 'pending' && <RefreshCw className="w-3 h-3 animate-pulse" />}
                   {s.status}
                 </span>
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">{s.chunk_count}</td>
-              <td className="px-4 py-3 text-right space-x-1">
-                {s.source_type === 'url' && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-muted-foreground hover:text-primary disabled:opacity-50"
-                            aria-label="Kaynağı Yenile"
-                            disabled={!canRefresh || s.status === 'pending' || s.status === 'processing' || refreshingId === s.id}
-                            onClick={() => onRefresh(s.id)}
-                          >
-                            <RefreshCw className={cn("w-4 h-4", refreshingId === s.id && "animate-spin")} />
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      {!canRefresh && (
-                        <TooltipContent>
-                          <p>Yenileme özelliği ücretli planlarda aktiftir</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pb-2 text-sm text-muted-foreground">
+               <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{s.chunk_count}</span>
+                  <span>Parça</span>
+               </div>
+            </CardContent>
+            <CardFooter className="pt-2 flex justify-end gap-2 border-t">
+              {s.source_type === 'url' && (
                 <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  aria-label="Kaynağı Sil"
-                  onClick={() => onDelete(s.id)}
+                  variant="outline" 
+                  size="sm" 
+                  disabled={!canRefresh || s.status === 'pending' || s.status === 'processing' || refreshingId === s.id}
+                  onClick={() => onRefresh(s.id)}
+                  className="h-8"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <RefreshCw className={cn("w-3.5 h-3.5 mr-2", refreshingId === s.id && "animate-spin")} />
+                  Yenile
                 </Button>
-              </td>
+              )}
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => onDelete(s.id)}
+                className="h-8"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" />
+                Sil
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+        {sources.length === 0 && (
+           <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
+             Henüz kaynak eklenmemiş.
+           </div>
+        )}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block rounded-2xl border border-border overflow-hidden shadow-sm">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-muted/40 text-muted-foreground font-medium">
+            <tr>
+              <th className="px-4 py-3">Tip</th>
+              <th className="px-4 py-3">Kaynak Adı</th>
+              <th className="px-4 py-3">Durum</th>
+              <th className="px-4 py-3">Parçalar</th>
+              <th className="px-4 py-3 text-right">İşlem</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {sources.map((s) => (
+              <tr key={s.id} className="hover:bg-muted/50 transition-colors">
+                <td className="px-4 py-3 uppercase text-xs font-bold text-muted-foreground">{s.source_type}</td>
+                <td className="px-4 py-3 font-medium truncate max-w-[200px] text-foreground" title={s.original_filename || s.source_url}>
+                  {s.original_filename || s.source_url}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={cn(
+                    'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium',
+                    s.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                    s.status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                    s.status === 'failed' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  )}>
+                    {s.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
+                    {s.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
+                    {s.status === 'failed' && <AlertCircle className="w-3 h-3" />}
+                    {s.status === 'pending' && <RefreshCw className="w-3 h-3 animate-pulse" />}
+                    {s.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{s.chunk_count}</td>
+                <td className="px-4 py-3 text-right space-x-1">
+                  {s.source_type === 'url' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-primary disabled:opacity-50"
+                              aria-label="Kaynağı Yenile"
+                              disabled={!canRefresh || s.status === 'pending' || s.status === 'processing' || refreshingId === s.id}
+                              onClick={() => onRefresh(s.id)}
+                            >
+                              <RefreshCw className={cn("w-4 h-4", refreshingId === s.id && "animate-spin")} />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        {!canRefresh && (
+                          <TooltipContent>
+                            <p>Yenileme özelliği ücretli planlarda aktiftir</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    aria-label="Kaynağı Sil"
+                    onClick={() => onDelete(s.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+             {sources.length === 0 && (
+               <tr>
+                 <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                   Henüz kaynak eklenmemiş.
+                 </td>
+               </tr>
+             )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

@@ -80,76 +80,101 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	}
 	_ = db.IncrementConversationMessageCount(ctx, s.DB, conv.ID)
 
-	// Create embedding and search for context
-	embedding, err := embedder.CreateEmbedding(ctx, req.Message)
-	var contextText string
-	var sources []models.SourceUsed
-	var chunkMetas []models.ChunkMetadata
-
-	if err == nil && qc != nil {
-		ctxText, metas, _ := rag.SearchContext(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens, bot.ConfidenceThreshold)
-		contextText = ctxText
-		chunkMetas = metas
-		for _, m := range metas {
-			sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
-		}
-	}
-
 	// Get language config
 	langCode := normalizeLangCode(bot.LanguageCode)
 	cfg := langconfig.Get(langCode)
 
-	// Generate response
+	// Create embedding and perform tiered search
+	embedding, err := embedder.CreateEmbedding(ctx, req.Message)
+	var searchResult *rag.TieredSearchResult
+	var sources []models.SourceUsed
+	var chunkMetas []models.ChunkMetadata
+
+	if err == nil && qc != nil {
+		// Use tiered search with ThresholdConfig
+		thresholdCfg := bot.ThresholdConfig
+		if thresholdCfg == nil {
+			thresholdCfg = models.DefaultThresholdConfig()
+		}
+		searchResult, err = rag.SearchContextTiered(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens, thresholdCfg)
+		if err != nil && s.Log != nil {
+			s.Log.Warn("tiered_search_error", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
+		}
+		if searchResult != nil {
+			chunkMetas = searchResult.AllChunks
+			for _, m := range searchResult.AllChunks {
+				sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
+			}
+		}
+	}
+
+	// Handle nil searchResult
+	if searchResult == nil {
+		searchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
+	}
+
+	// Generate response based on tier
 	var ans string
 	var tokens int
+	var confidenceTier string = string(searchResult.Tier)
 
-	if strings.TrimSpace(contextText) == "" {
-		ans = cfg.ResponseTemplates.NoInfoFound
-		if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
-			ans = bot.FallbackMessages.NoInfoFound
-		}
-		tokens = 0
-	} else {
-		sp := resolveSystemPrompt(bot.SystemPrompt, cfg)
-
-		// Get client for the model
-		client, modelName, err := s.Factory.GetClientForModel(bot.Model)
-		if err != nil {
-			c, e := rag.NewOpenAIClientFromEnv()
-			if e != nil || c == nil {
-				return nil, fmt.Errorf("openai client not configured: %w", e)
-			}
-			client = c
-			modelName = "gpt-4o-mini"
-		}
-
-		if client == nil {
-			return nil, fmt.Errorf("model client unavailable")
-		}
-
-		// Prepare completion params
-		params := models.CompletionParams{
-			SystemPrompt: sp,
-			Context:      contextText,
-			UserMessage:  req.Message,
-			Model:        modelName,
-			Temperature:  bot.Temperature,
-			MaxTokens:    bot.MaxTokens,
-		}
-
-		res, err := client.CreateCompletion(ctx, params)
+	switch searchResult.Tier {
+	case rag.TierHigh:
+		// 🟢 Strong match - normal RAG flow
+		ans, tokens, err = s.generateWithContext(ctx, bot, searchResult.ContextText, req.Message, cfg)
 		if err != nil {
 			ans = cfg.ResponseTemplates.ErrorMessage
 			if bot.FallbackMessages != nil && bot.FallbackMessages.ErrorMessage != "" {
 				ans = bot.FallbackMessages.ErrorMessage
 			}
-			tokens = 0
-			if s.Log != nil {
-				s.Log.Error("completion_error", map[string]any{"error": err.Error(), "model": bot.Model})
+		}
+
+	case rag.TierMedium:
+		// 🟡 Weak match - RAG with confidence warning
+		ans, tokens, err = s.generateWithContext(ctx, bot, searchResult.ContextText, req.Message, cfg)
+		if err != nil {
+			ans = cfg.ResponseTemplates.ErrorMessage
+			if bot.FallbackMessages != nil && bot.FallbackMessages.ErrorMessage != "" {
+				ans = bot.FallbackMessages.ErrorMessage
 			}
 		} else {
-			ans = res.Content
-			tokens = res.UsageTokens
+			// Add confidence warning if enabled
+			thresholdCfg := bot.ThresholdConfig
+			if thresholdCfg == nil {
+				thresholdCfg = models.DefaultThresholdConfig()
+			}
+			if thresholdCfg.ShowConfidenceWarning {
+				ans = ans + cfg.ResponseTemplates.ConfidenceWarning
+			}
+		}
+
+	case rag.TierLow:
+		// 🔴 No match - fallback mode
+		thresholdCfg := bot.ThresholdConfig
+		if thresholdCfg == nil {
+			thresholdCfg = models.DefaultThresholdConfig()
+		}
+
+		switch thresholdCfg.FallbackMode {
+		case "smart":
+			// Use LLM with smart fallback prompt
+			ans, tokens, err = s.smartFallback(ctx, bot, req.Message, cfg)
+			if err != nil {
+				ans = cfg.ResponseTemplates.NoInfoFound
+				if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
+					ans = bot.FallbackMessages.NoInfoFound
+				}
+			}
+		case "escalate":
+			// Suggest human handoff
+			ans = cfg.ResponseTemplates.HandoffSuggestion
+			tokens = 0
+		default: // "static"
+			ans = cfg.ResponseTemplates.NoInfoFound
+			if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
+				ans = bot.FallbackMessages.NoInfoFound
+			}
+			tokens = 0
 		}
 	}
 
@@ -169,7 +194,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	}
 
 	// Update analytics asynchronously
-	isUnanswered := strings.TrimSpace(contextText) == ""
+	isUnanswered := searchResult.Tier == rag.TierLow
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -190,6 +215,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 		ConversationID: conv.ID,
 		MessageID:      amID,
 		IsNewConv:      isNewConv,
+		ConfidenceTier: confidenceTier,
 	}, nil
 }
 
@@ -401,3 +427,124 @@ func resolveSystemPrompt(customPrompt string, cfg langconfig.LanguageConfig) str
 	}
 	return customPrompt
 }
+
+// generateWithContext generates a response using LLM with the provided context
+func (s *ChatService) generateWithContext(ctx context.Context, bot *models.Chatbot, contextText string, userMessage string, cfg langconfig.LanguageConfig) (string, int, error) {
+	sp := resolveSystemPrompt(bot.SystemPrompt, cfg)
+
+	// Get client for the model
+	client, modelName, err := s.Factory.GetClientForModel(bot.Model)
+	if err != nil {
+		c, e := rag.NewOpenAIClientFromEnv()
+		if e != nil || c == nil {
+			return "", 0, fmt.Errorf("openai client not configured: %w", e)
+		}
+		client = c
+		modelName = "gpt-4o-mini"
+	}
+
+	if client == nil {
+		return "", 0, fmt.Errorf("model client unavailable")
+	}
+
+	// Add localized context intro prefix
+	formattedContext := contextText
+	if strings.TrimSpace(contextText) != "" {
+		formattedContext = cfg.ResponseTemplates.RAGContextIntro + contextText
+	}
+
+	// Prepare completion params
+	params := models.CompletionParams{
+		SystemPrompt: sp,
+		Context:      formattedContext,
+		UserMessage:  userMessage,
+		Model:        modelName,
+		Temperature:  bot.Temperature,
+		MaxTokens:    bot.MaxTokens,
+	}
+
+	res, err := client.CreateCompletion(ctx, params)
+	if err != nil {
+		if s.Log != nil {
+			s.Log.Error("completion_error", map[string]any{"error": err.Error(), "model": bot.Model})
+		}
+		return "", 0, err
+	}
+
+	return res.Content, res.UsageTokens, nil
+}
+
+// smartFallback generates a helpful response when no context is available
+func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, userMessage string, cfg langconfig.LanguageConfig) (string, int, error) {
+	// Get capability summaries from sources
+	capabilities := s.getCapabilitySummaries(ctx, bot.ID)
+
+	// Build the smart fallback prompt
+	capabilityText := ""
+	if capabilities != "" {
+		capabilityText = cfg.ResponseTemplates.CapabilityIntro + "\n" + capabilities
+	}
+	systemPrompt := fmt.Sprintf(cfg.ResponseTemplates.SmartFallbackPrompt, capabilityText)
+
+	// Get client for the model
+	client, modelName, err := s.Factory.GetClientForModel(bot.Model)
+	if err != nil {
+		c, e := rag.NewOpenAIClientFromEnv()
+		if e != nil || c == nil {
+			return "", 0, fmt.Errorf("openai client not configured: %w", e)
+		}
+		client = c
+		modelName = "gpt-4o-mini"
+	}
+
+	if client == nil {
+		return "", 0, fmt.Errorf("model client unavailable")
+	}
+
+	// Use lower temperature for more controlled response
+	params := models.CompletionParams{
+		SystemPrompt: systemPrompt,
+		Context:      "",
+		UserMessage:  userMessage,
+		Model:        modelName,
+		Temperature:  0.3, // Lower temperature for controlled fallback
+		MaxTokens:    200, // Short response for fallback
+	}
+
+	res, err := client.CreateCompletion(ctx, params)
+	if err != nil {
+		if s.Log != nil {
+			s.Log.Error("smart_fallback_error", map[string]any{"error": err.Error(), "model": bot.Model})
+		}
+		return "", 0, err
+	}
+
+	return res.Content, res.UsageTokens, nil
+}
+
+// getCapabilitySummaries retrieves capability summaries from data sources
+func (s *ChatService) getCapabilitySummaries(ctx context.Context, chatbotID string) string {
+	sources, err := db.ListSourcesByChatbotID(ctx, s.DB, chatbotID)
+	if err != nil || len(sources) == 0 {
+		return ""
+	}
+
+	var summaries []string
+	for _, src := range sources {
+		if src.CapabilitySummary != nil && *src.CapabilitySummary != "" {
+			summaries = append(summaries, "- "+*src.CapabilitySummary)
+		}
+	}
+
+	if len(summaries) == 0 {
+		return ""
+	}
+
+	// Limit to first 5 to avoid too long prompt
+	if len(summaries) > 5 {
+		summaries = summaries[:5]
+	}
+
+	return strings.Join(summaries, "\n")
+}
+

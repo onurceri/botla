@@ -68,7 +68,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
-               c.confidence_threshold, c.fallback_messages, c.topic_restrictions,
+               c.confidence_threshold, c.threshold_config, c.fallback_messages, c.topic_restrictions,
                COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
@@ -96,7 +96,7 @@ func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID strin
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
-               c.confidence_threshold, c.fallback_messages, c.topic_restrictions,
+               c.confidence_threshold, c.threshold_config, c.fallback_messages, c.topic_restrictions,
                COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
@@ -114,7 +114,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj, ipj, epj, swj, cbj, fmj, trj, hcj []byte
+		var sj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -128,7 +128,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			&ipj, &epj, &swj, &c.DiscoveryMode,
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 			&c.HideBranding, &cbj,
-			&c.ConfidenceThreshold, &fmj, &trj,
+			&c.ConfidenceThreshold, &tcj, &fmj, &trj,
 			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		); err != nil {
 			return nil, err
@@ -158,6 +158,11 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			_ = json.Unmarshal(cbj, &cb)
 			c.CustomBranding = &cb
 		}
+		if len(tcj) > 0 {
+			var tc models.ThresholdConfig
+			_ = json.Unmarshal(tcj, &tc)
+			c.ThresholdConfig = &tc
+		}
 		if len(fmj) > 0 {
 			var fm models.FallbackMessages
 			_ = json.Unmarshal(fmj, &fm)
@@ -183,7 +188,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 
 func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatbot, error) {
 	var c models.Chatbot
-	var sj, ipj, epj, swj, cbj, fmj, trj, hcj []byte
+	var sj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
@@ -197,7 +202,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
-               c.confidence_threshold, c.fallback_messages, c.topic_restrictions,
+               c.confidence_threshold, c.threshold_config, c.fallback_messages, c.topic_restrictions,
                COALESCE(c.handoff_enabled, false) AS handoff_enabled, COALESCE(c.handoff_type, 'email') AS handoff_type, c.handoff_config
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
@@ -214,7 +219,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		&ipj, &epj, &swj, &c.DiscoveryMode,
 		&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 		&c.HideBranding, &cbj,
-		&c.ConfidenceThreshold, &fmj, &trj,
+		&c.ConfidenceThreshold, &tcj, &fmj, &trj,
 		&c.HandoffEnabled, &c.HandoffType, &hcj,
 	)
 	if err != nil {
@@ -247,6 +252,11 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		var cb models.CustomBranding
 		_ = json.Unmarshal(cbj, &cb)
 		c.CustomBranding = &cb
+	}
+	if len(tcj) > 0 {
+		var tc models.ThresholdConfig
+		_ = json.Unmarshal(tcj, &tc)
+		c.ThresholdConfig = &tc
 	}
 	if len(fmj) > 0 {
 		var fm models.FallbackMessages
@@ -289,9 +299,12 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 	}
 
 	// For struct pointer fields (JSONB), keep as interface{} to allow NULL
-	var cbj, fmj, trj, hcj interface{}
+	var cbj, tcj, fmj, trj, hcj interface{}
 	if bot.CustomBranding != nil {
 		cbj, _ = json.Marshal(bot.CustomBranding)
+	}
+	if bot.ThresholdConfig != nil {
+		tcj, _ = json.Marshal(bot.ThresholdConfig)
 	}
 	if bot.FallbackMessages != nil {
 		fmj, _ = json.Marshal(bot.FallbackMessages)
@@ -318,9 +331,9 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             include_paths=$26, exclude_paths=$27, selector_whitelist=$28, discovery_mode=$29,
             refresh_policy=$30, refresh_frequency=$31,
             hide_branding=$32, custom_branding=$33,
-            confidence_threshold=$34, fallback_messages=$35, topic_restrictions=$36,
-            handoff_enabled=$37, handoff_type=$38, handoff_config=$39
-        WHERE id=$40`,
+            confidence_threshold=$34, threshold_config=$35, fallback_messages=$36, topic_restrictions=$37,
+            handoff_enabled=$38, handoff_type=$39, handoff_config=$40
+        WHERE id=$41`,
 		bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
@@ -332,7 +345,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 		bot.RefreshPolicy, bot.RefreshFrequency,
 		bot.HideBranding, cbj,
-		bot.ConfidenceThreshold, fmj, trj,
+		bot.ConfidenceThreshold, tcj, fmj, trj,
 		bot.HandoffEnabled, bot.HandoffType, hcj,
 		bot.ID,
 	)

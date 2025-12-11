@@ -45,12 +45,31 @@ type Chatbot struct {
 	LastRefreshAt        *time.Time `json:"last_refresh_at,omitempty"`
 	HideBranding         bool            `json:"hide_branding"`
 	CustomBranding       *CustomBranding `json:"custom_branding,omitempty"`
-	ConfidenceThreshold  float64         `json:"confidence_threshold"`
+	ConfidenceThreshold  float64           `json:"confidence_threshold"`
+	ThresholdConfig      *ThresholdConfig  `json:"threshold_config,omitempty"`
 	FallbackMessages     *FallbackMessages `json:"fallback_messages,omitempty"`
-	TopicRestrictions    *TopicConfig    `json:"topic_restrictions,omitempty"`
-	HandoffEnabled       bool            `json:"handoff_enabled"`
-	HandoffType          string          `json:"handoff_type"`
-	HandoffConfig        *HandoffConfig  `json:"handoff_config,omitempty"`
+	TopicRestrictions    *TopicConfig      `json:"topic_restrictions,omitempty"`
+	HandoffEnabled       bool              `json:"handoff_enabled"`
+	HandoffType          string            `json:"handoff_type"`
+	HandoffConfig        *HandoffConfig    `json:"handoff_config,omitempty"`
+}
+
+// ThresholdConfig represents tiered confidence threshold configuration
+type ThresholdConfig struct {
+	HighThreshold         float64 `json:"high_threshold"`           // >= this: strong match (default 0.50)
+	MediumThreshold       float64 `json:"medium_threshold"`         // >= this: weak match (default 0.30)
+	FallbackMode          string  `json:"fallback_mode"`            // "smart" | "static" | "escalate"
+	ShowConfidenceWarning bool    `json:"show_confidence_warning"`  // Show warning for medium matches
+}
+
+// DefaultThresholdConfig returns sensible defaults for threshold configuration
+func DefaultThresholdConfig() *ThresholdConfig {
+	return &ThresholdConfig{
+		HighThreshold:         0.50,
+		MediumThreshold:       0.30,
+		FallbackMode:          "smart",
+		ShowConfidenceWarning: true,
+	}
 }
 
 // CustomBranding represents custom branding configuration (Enterprise plan feature)

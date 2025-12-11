@@ -21,7 +21,13 @@ type ResponseTemplates struct {
 	DefaultOrgName              string // Default org name when no user name
 	DefaultOrgNameFormat        string // Format: "%s's Workspace"
 	DefaultWorkspaceName        string // Default workspace name
-	Errors                      map[string]string
+	// Tiered threshold templates
+	ConfidenceWarning       string // Warning for medium confidence responses
+	SmartFallbackPrompt     string // System prompt for smart fallback mode
+	CapabilityIntro         string // Intro for listing bot capabilities
+	HandoffSuggestion       string // Suggestion to use human support
+	RAGContextIntro         string // Intro for RAG context (before documents)
+	Errors                  map[string]string
 }
 
 var Configs = map[string]LanguageConfig{
@@ -45,6 +51,19 @@ var Configs = map[string]LanguageConfig{
 			DefaultOrgName:              "Kişisel Organizasyon",
 			DefaultOrgNameFormat:        "%s Organizasyonu",
 			DefaultWorkspaceName:        "Varsayılan",
+			// Tiered threshold templates
+			ConfidenceWarning:   "\n\n⚠️ *Bu yanıt, sınırlı bilgi kaynaklarına dayanmaktadır ve kesin doğruluğu garanti edilemez.*",
+			SmartFallbackPrompt: `Sen bir müşteri destek asistanısın. Kullanıcı sana bir soru sordu ama bu konuda bilgi kaynağın yok.
+
+ÖNEMLİ KURALLAR:
+1. ASLA uydurma veya tahmine dayalı bilgi verme
+2. Kibarca bu konuda bilgin olmadığını belirt
+3. Eğer verilmişse, hangi konularda yardımcı olabileceğini belirt:
+%s
+4. Kısa ve nazik bir şekilde cevap ver.`,
+			CapabilityIntro:     "Ben şu konularda size yardımcı olabilirim:",
+			HandoffSuggestion:   "Bu konuda size en iyi şekilde yardımcı olabilmem için bir uzmanımızla görüşmenizi öneririm. 'İnsan Desteği İste' butonunu kullanabilirsiniz.",
+			RAGContextIntro:     "Aşağıdaki belgeler sorgularına cevap vermek için kullanılmıştır:\n\n",
 			Errors: map[string]string{
 				"ERR_MONTHLY_TOKENS_EXCEEDED":       "Aylık token sınırı aşıldı",
 				"ERR_NAME_AND_ACTION_TYPE_REQUIRED": "'name' ve 'action_type' alanları zorunludur",
@@ -100,6 +119,19 @@ var Configs = map[string]LanguageConfig{
 			DefaultOrgName:              "Personal Workspace",
 			DefaultOrgNameFormat:        "%s's Workspace",
 			DefaultWorkspaceName:        "Default",
+			// Tiered threshold templates
+			ConfidenceWarning:   "\n\n⚠️ *This response is based on limited sources and accuracy cannot be guaranteed.*",
+			SmartFallbackPrompt: `You are a customer support assistant. The user asked a question but you don't have information on this topic.
+
+IMPORTANT RULES:
+1. NEVER provide made-up or speculative information
+2. Politely indicate you don't have information on this topic
+3. If provided, mention what topics you CAN help with:
+%s
+4. Keep your response short and polite.`,
+			CapabilityIntro:     "I can help you with the following topics:",
+			HandoffSuggestion:   "For the best assistance on this topic, I recommend speaking with one of our specialists. You can use the 'Request Human Support' button.",
+			RAGContextIntro:     "The following documents were used to answer your query:\n\n",
 			Errors: map[string]string{
 				"ERR_MONTHLY_TOKENS_EXCEEDED":       "Monthly token limit exceeded",
 				"ERR_NAME_AND_ACTION_TYPE_REQUIRED": "name and action_type are required",

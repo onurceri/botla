@@ -20,4 +20,6 @@ type ChatResult struct {
 	ConversationID string       `json:"conversation_id"`
 	MessageID      string       `json:"message_id"`
 	IsNewConv      bool         `json:"is_new_conversation"`
+	ConfidenceTier string       `json:"confidence_tier,omitempty"` // "high", "medium", "low"
 }
+

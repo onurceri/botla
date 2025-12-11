@@ -123,3 +123,42 @@ func GetDefaultModelForProvider(provider string) string {
 		return "gpt-4o-mini"
 	}
 }
+
+// IsModelSupported checks if a model is supported by the system
+// This is a basic validation to prevent invalid model names from being passed to providers
+// For OpenRouter, we allow all models as it's a gateway.
+func IsModelSupported(model string) bool {
+	// Handle provider prefixes
+	parts := strings.SplitN(model, ":", 2)
+	provider := "openai"
+	modelName := model
+	if len(parts) == 2 {
+		provider = strings.ToLower(parts[0])
+		modelName = parts[1]
+	}
+
+	switch provider {
+	case "openai":
+		// Known OpenAI models
+		valid := []string{
+			"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
+		}
+		for _, v := range valid {
+			if strings.HasPrefix(modelName, v) {
+				return true
+			}
+		}
+		return false
+	case "anthropic":
+		// Known Anthropic models
+		return strings.Contains(modelName, "claude")
+	case "google":
+		// Known Google models
+		return strings.Contains(modelName, "gemini")
+	case "openrouter":
+		// OpenRouter allows many models, trust the user/config
+		return true
+	default:
+		return false
+	}
+}

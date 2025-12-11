@@ -69,7 +69,8 @@ func CreateDiscoveredSource(ctx context.Context, pool *sql.DB, chatbotID string,
 func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string) ([]models.DataSource, error) {
 	rows, err := pool.QueryContext(ctx, `
         SELECT id, chatbot_id, source_type, source_url, file_path, original_filename,
-               status, error_message, chunk_count, processed_at, created_at, hash, deleted_at, size_bytes, last_refreshed_at, COALESCE(is_discovered, false)
+               status, error_message, chunk_count, processed_at, created_at, hash, deleted_at, 
+               size_bytes, last_refreshed_at, COALESCE(is_discovered, false), capability_summary
         FROM data_sources
         WHERE chatbot_id=$1 AND deleted_at IS NULL
         ORDER BY created_at DESC`, chatbotID)
@@ -82,7 +83,8 @@ func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string)
 		var d models.DataSource
 		if err := rows.Scan(
 			&d.ID, &d.ChatbotID, &d.SourceType, &d.SourceURL, &d.FilePath, &d.OriginalFilename,
-			&d.Status, &d.ErrorMessage, &d.ChunkCount, &d.ProcessedAt, &d.CreatedAt, &d.Hash, &d.DeletedAt, &d.SizeBytes, &d.LastRefreshedAt, &d.IsDiscovered,
+			&d.Status, &d.ErrorMessage, &d.ChunkCount, &d.ProcessedAt, &d.CreatedAt, &d.Hash, &d.DeletedAt, 
+			&d.SizeBytes, &d.LastRefreshedAt, &d.IsDiscovered, &d.CapabilitySummary,
 		); err != nil {
 			return nil, err
 		}

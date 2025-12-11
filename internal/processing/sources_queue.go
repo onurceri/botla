@@ -95,12 +95,28 @@ func (q *SourceQueue) Stop() {
 
 // recoverPendingSources finds and enqueues sources stuck in 'pending' status at startup
 func (q *SourceQueue) recoverPendingSources() {
+	defer func() {
+		if r := recover(); r != nil {
+			if q.log != nil {
+				q.log.Error("recover_pending_sources_panic", map[string]any{"panic": r})
+			}
+		}
+	}()
+
 	if q == nil || q.db == nil {
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// Check if DB is reachable to avoid panic in QueryContext with uninitialized DB
+	if err := q.db.PingContext(ctx); err != nil {
+		if q.log != nil {
+			q.log.Warn("recover_pending_sources_db_unreachable", map[string]any{"error": err.Error()})
+		}
+		return
+	}
 
 	// Find sources with pending status (stuck from previous runs)
 	rows, err := q.db.QueryContext(ctx, `

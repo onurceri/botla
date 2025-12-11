@@ -24,9 +24,10 @@ type PlanConfig struct {
 	Scraping                  ScrapingConfig `json:"scraping"`
 	Files                     FilesConfig    `json:"files"`
 	Chat                      ChatConfig     `json:"chat"`
-	Refresh                   RefreshConfig  `json:"refresh"`
-	Security                  SecurityConfig `json:"security"`
-	Branding                  BrandingConfig `json:"branding"`
+	Refresh                   RefreshConfig    `json:"refresh"`
+	Security                  SecurityConfig   `json:"security"`
+	Guardrails                GuardrailsConfig `json:"guardrails"`
+	Branding                  BrandingConfig   `json:"branding"`
 	MaxChatbots               int            `json:"max_chatbots"`
 	MaxMonthlyIngestions      int            `json:"max_monthly_ingestions"`
 	MaxMonthlyEmbeddingTokens int            `json:"max_monthly_embedding_tokens"`
@@ -48,6 +49,14 @@ type BrandingConfig struct {
 	CanCustomBranding bool `json:"can_custom_branding"` // Enterprise can use custom branding
 }
 
+type GuardrailsConfig struct {
+	CanCustomizeThresholds bool `json:"can_customize_thresholds"` // Can adjust high/medium thresholds
+	CanUseSmartFallback    bool `json:"can_use_smart_fallback"`   // Can use AI-powered fallback
+	CanUseEscalateFallback bool `json:"can_use_escalate_fallback"` // Can use escalate to human mode
+	CanManageTopics        bool `json:"can_manage_topics"`        // Can use whitelist/blacklist
+	CanCustomizeMessages   bool `json:"can_customize_messages"`   // Can edit fallback messages
+}
+
 type ScrapingConfig struct {
 	DynamicEnabled   bool `json:"dynamic_enabled"`
 	MaxURLsPerBot    int  `json:"max_urls_per_bot"`
@@ -63,15 +72,17 @@ type FilesConfig struct {
 }
 
 type ChatConfig struct {
-	AllowedModels    []string  `json:"allowed_models"`
-	MaxMonthlyTokens int       `json:"max_monthly_tokens"`
-	RAG              RAGConfig `json:"rag"`
+	AllowedModels     []string  `json:"allowed_models"`
+	MaxMonthlyTokens  int       `json:"max_monthly_tokens"`
+	RAG               RAGConfig `json:"rag"`
 }
 
 type RAGConfig struct {
 	TopK             int `json:"top_k"`
 	MaxContextTokens int `json:"max_context_tokens"`
 }
+
+
 
 // Value implements the driver.Valuer interface for PlanConfig
 func (p PlanConfig) Value() (driver.Value, error) {

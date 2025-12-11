@@ -23,6 +23,20 @@ type HandoffConfig = {
   email_subject?: string
 }
 
+type ThresholdConfig = {
+  high_threshold: number
+  medium_threshold: number
+  fallback_mode: 'smart' | 'static' | 'escalate'
+  show_confidence_warning: boolean
+}
+
+const DEFAULT_THRESHOLD_CONFIG: ThresholdConfig = {
+  high_threshold: 0.50,
+  medium_threshold: 0.30,
+  fallback_mode: 'smart',
+  show_confidence_warning: true,
+}
+
 export function useChatbotForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -59,6 +73,7 @@ export function useChatbotForm() {
   const [hideBranding, setHideBranding] = useState(false)
   const [customBranding, setCustomBranding] = useState<CustomBranding | null>(null)
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.7)
+  const [thresholdConfig, setThresholdConfig] = useState<ThresholdConfig>(DEFAULT_THRESHOLD_CONFIG)
   const [fallbackMessages, setFallbackMessages] = useState<FallbackMessages | null>(null)
   const [topicRestrictions, setTopicRestrictions] = useState<TopicConfig | null>(null)
   const [handoffEnabled, setHandoffEnabled] = useState(false)
@@ -101,6 +116,7 @@ export function useChatbotForm() {
     setHideBranding(!!data.hide_branding)
     setCustomBranding(data.custom_branding || null)
     setConfidenceThreshold(data.confidence_threshold ?? 0.7)
+    setThresholdConfig(data.threshold_config || DEFAULT_THRESHOLD_CONFIG)
     setFallbackMessages(data.fallback_messages || null)
     setTopicRestrictions(data.topic_restrictions || null)
     setHandoffEnabled(!!data.handoff_enabled)
@@ -147,6 +163,7 @@ export function useChatbotForm() {
       hide_branding: hideBranding,
       custom_branding: hideBranding ? customBranding : null,
       confidence_threshold: confidenceThreshold,
+      threshold_config: thresholdConfig,
       fallback_messages: fallbackMessages,
       topic_restrictions: topicRestrictions,
       handoff_enabled: handoffEnabled,
@@ -194,6 +211,7 @@ export function useChatbotForm() {
     buildPayload,
     model, setModel,
     confidenceThreshold, setConfidenceThreshold,
+    thresholdConfig, setThresholdConfig,
     fallbackMessages, setFallbackMessages,
     topicRestrictions, setTopicRestrictions,
     handoffEnabled, setHandoffEnabled,

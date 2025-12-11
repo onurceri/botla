@@ -145,6 +145,15 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS hide_branding BOOLEAN DEFAULT false`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS custom_branding JSONB`)
 
+	// Add missing columns for guardrails and handoff
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS confidence_threshold FLOAT DEFAULT 0.7`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS threshold_config JSONB DEFAULT '{}'`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS fallback_messages JSONB DEFAULT '{}'`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS topic_restrictions JSONB DEFAULT '{}'`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_enabled BOOLEAN DEFAULT false`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_type TEXT DEFAULT 'email'`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_config JSONB DEFAULT '{}'`)
+
 	// ensure new source columns exist for tests
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)

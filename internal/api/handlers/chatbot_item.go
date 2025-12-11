@@ -322,6 +322,9 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	if req.TopicRestrictions != nil {
 		c.TopicRestrictions = req.TopicRestrictions
 	}
+	if req.ThresholdConfig != nil {
+		c.ThresholdConfig = req.ThresholdConfig
+	}
 	if req.HandoffEnabled != nil {
 		c.HandoffEnabled = *req.HandoffEnabled
 	}

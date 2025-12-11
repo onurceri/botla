@@ -131,10 +131,11 @@ type publicSourceUsed struct {
 }
 
 type publicChatResponse struct {
-	Response    string             `json:"response"`
-	MessageID   string             `json:"message_id"`
-	TokensUsed  int                `json:"tokens_used"`
-	SourcesUsed []publicSourceUsed `json:"sources_used"`
+	Response       string             `json:"response"`
+	MessageID      string             `json:"message_id"`
+	TokensUsed     int                `json:"tokens_used"`
+	SourcesUsed    []publicSourceUsed `json:"sources_used"`
+	ConfidenceTier string             `json:"confidence_tier,omitempty"`
 }
 
 // PublicHandlers contains handlers for public (unauthenticated) endpoints
@@ -294,7 +295,13 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(publicChatResponse{Response: result.Response, MessageID: result.MessageID, TokensUsed: result.TokensUsed, SourcesUsed: sources}); err != nil {
+	if err = json.NewEncoder(w).Encode(publicChatResponse{
+		Response:       result.Response,
+		MessageID:      result.MessageID,
+		TokensUsed:     result.TokensUsed,
+		SourcesUsed:    sources,
+		ConfidenceTier: result.ConfidenceTier,
+	}); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
