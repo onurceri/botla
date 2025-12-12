@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/onurceri/botla-co/internal/auth"
 )
 
@@ -12,22 +15,40 @@ type contextKey string
 
 const ContextKeyUserID contextKey = "userID"
 
+type authErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func writeAuthError(w http.ResponseWriter, code int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(authErrorResponse{Error: message})
+}
+
 func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := r.Header.Get("Authorization")
 			if h == "" {
-				w.WriteHeader(http.StatusUnauthorized)
+				writeAuthError(w, http.StatusUnauthorized, "Missing authorization header")
 				return
 			}
 			parts := strings.SplitN(h, " ", 2)
 			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-				w.WriteHeader(http.StatusUnauthorized)
+				writeAuthError(w, http.StatusUnauthorized, "Invalid authorization header format")
 				return
 			}
 			claims, err := auth.VerifyToken(secret, parts[1])
-			if err != nil || claims.UserID == "" || claims.TokenType != "access" {
-				w.WriteHeader(http.StatusUnauthorized)
+			if err != nil {
+				if errors.Is(err, jwt.ErrTokenExpired) {
+					writeAuthError(w, http.StatusUnauthorized, "Token expired")
+					return
+				}
+				writeAuthError(w, http.StatusUnauthorized, "Invalid token")
+				return
+			}
+			if claims.UserID == "" || claims.TokenType != "access" {
+				writeAuthError(w, http.StatusUnauthorized, "Invalid token")
 				return
 			}
 

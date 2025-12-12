@@ -11,7 +11,7 @@ import (
 	"github.com/onurceri/botla-co/internal/auth"
 )
 
-func TestAuth_ExpiredAccessToken_Protected401(t *testing.T) {
+func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -40,7 +40,7 @@ func TestAuth_ExpiredAccessToken_Protected401(t *testing.T) {
 	resLog.Body.Close()
 
 	// protected ping with valid token
-	reqPing, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/protected", nil)
+	reqPing, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	reqPing.Header.Set("Authorization", "Bearer "+tr.Token)
 	resPing, _ := http.DefaultClient.Do(reqPing)
 	if resPing.StatusCode != http.StatusOK {
@@ -48,14 +48,19 @@ func TestAuth_ExpiredAccessToken_Protected401(t *testing.T) {
 	}
 	resPing.Body.Close()
 
-	// craft expired access token using same secret and user id "exp@example.com" subject via login
-	// Since ProtectedHandler reads userID from claims, we can generate with any non-empty id; use email as proxy
 	expired, _ := auth.GenerateToken(te.Cfg.JWT_SECRET, "expired-user", "access", -time.Minute)
-	reqExp, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/protected", nil)
+	reqExp, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	reqExp.Header.Set("Authorization", "Bearer "+expired)
 	resExp, _ := http.DefaultClient.Do(reqExp)
 	if resExp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resExp.StatusCode)
+	}
+	var errBody map[string]string
+	if err := json.NewDecoder(resExp.Body).Decode(&errBody); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errBody["error"] != "Token expired" {
+		t.Fatalf("expected error message %q, got %q", "Token expired", errBody["error"])
 	}
 	resExp.Body.Close()
 }

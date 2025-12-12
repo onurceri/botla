@@ -21,15 +21,15 @@ This test plan covers JWT token validation, refresh token rotation, and logout f
 
 ---
 
-### 1.3.2 Expired Access Token
+### 1.3.2 Expired Access Token [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Use an expired access token | N/A |
-| 2 | GET `/api/v1/me` with expired token | 401 Unauthorized |
-| 3 | Response body | Token expired message |
+| 1 | Use an expired access token | N/A [x] |
+| 2 | GET `/api/v1/me` with expired token | 401 Unauthorized [x] |
+| 3 | Response body | Token expired message [x] |
 
 **Existing Test:** `internal/integration/auth_expired_access_test.go`
 
@@ -87,43 +87,43 @@ This test plan covers JWT token validation, refresh token rotation, and logout f
 
 ---
 
-### 1.3.7 Expired Refresh Token
+### 1.3.7 Expired Refresh Token [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Use an expired refresh token | N/A |
-| 2 | POST `/api/v1/auth/refresh` | 401 Unauthorized |
+| 1 | Use an expired refresh token | N/A [x] |
+| 2 | POST `/api/v1/auth/refresh` | 401 Unauthorized [x] |
 
 **Existing Test:** `internal/integration/auth_refresh_expired_test.go`
 
 ---
 
-### 1.3.8 Revoked Refresh Token
+### 1.3.8 Revoked Refresh Token [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login to get refresh token | Token received |
-| 2 | Logout (revokes refresh token) | 200 OK |
-| 3 | POST `/api/v1/auth/refresh` with revoked token | 401 Unauthorized |
+| 1 | Login to get refresh token | Token received [x] |
+| 2 | Logout (revokes refresh token) | 200 OK [x] |
+| 3 | POST `/api/v1/auth/refresh` with revoked token | 401 Unauthorized [x] |
 
 **Existing Test:** `internal/integration/auth_revoked_refresh_test.go`
 
 ---
 
-### 1.3.9 Refresh Token Rotation
+### 1.3.9 Refresh Token Rotation [x]
 **Priority:** High  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login to get refresh token A | Token A received |
-| 2 | POST `/api/v1/auth/refresh` with token A | New tokens received |
-| 3 | Response includes new refresh token B | Token B different from A |
-| 4 | Old refresh token A is invalidated | Cannot use A again |
+| 1 | Login to get refresh token A | Token A received [x] |
+| 2 | POST `/api/v1/auth/refresh` with token A | New tokens received [x] |
+| 3 | Response includes new refresh token B | Token B different from A [x] |
+| 4 | Old refresh token A is invalidated | Cannot use A again [x] |
 
 **Existing Test:** `internal/integration/auth_refresh_rotation_test.go`
 

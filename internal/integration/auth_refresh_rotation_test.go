@@ -53,6 +53,9 @@ func TestAuth_RefreshRotationAndLogout(t *testing.T) {
 	if tp2.RefreshToken == "" {
 		t.Fatalf("missing new refresh token")
 	}
+	if tp2.RefreshToken == tp.RefreshToken {
+		t.Fatalf("expected rotated refresh token to differ from original")
+	}
 
 	// second refresh with old token should fail (revoked)
 	resRefOld, _ := http.Post(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
