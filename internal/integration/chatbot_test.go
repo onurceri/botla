@@ -109,3 +109,74 @@ func TestChatbot_CRUD(t *testing.T) {
 	}
 	res6.Body.Close()
 }
+
+func TestFreePlan_ModelRestriction_AllowsGpt4oMini(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	email := "free-model-allowed@example.com"
+	token := authToken(t, te.Server.URL, email)
+
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+
+	create := map[string]any{"name": "Free Plan Bot", "model": "gpt-4o-mini"}
+	cb, _ := json.Marshal(create)
+	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	res, _ := http.DefaultClient.Do(req)
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+	var created chatbot
+	json.NewDecoder(res.Body).Decode(&created)
+	res.Body.Close()
+	if created.ID == "" {
+		t.Fatalf("expected non-empty chatbot id")
+	}
+}
+
+func TestFreePlan_ModelRestriction_BlocksDisallowedModels(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	email := "free-model-block@example.com"
+	token := authToken(t, te.Server.URL, email)
+
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+
+	create := map[string]any{"name": "Free Plan Bot", "model": "gpt-4o-mini"}
+	cb, _ := json.Marshal(create)
+	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	res, _ := http.DefaultClient.Do(req)
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+	var created chatbot
+	json.NewDecoder(res.Body).Decode(&created)
+	res.Body.Close()
+	if created.ID == "" {
+		t.Fatalf("expected non-empty chatbot id")
+	}
+
+	for _, model := range []string{"gpt-4o", "claude-3-5-sonnet"} {
+		upd := map[string]any{"model": model}
+		ub, _ := json.Marshal(upd)
+		reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+created.ID, bytes.NewReader(ub))
+		reqU.Header.Set("Authorization", "Bearer "+token)
+		reqU.Header.Set("Content-Type", "application/json")
+		resU, _ := http.DefaultClient.Do(reqU)
+		if resU.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403 for model %s, got %d", model, resU.StatusCode)
+		}
+		resU.Body.Close()
+	}
+}

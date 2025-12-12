@@ -75,6 +75,33 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
+	if req.Model != nil {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		if len(plan.Config.Chat.AllowedModels) > 0 {
+			allowed := false
+			for _, m := range plan.Config.Chat.AllowedModels {
+				if m == *req.Model {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":            "This model is not available on your plan",
+					"upgrade_required": true,
+					"feature":          "model_selection",
+				})
+				return
+			}
+		}
+	}
+
 	// Validate hex color if provided
 	if req.ChatBackgroundColor != nil {
 		s := strings.TrimSpace(*req.ChatBackgroundColor)

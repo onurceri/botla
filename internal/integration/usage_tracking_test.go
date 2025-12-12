@@ -138,9 +138,10 @@ func TestIngestionUsageTracking(t *testing.T) {
 		t.Fatalf("IncrementSuccessfulIngestion failed: %v", err)
 	}
 
-	sources, tokens, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
-	if sources != 1 {
-		t.Errorf("USG-007: expected 1 source, got %d", sources)
+	var incrementedSources int
+	incrementedSources, _, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
+	if incrementedSources != 1 {
+		t.Errorf("USG-007: expected 1 source, got %d", incrementedSources)
 	}
 
 	// USG-008: AddEmbeddingTokens
@@ -149,7 +150,7 @@ func TestIngestionUsageTracking(t *testing.T) {
 		t.Fatalf("AddEmbeddingTokens failed: %v", err)
 	}
 
-	sources, tokens, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
+	_, tokens, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
 	if tokens != 500 {
 		t.Errorf("USG-008: expected 500 tokens, got %d", tokens)
 	}
@@ -159,8 +160,9 @@ func TestIngestionUsageTracking(t *testing.T) {
 	_ = db.IncrementSuccessfulIngestion(ctx, te.DB, userID, now, 2)
 	_ = db.AddEmbeddingTokens(ctx, te.DB, userID, now, 1000)
 
-	sources, tokens, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
-	if sources != 3 || tokens != 1500 {
-		t.Errorf("USG-006: expected 3/1500, got %d/%d", sources, tokens)
+	var embeddingSources int
+	embeddingSources, tokens, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
+	if embeddingSources != 3 || tokens != 1500 {
+		t.Errorf("USG-006: expected 3/1500, got %d/%d", embeddingSources, tokens)
 	}
 }
