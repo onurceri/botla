@@ -16,10 +16,10 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 
 	// Create owner user and token
 	ownerToken := authToken(t, te.Server.URL, "owner@example.com")
-	
+
 	// Create another user (to be member)
 	memberToken := authToken(t, te.Server.URL, "member@example.com")
-	
+
 	// Create organization as owner
 	createOrg := map[string]string{"name": "Test Org", "slug": "test-org"}
 	orgBody, _ := json.Marshal(createOrg)
@@ -54,7 +54,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	reqGet, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+org.ID+"/members", nil)
 	reqGet.Header.Set("Authorization", "Bearer "+ownerToken)
 	resGet, _ := http.DefaultClient.Do(reqGet)
-	
+
 	// New response structure: { members: [...], caller_role: "..." }
 	var membersResp struct {
 		Members []struct {
@@ -68,7 +68,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	}
 	json.NewDecoder(resGet.Body).Decode(&membersResp)
 	resGet.Body.Close()
-	
+
 	var memberUserID string
 	for _, m := range membersResp.Members {
 		if m.User.Email == "member@example.com" {
@@ -87,7 +87,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	reqUpdate.Header.Set("Authorization", "Bearer "+memberToken)
 	reqUpdate.Header.Set("Content-Type", "application/json")
 	resUpdate, _ := http.DefaultClient.Do(reqUpdate)
-	
+
 	if resUpdate.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden for member updating role, got %d", resUpdate.StatusCode)
 	}
@@ -98,7 +98,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	reqUpdateOwner.Header.Set("Authorization", "Bearer "+ownerToken)
 	reqUpdateOwner.Header.Set("Content-Type", "application/json")
 	resUpdateOwner, _ := http.DefaultClient.Do(reqUpdateOwner)
-	
+
 	if resUpdateOwner.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK for owner updating role, got %d", resUpdateOwner.StatusCode)
 	}

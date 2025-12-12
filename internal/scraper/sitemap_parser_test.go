@@ -32,7 +32,7 @@ func TestParseSitemap_StandardFormat(t *testing.T) {
 
 	parser := DefaultSitemapParser()
 	ctx := context.Background()
-	
+
 	result, err := parser.ParseSitemap(ctx, srv.URL+"/sitemap.xml")
 	if err != nil {
 		t.Fatalf("ParseSitemap failed: %v", err)
@@ -281,7 +281,7 @@ func TestDeduplicateURLs(t *testing.T) {
 		{Loc: "https://example.com/page1"},
 		{Loc: "https://example.com/page1/"}, // Duplicate with trailing slash
 		{Loc: "https://example.com/page2"},
-		{Loc: "https://example.com/page2"},  // Exact duplicate
+		{Loc: "https://example.com/page2"}, // Exact duplicate
 		{Loc: "https://example.com/page3/"},
 	}
 
@@ -414,7 +414,7 @@ func TestParseSitemap_ContextCancellation(t *testing.T) {
 func TestNewSitemapParser_Defaults(t *testing.T) {
 	// Test with all zero/nil values - should use defaults
 	parser := NewSitemapParser(nil, 0, 0, 0)
-	
+
 	if parser.maxDepth != 3 {
 		t.Errorf("Expected default maxDepth 3, got %d", parser.maxDepth)
 	}

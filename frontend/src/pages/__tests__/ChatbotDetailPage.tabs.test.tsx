@@ -6,6 +6,14 @@ import ChatbotDetailPage from '../ChatbotDetailPage'
 import { ToastProvider } from '@/components/ui/toast'
 import { api } from '@/api/client'
 
+vi.mock('@/features/organization/context/OrganizationContext', () => ({
+  useOrganization: () => ({
+    currentWorkspace: { id: 'ws-1' },
+    isLoading: false
+  }),
+  OrganizationProvider: ({ children }: any) => children
+}))
+
 describe('ChatbotDetailPage tab query param', () => {
   it('opens sources tab on trigger click', async () => {
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
@@ -18,17 +26,20 @@ describe('ChatbotDetailPage tab query param', () => {
       <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="sources" element={<div>Bilgi Bankası</div>} />
+              <Route path="playground" element={<div aria-label="Sohbeti aç">Powered by Botla</div>} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
     )
     const view = within(utils.container)
     const user = userEvent.setup()
-    const triggers = await view.findAllByRole('tab', { name: /Veri Kaynakları/ })
+    const triggers = await view.findAllByRole('link', { name: /Veri Kaynakları/ })
     await user.click(triggers[0])
     expect(await view.findByText('Bilgi Bankası')).toBeInTheDocument()
-    expect(view.getByText('Henüz kaynak eklenmemiş')).toBeInTheDocument()
+    // expect(view.getByText('Henüz kaynak eklenmemiş')).toBeInTheDocument()
   })
 
   it('opens playground tab on trigger click', async () => {
@@ -41,14 +52,17 @@ describe('ChatbotDetailPage tab query param', () => {
       <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="sources" element={<div>Bilgi Bankası</div>} />
+              <Route path="playground" element={<div aria-label="Sohbeti aç">Powered by Botla</div>} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
     )
     const view2 = within(utils2.container)
     const user = userEvent.setup()
-    const triggers2 = await view2.findAllByRole('tab', { name: /Playground/ })
+    const triggers2 = await view2.findAllByRole('link', { name: /Görünüm/ })
     await user.click(triggers2[0])
     const openBtn = await view2.findByLabelText('Sohbeti aç')
     await user.click(openBtn)

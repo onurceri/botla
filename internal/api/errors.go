@@ -79,4 +79,5 @@ const (
 	ErrSitemapParseFailed        = "ERR_SITEMAP_PARSE_FAILED"
 	ErrInvalidStatus             = "ERR_INVALID_STATUS"
 	ErrMaxChatbotsExceeded       = "ERR_MAX_CHATBOTS_EXCEEDED"
+	ErrTextTooLong               = "ERR_TEXT_TOO_LONG"
 )

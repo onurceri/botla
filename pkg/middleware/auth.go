@@ -30,13 +30,13 @@ func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			
+
 			// If the writer is our statusRecorder (from RequestLogger), set the userID directly
 			// so it's available for logging even after this handler returns
 			if sr, ok := w.(*statusRecorder); ok {
 				sr.SetUserID(claims.UserID)
 			}
-			
+
 			ctx := context.WithValue(r.Context(), ContextKeyUserID, claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

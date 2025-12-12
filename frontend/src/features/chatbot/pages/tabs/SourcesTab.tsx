@@ -29,6 +29,19 @@ export default function SourcesTab() {
     selectorWhitelist, setSelectorWhitelist,
   } = useChatbotContext()
 
+  const maxFiles = planConfig?.files?.max_files_per_bot || Infinity
+  const maxUrls = planConfig?.scraping?.max_urls_per_bot || Infinity
+  
+  const currentFiles = sources.filter(s => s.source_type === 'pdf' || s.source_type === 'text').length
+  const currentUrls = sources.filter(s => s.source_type === 'url').length
+  
+  const isFileLimitReached = currentFiles >= maxFiles
+  const isUrlLimitReached = currentUrls >= maxUrls
+  
+  const disabledModes: ('pdf' | 'url' | 'text')[] = []
+  if (isFileLimitReached) disabledModes.push('pdf', 'text')
+  if (isUrlLimitReached) disabledModes.push('url')
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
        <div className="flex flex-col gap-2">
@@ -42,21 +55,50 @@ export default function SourcesTab() {
         {/* Upload Section */}
         <Card className="border-muted-foreground/20 shadow-sm">
            <CardHeader>
-             <CardTitle className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                    <Plus className="w-5 h-5" />
-                </div>
-                Yeni Kaynak Ekle
-             </CardTitle>
-             <CardDescription>
-                Web sitesi, PDF dokümanı veya metin içeriği ekleyerek botunuzu eğitin.
-             </CardDescription>
+             <div className="flex justify-between items-start">
+               <div>
+                 <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Plus className="w-5 h-5" />
+                    </div>
+                    Yeni Kaynak Ekle
+                 </CardTitle>
+                 <CardDescription>
+                    Web sitesi, PDF dokümanı veya metin içeriği ekleyerek botunuzu eğitin.
+                 </CardDescription>
+               </div>
+               <div className="text-right flex flex-col gap-1">
+                 {maxFiles !== Infinity && (
+                   <span className={`text-xs font-medium ${isFileLimitReached ? 'text-destructive' : 'text-muted-foreground'}`}>
+                     Dosya: {currentFiles} / {maxFiles}
+                   </span>
+                 )}
+                 {maxUrls !== Infinity && (
+                   <span className={`text-xs font-medium ${isUrlLimitReached ? 'text-destructive' : 'text-muted-foreground'}`}>
+                     URL: {currentUrls} / {maxUrls}
+                   </span>
+                 )}
+               </div>
+             </div>
            </CardHeader>
            <CardContent>
+             {(isFileLimitReached || isUrlLimitReached) && (
+               <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm font-medium">
+                 {isFileLimitReached && isUrlLimitReached 
+                   ? 'Dosya ve URL limitlerinize ulaştınız. Yeni kaynak eklemek için mevcut kaynakları silin veya planınızı yükseltin.'
+                   : isFileLimitReached
+                     ? 'Dosya yükleme limitinize ulaştınız. Yeni dosya yüklemek için mevcut dosyalardan silin veya planınızı yükseltin.'
+                     : 'URL ekleme limitinize ulaştınız. Yeni URL eklemek için mevcut URL\'lerden silin veya planınızı yükseltin.'
+                 }
+               </div>
+             )}
              <SourceUploader
+               disabledModes={disabledModes}
                onUploadPDF={async (file) => { if(id) { await uploadPDFSource(id, file).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                onUploadURL={async (u) => { if(id) { await uploadURLSource(id, u).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
                onUploadText={async (t) => { if(id) { await uploadTextSource(id, t).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
+               maxFileSizeMB={planConfig.files?.max_size_mb}
+               maxTextLength={planConfig.files?.max_text_length}
                extraUrlSettings={
                  <URLAdvancedSettings
                    discoveryMode={discoveryMode}
@@ -76,6 +118,7 @@ export default function SourcesTab() {
                    chatbotId={id}
                    onImportComplete={refreshSources}
                    planScrapingConfig={planConfig.scraping}
+                   planRefreshConfig={planConfig.refresh}
                  />
                }
              />

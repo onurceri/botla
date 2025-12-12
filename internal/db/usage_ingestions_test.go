@@ -1,15 +1,15 @@
 package db
 
 import (
-    "context"
-    "testing"
-    "time"
+	"context"
+	"testing"
+	"time"
 )
 
 func TestUsageIngestions_CRUD(t *testing.T) {
-    db := openTestDB(t)
-    defer db.Close()
-    _, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
+	db := openTestDB(t)
+	defer db.Close()
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
         user_id VARCHAR(64) NOT NULL,
         period_month DATE NOT NULL,
         sources_count INT NOT NULL DEFAULT 0,
@@ -17,16 +17,16 @@ func TestUsageIngestions_CRUD(t *testing.T) {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
         PRIMARY KEY (user_id, period_month)
     )`)
-    uid := createUser(t, db)
-    now := time.Now()
-    if err := IncrementSuccessfulIngestion(context.Background(), db, uid, now, 2); err != nil {
-        t.Fatalf("inc: %v", err)
-    }
-    if err := AddEmbeddingTokens(context.Background(), db, uid, now, 123); err != nil {
-        t.Fatalf("tokens: %v", err)
-    }
-    s, tok, err := GetMonthlyIngestionUsage(context.Background(), db, uid, now)
-    if err != nil || s != 2 || tok != 123 {
-        t.Fatalf("get: %v s=%d tok=%d", err, s, tok)
-    }
+	uid := createUser(t, db)
+	now := time.Now()
+	if err := IncrementSuccessfulIngestion(context.Background(), db, uid, now, 2); err != nil {
+		t.Fatalf("inc: %v", err)
+	}
+	if err := AddEmbeddingTokens(context.Background(), db, uid, now, 123); err != nil {
+		t.Fatalf("tokens: %v", err)
+	}
+	s, tok, err := GetMonthlyIngestionUsage(context.Background(), db, uid, now)
+	if err != nil || s != 2 || tok != 123 {
+		t.Fatalf("get: %v s=%d tok=%d", err, s, tok)
+	}
 }

@@ -1,35 +1,35 @@
 package handlers
 
 import (
-    "bytes"
-    "encoding/json"
-    "net/http"
-    "strings"
-    "time"
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/api"
-    "github.com/onurceri/botla-co/pkg/middleware"
-    "github.com/onurceri/botla-co/pkg/storage"
-    "github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/internal/api"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 // createSource handles POST request to create a new source
 func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, chatbotID, userID string) {
-    plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
-    if err != nil || plan == nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        return
-    }
+	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
+	if err != nil || plan == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-    bot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-    if err != nil || bot == nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        return
-    }
-    base := api.BaseLang(bot.LanguageCode)
-    cfg := api.ConfigFromBase(base)
+	bot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
+	if err != nil || bot == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	base := api.BaseLang(bot.LanguageCode)
+	cfg := api.ConfigFromBase(base)
 
 	// Check monthly ingestion quota
 	if err = h.checkIngestionQuota(r, userID, plan); err != nil {
@@ -47,16 +47,16 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, c
 		sourceType = "pdf"
 	}
 
-    switch sourceType {
-    case "pdf":
-        h.handlePDFUpload(w, r, chatbotID, plan, cfg)
-    case "url":
-        h.handleURLSource(w, r, chatbotID, plan, cfg)
-    case "text":
-        h.handleTextSource(w, r, chatbotID, userID, plan, cfg)
-    default:
-        w.WriteHeader(http.StatusBadRequest)
-    }
+	switch sourceType {
+	case "pdf":
+		h.handlePDFUpload(w, r, chatbotID, plan, cfg)
+	case "url":
+		h.handleURLSource(w, r, chatbotID, plan, cfg)
+	case "text":
+		h.handleTextSource(w, r, chatbotID, userID, plan, cfg)
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+	}
 }
 
 // handlePDFUpload handles PDF file upload
@@ -71,10 +71,10 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 	if limit <= 0 {
 		limit = 5 // Safe fallback
 	}
-    if cnt >= limit {
-        api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPdfLimitReached, cfg)
-        return
-    }
+	if cnt >= limit {
+		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPdfLimitReached, cfg)
+		return
+	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -88,10 +88,10 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 	if maxSizeMB <= 0 {
 		maxSizeMB = 10 // Safe fallback
 	}
-    if header.Size > int64(maxSizeMB)<<20 {
-        api.WriteLocalizedError(w, http.StatusRequestEntityTooLarge, api.ErrFileTooLarge, cfg)
-        return
-    }
+	if header.Size > int64(maxSizeMB)<<20 {
+		api.WriteLocalizedError(w, http.StatusRequestEntityTooLarge, api.ErrFileTooLarge, cfg)
+		return
+	}
 
 	// Check total storage quota
 	userID, _ := middleware.UserIDFromContext(r.Context())
@@ -153,10 +153,10 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 	if limit <= 0 {
 		limit = 5 // Safe fallback
 	}
-    if cnt >= limit {
-        api.WriteLocalizedError(w, http.StatusForbidden, api.ErrURLLimitReached, cfg)
-        return
-    }
+	if cnt >= limit {
+		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrURLLimitReached, cfg)
+		return
+	}
 
 	url := strings.TrimSpace(r.FormValue("source_url"))
 	if url == "" {
@@ -169,17 +169,17 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 	if cdMin > 0 {
 		lastDel, _ := db.GetLastDeletedAtForURL(r.Context(), h.DB, chatbotID, url)
 		if lastDel.Valid {
-            if time.Since(lastDel.Time) < time.Duration(cdMin)*time.Minute {
-                api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrReaddCooldownActive, cfg)
-                return
-            }
-        }
-    }
+			if time.Since(lastDel.Time) < time.Duration(cdMin)*time.Minute {
+				api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrReaddCooldownActive, cfg)
+				return
+			}
+		}
+	}
 
-    if exists, _ := db.SourceExists(r.Context(), h.DB, chatbotID, url); exists {
-        api.WriteLocalizedError(w, http.StatusConflict, api.ErrDuplicateURL, cfg)
-        return
-    }
+	if exists, _ := db.SourceExists(r.Context(), h.DB, chatbotID, url); exists {
+		api.WriteLocalizedError(w, http.StatusConflict, api.ErrDuplicateURL, cfg)
+		return
+	}
 
 	ds := models.DataSource{
 		ChatbotID:  chatbotID,
@@ -195,6 +195,16 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 	text := strings.TrimSpace(r.FormValue("text"))
 	if text == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Check text length limit
+	limit := plan.Config.Files.MaxTextLength
+	if limit <= 0 {
+		limit = 400000 // Safe fallback
+	}
+	if len(text) > limit {
+		api.WriteLocalizedError(w, http.StatusRequestEntityTooLarge, api.ErrTextTooLong, cfg)
 		return
 	}
 

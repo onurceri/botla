@@ -1,4 +1,5 @@
-import { Upload, Link as LinkIcon, FileText, X } from 'lucide-react'
+import { useEffect } from 'react'
+import { Upload, Link as LinkIcon, FileText, X, Type } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -9,9 +10,22 @@ interface SourceUploaderProps {
   onUploadURL: (url: string) => Promise<void>
   onUploadText: (text: string) => Promise<void>
   extraUrlSettings?: React.ReactNode
+  maxFileSizeMB?: number
+  maxTextLength?: number
+  disabled?: boolean
+  disabledModes?: ('pdf' | 'url' | 'text')[]
 }
 
-const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText, extraUrlSettings }: SourceUploaderProps) => {
+const SourceUploader = ({ 
+  onUploadPDF, 
+  onUploadURL, 
+  onUploadText, 
+  extraUrlSettings, 
+  maxFileSizeMB = 50, 
+  maxTextLength = 400000, // ~400k characters default
+  disabled = false,
+  disabledModes = []
+}: SourceUploaderProps) => {
   const { 
     activeMode, setActiveMode,
     loading,
@@ -19,55 +33,45 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText, extraUrlSettin
     fileInputRef,
     handleFileChange,
     handleSubmit,
-  } = useSourceUpload({ onUploadPDF, onUploadURL, onUploadText })
+  } = useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFileSizeMB })
+
+  useEffect(() => {
+    if (activeMode && disabledModes.includes(activeMode)) {
+      setActiveMode(null)
+    }
+  }, [activeMode, disabledModes, setActiveMode])
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <button
+      {/* Upload Type Selection */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={activeMode === 'pdf' ? 'default' : 'outline'}
           onClick={() => setActiveMode(activeMode === 'pdf' ? null : 'pdf')}
-          className={cn(
-            "flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed transition-all duration-200 hover:bg-white/60 backdrop-blur shadow-sm",
-            activeMode === 'pdf' 
-              ? "border-primary bg-primary/5 text-primary" 
-              : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-          )}
+          className="gap-2"
+          disabled={disabled || (disabledModes.includes('pdf') && activeMode !== 'pdf')}
         >
-          <div className={cn("p-3 rounded-full bg-muted shadow-inner", activeMode === 'pdf' && "bg-primary/20")}>
-            <Upload className="w-6 h-6" />
-          </div>
-          <span className="font-medium">PDF Yükle</span>
-        </button>
-
-        <button
+          <Upload className="w-4 h-4" />
+          PDF Yükle
+        </Button>
+        <Button
+          variant={activeMode === 'url' ? 'default' : 'outline'}
           onClick={() => setActiveMode(activeMode === 'url' ? null : 'url')}
-          className={cn(
-            "flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed transition-all duration-200 hover:bg-white/60 backdrop-blur shadow-sm",
-            activeMode === 'url' 
-              ? "border-blue-500 bg-blue-500/5 text-blue-400" 
-              : "border-border text-muted-foreground hover:border-blue-500/50 hover:text-foreground"
-          )}
+          className="gap-2"
+          disabled={disabled || (disabledModes.includes('url') && activeMode !== 'url')}
         >
-          <div className={cn("p-3 rounded-full bg-muted shadow-inner", activeMode === 'url' && "bg-blue-500/20")}> 
-            <LinkIcon className="w-6 h-6" />
-          </div>
-          <span className="font-medium">Web Sitesi</span>
-        </button>
-
-        <button
+          <LinkIcon className="w-4 h-4" />
+          Web Sitesi
+        </Button>
+        <Button
+          variant={activeMode === 'text' ? 'default' : 'outline'}
           onClick={() => setActiveMode(activeMode === 'text' ? null : 'text')}
-          className={cn(
-            "flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed transition-all duration-200 hover:bg-white/60 backdrop-blur shadow-sm",
-            activeMode === 'text' 
-              ? "border-emerald-500 bg-emerald-500/5 text-emerald-400" 
-              : "border-border text-muted-foreground hover:border-emerald-500/50 hover:text-foreground"
-          )}
+          className="gap-2"
+          disabled={disabled || (disabledModes.includes('text') && activeMode !== 'text')}
         >
-          <div className={cn("p-3 rounded-full bg-muted shadow-inner", activeMode === 'text' && "bg-emerald-500/20")}> 
-            <FileText className="w-6 h-6" />
-          </div>
-          <span className="font-medium">Metin Gir</span>
-        </button>
+          <Type className="w-4 h-4" />
+          Metin
+        </Button>
       </div>
 
       {/* Input Area */}
@@ -97,7 +101,7 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText, extraUrlSettin
                 >
                   {loading ? 'Yükleniyor...' : 'Dosya Seç'}
                 </label>
-                <p className="mt-2 text-xs text-muted-foreground">Maksimum 50MB</p>
+                <p className="mt-2 text-xs text-muted-foreground">Maksimum {maxFileSizeMB}MB</p>
               </div>
             )}
 
@@ -121,13 +125,26 @@ const SourceUploader = ({ onUploadPDF, onUploadURL, onUploadText, extraUrlSettin
             {activeMode === 'text' && (
               <div className="space-y-2">
                 <textarea 
-                  className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className={cn(
+                    "flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                    inputValue.length > maxTextLength && "border-destructive focus-visible:ring-destructive"
+                  )}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="Metin içeriğini buraya yapıştırın..."
                 />
-                <div className="flex justify-end">
-                  <Button onClick={handleSubmit} disabled={loading} className="rounded-full">
+                <div className="flex justify-between items-center">
+                  <span className={cn("text-xs", inputValue.length > maxTextLength ? "text-destructive font-medium" : "text-muted-foreground")}>
+                    {inputValue.length > maxTextLength 
+                      ? `${(inputValue.length - maxTextLength).toLocaleString()} karakter aşıldı` 
+                      : `${(maxTextLength - inputValue.length).toLocaleString()} karakter kaldı`
+                    }
+                  </span>
+                  <Button 
+                    onClick={handleSubmit} 
+                    disabled={loading || inputValue.length > maxTextLength || inputValue.length === 0} 
+                    className="rounded-full"
+                  >
                     {loading ? 'Ekleniyor...' : 'Ekle'}
                   </Button>
                 </div>

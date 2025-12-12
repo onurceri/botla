@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChatBubble } from './components/ChatBubble'
 import { ChatDrawer } from './components/ChatDrawer'
 
-type Message = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal' }
+type Message = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal'; handoffRequestId?: string; emailSubmitted?: boolean }
 
 export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed' }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute' }) {
   const [open, setOpen] = useState(!!autoOpen)
@@ -47,7 +47,6 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
   const botIcon = sanitizeUrl((useOverrides && botIconOverride) || config?.bot_icon)
   const hideBrand = (useOverrides && typeof hideBrandingOverride !== 'undefined') ? hideBrandingOverride : config?.hide_branding
   const customBrand = (useOverrides && customBrandingOverride) ? { ...customBrandingOverride, link: sanitizeUrl(customBrandingOverride.link) } : (config?.custom_branding ? { ...config?.custom_branding, link: sanitizeUrl(config?.custom_branding?.link) } : undefined)
-  const handoffEnabled = config?.handoff_enabled || false
   
   useEffect(() => {
     if (panelRef.current) {
@@ -131,7 +130,18 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       const ans: string = data.response || 'Merhaba!'
-      const am = { id: data.message_id, role: 'assistant', content: ans, ts: Date.now() } as Message
+      
+      // Check if this is a handoff response
+      const isHandoff = !!data.handoff_request_id
+      const am: Message = { 
+        id: data.message_id, 
+        role: 'assistant', 
+        content: ans, 
+        ts: Date.now(),
+        type: isHandoff ? 'handoff' : 'normal',
+        handoffRequestId: data.handoff_request_id || undefined
+      }
+      
       setMessages((m) => {
         const nm = [...m, am]
         saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })
@@ -160,38 +170,6 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     }, 0)
   }
 
-  const requestHandoff = async () => {
-    if (loading) return
-    setLoading(true)
-    try {
-      const base = apiBase || ''
-      const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}/handoff`
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: ensureSession(chatbotId, sid, setSid), message: '' }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const handoffMsg = data.message || 'Talebiniz alındı. En kısa sürede bir temsilcimiz sizinle iletişime geçecektir.'
-      const hm = { role: 'assistant', content: handoffMsg, ts: Date.now(), type: 'handoff' } as Message
-      setMessages((m) => {
-        const nm = [...m, hm]
-        saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })
-        return nm
-      })
-    } catch {
-      const em = { role: 'assistant', content: 'İnsan desteği talebiniz şu an iletilemedi, lütfen tekrar deneyin.', ts: Date.now() } as Message
-      setMessages((m) => {
-        const nm = [...m, em]
-        saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })
-        return nm
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleFeedback = async (id: string, isPositive: boolean) => {
     // Optimistic update
     setMessages((prev) => prev.map(m => m.id === id ? { ...m, feedback: isPositive } : m))
@@ -205,8 +183,26 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
         body: JSON.stringify({ message_id: id, thumbs_up: isPositive }),
       })
     } catch {
-      // Revert if failed? Or silent fail. Silent fail is better for feedback.
+      // Silent fail for feedback
     }
+  }
+
+  const submitHandoffEmail = async (requestId: string, email: string): Promise<void> => {
+    const base = apiBase || ''
+    const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}/handoff/${encodeURIComponent(requestId)}/contact`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    
+    // Mark the message as email submitted in state
+    setMessages((prev) => {
+      const updated = prev.map(m => m.handoffRequestId === requestId ? { ...m, emailSubmitted: true } : m)
+      saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: updated })
+      return updated
+    })
   }
 
   const toggle = () => setOpen((v) => {
@@ -233,9 +229,8 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
           maxChars={config?.max_chars}
           hideBranding={hideBrand}
           customBranding={customBrand}
-          handoffEnabled={handoffEnabled}
-          onRequestHandoff={requestHandoff}
           onFeedback={handleFeedback}
+          onSubmitEmail={submitHandoffEmail}
         />
       ) : (
         <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />

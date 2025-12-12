@@ -14,12 +14,12 @@ type SourceUsed struct {
 
 // ChatResult represents the output of the chat process
 type ChatResult struct {
-	Response       string       `json:"response"`
-	TokensUsed     int          `json:"tokens_used"`
-	Sources        []SourceUsed `json:"sources"`
-	ConversationID string       `json:"conversation_id"`
-	MessageID      string       `json:"message_id"`
-	IsNewConv      bool         `json:"is_new_conversation"`
-	ConfidenceTier string       `json:"confidence_tier,omitempty"` // "high", "medium", "low"
+	Response         string       `json:"response"`
+	TokensUsed       int          `json:"tokens_used"`
+	Sources          []SourceUsed `json:"sources"`
+	ConversationID   string       `json:"conversation_id"`
+	MessageID        string       `json:"message_id"`
+	IsNewConv        bool         `json:"is_new_conversation"`
+	ConfidenceTier   string       `json:"confidence_tier,omitempty"`    // "high", "medium", "low"
+	HandoffRequestID string       `json:"handoff_request_id,omitempty"` // ID of handoff request if triggered
 }
-

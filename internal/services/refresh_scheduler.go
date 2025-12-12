@@ -72,7 +72,7 @@ func (s *RefreshScheduler) Start(ctx context.Context) {
 
 	s.wg.Add(1)
 	go s.run(ctx)
-	
+
 	if s.Log != nil {
 		s.Log.Info("refresh_scheduler_started", map[string]any{"interval": s.interval.String()})
 	}
@@ -81,7 +81,7 @@ func (s *RefreshScheduler) Start(ctx context.Context) {
 // run is the main scheduler loop
 func (s *RefreshScheduler) run(ctx context.Context) {
 	defer s.wg.Done()
-	
+
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
 
@@ -107,9 +107,9 @@ func (s *RefreshScheduler) Stop() {
 	s.running = false
 	close(s.stopChan)
 	s.mu.Unlock()
-	
+
 	s.wg.Wait()
-	
+
 	if s.Log != nil {
 		s.Log.Info("refresh_scheduler_stopped", nil)
 	}
@@ -133,14 +133,14 @@ func (s *RefreshScheduler) processDueChatbots(ctx context.Context) {
 			s.logWarn("queue_refresh_error", map[string]any{"bot_id": bot.ID, "error": err.Error()})
 			continue
 		}
-		
+
 		// Calculate next refresh time
 		frequency := ""
 		if bot.RefreshFrequency != nil {
 			frequency = *bot.RefreshFrequency
 		}
 		nextRefresh := CalculateNextRefresh(frequency, now)
-		
+
 		// Update refresh times
 		if err := db.UpdateChatbotRefreshTimes(ctx, s.DB, bot.ID, nextRefresh, now); err != nil {
 			s.logWarn("update_refresh_times_error", map[string]any{"bot_id": bot.ID, "error": err.Error()})

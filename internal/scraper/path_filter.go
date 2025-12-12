@@ -12,10 +12,10 @@ import (
 // - Exclude patterns take priority over include patterns
 // - Patterns support glob-style wildcards (*)
 type PathFilter struct {
-	includePaths     []string
-	excludePaths     []string
-	compiledInclude  []*regexp.Regexp
-	compiledExclude  []*regexp.Regexp
+	includePaths    []string
+	excludePaths    []string
+	compiledInclude []*regexp.Regexp
+	compiledExclude []*regexp.Regexp
 }
 
 // NewPathFilter creates a new PathFilter with the given include and exclude patterns.
@@ -103,10 +103,10 @@ func (f *PathFilter) FilterURLs(urls []string) []string {
 		if len(parts) != 2 {
 			continue // Invalid URL format
 		}
-		
+
 		afterScheme := parts[1]
 		slashIdx := strings.Index(afterScheme, "/")
-		
+
 		var path string
 		if slashIdx == -1 {
 			path = "/" // Root path
@@ -129,13 +129,13 @@ func (f *PathFilter) FilterURLs(urls []string) []string {
 func globToRegex(pattern string) (*regexp.Regexp, error) {
 	// Escape special regex characters except *
 	escaped := regexp.QuoteMeta(pattern)
-	
+
 	// Replace escaped \* with .*
 	regexPattern := strings.ReplaceAll(escaped, `\*`, `.*`)
-	
+
 	// Anchor the pattern to match the entire path
 	regexPattern = "^" + regexPattern + "$"
-	
+
 	// Compile as case-insensitive
 	return regexp.Compile("(?i)" + regexPattern)
 }

@@ -1,13 +1,13 @@
 package handlers
 
 import (
-    "encoding/json"
-    "net/http"
+	"encoding/json"
+	"net/http"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/scraper"
-    "github.com/onurceri/botla-co/internal/api"
-    "github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/internal/api"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // DiscoverSitemap handles POST /api/v1/chatbots/:id/sitemap/discover
@@ -38,25 +38,25 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-    if chatbot == nil {
-        w.WriteHeader(http.StatusNotFound)
-        return
-    }
-    if chatbot.UserID != userID {
-        w.WriteHeader(http.StatusForbidden)
-        return
-    }
-    base := api.BaseLang(chatbot.LanguageCode)
-    cfg := api.ConfigFromBase(base)
+	if chatbot == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if chatbot.UserID != userID {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	base := api.BaseLang(chatbot.LanguageCode)
+	cfg := api.ConfigFromBase(base)
 
 	// Parse request body
 	var req struct {
 		SitemapURL string `json:"sitemap_url"`
 	}
-    if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-        api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
-        return
-    }
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
+		return
+	}
 
 	// Validate sitemap URL
 	if err = scraper.ValidateSitemapURL(req.SitemapURL); err != nil {
@@ -67,11 +67,11 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 	// Parse the sitemap
 	parser := scraper.DefaultSitemapParser()
 	result, err := parser.ParseSitemap(r.Context(), req.SitemapURL)
-    if err != nil {
-        h.logError("sitemap_parse_error", map[string]any{"error": err.Error(), "url": req.SitemapURL})
-        api.WriteLocalizedErrorWithDetails(w, http.StatusBadRequest, api.ErrSitemapParseFailed, err.Error(), cfg)
-        return
-    }
+	if err != nil {
+		h.logError("sitemap_parse_error", map[string]any{"error": err.Error(), "url": req.SitemapURL})
+		api.WriteLocalizedErrorWithDetails(w, http.StatusBadRequest, api.ErrSitemapParseFailed, err.Error(), cfg)
+		return
+	}
 
 	// Apply path filters if configured
 	var filteredURLs []scraper.SitemapURL

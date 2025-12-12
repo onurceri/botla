@@ -26,7 +26,7 @@ func CreateHandoffRequest(ctx context.Context, pool *sql.DB, req *models.Handoff
 // GetHandoffRequestsByBotID returns all handoff requests for a chatbot
 func GetHandoffRequestsByBotID(ctx context.Context, pool *sql.DB, chatbotID string) ([]*models.HandoffRequest, error) {
 	rows, err := pool.QueryContext(ctx, `
-		SELECT id, chatbot_id, conversation_id, status, assigned_to, notes, created_at, resolved_at
+		SELECT id, chatbot_id, conversation_id, status, assigned_to, notes, user_email, created_at, resolved_at
 		FROM handoff_requests
 		WHERE chatbot_id = $1
 		ORDER BY created_at DESC`, chatbotID)
@@ -40,7 +40,7 @@ func GetHandoffRequestsByBotID(ctx context.Context, pool *sql.DB, chatbotID stri
 		var req models.HandoffRequest
 		if err := rows.Scan(
 			&req.ID, &req.ChatbotID, &req.ConversationID, &req.Status,
-			&req.AssignedTo, &req.Notes, &req.CreatedAt, &req.ResolvedAt,
+			&req.AssignedTo, &req.Notes, &req.UserEmail, &req.CreatedAt, &req.ResolvedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -56,11 +56,11 @@ func GetHandoffRequestsByBotID(ctx context.Context, pool *sql.DB, chatbotID stri
 func GetHandoffRequestByID(ctx context.Context, pool *sql.DB, id string) (*models.HandoffRequest, error) {
 	var req models.HandoffRequest
 	err := pool.QueryRowContext(ctx, `
-		SELECT id, chatbot_id, conversation_id, status, assigned_to, notes, created_at, resolved_at
+		SELECT id, chatbot_id, conversation_id, status, assigned_to, notes, user_email, created_at, resolved_at
 		FROM handoff_requests
 		WHERE id = $1`, id).Scan(
 		&req.ID, &req.ChatbotID, &req.ConversationID, &req.Status,
-		&req.AssignedTo, &req.Notes, &req.CreatedAt, &req.ResolvedAt,
+		&req.AssignedTo, &req.Notes, &req.UserEmail, &req.CreatedAt, &req.ResolvedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -113,4 +113,43 @@ func HasActiveHandoffRequest(ctx context.Context, pool *sql.DB, conversationID s
 		return false, err
 	}
 	return exists, nil
+}
+
+// UpdateHandoffUserEmail updates the user email for a handoff request
+func UpdateHandoffUserEmail(ctx context.Context, pool *sql.DB, requestID, email string) error {
+	_, err := pool.ExecContext(ctx, `
+		UPDATE handoff_requests
+		SET user_email = $1
+		WHERE id = $2`,
+		email, requestID)
+	return err
+}
+
+// HandoffRequestDetail contains a handoff request with its conversation messages
+type HandoffRequestDetail struct {
+	Request  *models.HandoffRequest `json:"request"`
+	Messages []models.Message       `json:"messages"`
+}
+
+// GetHandoffRequestWithMessages returns a handoff request with its conversation messages
+func GetHandoffRequestWithMessages(ctx context.Context, pool *sql.DB, requestID string) (*HandoffRequestDetail, error) {
+	// Get the request
+	req, err := GetHandoffRequestByID(ctx, pool, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, nil
+	}
+
+	// Get conversation messages
+	msgs, err := ListRecentMessages(ctx, pool, req.ConversationID, 100)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HandoffRequestDetail{
+		Request:  req,
+		Messages: msgs,
+	}, nil
 }

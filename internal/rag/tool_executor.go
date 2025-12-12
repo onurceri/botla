@@ -87,14 +87,14 @@ func (e *ToolExecutor) executeHandoff(ctx context.Context, toolCall ToolCall, ch
 		Notes:          nil, // No notes from tool for now, or could parse from args
 	}
 
-	_, err = db.CreateHandoffRequest(ctx, e.DB, req)
+	requestID, err := db.CreateHandoffRequest(ctx, e.DB, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handoff request: %w", err)
 	}
 
 	return &ToolResult{
 		ToolCallID: toolCall.ID,
-		Result:     `{"status": "handoff_requested", "message": "Handoff request created successfully."}`,
+		Result:     fmt.Sprintf(`{"status": "handoff_requested", "request_id": "%s"}`, requestID),
 	}, nil
 }
 

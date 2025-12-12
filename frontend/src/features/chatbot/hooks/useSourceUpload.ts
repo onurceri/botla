@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
 import { useToast } from '@/components/ui/toast'
 
-export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText }: {
+export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFileSizeMB = 50 }: {
   onUploadPDF: (file: File) => Promise<void>
   onUploadURL: (url: string) => Promise<void>
   onUploadText: (text: string) => Promise<void>
+  maxFileSizeMB?: number
 }) {
   const { toast } = useToast()
   const [activeMode, setActiveMode] = useState<'pdf' | 'url' | 'text' | null>(null)
@@ -27,9 +28,9 @@ export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText }: {
         if (fileInputRef.current) fileInputRef.current.value = ''
         return
       }
-      const max = 50 * 1024 * 1024
+      const max = maxFileSizeMB * 1024 * 1024
       if (file.size > max) {
-        toast('Dosya boyutu 50MB\'den büyük olamaz.', 'error')
+        toast(`Dosya boyutu ${maxFileSizeMB}MB'den büyük olamaz.`, 'error')
         if (fileInputRef.current) fileInputRef.current.value = ''
         return
       }

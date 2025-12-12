@@ -244,4 +244,3 @@ func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, li
 	// Note: Context intro prefix should be added by caller using langconfig
 	return body, used, nil
 }
-

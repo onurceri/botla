@@ -1,7 +1,9 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Headphones, Mail, AlertCircle, Info, CheckCircle2 } from 'lucide-react'
+import { Headphones, Mail, AlertCircle, Info, CheckCircle2, Lock, Shield } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 type HandoffConfig = {
   email_to?: string
@@ -15,6 +17,7 @@ type Props = {
   setHandoffType: (v: 'email') => void
   handoffConfig: HandoffConfig | null
   setHandoffConfig: (v: HandoffConfig | null) => void
+  canUseHandoff?: boolean
 }
 
 export default function HandoffSettings({
@@ -22,6 +25,7 @@ export default function HandoffSettings({
   setHandoffEnabled,
   handoffConfig,
   setHandoffConfig,
+  canUseHandoff = false,
 }: Props) {
   const handleConfigChange = (field: keyof HandoffConfig, value: string) => {
     setHandoffConfig({
@@ -40,7 +44,10 @@ export default function HandoffSettings({
                     <Headphones className="w-6 h-6" />
                 </div>
                 <div>
-                    <CardTitle className="text-xl">İnsan Desteği Ayarları</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-xl">İnsan Desteği Ayarları</CardTitle>
+                      {!canUseHandoff && <Badge variant="secondary" className="scale-90">Ent</Badge>}
+                    </div>
                     <CardDescription className="text-base mt-1">
                         Bot cevaplayamadığında veya kullanıcı istediğinde insan operatöre devir süreçlerini yönetin.
                     </CardDescription>
@@ -51,11 +58,26 @@ export default function HandoffSettings({
                 <Switch
                   checked={handoffEnabled}
                   onCheckedChange={setHandoffEnabled}
+                  disabled={!canUseHandoff}
                 />
+                {!canUseHandoff && <Lock className="w-4 h-4 text-muted-foreground" />}
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-6">
+          {!canUseHandoff && (
+            <div className="mb-6 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-center gap-4">
+                <div className="p-2.5 bg-amber-500/10 rounded-full text-amber-600 shrink-0">
+                    <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                    <span className="font-semibold text-amber-900 dark:text-amber-500 block">Enterprise Özelliği</span>
+                    <span className="text-muted-foreground text-sm">İnsan desteği özelliğini kullanmak için planınızı yükseltin.</span>
+                </div>
+                <Button variant="outline" size="sm" className="ml-auto border-amber-500/20 hover:bg-amber-500/10 text-amber-600">Yükselt</Button>
+            </div>
+          )}
+
           {!handoffEnabled ? (
             <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-2xl bg-muted/10 space-y-4">
                <div className="p-4 bg-muted rounded-full">

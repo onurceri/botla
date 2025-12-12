@@ -40,19 +40,19 @@ func NewRateLimiterFromEnv() *RateLimiter {
 // NewRateLimiterFromEnvWithPrefix constructs a limiter using env variables with a prefix
 // e.g., prefix="SOURCES" reads SOURCES_RATE_LIMIT_REQUESTS and SOURCES_RATE_LIMIT_WINDOW_SECONDS
 func NewRateLimiterFromEnvWithPrefix(prefix string) *RateLimiter {
-    max := 10
-    if v := os.Getenv(prefix + "_RATE_LIMIT_REQUESTS"); v != "" {
-        if n, err := strconv.Atoi(v); err == nil {
-            max = n
-        }
-    }
-    win := 60 * time.Second
-    if v := os.Getenv(prefix + "_RATE_LIMIT_WINDOW_SECONDS"); v != "" {
-        if n, err := strconv.Atoi(v); err == nil {
-            win = time.Duration(n) * time.Second
-        }
-    }
-    return &RateLimiter{m: make(map[string]*limiterState), max: max, window: win}
+	max := 10
+	if v := os.Getenv(prefix + "_RATE_LIMIT_REQUESTS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			max = n
+		}
+	}
+	win := 60 * time.Second
+	if v := os.Getenv(prefix + "_RATE_LIMIT_WINDOW_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			win = time.Duration(n) * time.Second
+		}
+	}
+	return &RateLimiter{m: make(map[string]*limiterState), max: max, window: win}
 }
 
 func (rl *RateLimiter) allow(key string) (bool, int, int) {

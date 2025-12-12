@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -100,5 +101,9 @@ func (h *SourcesHandlers) deleteSource(w http.ResponseWriter, r *http.Request, s
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	// Re-aggregate suggestions after source deletion (use background context)
+	go processing.ReAggregateSuggestionsForChatbot(context.Background(), h.DB, s.ChatbotID, h.Log)
+
 	w.WriteHeader(http.StatusNoContent)
 }

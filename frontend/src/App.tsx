@@ -21,6 +21,7 @@ import SuggestionsTab from '@/features/chatbot/pages/tabs/SuggestionsTab'
 import PlaygroundTab from '@/features/chatbot/pages/tabs/PlaygroundTab'
 import ConnectTab from '@/features/chatbot/pages/tabs/ConnectTab'
 import AnalyticsTab from '@/features/chatbot/pages/tabs/AnalyticsTab'
+import HandoffRequestsTab from '@/features/chatbot/pages/tabs/HandoffRequestsTab'
 
 const isAuthenticated = () => {
   // In E2E mode, bypass auth gating for visual tests
@@ -65,6 +66,7 @@ function App() {
               <Route path="playground" element={<PlaygroundTab />} />
               <Route path="connect" element={<ConnectTab />} />
               <Route path="analytics" element={<AnalyticsTab />} />
+              <Route path="requests" element={<HandoffRequestsTab />} />
             </Route>
 
             <Route path="settings" element={<Navigate to="/settings/profile" replace />} />

@@ -551,10 +551,10 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	reqH2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH2.Header.Set("Content-Type", "application/json")
 	resH2, _ := http.DefaultClient.Do(reqH2)
-	
+
 	// Expect failure because pending request exists
 	if resH2.StatusCode != http.StatusInternalServerError {
-		// Note: The service returns generic error, which handler maps to 500 currently. 
+		// Note: The service returns generic error, which handler maps to 500 currently.
 		// Ideally it should be 400 or 409, but based on current implementation:
 		// Service returns error -> Handler logs it -> Handler returns 500 "failed to create handoff request"
 		t.Logf("Got status code %d for duplicate request", resH2.StatusCode)
@@ -564,7 +564,7 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	// For now, let's just ensure we can't create another one easily or check response.
 	// Actually, wait, let's verify if the error returned is indeed what we expect.
 	// The service returns "HANDOFF_ALREADY_EXISTS" (from config).
-	// The public handler does: 
+	// The public handler does:
 	// if err != nil { w.WriteHeader(http.StatusInternalServerError); ... "error": "failed to create handoff request" }
 	// So we expect 500.
 

@@ -21,17 +21,17 @@ type Plan struct {
 }
 
 type PlanConfig struct {
-	Scraping                  ScrapingConfig `json:"scraping"`
-	Files                     FilesConfig    `json:"files"`
-	Chat                      ChatConfig     `json:"chat"`
+	Scraping                  ScrapingConfig   `json:"scraping"`
+	Files                     FilesConfig      `json:"files"`
+	Chat                      ChatConfig       `json:"chat"`
 	Refresh                   RefreshConfig    `json:"refresh"`
 	Security                  SecurityConfig   `json:"security"`
 	Guardrails                GuardrailsConfig `json:"guardrails"`
 	Branding                  BrandingConfig   `json:"branding"`
-	MaxChatbots               int            `json:"max_chatbots"`
-	MaxMonthlyIngestions      int            `json:"max_monthly_ingestions"`
-	MaxMonthlyEmbeddingTokens int            `json:"max_monthly_embedding_tokens"`
-	MinReAddCooldownMinutes   int            `json:"min_readd_cooldown_minutes"`
+	MaxChatbots               int              `json:"max_chatbots"`
+	MaxMonthlyIngestions      int              `json:"max_monthly_ingestions"`
+	MaxMonthlyEmbeddingTokens int              `json:"max_monthly_embedding_tokens"`
+	MinReAddCooldownMinutes   int              `json:"min_readd_cooldown_minutes"`
 }
 
 type SecurityConfig struct {
@@ -50,11 +50,11 @@ type BrandingConfig struct {
 }
 
 type GuardrailsConfig struct {
-	CanCustomizeThresholds bool `json:"can_customize_thresholds"` // Can adjust high/medium thresholds
-	CanUseSmartFallback    bool `json:"can_use_smart_fallback"`   // Can use AI-powered fallback
+	CanCustomizeThresholds bool `json:"can_customize_thresholds"`  // Can adjust high/medium thresholds
+	CanUseSmartFallback    bool `json:"can_use_smart_fallback"`    // Can use AI-powered fallback
 	CanUseEscalateFallback bool `json:"can_use_escalate_fallback"` // Can use escalate to human mode
-	CanManageTopics        bool `json:"can_manage_topics"`        // Can use whitelist/blacklist
-	CanCustomizeMessages   bool `json:"can_customize_messages"`   // Can edit fallback messages
+	CanManageTopics        bool `json:"can_manage_topics"`         // Can use whitelist/blacklist
+	CanCustomizeMessages   bool `json:"can_customize_messages"`    // Can edit fallback messages
 }
 
 type ScrapingConfig struct {
@@ -69,21 +69,21 @@ type FilesConfig struct {
 	MaxFilesPerBot int  `json:"max_files_per_bot"`
 	MaxFilesTotal  int  `json:"max_files_total"`
 	TotalStorageMB int  `json:"total_storage_mb"`
+	MaxTextLength  int  `json:"max_text_length"`
 }
 
 type ChatConfig struct {
-	DefaultModel      string    `json:"default_model,omitempty"` // e.g., "openai/gpt-4o-mini" for OpenRouter
-	AllowedModels     []string  `json:"allowed_models"`
-	MaxMonthlyTokens  int       `json:"max_monthly_tokens"`
-	RAG               RAGConfig `json:"rag"`
+	DefaultModel          string    `json:"default_model,omitempty"` // e.g., "openai/gpt-4o-mini" for OpenRouter
+	AllowedModels         []string  `json:"allowed_models"`
+	MaxMonthlyTokens      int       `json:"max_monthly_tokens"`
+	RAG                   RAGConfig `json:"rag"`
+	MaxSuggestedQuestions int       `json:"max_suggested_questions"` // Plan-based limit: Free=3, Pro=6, Ultra=10
 }
 
 type RAGConfig struct {
 	TopK             int `json:"top_k"`
 	MaxContextTokens int `json:"max_context_tokens"`
 }
-
-
 
 // Value implements the driver.Valuer interface for PlanConfig
 func (p PlanConfig) Value() (driver.Value, error) {

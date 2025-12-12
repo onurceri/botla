@@ -84,10 +84,10 @@ func ValidateSelector(selector string) error {
 
 	// Block potentially dangerous patterns (for security)
 	dangerousPatterns := []string{
-		":contains(",   // Non-standard, potentially problematic
-		":has(",        // Some implementations may not support this safely
-		"javascript:",  // XSS prevention
-		"expression(",  // CSS expression (IE)
+		":contains(",  // Non-standard, potentially problematic
+		":has(",       // Some implementations may not support this safely
+		"javascript:", // XSS prevention
+		"expression(", // CSS expression (IE)
 	}
 
 	lowerSel := strings.ToLower(selector)

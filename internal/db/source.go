@@ -83,7 +83,7 @@ func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string)
 		var d models.DataSource
 		if err := rows.Scan(
 			&d.ID, &d.ChatbotID, &d.SourceType, &d.SourceURL, &d.FilePath, &d.OriginalFilename,
-			&d.Status, &d.ErrorMessage, &d.ChunkCount, &d.ProcessedAt, &d.CreatedAt, &d.Hash, &d.DeletedAt, 
+			&d.Status, &d.ErrorMessage, &d.ChunkCount, &d.ProcessedAt, &d.CreatedAt, &d.Hash, &d.DeletedAt,
 			&d.SizeBytes, &d.LastRefreshedAt, &d.IsDiscovered, &d.CapabilitySummary,
 		); err != nil {
 			return nil, err

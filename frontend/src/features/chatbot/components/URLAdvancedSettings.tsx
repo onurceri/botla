@@ -59,8 +59,8 @@ interface URLAdvancedSettingsProps {
   // Sitemap
   chatbotId: string
   onImportComplete: () => void
-  // Plan Config (optional - for showing disabled features)
-  planScrapingConfig?: PlanScrapingConfig
+  planScrapingConfig?: { max_pages_per_crawl?: number; max_urls_per_bot?: number; dynamic_enabled?: boolean }
+  planRefreshConfig?: { enabled: boolean; max_monthly: number }
 }
 
 type SectionKey = 'discovery' | 'refresh' | 'filters' | 'sitemap' | null
@@ -83,6 +83,7 @@ export default function URLAdvancedSettings({
   chatbotId,
   onImportComplete,
   planScrapingConfig,
+  planRefreshConfig,
 }: URLAdvancedSettingsProps) {
   const [expandedSection, setExpandedSection] = useState<SectionKey>(null)
   
@@ -354,7 +355,7 @@ export default function URLAdvancedSettings({
             section="refresh" 
             icon={RefreshCw} 
             title="Otomatik Yenileme"
-            badge={refreshPolicy === 'auto' ? (refreshFrequency || undefined) : undefined}
+            badge={planRefreshConfig?.enabled === false ? 'Pro' : (refreshPolicy === 'auto' ? (refreshFrequency || undefined) : undefined)}
             color="text-blue-500"
             bgColor="bg-blue-50"
           />
@@ -363,6 +364,18 @@ export default function URLAdvancedSettings({
               <p className="text-xs text-gray-500 mb-3">
                 URL kaynaklarınızın otomatik olarak güncellenme ayarları
               </p>
+
+              {planRefreshConfig?.enabled === false && (
+                <div className="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-xs font-medium">Otomatik yenileme Pro planda aktif</span>
+                  </div>
+                  <p className="text-[10px] text-blue-600 mt-1 ml-5">
+                    Pro plana yükselterek kaynaklarınızın her zaman güncel kalmasını sağlayabilirsiniz.
+                  </p>
+                </div>
+              )}
               
               {/* Policy Toggle */}
               <div className="grid grid-cols-2 gap-2 mb-3">
@@ -382,17 +395,25 @@ export default function URLAdvancedSettings({
                 </button>
                 <button
                   type="button"
+                  disabled={planRefreshConfig?.enabled === false}
                   onClick={() => {
+                    if (planRefreshConfig?.enabled === false) return
                     onRefreshPolicyChange('auto')
                     if (!refreshFrequency) onRefreshFrequencyChange('weekly')
                   }}
                   className={cn(
-                    "p-3 rounded-lg border-2 transition-all text-center",
+                    "p-3 rounded-lg border-2 transition-all text-center relative",
                     refreshPolicy === 'auto'
                       ? "border-blue-200 bg-blue-50"
-                      : "border-gray-100 bg-white hover:border-gray-200"
+                      : "border-gray-100 bg-white hover:border-gray-200",
+                    planRefreshConfig?.enabled === false && "opacity-60 cursor-not-allowed bg-gray-50 border-gray-100"
                   )}
                 >
+                  {planRefreshConfig?.enabled === false && (
+                    <Badge variant="outline" className="absolute -top-2 -right-2 text-[8px] px-1.5 py-0 h-4 bg-violet-100 text-violet-700 border-violet-200">
+                      Pro
+                    </Badge>
+                  )}
                   <span className={cn("text-xs font-medium", refreshPolicy === 'auto' ? "text-blue-700" : "text-gray-500")}>
                     Otomatik
                   </span>

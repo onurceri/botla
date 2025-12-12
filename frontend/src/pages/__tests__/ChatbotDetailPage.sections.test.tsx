@@ -4,7 +4,16 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/toast'
 import ChatbotDetailPage from '../ChatbotDetailPage'
+import PlaygroundTab from '@/features/chatbot/pages/tabs/PlaygroundTab'
 import { api } from '@/api/client'
+
+vi.mock('@/features/organization/context/OrganizationContext', () => ({
+  useOrganization: () => ({
+    currentWorkspace: { id: 'ws-1' },
+    isLoading: false
+  }),
+  OrganizationProvider: ({ children }: any) => children
+}))
 
 describe('ChatbotDetailPage sections toggle', () => {
   it('collapses and expands Identity/Appearance/Colors sections', async () => {
@@ -19,12 +28,14 @@ describe('ChatbotDetailPage sections toggle', () => {
       <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc?tab=playground"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="playground" element={<PlaygroundTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
     )
-    const playTrigger = await screen.findByRole('tab', { name: /Playground/ })
+    const playTrigger = await screen.findByRole('link', { name: /Görünüm/ })
     await user.click(playTrigger)
     const identityBtn = await screen.findByRole('button', { name: /Kimlik/ })
     await user.click(identityBtn)

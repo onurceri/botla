@@ -6,6 +6,7 @@ export default function HandoffTab() {
     handoffEnabled, setHandoffEnabled,
     handoffType, setHandoffType,
     handoffConfig, setHandoffConfig,
+    planConfig,
   } = useChatbotContext()
 
   return (
@@ -24,6 +25,7 @@ export default function HandoffTab() {
         setHandoffType={setHandoffType}
         handoffConfig={handoffConfig}
         setHandoffConfig={setHandoffConfig}
+        canUseHandoff={planConfig?.guardrails?.can_use_escalate_fallback}
       />
     </div>
   )

@@ -65,8 +65,8 @@ func ConvertActionsToTools(actions []*models.ChatbotAction) []Tool {
 }
 
 // Built-in tools
-func GetBuiltinTools() []Tool {
-	return []Tool{
+func GetBuiltinTools(includeHandoff bool) []Tool {
+	tools := []Tool{
 		{
 			Type: "function",
 			Function: ToolFunction{
@@ -75,13 +75,18 @@ func GetBuiltinTools() []Tool {
 				Parameters:  json.RawMessage(`{"type": "object", "properties": {}}`),
 			},
 		},
-		{
+	}
+
+	if includeHandoff {
+		tools = append(tools, Tool{
 			Type: "function",
 			Function: ToolFunction{
 				Name:        "request_human_handoff",
 				Description: "Request to transfer the conversation to a human support agent. Use this when you cannot help the user or when they explicitly ask for a human.",
 				Parameters:  json.RawMessage(`{"type": "object", "properties": {}}`),
 			},
-		},
+		})
 	}
+
+	return tools
 }

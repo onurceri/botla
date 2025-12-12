@@ -1,15 +1,19 @@
-import { Settings, Database, Play, Code, MessageSquare, Zap, Shield, Headphones, BarChart3 } from 'lucide-react'
+import { Settings, Database, Play, Code, MessageSquare, Zap, Shield, Headphones, BarChart3, Inbox } from 'lucide-react'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useChatbotContext } from '../context/ChatbotContext'
 
 export function ChatbotSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { planConfig } = useChatbotContext()
   
   // Extract active tab from URL path
   // path format: /chatbots/:id/overview
   const activeTab = location.pathname.split('/').pop() || 'overview'
+
+  const canUseHandoff = planConfig?.guardrails?.can_use_escalate_fallback
 
   const groups = [
     {
@@ -31,7 +35,7 @@ export function ChatbotSidebar() {
     {
       label: 'Test & Yayın',
       items: [
-        { id: 'playground', label: 'Playground', icon: Play },
+        { id: 'playground', label: 'Görünüm ve Test', icon: Play },
         { id: 'connect', label: 'Entegrasyon', icon: Code },
       ]
     },
@@ -39,6 +43,7 @@ export function ChatbotSidebar() {
       label: 'Raporlar',
       items: [
         { id: 'analytics', label: 'Analizler', icon: BarChart3 },
+        ...(canUseHandoff ? [{ id: 'requests', label: 'Destek Talepleri', icon: Inbox }] : []),
       ]
     }
   ]

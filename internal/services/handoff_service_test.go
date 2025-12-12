@@ -15,7 +15,7 @@ func TestBuildHandoffEmailBody(t *testing.T) {
 	botName := "Test Bot"
 	reqID := "req-123"
 	notes := "User needs help"
-	
+
 	// Mock messages for HND-005 (History)
 	msgs := []models.Message{
 		{
@@ -33,7 +33,7 @@ func TestBuildHandoffEmailBody(t *testing.T) {
 	// 1. Test English (Default/Fallback)
 	cfgEn := langconfig.Get("en")
 	bodyEn := svc.buildHandoffEmailBody(botName, reqID, msgs, notes, cfgEn)
-	
+
 	// Check content
 	if !strings.Contains(bodyEn, "Test Bot") {
 		t.Error("EN: missing bot name")
@@ -50,7 +50,7 @@ func TestBuildHandoffEmailBody(t *testing.T) {
 	if !strings.Contains(bodyEn, "Hi, how can I help?") {
 		t.Error("EN: missing bot message (HND-005)")
 	}
-	
+
 	// 2. Test Turkish (HND-004)
 	cfgTr := langconfig.Get("tr")
 	bodyTr := svc.buildHandoffEmailBody(botName, reqID, msgs, notes, cfgTr)

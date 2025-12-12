@@ -103,11 +103,11 @@ func TestGenerateEmbeddings_Batching(t *testing.T) {
 		reqCount++
 		// Decode body to check batch size if we want, but just counting requests is enough
 		// We expect 2 requests for 26 chunks (25 + 1)
-		
+
 		var req map[string]any
 		json.NewDecoder(r.Body).Decode(&req)
 		inputs, _ := req["input"].([]any)
-		
+
 		respEmbeddings := make([]map[string]any, len(inputs))
 		for i := range inputs {
 			respEmbeddings[i] = map[string]any{"embedding": []float64{0.1}}
@@ -134,10 +134,10 @@ func TestGenerateEmbeddings_Batching(t *testing.T) {
 		chunks[i] = models.Chunk{Text: "a", TokenCount: 1}
 	}
 
-	// We need to speed up the ticker or wait. 
+	// We need to speed up the ticker or wait.
 	// The code uses time.NewTicker(time.Second / 58) which is ~17ms.
 	// 2 batches = ~34ms wait. This is fast enough for a test.
-	
+
 	err := GenerateEmbeddings(chunks, "cb")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

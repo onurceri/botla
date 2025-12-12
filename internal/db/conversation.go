@@ -72,7 +72,7 @@ func ListRecentMessages(ctx context.Context, pool *sql.DB, conversationID string
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var out []models.Message
+	out := make([]models.Message, 0)
 	for rows.Next() {
 		var m models.Message
 		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.TokensUsed, &m.ThumbsUp, &m.CreatedAt, &m.Type); err != nil {

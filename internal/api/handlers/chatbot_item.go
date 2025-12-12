@@ -150,6 +150,34 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
+	if req.ThresholdConfig != nil && req.ThresholdConfig.FallbackMode == "escalate" {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil || !plan.Config.Guardrails.CanUseEscalateFallback {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Escalate fallback is not available on your plan",
+				"upgrade_required": true,
+				"feature":          "escalate_fallback",
+			})
+			return
+		}
+	}
+
+	if req.HandoffEnabled != nil && *req.HandoffEnabled {
+		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if err != nil || plan == nil || !plan.Config.Guardrails.CanUseEscalateFallback {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Human handoff is not available on your plan",
+				"upgrade_required": true,
+				"feature":          "escalate_fallback",
+			})
+			return
+		}
+	}
+
 	// Apply updates
 	// If branding is explicitly turned off, clear any custom branding
 	if req.HideBranding != nil && !*req.HideBranding {

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Message as MsgComp } from './Message'
 import { Suggestions } from './Suggestions'
 
-type Msg = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal' }
+type Msg = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal'; handoffRequestId?: string; emailSubmitted?: boolean }
 
 type CustomBranding = {
   logo_url?: string
@@ -11,8 +11,8 @@ type CustomBranding = {
 }
 
 export function ChatDrawer(
-  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, handoffEnabled = false, onRequestHandoff, onFeedback }:
-  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; handoffEnabled?: boolean; onRequestHandoff?: () => void; onFeedback?: (id: string, isPositive: boolean) => void }
+  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, onFeedback, onSubmitEmail }:
+  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; onFeedback?: (id: string, isPositive: boolean) => void; onSubmitEmail?: (requestId: string, email: string) => Promise<void> }
 ) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -53,10 +53,6 @@ export function ChatDrawer(
     }
   }
 
-  const hasUserMessages = messages.some(m => m.role === 'user')
-  const hasHandoffRequest = messages.some(m => m.type === 'handoff')
-  const isHandoffDisabled = loading || !hasUserMessages || hasHandoffRequest
-
   return (
     <div className="cbw-panel" role="dialog" aria-label="Chatbot">
       <div className="cbw-header">
@@ -66,28 +62,8 @@ export function ChatDrawer(
         </div>
         <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">×</button>
       </div>
-      {/* Handoff button */}
-      {handoffEnabled && onRequestHandoff && (
-        <div className="cbw-handoff-bar">
-          <button 
-            className="cbw-handoff-btn" 
-            onClick={onRequestHandoff} 
-            disabled={isHandoffDisabled}
-            aria-label="İnsan desteği iste"
-            style={{ 
-              opacity: isHandoffDisabled ? 0.5 : 1, 
-              cursor: isHandoffDisabled ? 'not-allowed' : 'pointer' 
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/>
-            </svg>
-            İnsan Desteği İste
-          </button>
-        </div>
-      )}
       <div className="cbw-messages">
-        {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} />)}
+        {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} />)}
         {(!messages || (messages.filter(m => m.role === 'user').length === 0 && !messages.some(m => m.type === 'handoff'))) && suggestions && suggestions.length > 0 && (
           <div className="cbw-msg-row assistant" style={{ justifyContent: 'flex-start', alignItems: 'flex-start' }}>
             <div className="cbw-avatar" style={{ marginTop: '4px' }}>

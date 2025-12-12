@@ -55,10 +55,10 @@ func TestCountTokens_Formula(t *testing.T) {
 	if runes != 21 {
 		t.Fatalf("sanity check failed: expected 21 runes, got %d", runes)
 	}
-	
+
 	expected := int(math.Round((float64(runes) / 4.0) * 1.3))
 	got := CountTokens(text, "tr")
-	
+
 	if got != expected {
 		t.Errorf("TOK-005: expected %d, got %d", expected, got)
 	}

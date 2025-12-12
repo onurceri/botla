@@ -111,10 +111,17 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log}
 	// Analytics handler for chatbot-specific routes
 	anhSpec := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc}
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, rlSources))
+	// Suggestions handler
+	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log}
+	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, sugh, rlSources))
 
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
+		// Public email submission for handoff: /api/v1/public/chatbots/:botId/handoff/:requestId/contact
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff/") && strings.HasSuffix(r.URL.Path, "/contact") {
+			hoh.PublicSubmitEmail(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") {
 			// Public handoff request
 			hoh.PublicRequestHandoff(w, r)
@@ -181,7 +188,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	return mux
 }
 
-func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, rlSources *middleware.RateLimiter) http.Handler {
+func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers, rlSources *middleware.RateLimiter) http.Handler {
 	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		// Pending URLs endpoints
@@ -216,9 +223,15 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff-requests") {
 			// Has request ID if path contains more segments after handoff-requests
 			parts := strings.Split(r.URL.Path, "/")
-			if len(parts) >= 6 && parts[5] != "" {
-				// Update specific request: PATCH /api/v1/chatbots/:id/handoff-requests/:requestId
-				hoh.UpdateHandoffRequest(w, r)
+			// /api/v1/chatbots/:id/handoff-requests/:requestId -> parts[6] is requestId
+			if len(parts) >= 7 && parts[6] != "" {
+				if r.Method == http.MethodGet {
+					// GET specific request: GET /api/v1/chatbots/:id/handoff-requests/:requestId
+					hoh.GetHandoffRequestDetail(w, r)
+				} else {
+					// Update specific request: PATCH /api/v1/chatbots/:id/handoff-requests/:requestId
+					hoh.UpdateHandoffRequest(w, r)
+				}
 			} else {
 				// List requests: GET /api/v1/chatbots/:id/handoff-requests
 				hoh.ListHandoffRequests(w, r)
@@ -239,6 +252,11 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 				anh.GetSourceUsage(w, r)
 				return
 			}
+		}
+		// Suggestions regenerate endpoint
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/suggestions/regenerate") {
+			sugh.RegenerateSuggestions(w, r)
+			return
 		}
 		// Sitemap discovery endpoint
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {

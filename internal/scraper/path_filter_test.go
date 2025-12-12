@@ -304,7 +304,7 @@ func TestPathFilter_FilterURLs(t *testing.T) {
 			}
 
 			result := filter.FilterURLs(tc.urls)
-			
+
 			if len(result) != len(tc.expected) {
 				t.Errorf("FilterURLs returned %d URLs, expected %d\nGot: %v\nExpected: %v",
 					len(result), len(tc.expected), result, tc.expected)
@@ -328,7 +328,7 @@ func TestPathFilter_NilFilter(t *testing.T) {
 	}
 
 	result := filter.FilterURLs(urls)
-	
+
 	if len(result) != len(urls) {
 		t.Errorf("Nil filter should return all URLs, got %d, expected %d", len(result), len(urls))
 	}
@@ -338,7 +338,7 @@ func TestNewPathFilter_InvalidPattern(t *testing.T) {
 	// Note: Our current implementation uses regexp.QuoteMeta which escapes most special chars,
 	// so it's hard to create an invalid pattern. This test is here for completeness.
 	// If we add more complex pattern validation in the future, this test will be useful.
-	
+
 	// For now, test that valid patterns work
 	_, err := NewPathFilter([]string{"/blog/*"}, []string{"/admin/*"})
 	if err != nil {

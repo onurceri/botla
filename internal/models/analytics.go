@@ -1,14 +1,14 @@
 package models
 
 type DailyAnalytics struct {
-	Date              string `json:"date"`
-	TotalMessages     int    `json:"total_messages"`
-	TotalConversations int   `json:"total_conversations"`
-	TotalTokensUsed   int    `json:"total_tokens_used"`
-	ThumbsUpCount     int    `json:"thumbs_up_count"`
-	ThumbsDownCount   int    `json:"thumbs_down_count"`
-	HandoffCount      int    `json:"handoff_count"`
-	AvgResponseTimeMs *int   `json:"avg_response_time_ms,omitempty"`
+	Date               string `json:"date"`
+	TotalMessages      int    `json:"total_messages"`
+	TotalConversations int    `json:"total_conversations"`
+	TotalTokensUsed    int    `json:"total_tokens_used"`
+	ThumbsUpCount      int    `json:"thumbs_up_count"`
+	ThumbsDownCount    int    `json:"thumbs_down_count"`
+	HandoffCount       int    `json:"handoff_count"`
+	AvgResponseTimeMs  *int   `json:"avg_response_time_ms,omitempty"`
 }
 
 type AnalyticsOverview struct {

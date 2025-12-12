@@ -299,7 +299,16 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 
 	// Tools
 	tools := rag.ConvertActionsToTools(actions)
-	tools = append(tools, rag.GetBuiltinTools()...)
+
+	includeHandoffTool := bot.HandoffEnabled
+	if includeHandoffTool {
+		plan, planErr := db.GetPlanByUserID(ctx, s.DB, bot.UserID)
+		if planErr == nil && plan != nil && !plan.Config.Guardrails.CanUseEscalateFallback {
+			includeHandoffTool = false
+		}
+	}
+
+	tools = append(tools, rag.GetBuiltinTools(includeHandoffTool)...)
 
 	// Get LLM Client with tool support
 	// Try the bot's configured model first via the factory
@@ -360,6 +369,7 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 	var finalResponse string
 	var totalTokens int
 	var isHandoff bool
+	var handoffRequestID string
 
 	// Agentic loop
 AgentLoop:
@@ -399,6 +409,20 @@ AgentLoop:
 
 			// Special handling for handoff tool success
 			if tc.Function.Name == "request_human_handoff" && err == nil {
+				// Parse request_id from tool result
+				// Result format: {"status": "handoff_requested", "request_id": "uuid"}
+				if strings.Contains(result.Result, "request_id") {
+					// Simple extraction - find the request_id value
+					start := strings.Index(result.Result, `"request_id": "`)
+					if start != -1 {
+						start += len(`"request_id": "`)
+						end := strings.Index(result.Result[start:], `"`)
+						if end != -1 {
+							handoffRequestID = result.Result[start : start+end]
+						}
+					}
+				}
+
 				// Use the configured handoff message
 				msg := cfg.ResponseTemplates.HandoffSuggestion // Default
 				if bot.FallbackMessages != nil && bot.FallbackMessages.HandoffMessage != "" {
@@ -455,12 +479,13 @@ AgentLoop:
 	}()
 
 	return &models.ChatResult{
-		Response:       finalResponse,
-		TokensUsed:     totalTokens,
-		Sources:        sources,
-		ConversationID: conv.ID,
-		MessageID:      amID,
-		IsNewConv:      isNewConv,
+		Response:         finalResponse,
+		TokensUsed:       totalTokens,
+		Sources:          sources,
+		ConversationID:   conv.ID,
+		MessageID:        amID,
+		IsNewConv:        isNewConv,
+		HandoffRequestID: handoffRequestID,
 	}, nil
 }
 

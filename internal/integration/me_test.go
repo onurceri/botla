@@ -33,7 +33,7 @@ func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	
+
 	// New user should have 0 usage
 	if body.Usage.FilesCount != 0 {
 		t.Errorf("expected 0 files, got %d", body.Usage.FilesCount)

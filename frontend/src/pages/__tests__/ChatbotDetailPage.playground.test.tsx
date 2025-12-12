@@ -4,7 +4,16 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/toast'
 import ChatbotDetailPage from '../ChatbotDetailPage'
+import PlaygroundTab from '@/features/chatbot/pages/tabs/PlaygroundTab'
 import { api } from '@/api/client'
+
+vi.mock('@/features/organization/context/OrganizationContext', () => ({
+  useOrganization: () => ({
+    currentWorkspace: { id: 'ws-1' },
+    isLoading: false
+  }),
+  OrganizationProvider: ({ children }: any) => children
+}))
 
 describe('ChatbotDetailPage playground', () => {
   it('sends chat message and renders assistant reply', async () => {
@@ -16,13 +25,15 @@ describe('ChatbotDetailPage playground', () => {
       <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/123"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="playground" element={<PlaygroundTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
     )
 
-    const playTabs = screen.getAllByRole('tab', { name: /Play/i })
+    const playTabs = screen.getAllByRole('link', { name: /Görünüm/i })
     await user.click(playTabs[playTabs.length - 1])
     const badge = await screen.findByText('1')
     const openBtn = badge.closest('button') as HTMLButtonElement
@@ -47,13 +58,15 @@ describe('ChatbotDetailPage playground', () => {
       <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/123"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="playground" element={<PlaygroundTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
     )
 
-    const playTabs2 = screen.getAllByRole('tab', { name: /Play/i })
+    const playTabs2 = screen.getAllByRole('link', { name: /Görünüm/i })
     await user.click(playTabs2[playTabs2.length - 1])
     const badge = await screen.findByText('1')
     const openBtn = badge.closest('button') as HTMLButtonElement
@@ -80,13 +93,15 @@ describe('ChatbotDetailPage playground', () => {
       <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/123"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="playground" element={<PlaygroundTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
     )
 
-    const playTabs = screen.getAllByRole('tab', { name: /Play/i })
+    const playTabs = screen.getAllByRole('link', { name: /Görünüm/i })
     await user.click(playTabs[playTabs.length - 1])
     const badge = await screen.findByText('1')
     const openBtn = badge.closest('button') as HTMLButtonElement

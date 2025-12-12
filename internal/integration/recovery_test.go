@@ -19,13 +19,13 @@ func TestRecovery_Prod(t *testing.T) {
 	})
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	
+
 	middleware.RecoveryMiddleware(log)(h).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", rec.Code)
 	}
-	
+
 	// Check JSON response
 	var resp map[string]string
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
@@ -47,13 +47,13 @@ func TestRecovery_Dev(t *testing.T) {
 	})
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	
+
 	middleware.RecoveryMiddleware(log)(h).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", rec.Code)
 	}
-	
+
 	// Check Stack Trace
 	body := rec.Body.String()
 	if !strings.Contains(body, "Panic recovered: oops") {

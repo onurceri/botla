@@ -67,4 +67,3 @@ func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 		t.Fatalf("upgrade_required missing or false: %v", resp)
 	}
 }
-

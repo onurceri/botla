@@ -7,9 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Shield, MessageSquareWarning, Ban, Plus, X, Gauge, AlertTriangle, Zap, CheckCircle2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-
+import { Shield, MessageSquareWarning, Ban, Plus, X, Gauge, AlertTriangle, CheckCircle2, FileText, Sparkles, Headset } from 'lucide-react'
 type FallbackMessages = {
   no_info_found?: string
   error_message?: string
@@ -308,19 +306,21 @@ export default function GuardrailsSettings({
                       <SelectContent>
                         <SelectItem value="static">
                           <div className="flex items-center gap-2">
-                            <span>📝 Sabit Mesaj Göster</span>
-                            <span className="text-xs text-muted-foreground ml-auto pl-2">Standart</span>
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <span>Sabit Mesaj Göster</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="smart" disabled={!canUseSmartFallback}>
                           <div className="flex items-center gap-2">
-                            <span>🤖 Akıllı Yönlendirme Yap</span>
+                            <Sparkles className="w-4 h-4 text-violet-500" />
+                            <span>Akıllı Yönlendirme Yap</span>
                             {!canUseSmartFallback && <Badge variant="secondary" className="scale-90">Pro</Badge>}
                           </div>
                         </SelectItem>
                         <SelectItem value="escalate" disabled={!canUseEscalateFallback}>
                           <div className="flex items-center gap-2">
-                            <span>👤 İnsan Desteğine Aktar</span>
+                            <Headset className="w-4 h-4 text-blue-500" />
+                            <span>İnsan Desteğine Aktar</span>
                             {!canUseEscalateFallback && <Badge variant="secondary" className="scale-90">Ent</Badge>}
                           </div>
                         </SelectItem>

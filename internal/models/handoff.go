@@ -23,6 +23,7 @@ type HandoffRequest struct {
 	Status         string     `json:"status"` // pending, assigned, resolved
 	AssignedTo     *string    `json:"assigned_to,omitempty"`
 	Notes          *string    `json:"notes,omitempty"`
+	UserEmail      *string    `json:"user_email,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
 }

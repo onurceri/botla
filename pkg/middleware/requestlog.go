@@ -39,13 +39,13 @@ func RequestLogger(log *logger.Logger) func(http.Handler) http.Handler {
 			sr := &statusRecorder{ResponseWriter: w}
 			next.ServeHTTP(sr, r)
 			dur := time.Since(start)
-			
+
 			// Use userID from recorder if set (by AuthMiddleware), otherwise try context
 			uid := sr.userID
 			if uid == "" {
 				uid, _ = UserIDFromContext(r.Context())
 			}
-			
+
 			log.Info("http_request", map[string]any{
 				"method":      r.Method,
 				"path":        r.URL.Path,

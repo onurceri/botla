@@ -200,6 +200,10 @@ func applyConfigDefaults(config *models.PlanConfig, planCode string) {
 			config.Files.MaxFilesTotal = 5
 		}
 	}
+
+	if config.Files.MaxTextLength == 0 {
+		config.Files.MaxTextLength = 400000
+	}
 }
 
 // nullStringPtr converts sql.NullString to *string

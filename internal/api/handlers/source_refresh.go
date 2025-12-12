@@ -1,14 +1,14 @@
 package handlers
 
 import (
-    "encoding/json"
-    "net/http"
-    "strconv"
-    "time"
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/api"
-    "github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/internal/api"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // RefreshSource handles POST /api/v1/sources/:id/refresh
@@ -55,19 +55,19 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-    base := api.BaseLang(c.LanguageCode)
-    cfg := api.ConfigFromBase(base)
+	base := api.BaseLang(c.LanguageCode)
+	cfg := api.ConfigFromBase(base)
 
-    if s.SourceType != "url" {
-        api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrOnlyURLRefresh, cfg)
-        return
-    }
+	if s.SourceType != "url" {
+		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrOnlyURLRefresh, cfg)
+		return
+	}
 
 	// Check if source is already processing
-    if s.Status == "pending" || s.Status == "processing" {
-        api.WriteLocalizedError(w, http.StatusConflict, api.ErrSourceAlreadyProcessing, cfg)
-        return
-    }
+	if s.Status == "pending" || s.Status == "processing" {
+		api.WriteLocalizedError(w, http.StatusConflict, api.ErrSourceAlreadyProcessing, cfg)
+		return
+	}
 
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
 	if err != nil || plan == nil {
@@ -76,17 +76,17 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check if refresh is enabled for this plan
-    if !plan.Config.Refresh.Enabled {
-        api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPlanRefreshUnavailable, cfg)
-        return
-    }
+	if !plan.Config.Refresh.Enabled {
+		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPlanRefreshUnavailable, cfg)
+		return
+	}
 
 	// Check monthly refresh quota
 	usedRefreshes, _ := db.GetMonthlyRefreshCount(r.Context(), h.DB, userID, time.Now())
-    if plan.Config.Refresh.MaxMonthly > 0 && usedRefreshes >= plan.Config.Refresh.MaxMonthly {
-        api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyRefreshExceeded, cfg)
-        return
-    }
+	if plan.Config.Refresh.MaxMonthly > 0 && usedRefreshes >= plan.Config.Refresh.MaxMonthly {
+		api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyRefreshExceeded, cfg)
+		return
+	}
 
 	// Check cooldown
 	cooldownMin := plan.Config.MinReAddCooldownMinutes
@@ -94,11 +94,11 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		elapsed := time.Since(*s.LastRefreshedAt)
 		if elapsed < time.Duration(cooldownMin)*time.Minute {
 			remaining := time.Duration(cooldownMin)*time.Minute - elapsed
-            w.Header().Set("Retry-After", strconv.Itoa(int(remaining.Seconds())))
-            api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrRefreshCooldownActive, cfg)
-            return
-        }
-    }
+			w.Header().Set("Retry-After", strconv.Itoa(int(remaining.Seconds())))
+			api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrRefreshCooldownActive, cfg)
+			return
+		}
+	}
 
 	// Update source for refresh
 	if err = db.UpdateSourceForRefresh(r.Context(), h.DB, sourceID); err != nil {

@@ -1,15 +1,15 @@
 package handlers
 
 import (
-    "encoding/json"
-    "net/http"
-    "strings"
-    "time"
+	"encoding/json"
+	"net/http"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/api"
-    "github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/internal/api"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // BulkCreateSources handles POST /api/v1/chatbots/:id/sources/bulk
@@ -40,16 +40,16 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-    if chatbot == nil {
-        w.WriteHeader(http.StatusNotFound)
-        return
-    }
-    if chatbot.UserID != userID {
-        w.WriteHeader(http.StatusForbidden)
-        return
-    }
-    base := api.BaseLang(chatbot.LanguageCode)
-    cfg := api.ConfigFromBase(base)
+	if chatbot == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if chatbot.UserID != userID {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	base := api.BaseLang(chatbot.LanguageCode)
+	cfg := api.ConfigFromBase(base)
 
 	// Get plan for quota checks
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
@@ -62,15 +62,15 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 	var req struct {
 		URLs []string `json:"urls"`
 	}
-    if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-        api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
-        return
-    }
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
+		return
+	}
 
-    if len(req.URLs) == 0 {
-        api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrNoURLsProvided, cfg)
-        return
-    }
+	if len(req.URLs) == 0 {
+		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrNoURLsProvided, cfg)
+		return
+	}
 
 	// Check current URL count and limits
 	currentCount, err := db.CountSourcesByType(r.Context(), h.DB, chatbotID, "url")
@@ -86,10 +86,10 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 
 	// Calculate how many URLs we can add
 	available := limit - currentCount
-    if available <= 0 {
-        api.WriteLocalizedError(w, http.StatusForbidden, api.ErrURLLimitReached, cfg)
-        return
-    }
+	if available <= 0 {
+		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrURLLimitReached, cfg)
+		return
+	}
 
 	// Check monthly ingestion quota
 	usedSources, _, _ := db.GetMonthlyIngestionUsage(r.Context(), h.DB, userID, time.Now())
@@ -98,10 +98,10 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		maxIngest = 50
 	}
 	monthlyAvailable := maxIngest - usedSources
-    if monthlyAvailable <= 0 {
-        api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyIngestionExceeded, cfg)
-        return
-    }
+	if monthlyAvailable <= 0 {
+		api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyIngestionExceeded, cfg)
+		return
+	}
 
 	// Limit URLs to what's available
 	urlsToProcess := req.URLs
