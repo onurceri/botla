@@ -74,7 +74,7 @@ This test plan covers all user registration functionality including validation, 
 
 ---
 
-### 1.1.6 SQL Injection Prevention
+### 1.1.6 SQL Injection Prevention [x]
 **Priority:** Critical  
 **Type:** Security Test
 

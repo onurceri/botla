@@ -467,7 +467,6 @@ func calculateHistoryLimit(maxContextTokens int) int {
 	return limit
 }
 
-
 // smartFallback generates a helpful response when no context is available
 func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, userMessage string, cfg langconfig.LanguageConfig) (string, int, error) {
 	// Get capability summaries from sources

@@ -48,3 +48,41 @@ func TestAuth_EdgeCases(t *testing.T) {
 	}
 	r3.Body.Close()
 }
+
+func TestAuth_Register_SQLInjectionEmailSafe(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	var before int
+	err = te.DB.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&before)
+	if err != nil {
+		t.Fatalf("count before failed: %v", err)
+	}
+
+	body := map[string]string{
+		"email":     `'; DROP TABLE users;--`,
+		"password":  "testpassword123",
+		"full_name": "SQL Injection Test",
+	}
+	b, _ := json.Marshal(body)
+	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	if res.StatusCode == http.StatusInternalServerError {
+		t.Fatalf("expected non-500 status, got %d", res.StatusCode)
+	}
+	res.Body.Close()
+
+	var after int
+	err = te.DB.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&after)
+	if err != nil {
+		t.Fatalf("count after failed: %v", err)
+	}
+	if after < before {
+		t.Fatalf("users table appears corrupted: before=%d after=%d", before, after)
+	}
+}
