@@ -75,6 +75,41 @@ This test plan covers user profile retrieval and the `/me` endpoint functionalit
 | 2 | GET `/api/v1/me` with Token A | Returns User A's profile [x] |
 | 3 | Attempt to access User B's data | Only User A's data accessible via /me [x] |
 
+---
+
+### 1.4.7 Consistent Response Schema [x]
+**Priority:** Medium  
+**Type:** Integration Test
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | GET `/api/v1/me` | 200 OK [x] |
+| 2 | Response contains legacy fields | plan_code, config [x] |
+| 3 | Response contains nested plan object | plan.code, plan.config [x] |
+
+---
+
+### 1.4.8 Robust Usage and Organization Error Handling [x]
+**Priority:** Medium  
+**Type:** Integration Test
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Simulate database failure | Usage and org queries fail [x] |
+| 2 | GET `/api/v1/me` with valid token | 500 Internal Server Error [x] |
+
+---
+
+### 1.4.9 Free Plan Default Config Verified [x]
+**Priority:** Low  
+**Type:** Integration Test
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | GET `/api/v1/me` for new free user | 200 OK [x] |
+| 2 | plan.code equals `free` | plan.code == "free" [x] |
+| 3 | plan.config.chat is populated | allowed_models, max_monthly_tokens set [x] |
+
 **Note:** The `/me` endpoint only returns the authenticated user's data, so cross-user access is inherently prevented by design.
 
 ---

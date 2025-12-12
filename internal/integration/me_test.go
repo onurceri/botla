@@ -30,6 +30,15 @@ func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
 				MaxMonthlyTokens int      `json:"max_monthly_tokens"`
 			} `json:"chat"`
 		} `json:"config"`
+		Plan struct {
+			Code   string `json:"code"`
+			Config struct {
+				Chat struct {
+					AllowedModels    []string `json:"allowed_models"`
+					MaxMonthlyTokens int      `json:"max_monthly_tokens"`
+				} `json:"chat"`
+			} `json:"config"`
+		} `json:"plan"`
 		Usage struct {
 			FilesCount    int `json:"files_count"`
 			StorageUsedMB int `json:"storage_used_mb"`
@@ -44,11 +53,20 @@ func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
 	if body.PlanCode != "free" {
 		t.Errorf("expected plan code free, got %s", body.PlanCode)
 	}
+	if body.Plan.Code != "free" {
+		t.Errorf("expected nested plan.code free, got %s", body.Plan.Code)
+	}
 	if len(body.Config.Chat.AllowedModels) == 0 {
 		t.Errorf("expected at least one allowed model")
 	}
 	if body.Config.Chat.MaxMonthlyTokens == 0 {
 		t.Errorf("expected max monthly tokens to be set")
+	}
+	if len(body.Plan.Config.Chat.AllowedModels) == 0 {
+		t.Errorf("expected at least one allowed model in nested plan config")
+	}
+	if body.Plan.Config.Chat.MaxMonthlyTokens == 0 {
+		t.Errorf("expected max monthly tokens to be set in nested plan config")
 	}
 
 	if body.Usage.FilesCount != 0 {
@@ -231,5 +249,34 @@ func TestMe_CrossUserProfileIsolation(t *testing.T) {
 	}
 	if bodyB.Email != emailB {
 		t.Fatalf("expected email %s for user B, got %s", emailB, bodyB.Email)
+	}
+}
+
+func TestMe_DBErrorReturns500(t *testing.T) {
+	te, setupErr := SetupTestEnv()
+	if setupErr != nil {
+		t.Fatalf("setup failed: %v", setupErr)
+	}
+	defer TeardownTestEnv(te)
+
+	closeErr := te.DB.Close()
+	if closeErr != nil {
+		t.Fatalf("failed to close db: %v", closeErr)
+	}
+
+	token := authToken(t, te.Server.URL, "me-dberror@example.com")
+	req, err := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to call /me: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 when db is closed, got %d", res.StatusCode)
 	}
 }

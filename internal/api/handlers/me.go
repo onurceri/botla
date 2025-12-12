@@ -27,6 +27,7 @@ type MeResponse struct {
 	PlanPrice       float64           `json:"plan_price"`
 	PlanCurrency    string            `json:"plan_currency"`
 	Config          models.PlanConfig `json:"config"`
+	Plan            Plan              `json:"plan"`
 	Usage           Usage             `json:"usage"`
 	Organizations   []Organization    `json:"organizations,omitempty"`
 }
@@ -48,6 +49,11 @@ type Organization struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Role string `json:"role"`
+}
+
+type Plan struct {
+	Code   string            `json:"code"`
+	Config models.PlanConfig `json:"config"`
 }
 
 // planInfo holds plan-related data
@@ -90,17 +96,19 @@ func (h *MeHandlers) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdAt, err := h.getUserCreatedAt(r.Context(), u.ID)
+	usage, err := h.getUserUsage(r.Context(), u.ID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	usage := h.getUserUsage(r.Context(), u.ID)
+	orgs, err := h.getUserOrganizations(r.Context(), u.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	orgs := h.getUserOrganizations(r.Context(), u.ID)
-
-	res := h.buildMeResponse(u, plan, usage, createdAt, orgs)
+	res := h.buildMeResponse(u, plan, usage, orgs)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -157,15 +165,39 @@ func (h *MeHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planInfo
 }
 
 // getUserUsage retrieves all usage statistics for a user
-func (h *MeHandlers) getUserUsage(ctx context.Context, userID string) Usage {
-	filesCount, _ := db.GetFileCountByUserID(ctx, h.DB, userID)
-	urlsCount, _ := db.GetURLCountByUserID(ctx, h.DB, userID)
-	tokensUsed, _ := db.GetMonthlyTokenUsage(ctx, h.DB, userID)
-	storageUsedMB, _ := db.GetStorageUsedMBByUserID(ctx, h.DB, userID)
-	usedIngestions, usedEmbedTokens, _ := db.GetMonthlyIngestionUsage(ctx, h.DB, userID, time.Now())
-	maxFilesBot, _ := db.GetMaxFileCountInAnyBot(ctx, h.DB, userID)
-	maxURLsBot, _ := db.GetMaxURLCountInAnyBot(ctx, h.DB, userID)
-	refreshCount, _ := db.GetMonthlyRefreshCount(ctx, h.DB, userID, time.Now())
+func (h *MeHandlers) getUserUsage(ctx context.Context, userID string) (Usage, error) {
+	filesCount, err := db.GetFileCountByUserID(ctx, h.DB, userID)
+	if err != nil {
+		return Usage{}, err
+	}
+	urlsCount, err := db.GetURLCountByUserID(ctx, h.DB, userID)
+	if err != nil {
+		return Usage{}, err
+	}
+	tokensUsed, err := db.GetMonthlyTokenUsage(ctx, h.DB, userID)
+	if err != nil {
+		return Usage{}, err
+	}
+	storageUsedMB, err := db.GetStorageUsedMBByUserID(ctx, h.DB, userID)
+	if err != nil {
+		return Usage{}, err
+	}
+	usedIngestions, usedEmbedTokens, err := db.GetMonthlyIngestionUsage(ctx, h.DB, userID, time.Now())
+	if err != nil {
+		return Usage{}, err
+	}
+	maxFilesBot, err := db.GetMaxFileCountInAnyBot(ctx, h.DB, userID)
+	if err != nil {
+		return Usage{}, err
+	}
+	maxURLsBot, err := db.GetMaxURLCountInAnyBot(ctx, h.DB, userID)
+	if err != nil {
+		return Usage{}, err
+	}
+	refreshCount, err := db.GetMonthlyRefreshCount(ctx, h.DB, userID, time.Now())
+	if err != nil {
+		return Usage{}, err
+	}
 
 	return Usage{
 		FilesCount:               filesCount,
@@ -177,23 +209,10 @@ func (h *MeHandlers) getUserUsage(ctx context.Context, userID string) Usage {
 		IngestionsUsed:           usedIngestions,
 		IngestionEmbeddingTokens: usedEmbedTokens,
 		RefreshCount:             refreshCount,
-	}
+	}, nil
 }
 
-func (h *MeHandlers) getUserCreatedAt(ctx context.Context, userID string) (time.Time, error) {
-	var createdAt time.Time
-	err := h.DB.QueryRowContext(ctx, `
-		SELECT created_at
-		FROM users
-		WHERE id = $1
-	`, userID).Scan(&createdAt)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return createdAt, nil
-}
-
-func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) []Organization {
+func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) ([]Organization, error) {
 	rows, err := h.DB.QueryContext(ctx, `
 		SELECT o.id, o.name, m.role
 		FROM organizations o
@@ -202,7 +221,7 @@ func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) []
 		ORDER BY o.created_at
 	`, userID)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -210,15 +229,18 @@ func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) []
 	for rows.Next() {
 		var org Organization
 		if err = rows.Scan(&org.ID, &org.Name, &org.Role); err != nil {
-			return nil
+			return nil, err
 		}
 		orgs = append(orgs, org)
 	}
-	return orgs
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return orgs, nil
 }
 
 // buildMeResponse constructs the response from user, plan, and usage data
-func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage, createdAt time.Time, orgs []Organization) MeResponse {
+func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage, orgs []Organization) MeResponse {
 	var sanitizedFullName *string
 	if u.FullName != nil {
 		escaped := html.EscapeString(*u.FullName)
@@ -228,7 +250,7 @@ func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage
 	return MeResponse{
 		ID:              u.ID,
 		Email:           u.Email,
-		CreatedAt:       createdAt,
+		CreatedAt:       u.CreatedAt,
 		FullName:        sanitizedFullName,
 		AvatarURL:       u.AvatarURL,
 		PlanID:          plan.ID,
@@ -238,8 +260,12 @@ func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage
 		PlanPrice:       plan.Price,
 		PlanCurrency:    plan.Currency,
 		Config:          plan.Config,
-		Usage:           usage,
-		Organizations:   orgs,
+		Plan: Plan{
+			Code:   plan.Code,
+			Config: plan.Config,
+		},
+		Usage:         usage,
+		Organizations: orgs,
 	}
 }
 
