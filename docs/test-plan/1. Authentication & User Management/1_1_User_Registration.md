@@ -7,7 +7,7 @@ This test plan covers all user registration functionality including validation, 
 
 ## Test Cases
 
-### 1.1.1 Valid Registration Flow
+### 1.1.1 Valid Registration Flow [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
@@ -22,7 +22,7 @@ This test plan covers all user registration functionality including validation, 
 
 ---
 
-### 1.1.2 Invalid Email Format
+### 1.1.2 Invalid Email Format [x]
 **Priority:** High  
 **Type:** Integration Test
 
@@ -35,7 +35,7 @@ This test plan covers all user registration functionality including validation, 
 
 ---
 
-### 1.1.3 Duplicate Email Registration
+### 1.1.3 Duplicate Email Registration [x]
 **Priority:** High  
 **Type:** Integration Test
 
@@ -48,7 +48,7 @@ This test plan covers all user registration functionality including validation, 
 
 ---
 
-### 1.1.4 Weak Password Validation
+### 1.1.4 Weak Password Validation [x]
 **Priority:** High  
 **Type:** Integration Test
 
@@ -61,7 +61,7 @@ This test plan covers all user registration functionality including validation, 
 
 ---
 
-### 1.1.5 Missing Required Fields
+### 1.1.5 Missing Required Fields [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
@@ -119,7 +119,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 
 ---
 
-### 1.1.9 Registration Side Effects
+### 1.1.9 Registration Side Effects [x]
 **Priority:** High  
 **Type:** Integration Test
 
