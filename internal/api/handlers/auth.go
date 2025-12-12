@@ -24,9 +24,10 @@ func hashToken(token string) string {
 }
 
 type AuthHandlers struct {
-	DB         *sql.DB
-	Secret     string
-	OrgService *services.OrganizationService
+	DB               *sql.DB
+	Secret           string
+	OrgService       *services.OrganizationService
+	WorkspaceService *services.WorkspaceService
 }
 
 type registerRequest struct {
@@ -119,8 +120,8 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		orgSlug := slugifyEmail(req.Email)
 		org, err := h.OrgService.CreateOrganization(r.Context(), orgName, orgSlug, userID)
-		if err == nil && org != nil {
-			_, _ = h.OrgService.CreateWorkspace(r.Context(), org.ID, cfg.ResponseTemplates.DefaultWorkspaceName, "default", nil)
+		if err == nil && org != nil && h.WorkspaceService != nil {
+			_, _ = h.WorkspaceService.CreateWorkspace(r.Context(), org.ID, cfg.ResponseTemplates.DefaultWorkspaceName, "default", nil)
 		}
 	}
 

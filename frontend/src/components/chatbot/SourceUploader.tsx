@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Upload, Link as LinkIcon, FileText, X, Type } from 'lucide-react'
+import { Upload, Link as LinkIcon, X, Type } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'

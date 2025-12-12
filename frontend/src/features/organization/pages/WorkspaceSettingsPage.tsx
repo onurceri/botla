@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrganization } from '../context/OrganizationContext'
-import { updateWorkspace, deleteWorkspace } from '@/api/organization'
+import { deleteWorkspace, updateWorkspace } from '@/api/workspace'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

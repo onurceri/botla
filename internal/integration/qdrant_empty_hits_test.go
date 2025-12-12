@@ -34,7 +34,16 @@ func TestChat_QdrantEmptyHits_Fallback(t *testing.T) {
 
 	token := authToken(t, te.Server.URL, "qdempty@example.com")
 
-	create := map[string]any{"name": "QD Empty Bot"}
+	// Create bot with static fallback mode to test 0-token fallback
+	create := map[string]any{
+		"name": "QD Empty Bot",
+		"threshold_config": map[string]any{
+			"high_threshold":          0.50,
+			"medium_threshold":        0.30,
+			"fallback_mode":           "static",
+			"show_confidence_warning": false,
+		},
+	}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)

@@ -14,15 +14,21 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 	var id string
 
 	// Serialize JSONB fields
-	var sqJSON, fmJSON, trJSON interface{}
+	var sqJSON, tcJSON, fmJSON, trJSON, hcJSON interface{}
 	if bot.SuggestedQuestions != nil {
 		sqJSON, _ = json.Marshal(bot.SuggestedQuestions)
+	}
+	if bot.ThresholdConfig != nil {
+		tcJSON, _ = json.Marshal(bot.ThresholdConfig)
 	}
 	if bot.FallbackMessages != nil {
 		fmJSON, _ = json.Marshal(bot.FallbackMessages)
 	}
 	if bot.TopicRestrictions != nil {
 		trJSON, _ = json.Marshal(bot.TopicRestrictions)
+	}
+	if bot.HandoffConfig != nil {
+		hcJSON, _ = json.Marshal(bot.HandoffConfig)
 	}
 
 	err := pool.QueryRowContext(
@@ -36,8 +42,9 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
             chat_background_color, bot_icon, bot_display_name, suggested_questions, suggestions_enabled,
             include_paths, exclude_paths, selector_whitelist, discovery_mode,
             refresh_policy, refresh_frequency, next_refresh_at, last_refresh_at,
-            confidence_threshold, fallback_messages, topic_restrictions
-        ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36) RETURNING id`,
+            confidence_threshold, threshold_config, fallback_messages, topic_restrictions,
+            handoff_enabled, handoff_type, handoff_config
+        ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40) RETURNING id`,
 		bot.UserID, bot.WorkspaceID, bot.OrganizationID, bot.Name, bot.Description, bot.CustomInstruction, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
@@ -46,7 +53,8 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, sqJSON, bot.SuggestionsEnabled,
 		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 		bot.RefreshPolicy, bot.RefreshFrequency, bot.NextRefreshAt, bot.LastRefreshAt,
-		bot.ConfidenceThreshold, fmJSON, trJSON,
+		bot.ConfidenceThreshold, tcJSON, fmJSON, trJSON,
+		bot.HandoffEnabled, bot.HandoffType, hcJSON,
 	).Scan(&id)
 	if err != nil {
 		return "", err

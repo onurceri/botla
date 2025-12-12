@@ -23,7 +23,7 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
       attempts++
       try {
         const res = await getSourceStatus(sid, etag)
-        if (!res.notModified) {
+        if (res && !res.notModified) {
           etag = res.etag || etag
           const s = res.data as Source
           if (s && s.status !== 'pending' && s.status !== 'processing') {

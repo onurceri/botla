@@ -32,12 +32,6 @@ type DiscoveryMode = 'auto' | 'pending' | 'disabled'
 type RefreshPolicy = 'manual' | 'auto'
 type RefreshFrequency = 'daily' | 'weekly' | 'monthly'
 
-interface PlanScrapingConfig {
-  max_pages_per_crawl?: number
-  max_urls_per_bot?: number
-  dynamic_enabled?: boolean
-}
-
 interface URLAdvancedSettingsProps {
   // Discovery Mode
   discoveryMode: DiscoveryMode

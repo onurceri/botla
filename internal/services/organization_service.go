@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/logger"
@@ -171,72 +170,6 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string)
 	}
 
 	_, err = s.DB.ExecContext(ctx, "DELETE FROM organizations WHERE id = $1", id)
-	return err
-}
-
-// CreateWorkspace creates a new workspace
-func (s *OrganizationService) CreateWorkspace(ctx context.Context, orgID, name, slug string, clientName *string) (*models.Workspace, error) {
-	ws := &models.Workspace{
-		OrganizationID: orgID,
-		Name:           name,
-		Slug:           slug,
-		ClientName:     clientName,
-	}
-
-	err := s.DB.QueryRowContext(ctx, `
-		INSERT INTO workspaces (organization_id, name, slug, client_name)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at
-	`, ws.OrganizationID, ws.Name, ws.Slug, ws.ClientName).Scan(&ws.ID, &ws.CreatedAt)
-
-	if err != nil {
-		if strings.Contains(err.Error(), "unique constraint") {
-			return nil, fmt.Errorf("workspace slug already exists in this organization")
-		}
-		return nil, err
-	}
-
-	return ws, nil
-}
-
-// UpdateWorkspace updates workspace details
-func (s *OrganizationService) UpdateWorkspace(ctx context.Context, wsID, name, slug string, clientName *string) error {
-	_, err := s.DB.ExecContext(ctx, `
-		UPDATE workspaces 
-		SET name = $1, slug = $2, client_name = $3 
-		WHERE id = $4
-	`, name, slug, clientName, wsID)
-
-	if err != nil {
-		if strings.Contains(err.Error(), "unique constraint") {
-			return fmt.Errorf("workspace slug already exists in this organization")
-		}
-		return err
-	}
-	return nil
-}
-
-// DeleteWorkspace deletes a workspace
-func (s *OrganizationService) DeleteWorkspace(ctx context.Context, wsID string) error {
-	// Get organization_id first
-	var orgID string
-	err := s.DB.QueryRowContext(ctx, "SELECT organization_id FROM workspaces WHERE id = $1", wsID).Scan(&orgID)
-	if err != nil {
-		return err
-	}
-
-	// Check total workspaces count
-	var count int
-	err = s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM workspaces WHERE organization_id = $1", orgID).Scan(&count)
-	if err != nil {
-		return err
-	}
-
-	if count <= 1 {
-		return fmt.Errorf("cannot delete the last workspace in the organization")
-	}
-
-	_, err = s.DB.ExecContext(ctx, "DELETE FROM workspaces WHERE id = $1", wsID)
 	return err
 }
 
@@ -419,45 +352,4 @@ func (s *OrganizationService) countOwnersInOrg(ctx context.Context, orgID string
 		"SELECT COUNT(*) FROM memberships WHERE organization_id = $1 AND role = 'owner'",
 		orgID).Scan(&count)
 	return count, err
-}
-
-// GetWorkspaces returns all workspaces of an organization
-func (s *OrganizationService) GetWorkspaces(ctx context.Context, orgID string) ([]*models.Workspace, error) {
-	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, organization_id, name, slug, client_name, created_at
-		FROM workspaces
-		WHERE organization_id = $1
-		ORDER BY name
-	`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	var workspaces []*models.Workspace
-	for rows.Next() {
-		var ws models.Workspace
-		if err := rows.Scan(&ws.ID, &ws.OrganizationID, &ws.Name, &ws.Slug, &ws.ClientName, &ws.CreatedAt); err != nil {
-			return nil, err
-		}
-		workspaces = append(workspaces, &ws)
-	}
-	return workspaces, nil
-}
-
-// GetWorkspace returns a workspace by ID
-func (s *OrganizationService) GetWorkspace(ctx context.Context, id string) (*models.Workspace, error) {
-	var ws models.Workspace
-	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, organization_id, name, slug, client_name, created_at
-		FROM workspaces
-		WHERE id = $1
-	`, id).Scan(&ws.ID, &ws.OrganizationID, &ws.Name, &ws.Slug, &ws.ClientName, &ws.CreatedAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &ws, nil
 }

@@ -14,15 +14,6 @@ import {
 } from "@/components/ui/select"
 import { useChatbotContext } from '../../context/ChatbotContext'
 
-const ALL_MODELS = [
-  { group: 'OpenAI', id: 'openai:gpt-4o', name: 'GPT-4o (Önerilen)' },
-  { group: 'OpenAI', id: 'openai:gpt-4o-mini', name: 'GPT-4o Mini (Hızlı)' },
-  { group: 'Anthropic', id: 'anthropic:claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
-  { group: 'Anthropic', id: 'anthropic:claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku' },
-  { group: 'Google', id: 'google:gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-  { group: 'Google', id: 'google:gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-]
-
 export default function OverviewTab() {
   const {
     name, setName,
@@ -30,18 +21,7 @@ export default function OverviewTab() {
     model, setModel,
     temperature, setTemperature,
     maxTokens, setMaxTokens,
-    planConfig
   } = useChatbotContext()
-
-  const allowedModels = planConfig?.chat?.allowed_models || []
-  const availableModels = ALL_MODELS.filter(m => allowedModels.length === 0 || allowedModels.includes(m.id))
-
-  // Group models
-  const groupedModels = availableModels.reduce((acc, m) => {
-    if (!acc[m.group]) acc[m.group] = []
-    acc[m.group].push(m)
-    return acc
-  }, {} as Record<string, typeof ALL_MODELS>)
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">

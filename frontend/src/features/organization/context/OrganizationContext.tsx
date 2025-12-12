@@ -6,11 +6,10 @@ import React, {
   useCallback,
 } from 'react'
 import {
-  Organization,
-  Workspace,
-  getOrganizations,
-  getWorkspaces,
+  	getOrganizations,
+	Organization,
 } from '@/api/organization'
+import { getWorkspaces, Workspace } from '@/api/workspace'
 import { useToast } from '@/components/ui/toast'
 
 interface OrganizationContextType {

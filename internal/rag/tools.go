@@ -64,20 +64,36 @@ func ConvertActionsToTools(actions []*models.ChatbotAction) []Tool {
 	return tools
 }
 
-// Built-in tools
-func GetBuiltinTools(includeHandoff bool) []Tool {
-	tools := []Tool{
-		{
+// BuiltinToolOptions configures which built-in tools to include
+type BuiltinToolOptions struct {
+	IncludeListSources bool // Include list_sources tool (default: true)
+	IncludeHandoff     bool // Include request_human_handoff tool
+}
+
+// DefaultBuiltinToolOptions returns the default options with list_sources enabled
+func DefaultBuiltinToolOptions() BuiltinToolOptions {
+	return BuiltinToolOptions{
+		IncludeListSources: true,
+		IncludeHandoff:     false,
+	}
+}
+
+// GetBuiltinToolsWithOptions returns built-in tools based on options struct
+func GetBuiltinToolsWithOptions(options BuiltinToolOptions) []Tool {
+	var tools []Tool
+
+	if options.IncludeListSources {
+		tools = append(tools, Tool{
 			Type: "function",
 			Function: ToolFunction{
 				Name:        "list_sources",
 				Description: "Lists the available knowledge sources and their capabilities",
 				Parameters:  json.RawMessage(`{"type": "object", "properties": {}}`),
 			},
-		},
+		})
 	}
 
-	if includeHandoff {
+	if options.IncludeHandoff {
 		tools = append(tools, Tool{
 			Type: "function",
 			Function: ToolFunction{

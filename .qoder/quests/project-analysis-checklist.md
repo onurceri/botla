@@ -63,20 +63,19 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] RAG Top-K limited to 3
 - [ ] RAG Context limited to 2,000 tokens
 - [ ] Max 1 PDF file per chatbot enforced
-- [ ] Max 5 PDF files total across all chatbots enforced
 - [ ] Max 5MB per PDF file enforced
 - [ ] Max 10MB total storage enforced
 - [ ] OCR disabled (image/PDF text extraction)
 - [ ] Max 1 URL per chatbot enforced
 - [ ] Dynamic (JS) scraping disabled
 - [ ] Discovery mode disabled (max_pages_per_crawl = 0)
-- [ ] Manual refresh disabled
-- [ ] Auto-refresh disabled
+- [ ] Refresh disabled (no manual/auto refresh)
 - [ ] "Powered by Botla" branding visible and cannot be hidden
 - [ ] Secure embed disabled (cannot set allowed domains or secret)
 - [ ] Max 50 ingestions per month enforced
 - [ ] Max 250,000 embedding tokens per month enforced
 - [ ] 60-minute cooldown between re-adding same source enforced
+- [ ] Guardrails restricted: cannot customize thresholds, smart/escalate fallback, or topic management
 
 ### 2.2 Pro Plan Features
 - [ ] Pro plan allows gpt-4o-mini and gpt-4o models
@@ -84,19 +83,18 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] RAG Top-K limited to 5
 - [ ] RAG Context limited to 4,000 tokens
 - [ ] Max 20 PDF files per chatbot enforced
-- [ ] Max 100 PDF files total enforced
 - [ ] Max 20MB per PDF file enforced
 - [ ] Max 500MB total storage enforced
 - [ ] OCR enabled for PDF/image text extraction
 - [ ] Max 10 URLs per chatbot enforced
 - [ ] Dynamic (JS) scraping enabled
 - [ ] Discovery mode enabled (max 10 pages per crawl)
-- [ ] Manual refresh available
-- [ ] Auto-refresh available (5 refreshes per month)
+- [ ] Manual and auto-refresh available
 - [ ] Can hide "Powered by Botla" branding
 - [ ] Secure embed enabled (can set allowed domains and secret)
 - [ ] Max 50 ingestions per month enforced
 - [ ] Max 250,000 embedding tokens per month enforced
+- [ ] Full guardrails access: custom thresholds, smart/escalate fallback, topic management
 
 ### 2.3 Ultra Plan Features
 - [ ] Ultra plan allows gpt-4o-mini, gpt-4o, and claude-3-5-sonnet
@@ -104,20 +102,19 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] RAG Top-K limited to 10
 - [ ] RAG Context limited to 8,000 tokens
 - [ ] Max 100 PDF files per chatbot enforced
-- [ ] Max 1,000 PDF files total enforced
 - [ ] Max 50MB per PDF file enforced
 - [ ] Max 2,000MB total storage enforced
 - [ ] OCR enabled
 - [ ] Max 50 URLs per chatbot enforced
 - [ ] Dynamic (JS) scraping enabled
 - [ ] Discovery mode enabled (max 100 pages per crawl)
-- [ ] Manual refresh available (10 refreshes per month)
-- [ ] Auto-refresh available
+- [ ] Manual and auto-refresh available
 - [ ] Can hide "Powered by Botla" branding
 - [ ] Can use custom branding (logo, text, link)
 - [ ] Secure embed enabled
 - [ ] Max 50 ingestions per month enforced
 - [ ] Max 250,000 embedding tokens per month enforced
+- [ ] Full guardrails access: custom thresholds, smart/escalate fallback, topic management
 
 ### 2.4 Plan Enforcement - Security Critical
 - [ ] Free user CANNOT enable secure_embed via API bypass
@@ -156,7 +153,7 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] Create chatbot with workspace_id assigns to workspace
 - [ ] Create chatbot validates model against plan allowed_models
 - [ ] Create chatbot rejects invalid model for plan
-- [ ] Create chatbot sets default system prompt
+- [ ] Create chatbot sets default custom_instruction (empty)
 - [ ] Create chatbot sets default welcome message
 - [ ] Create chatbot sets default theme colors
 - [ ] Create chatbot sets default temperature (e.g., 0.7)
@@ -186,7 +183,7 @@ This is a comprehensive, production-ready testing checklist covering every featu
 ### 3.3 Chatbot Update
 - [ ] Update chatbot name succeeds
 - [ ] Update chatbot description succeeds
-- [ ] Update system_prompt succeeds
+- [ ] Update custom_instruction succeeds
 - [ ] Update welcome_message succeeds
 - [ ] Update theme_color succeeds
 - [ ] Update model succeeds (if allowed by plan)
@@ -339,7 +336,7 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] URL source fetches content correctly
 - [ ] URL source handles 404 errors gracefully
 - [ ] URL source handles timeout errors
-- [ ] URL source respects robots.txt
+- [ ] (PLANNED) URL source respects robots.txt
 - [ ] PDF source extracts text correctly (with fitz tag)
 - [ ] PDF source runs OCR when enabled
 - [ ] Text chunks created and stored
@@ -441,8 +438,8 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] RAG uses correct Top-K from plan config
 - [ ] RAG respects max_context_tokens from plan config
 - [ ] RAG includes relevant sources in response
-- [ ] RAG sources include source_id, title, URL
-- [ ] RAG confidence scores included in response
+- [ ] RAG sources_used array includes chunk_index and source_type
+- [ ] RAG confidence_tier (high/medium/low) included in response
 - [ ] Low confidence triggers fallback message
 - [ ] Medium confidence shows warning (if enabled)
 - [ ] High confidence returns answer without warning
@@ -490,8 +487,8 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] Invalid embed_secret returns 401
 - [ ] Embed token fetched from embed-token-url
 - [ ] Embed token validated on backend
-- [ ] Embed token includes CAPTCHA token
-- [ ] CAPTCHA validation prevents abuse
+- [ ] (PLANNED) Embed token optionally carries CAPTCHA token
+- [ ] (PLANNED) Backend validates CAPTCHA token to prevent abuse
 - [ ] Free plan cannot use secure embed
 - [ ] Pro+ plans can configure secure embed
 
@@ -540,7 +537,14 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] Test action endpoint validates config
 - [ ] User can only manage actions for their chatbots
 
-### 6.5 Action Dispatch
+### 6.5 Built-in Tools Integration
+- [ ] `list_sources` tool returns all chatbot sources
+- [ ] `request_human_handoff` tool triggers handoff flow
+- [ ] `request_human_handoff` collects user email
+- [ ] `request_human_handoff` creates handoff request record
+- [ ] Built-in tools included in chat completion function calls
+
+### 6.6 Action Dispatch
 - [ ] AI model selects appropriate action based on user query
 - [ ] AI model extracts parameters from query
 - [ ] Action dispatch validates parameters against schema
@@ -555,35 +559,42 @@ This is a comprehensive, production-ready testing checklist covering every featu
 ### 7.1 Chatbot Analytics Overview
 - [ ] GET analytics overview returns total messages
 - [ ] GET analytics overview returns total conversations
-- [ ] GET analytics overview returns average response time
-- [ ] GET analytics overview returns user satisfaction score
-- [ ] Analytics filtered by date range
-- [ ] Analytics filtered by chatbot_id
-- [ ] Analytics includes positive/negative feedback counts
-- [ ] Analytics includes most used sources
+- [ ] GET analytics overview returns total tokens used
+- [ ] GET analytics overview returns positive feedback count
+- [ ] GET analytics overview returns negative feedback count
+- [ ] GET analytics overview returns feedback_rate (%) as satisfaction
+- [ ] GET analytics overview returns handoff count
+- [ ] Overview aggregates data for the last 30 days
+- [ ] Overview is scoped to a specific chatbot (chatbot_id)
 
 ### 7.2 Chatbot Analytics Trends
 - [ ] GET trends returns daily message counts
 - [ ] GET trends returns daily conversation counts
 - [ ] GET trends returns daily token usage
-- [ ] Trends aggregated by day/week/month
+- [ ] GET trends returns daily positive/negative feedback counts
+- [ ] GET trends returns daily handoff counts
+- [ ] GET trends returns avg_response_time_ms per day
+- [ ] Trends aggregated by day
 - [ ] Trends include time series data for charts
-- [ ] Trends filtered by date range
+- [ ] Trends limited by days query parameter
 
 ### 7.3 Source Usage Analytics
 - [ ] GET source usage returns usage per source
 - [ ] Source usage includes times source cited
-- [ ] Source usage includes sources never used
+- [ ] Source usage includes average relevance score per source
+- [ ] Source usage includes positive/negative feedback counts per source
+- [ ] Source usage includes last_used timestamp
+- [ ] (PLANNED) Source usage includes sources never used
 - [ ] Source usage helps identify valuable content
-- [ ] Source usage filtered by chatbot and date range
+- [ ] Source usage filtered by chatbot and days query parameter
 
 ### 7.4 Advanced Analytics
-- [ ] Analytics track average confidence scores
+- [ ] Message records store confidence_score for each response
 - [ ] Analytics track handoff events
-- [ ] Analytics track action executions
-- [ ] Analytics track failed messages
-- [ ] Analytics track peak usage times
-- [ ] Analytics exportable to CSV/JSON
+- [ ] (PLANNED) Analytics track action executions
+- [ ] (PLANNED) Analytics track failed messages
+- [ ] (PLANNED) Analytics track peak usage times
+- [ ] (PLANNED) Analytics exportable to CSV/JSON
 
 ---
 
@@ -763,26 +774,20 @@ This is a comprehensive, production-ready testing checklist covering every featu
 
 ## 11. External Integrations
 
-### 11.1 OpenAI Integration
-- [ ] OpenAI API key configured correctly
+### 11.1 OpenRouter Integration (Primary AI Provider)
+- [ ] OpenRouter API key configured correctly
 - [ ] Chat completions endpoint called successfully
-- [ ] Model selection (gpt-4o-mini, gpt-4o) works
+- [ ] Model selection works (gpt-4o-mini, gpt-4o, claude-3-5-sonnet)
 - [ ] Temperature and max_tokens parameters respected
 - [ ] System prompt injected correctly
 - [ ] User messages formatted correctly
 - [ ] Token usage tracked from API response
 - [ ] API errors handled gracefully
 - [ ] Timeout errors handled gracefully
-- [ ] Rate limit errors from OpenAI handled
+- [ ] Rate limit errors from OpenRouter handled
+- [ ] Tool calls (function calling) work correctly
 
-### 11.2 Claude Integration
-- [ ] Claude API configured for Ultra plan
-- [ ] claude-3-5-sonnet model selection works
-- [ ] Messages API format correct
-- [ ] Token tracking works for Claude
-- [ ] Claude-specific parameters respected
-
-### 11.3 Qdrant Integration
+### 11.2 Qdrant Integration
 - [ ] Qdrant URL configured correctly
 - [ ] Collection created for chatbot
 - [ ] Embeddings upserted to Qdrant
@@ -792,7 +797,7 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] Qdrant errors handled gracefully
 - [ ] Collection deleted when chatbot deleted
 
-### 11.4 Storage (S3/Local)
+### 11.3 Storage (S3/Local)
 - [ ] S3 credentials configured correctly
 - [ ] File upload to S3 succeeds
 - [ ] File download from S3 succeeds
@@ -801,12 +806,11 @@ This is a comprehensive, production-ready testing checklist covering every featu
 - [ ] Local storage fallback works if S3 unavailable
 - [ ] Pre-signed URLs work for private files
 
-### 11.5 Redis Integration
-- [ ] Redis connection established
-- [ ] Rate limiting data stored in Redis
-- [ ] Cache data expires correctly
-- [ ] Redis errors do not crash application
-- [ ] Redis fallback to in-memory if unavailable
+### 11.4 Redis & Scraper Cache Integration
+- [ ] Redis cache connection established for scraper
+- [ ] Cache entries expire correctly based on TTL
+- [ ] Redis or cache errors do not crash application
+- [ ] Scraper cache falls back to in-memory if REDIS_URL is unset or Redis unavailable
 
 ---
 
@@ -1151,4 +1155,21 @@ This is a comprehensive, production-ready testing checklist covering every featu
 
 This checklist represents the comprehensive testing requirements for the Botla platform. Each checkbox should be verified manually or via automated tests before production deployment. Priority should be given to security-critical items marked with "Security Critical" tags.
 
+### Features NOT Currently Implemented
+The following features do **not exist** in the codebase and should **not** be tested:
+- Password reset / forgot password flow
+- Email verification / confirmation
+- Streaming/SSE chat responses
+- Request idempotency keys
+- API versioning headers
+- robots.txt respect in scraper (marked as PLANNED)
+- CSV/JSON analytics export (marked as PLANNED)
+- CAPTCHA validation for secure embed (marked as PLANNED)
+
+### Recent Changes
+- `system_prompt` has been replaced with `custom_instruction` for user-editable instructions
+- OpenRouter is now the unified AI provider (no separate OpenAI/Claude integrations)
+- Plan limits `max_files_total` does not exist in schema - only `max_files_per_bot` is enforced
+
 For ongoing maintenance, re-run relevant sections of this checklist after each major feature addition or update.
+

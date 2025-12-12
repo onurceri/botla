@@ -28,8 +28,6 @@ type ThresholdConfig = {
 }
 
 interface GuardrailsSettingsProps {
-  confidenceThreshold: number
-  setConfidenceThreshold: (v: number) => void
   thresholdConfig: ThresholdConfig
   setThresholdConfig: (v: ThresholdConfig) => void
   fallbackMessages: FallbackMessages | null
@@ -45,8 +43,6 @@ interface GuardrailsSettingsProps {
 }
 
 export default function GuardrailsSettings({
-  confidenceThreshold,
-  setConfidenceThreshold,
   thresholdConfig,
   setThresholdConfig,
   fallbackMessages,

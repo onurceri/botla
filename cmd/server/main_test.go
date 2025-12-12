@@ -54,7 +54,11 @@ func TestStartAndShutdownServer(t *testing.T) {
 	srv := newHTTPServer("0", mux)
 	log := logger.New("ERROR")
 	startServerAsync(srv, log, "0")
-	db, _ := sql.Open("pgx", "postgres://localhost")
+	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
+	if err != nil {
+		t.Skipf("db connection failed: %v", err)
+	}
+	defer db.Close()
 	shutdownServer(srv, log, db)
 }
 
@@ -64,6 +68,6 @@ func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *ha
 	acth := &handlers.ActionHandlers{DB: ch.DB}
 	hoh := &handlers.HandoffHandlers{DB: ch.DB}
 	// Create handler
-	h := chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, hoh, nil, rlSources)
+	h := chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, hoh, nil, nil, rlSources)
 	return h
 }

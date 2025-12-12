@@ -161,7 +161,9 @@ func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) (
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var sources []SourceQuestions
 	for rows.Next() {

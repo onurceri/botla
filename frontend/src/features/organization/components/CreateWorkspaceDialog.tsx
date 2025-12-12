@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { createWorkspace } from '@/api/organization'
+import { createWorkspace } from '@/api/workspace'
 import { useOrganization } from '../context/OrganizationContext'
 
 interface CreateWorkspaceDialogProps {

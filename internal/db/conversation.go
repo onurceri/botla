@@ -99,7 +99,9 @@ func UpdateMessageFeedback(ctx context.Context, pool *sql.DB, messageID string, 
 	if err != nil {
 		return "", nil, err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Get current state and chatbot_id
 	err = tx.QueryRowContext(ctx, `

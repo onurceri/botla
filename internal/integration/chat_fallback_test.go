@@ -19,7 +19,16 @@ func TestChat_Fallback_NoContext(t *testing.T) {
 	defer oai.Close()
 	token := authToken(t, te.Server.URL, "nofallback@example.com")
 
-	create := map[string]any{"name": "FB Bot"}
+	// Create bot with static fallback mode to test 0-token fallback
+	create := map[string]any{
+		"name": "FB Bot",
+		"threshold_config": map[string]any{
+			"high_threshold":          0.50,
+			"medium_threshold":        0.30,
+			"fallback_mode":           "static",
+			"show_confidence_warning": false,
+		},
+	}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
@@ -42,6 +51,6 @@ func TestChat_Fallback_NoContext(t *testing.T) {
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
 	if crp.Response != "Yeterli bilgi bulamadım." || crp.TokensUsed != 0 {
-		t.Fatalf("expected fallback, got %q/%d", crp.Response, crp.TokensUsed)
+		t.Fatalf("expected static fallback, got %q/%d", crp.Response, crp.TokensUsed)
 	}
 }

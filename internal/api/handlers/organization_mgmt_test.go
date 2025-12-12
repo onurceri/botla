@@ -67,6 +67,8 @@ func TestOrganizationManagement(t *testing.T) {
 	ownerID := createTestUser(t, db)
 	orgID, svc := createTestOrg(t, db, ownerID)
 	h := &OrganizationHandlers{OrgService: svc, DB: db}
+	wsSvc := services.NewWorkspaceService(db, logger.New("test"))
+	wh := &WorkspaceHandlers{WorkspaceService: wsSvc}
 
 	t.Run("UpdateOrganization", func(t *testing.T) {
 		newSlug := fmt.Sprintf("updated-slug-%d", time.Now().UnixNano())
@@ -74,7 +76,10 @@ func TestOrganizationManagement(t *testing.T) {
 			"name": "Updated Name",
 			"slug": newSlug,
 		}
-		jsonBody, _ := json.Marshal(body)
+		jsonBody, err := json.Marshal(body)
+		if err != nil {
+			t.Fatalf("marshal body failed: %v", err)
+		}
 		req := httptest.NewRequest(http.MethodPatch, "/api/v1/organizations/"+orgID, bytes.NewBuffer(jsonBody))
 
 		// Mock Context
@@ -90,7 +95,7 @@ func TestOrganizationManagement(t *testing.T) {
 
 		// Verify update
 		var name string
-		err := db.QueryRow("SELECT name FROM organizations WHERE id = $1", orgID).Scan(&name)
+		err = db.QueryRow("SELECT name FROM organizations WHERE id = $1", orgID).Scan(&name)
 		if err != nil {
 			t.Fatalf("query failed: %v", err)
 		}
@@ -103,13 +108,18 @@ func TestOrganizationManagement(t *testing.T) {
 		// Create another user to add
 		memberID := createTestUser(t, db)
 		var memberEmail string
-		db.QueryRow("SELECT email FROM users WHERE id = $1", memberID).Scan(&memberEmail)
+		if err := db.QueryRow("SELECT email FROM users WHERE id = $1", memberID).Scan(&memberEmail); err != nil {
+			t.Fatalf("query member email failed: %v", err)
+		}
 
 		body := map[string]string{
 			"email": memberEmail,
 			"role":  "member",
 		}
-		jsonBody, _ := json.Marshal(body)
+		jsonBody, err := json.Marshal(body)
+		if err != nil {
+			t.Fatalf("marshal body failed: %v", err)
+		}
 		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/organizations/%s/members", orgID), bytes.NewBuffer(jsonBody))
 
 		// Mock Context (Owner is adding)
@@ -125,7 +135,9 @@ func TestOrganizationManagement(t *testing.T) {
 
 		// Verify membership
 		exists := false
-		db.QueryRow("SELECT EXISTS(SELECT 1 FROM memberships WHERE organization_id=$1 AND user_id=$2)", orgID, memberID).Scan(&exists)
+		if err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM memberships WHERE organization_id=$1 AND user_id=$2)", orgID, memberID).Scan(&exists); err != nil {
+			t.Fatalf("membership check failed: %v", err)
+		}
 		if !exists {
 			t.Error("member not added to database")
 		}
@@ -133,9 +145,15 @@ func TestOrganizationManagement(t *testing.T) {
 
 	t.Run("DeleteWorkspace", func(t *testing.T) {
 		// Create workspace 1
-		ws1, _ := svc.CreateWorkspace(context.Background(), orgID, "WS1", "ws1", nil)
+		ws1, err := wsSvc.CreateWorkspace(context.Background(), orgID, "WS1", "ws1", nil)
+		if err != nil {
+			t.Fatalf("create workspace 1 failed: %v", err)
+		}
 		// Create workspace 2
-		ws2, _ := svc.CreateWorkspace(context.Background(), orgID, "WS2", "ws2", nil)
+		ws2, err := wsSvc.CreateWorkspace(context.Background(), orgID, "WS2", "ws2", nil)
+		if err != nil {
+			t.Fatalf("create workspace 2 failed: %v", err)
+		}
 
 		// Delete WS1 (should succeed as count=2)
 		req := httptest.NewRequest(http.MethodDelete, "/api/v1/workspaces/"+ws1.ID, nil)
@@ -144,7 +162,7 @@ func TestOrganizationManagement(t *testing.T) {
 		ctx = context.WithValue(ctx, middleware.ContextKeyOrgID, orgID)
 
 		rr := httptest.NewRecorder()
-		h.DeleteWorkspace(rr, req.WithContext(ctx))
+		wh.DeleteWorkspace(rr, req.WithContext(ctx))
 
 		if rr.Code != http.StatusNoContent {
 			t.Errorf("expected 204 No Content for DeleteWorkspace, got %d", rr.Code)
@@ -157,7 +175,7 @@ func TestOrganizationManagement(t *testing.T) {
 		ctx2 = context.WithValue(ctx2, middleware.ContextKeyOrgID, orgID)
 
 		rr2 := httptest.NewRecorder()
-		h.DeleteWorkspace(rr2, req2.WithContext(ctx2))
+		wh.DeleteWorkspace(rr2, req2.WithContext(ctx2))
 
 		if rr2.Code != http.StatusBadRequest {
 			t.Errorf("expected 400 BadRequest for last workspace deletion, got %d", rr2.Code)
@@ -190,7 +208,9 @@ func TestOrganizationManagement(t *testing.T) {
 
 		// Verify deletion
 		exists := false
-		db.QueryRow("SELECT EXISTS(SELECT 1 FROM organizations WHERE id=$1)", orgID).Scan(&exists)
+		if err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM organizations WHERE id=$1)", orgID).Scan(&exists); err != nil {
+			t.Fatalf("organization existence check failed: %v", err)
+		}
 		if exists {
 			t.Error("organization not deleted from database")
 		}
@@ -199,7 +219,9 @@ func TestOrganizationManagement(t *testing.T) {
 	t.Run("DeleteLastOrganization_Fail", func(t *testing.T) {
 		// Find the remaining org (the second one created above)
 		var remainingOrgID string
-		db.QueryRow("SELECT id FROM organizations WHERE owner_id=$1 LIMIT 1", ownerID).Scan(&remainingOrgID)
+		if err := db.QueryRow("SELECT id FROM organizations WHERE owner_id=$1 LIMIT 1", ownerID).Scan(&remainingOrgID); err != nil {
+			t.Fatalf("remaining organization lookup failed: %v", err)
+		}
 
 		req := httptest.NewRequest(http.MethodDelete, "/api/v1/organizations/"+remainingOrgID, nil)
 		ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, ownerID)

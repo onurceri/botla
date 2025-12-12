@@ -82,7 +82,8 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	mux.HandleFunc("/health", hh.Health)
 	// Organization service (needed by auth for auto-workspace creation)
 	orgSvc := services.NewOrganizationService(pool, log)
-	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc}
+	workspaceSvc := services.NewWorkspaceService(pool, log)
+	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	mux.HandleFunc("/api/v1/auth/register", ah.RegisterHandler)
 	mux.HandleFunc("/api/v1/auth/login", ah.LoginHandler)
 	mux.HandleFunc("/api/v1/auth/refresh", ah.RefreshHandler)
@@ -110,7 +111,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	// Handoff handler
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log}
 	// Analytics handler for chatbot-specific routes
-	anhSpec := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc}
+	anhSpec := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	// Suggestions handler
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log}
 	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, sugh, rlSources))
@@ -153,11 +154,12 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 		sh.GetSourceStatusOrDelete(w, r)
 	}))))
 
-	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc}
+	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(anh.GetAnalytics))))
 
 	// Organization routes
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
+	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
 	auth := middleware.AuthMiddleware(cfg.JWT_SECRET)
 
 	// Helper middlewares
@@ -174,10 +176,10 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	mux.Handle("DELETE /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.DeleteOrganization))))
 
 	// Workspaces
-	mux.Handle("GET /api/v1/organizations/{id}/workspaces", auth(requireMember(http.HandlerFunc(oh.Workspaces))))
-	mux.Handle("POST /api/v1/organizations/{id}/workspaces", auth(requireAdmin(http.HandlerFunc(oh.Workspaces))))
-	mux.Handle("PATCH /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(oh.UpdateWorkspace))))
-	mux.Handle("DELETE /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(oh.DeleteWorkspace))))
+	mux.Handle("GET /api/v1/organizations/{id}/workspaces", auth(requireMember(http.HandlerFunc(wh.Workspaces))))
+	mux.Handle("POST /api/v1/organizations/{id}/workspaces", auth(requireAdmin(http.HandlerFunc(wh.Workspaces))))
+	mux.Handle("PATCH /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(wh.UpdateWorkspace))))
+	mux.Handle("DELETE /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(wh.DeleteWorkspace))))
 
 	// Members
 	mux.Handle("GET /api/v1/organizations/{id}/members", auth(requireMember(http.HandlerFunc(oh.GetMembers))))

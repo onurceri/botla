@@ -82,19 +82,16 @@ func SearchContextTiered(queryEmbedding []float32, chatbotID string, limitTopK i
 	// Determine highest score
 	highestScore := items[0].Score
 
-	// Determine tier based on highest score
 	var tier ContextTier
 	var effectiveThreshold float64
-
-	if highestScore >= thresholdConfig.HighThreshold {
+	switch {
+	case highestScore >= thresholdConfig.HighThreshold:
 		tier = TierHigh
-		effectiveThreshold = thresholdConfig.MediumThreshold // Include medium matches too
-	} else if highestScore >= thresholdConfig.MediumThreshold {
+		effectiveThreshold = thresholdConfig.MediumThreshold
+	case highestScore >= thresholdConfig.MediumThreshold:
 		tier = TierMedium
 		effectiveThreshold = thresholdConfig.MediumThreshold
-	} else {
-		tier = TierLow
-		// No context will pass threshold
+	default:
 		return &TieredSearchResult{
 			Tier:         TierLow,
 			AllChunks:    allMetas,
@@ -173,8 +170,9 @@ func SearchContextTiered(queryEmbedding []float32, chatbotID string, limitTopK i
 	}, nil
 }
 
-// SearchContext performs similarity search (backward compatible - uses single threshold)
-// Deprecated: Use SearchContextTiered for new code
+// SearchContext performs similarity search (backward compatible - uses single threshold).
+//
+// Deprecated: Use SearchContextTiered for new code.
 func SearchContext(queryEmbedding []float32, chatbotID string, limitTopK int, limitMaxTokens int, scoreThreshold float64) (string, []models.ChunkMetadata, error) {
 	if len(queryEmbedding) == 0 || chatbotID == "" {
 		return "", nil, nil

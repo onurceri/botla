@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Inbox, Mail, Clock, Check, Copy, User, Bot, Loader2, Lock, Shield } from 'lucide-react'
+import { Inbox, Mail, Clock, Check, Copy, User, Bot, Loader2, Shield } from 'lucide-react'
 import { useChatbotContext } from '../../context/ChatbotContext'
 
 // Simple relative time formatter
@@ -307,4 +307,3 @@ export default function HandoffRequestsTab() {
     </div>
   )
 }
-

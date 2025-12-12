@@ -18,6 +18,7 @@ type AnalyticsHandlers struct {
 	DB               *sql.DB
 	AnalyticsService *services.AnalyticsService
 	OrgService       *services.OrganizationService
+	WorkspaceService *services.WorkspaceService
 }
 
 func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +36,7 @@ func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request)
 		// Validating access to workspace:
 		// 1. Get workspace info (to get OrgID if needed, or if memberships are per workspace)
 		// Since membership is per Organization, we need to know valid Org of this WS.
-		ws, err := h.OrgService.GetWorkspace(r.Context(), wsID)
+		ws, err := h.WorkspaceService.GetWorkspace(r.Context(), wsID)
 		if err != nil || ws == nil {
 			w.WriteHeader(http.StatusForbidden) // Or NotFound
 			return
@@ -106,7 +107,7 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsOverview(w http.ResponseWriter, r
 	switch {
 	case bot.WorkspaceID != nil && *bot.WorkspaceID != "":
 		// Check workspace access via Org membership
-		ws, err2 := h.OrgService.GetWorkspace(r.Context(), *bot.WorkspaceID)
+		ws, err2 := h.WorkspaceService.GetWorkspace(r.Context(), *bot.WorkspaceID)
 		if err2 == nil && ws != nil {
 			mem, err3 := h.OrgService.CheckMembership(r.Context(), userID, ws.OrganizationID)
 			if err3 == nil && mem != nil {
@@ -175,7 +176,7 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsTrends(w http.ResponseWriter, r *
 	switch {
 	case bot.WorkspaceID != nil && *bot.WorkspaceID != "":
 		// Check workspace access via Org membership
-		ws, err2 := h.OrgService.GetWorkspace(r.Context(), *bot.WorkspaceID)
+		ws, err2 := h.WorkspaceService.GetWorkspace(r.Context(), *bot.WorkspaceID)
 		if err2 == nil && ws != nil {
 			mem, err3 := h.OrgService.CheckMembership(r.Context(), userID, ws.OrganizationID)
 			if err3 == nil && mem != nil {
@@ -250,7 +251,7 @@ func (h *AnalyticsHandlers) GetSourceUsage(w http.ResponseWriter, r *http.Reques
 	switch {
 	case bot.WorkspaceID != nil && *bot.WorkspaceID != "":
 		// Check workspace access via Org membership
-		ws, err2 := h.OrgService.GetWorkspace(r.Context(), *bot.WorkspaceID)
+		ws, err2 := h.WorkspaceService.GetWorkspace(r.Context(), *bot.WorkspaceID)
 		if err2 == nil && ws != nil {
 			mem, err3 := h.OrgService.CheckMembership(r.Context(), userID, ws.OrganizationID)
 			if err3 == nil && mem != nil {

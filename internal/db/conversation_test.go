@@ -41,7 +41,7 @@ func TestConversation_Messages_DB(t *testing.T) {
 		t.Fatalf("list msgs: %v", err)
 	}
 	// feedback
-	_, err = UpdateMessageFeedback(context.Background(), db, msgs[len(msgs)-1].ID, true)
+	_, _, err = UpdateMessageFeedback(context.Background(), db, msgs[len(msgs)-1].ID, true)
 	if err != nil {
 		t.Fatalf("update feedback: %v", err)
 	}

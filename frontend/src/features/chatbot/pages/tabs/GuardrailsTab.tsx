@@ -3,7 +3,6 @@ import { useChatbotContext } from '../../context/ChatbotContext'
 
 export default function GuardrailsTab() {
   const {
-    confidenceThreshold, setConfidenceThreshold,
     fallbackMessages, setFallbackMessages,
     topicRestrictions, setTopicRestrictions,
     thresholdConfig, setThresholdConfig,
@@ -20,8 +19,6 @@ export default function GuardrailsTab() {
       </div>
 
       <GuardrailsSettings
-        confidenceThreshold={confidenceThreshold}
-        setConfidenceThreshold={setConfidenceThreshold}
         thresholdConfig={thresholdConfig}
         setThresholdConfig={setThresholdConfig}
         fallbackMessages={fallbackMessages}

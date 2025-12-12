@@ -162,7 +162,11 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, re
 		HideBranding:         boolValue(req.HideBranding, false),
 		CustomBranding:       req.CustomBranding,
 		ConfidenceThreshold:  defaultFloat64(req.ConfidenceThreshold, 0.7),
+		ThresholdConfig:      req.ThresholdConfig,
 		FallbackMessages:     req.FallbackMessages,
 		TopicRestrictions:    req.TopicRestrictions,
+		HandoffEnabled:       boolValue(req.HandoffEnabled, false),
+		HandoffType:          defaultString(req.HandoffType, ""),
+		HandoffConfig:        req.HandoffConfig,
 	}
 }
