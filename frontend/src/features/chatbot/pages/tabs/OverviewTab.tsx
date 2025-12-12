@@ -17,7 +17,7 @@ import { useChatbotContext } from '../../context/ChatbotContext'
 export default function OverviewTab() {
   const {
     name, setName,
-    systemPrompt, setSystemPrompt,
+    customInstruction, setCustomInstruction,
     model, setModel,
     temperature, setTemperature,
     maxTokens, setMaxTokens,
@@ -42,7 +42,7 @@ export default function OverviewTab() {
               <CardTitle>Kimlik</CardTitle>
             </div>
             <CardDescription>
-              Botunuzun ismi ve kişiliği.
+              Botunuzun ismi ve özel talimatları.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -57,19 +57,19 @@ export default function OverviewTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="systemPrompt" className="flex justify-between">
-                <span>Sistem Mesajı (Prompt)</span>
-                <span className="text-xs text-muted-foreground font-normal">{systemPrompt.length} karakter</span>
+              <Label htmlFor="customInstruction" className="flex justify-between">
+                <span>Özel Talimatlar</span>
+                <span className="text-xs text-muted-foreground font-normal">{customInstruction.length} karakter</span>
               </Label>
               <Textarea
-                id="systemPrompt"
+                id="customInstruction"
                 className="min-h-[300px] resize-none bg-background/50 leading-relaxed font-mono text-sm"
-                value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
-                placeholder="Sen yardımcı bir asistansın. Kullanıcılara nazik ve profesyonel bir dille cevap ver..."
+                value={customInstruction}
+                onChange={(e) => setCustomInstruction(e.target.value)}
+                placeholder="Botunuza özel davranış kuralları ekleyin... Örn: Müşterilere resmi bir dil kullan, fiyat bilgisi verme..."
               />
               <p className="text-xs text-muted-foreground">
-                Botunuzun nasıl davranması gerektiğini, tonunu ve kurallarını buraya yazın.
+                Botunuzun nasıl davranması gerektiğini, tonunu ve özel kurallarını buraya yazın. Dil ve kapsam kuralları otomatik eklenir.
               </p>
             </div>
           </CardContent>

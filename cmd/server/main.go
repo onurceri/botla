@@ -95,7 +95,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	// Sources handler
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
 	// Chat service
-	factory := rag.NewClientFactory()
+	factory := rag.NewClientFactory(cfg)
 	oaiClient, _ := rag.NewOpenAIClientFromEnv()
 	qdClient, _ := rag.NewQdrantClientFromEnv()
 	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)

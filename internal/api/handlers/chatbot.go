@@ -23,7 +23,7 @@ type ChatbotHandlers struct {
 type createChatbotRequest struct {
 	Name                 string                   `json:"name"`
 	Description          *string                  `json:"description"`
-	SystemPrompt         *string                  `json:"system_prompt"`
+	CustomInstruction    *string                  `json:"custom_instruction"`
 	Language             *string                  `json:"language"`
 	Model                *string                  `json:"model"`
 	Temperature          *float32                 `json:"temperature"`

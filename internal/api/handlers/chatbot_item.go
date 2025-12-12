@@ -206,8 +206,8 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	if req.Description != nil {
 		c.Description = req.Description
 	}
-	if req.SystemPrompt != nil {
-		c.SystemPrompt = *req.SystemPrompt
+	if req.CustomInstruction != nil {
+		c.CustomInstruction = *req.CustomInstruction
 	}
 	if req.Language != nil {
 		c.LanguageCode = normalizeLocale(*req.Language)

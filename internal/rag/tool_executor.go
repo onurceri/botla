@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
@@ -26,13 +27,17 @@ type ToolResult struct {
 }
 
 // Execute executes a tool call and returns the result
-func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *models.ChatbotAction) (*ToolResult, error) {
+func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *models.ChatbotAction, chatbotID, conversationID string) (*ToolResult, error) {
 	if action == nil {
-		// If action is nil, check if it is a built-in tool
-		if toolCall.Function.Name == "list_sources" {
+		// Built-in tools
+		switch toolCall.Function.Name {
+		case "list_sources":
 			return e.executeBuiltin(toolCall)
+		case "request_human_handoff":
+			return e.executeHandoff(ctx, toolCall, chatbotID, conversationID)
+		default:
+			return nil, fmt.Errorf("unknown action: %s", toolCall.Function.Name)
 		}
-		return nil, fmt.Errorf("unknown action: %s", toolCall.Function.Name)
 	}
 
 	switch action.ActionType {
@@ -59,6 +64,38 @@ func (e *ToolExecutor) executeBuiltin(toolCall ToolCall) (*ToolResult, error) {
 	default:
 		return nil, fmt.Errorf("unknown builtin tool: %s", toolCall.Function.Name)
 	}
+}
+
+func (e *ToolExecutor) executeHandoff(ctx context.Context, toolCall ToolCall, chatbotID, conversationID string) (*ToolResult, error) {
+	// Check for existing active request
+	exists, err := db.HasActiveHandoffRequest(ctx, e.DB, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing handoff: %w", err)
+	}
+	if exists {
+		return &ToolResult{
+			ToolCallID: toolCall.ID,
+			Result:     `{"status": "error", "message": "A handoff request is already active for this conversation."}`,
+		}, nil
+	}
+
+	// Create new request
+	req := &models.HandoffRequest{
+		ChatbotID:      chatbotID,
+		ConversationID: conversationID,
+		Status:         models.HandoffStatusPending,
+		Notes:          nil, // No notes from tool for now, or could parse from args
+	}
+
+	_, err = db.CreateHandoffRequest(ctx, e.DB, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handoff request: %w", err)
+	}
+
+	return &ToolResult{
+		ToolCallID: toolCall.ID,
+		Result:     `{"status": "handoff_requested", "message": "Handoff request created successfully."}`,
+	}, nil
 }
 
 func (e *ToolExecutor) executeHTTP(ctx context.Context, toolCall ToolCall, action *models.ChatbotAction) (*ToolResult, error) {

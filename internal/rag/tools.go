@@ -75,5 +75,13 @@ func GetBuiltinTools() []Tool {
 				Parameters:  json.RawMessage(`{"type": "object", "properties": {}}`),
 			},
 		},
+		{
+			Type: "function",
+			Function: ToolFunction{
+				Name:        "request_human_handoff",
+				Description: "Request to transfer the conversation to a human support agent. Use this when you cannot help the user or when they explicitly ask for a human.",
+				Parameters:  json.RawMessage(`{"type": "object", "properties": {}}`),
+			},
+		},
 	}
 }

@@ -21,6 +21,46 @@ type OpenRouterClient struct {
 	defaultModel string
 }
 
+// NewOpenRouterClient creates an OpenRouter client from config
+func NewOpenRouterClient(cfg *config.Config) (*OpenRouterClient, error) {
+	k := ""
+	if cfg != nil {
+		k = cfg.OPENROUTER_API_KEY
+		// Fallback to OPENAI_API_KEY if OPENROUTER_API_KEY is missing.
+		if k == "" {
+			k = cfg.OPENAI_API_KEY
+		}
+	}
+	if k == "" {
+		return nil, errors.New("OPENROUTER_API_KEY (or OPENAI_API_KEY) is empty")
+	}
+
+	base := ""
+	if cfg != nil && cfg.OPENROUTER_API_BASE != "" {
+		base = cfg.OPENROUTER_API_BASE
+	} else {
+		base = "https://openrouter.ai/api/v1"
+	}
+
+	to := 30 * time.Second
+	if cfg != nil && cfg.OPENROUTER_TIMEOUT_MS > 0 {
+		to = time.Duration(cfg.OPENROUTER_TIMEOUT_MS) * time.Millisecond
+	}
+
+	defModel := config.DefaultChatbotModel()
+	if cfg != nil && cfg.DEFAULT_CHATBOT_MODEL != "" {
+		defModel = cfg.DEFAULT_CHATBOT_MODEL
+	}
+
+	return &OpenRouterClient{
+		apiKey:       k,
+		http:         &http.Client{Timeout: to},
+		base:         base,
+		defaultModel: defModel,
+	}, nil
+}
+
+// NewOpenRouterClientFromEnv creates an OpenRouter client from environment variables (backward compatibility)
 func NewOpenRouterClientFromEnv() (*OpenRouterClient, error) {
 	k := os.Getenv("OPENROUTER_API_KEY")
 	// Fallback to OPENAI_API_KEY if OPENROUTER_API_KEY is missing.
@@ -195,6 +235,65 @@ func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.C
 			} else {
 				lastErr = errors.New("OpenRouter error: " + res.Status)
 				_ = res.Body.Close()
+			}
+		}
+		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+	}
+	return nil, lastErr
+}
+
+// CreateCompletionWithTools sends a completion request with tool support
+// OpenRouter uses OpenAI-compatible API format for tools
+func (c *OpenRouterClient) CreateCompletionWithTools(
+	ctx context.Context,
+	messages []ChatMessage,
+	tools []Tool,
+	model string,
+	temperature float32,
+	maxTokens int,
+) (*ChatResponseWithTools, error) {
+	if model == "" {
+		model = c.defaultModel
+	}
+
+	reqBody := ChatRequestWithTools{
+		Model:       model,
+		Messages:    messages,
+		Tools:       tools,
+		Temperature: temperature,
+		MaxTokens:   maxTokens,
+	}
+	if len(tools) > 0 {
+		reqBody.ToolChoice = "auto"
+	}
+
+	b, _ := json.Marshal(reqBody)
+	var lastErr error
+	for attempt := 0; attempt < 4; attempt++ {
+		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/chat/completions", bytes.NewReader(b))
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("HTTP-Referer", "https://botla.co")
+		req.Header.Set("X-Title", "Botla")
+
+		res, err := c.http.Do(req)
+		switch {
+		case err != nil:
+			lastErr = err
+		case res.StatusCode != http.StatusOK:
+			lastErr = errors.New("OpenRouter error: " + res.Status)
+			_ = res.Body.Close()
+		default:
+			var cr ChatResponseWithTools
+			err := json.NewDecoder(res.Body).Decode(&cr)
+			_ = res.Body.Close()
+			switch {
+			case err != nil:
+				lastErr = err
+			case len(cr.Choices) == 0:
+				lastErr = errors.New("no completion returned")
+			default:
+				return &cr, nil
 			}
 		}
 		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)

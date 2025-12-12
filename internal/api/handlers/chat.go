@@ -1,20 +1,20 @@
 package handlers
 
 import (
-    "context"
-    "database/sql"
-    "encoding/json"
-    "net/http"
-    "os"
-    "strconv"
-    "strings"
-    "time"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
-    "github.com/onurceri/botla-co/internal/db"
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/services"
-    "github.com/onurceri/botla-co/internal/api"
-    "github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/internal/api"
+	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ChatHandlers struct {
@@ -77,31 +77,31 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var ragConfig models.RAGConfig
-        if plan != nil {
-            ragConfig = plan.Config.Chat.RAG
-            if len(plan.Config.Chat.AllowedModels) > 0 {
-                allowed := false
-                for _, m := range plan.Config.Chat.AllowedModels {
-                    if m == cbot.Model {
-                        allowed = true
-                        break
-                    }
-                }
-                if !allowed {
-                    cbot.Model = plan.Config.Chat.AllowedModels[0]
-                }
-            }
-            // Check token limits
-            if plan.Config.Chat.MaxMonthlyTokens > 0 {
-                used, errUsage := db.GetMonthlyTokenUsage(r.Context(), h.DB, userID)
-                if errUsage == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
-                    base := api.BaseLang(cbot.LanguageCode)
-                    cfg := api.ConfigFromBase(base)
-                    api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
-                    return
-                }
-            }
-        }
+	if plan != nil {
+		ragConfig = plan.Config.Chat.RAG
+		if len(plan.Config.Chat.AllowedModels) > 0 {
+			allowed := false
+			for _, m := range plan.Config.Chat.AllowedModels {
+				if m == cbot.Model {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				cbot.Model = plan.Config.Chat.AllowedModels[0]
+			}
+		}
+		// Check token limits
+		if plan.Config.Chat.MaxMonthlyTokens > 0 {
+			used, errUsage := db.GetMonthlyTokenUsage(r.Context(), h.DB, userID)
+			if errUsage == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
+				base := api.BaseLang(cbot.LanguageCode)
+				cfg := api.ConfigFromBase(base)
+				api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
+				return
+			}
+		}
+	}
 
 	var req chatRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -163,7 +163,7 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chatbotID, err := db.UpdateMessageFeedback(r.Context(), h.DB, msgID, req.ThumbsUp)
+	chatbotID, oldThumbsUp, err := db.UpdateMessageFeedback(r.Context(), h.DB, msgID, req.ThumbsUp)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -177,7 +177,7 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), req.ThumbsUp)
+		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), oldThumbsUp, req.ThumbsUp)
 	}()
 
 	w.WriteHeader(http.StatusOK)

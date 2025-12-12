@@ -28,7 +28,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 	err := pool.QueryRowContext(
 		ctx,
 		`INSERT INTO chatbots (
-            user_id, workspace_id, organization_id, name, description, system_prompt, language_id, model,
+            user_id, workspace_id, organization_id, name, description, custom_instruction, language_id, model,
             temperature, max_tokens, theme_color, welcome_message,
             position, bot_message_color, user_message_color,
             bot_message_text_color, user_message_text_color,
@@ -38,7 +38,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
             refresh_policy, refresh_frequency, next_refresh_at, last_refresh_at,
             confidence_threshold, fallback_messages, topic_restrictions
         ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36) RETURNING id`,
-		bot.UserID, bot.WorkspaceID, bot.OrganizationID, bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
+		bot.UserID, bot.WorkspaceID, bot.OrganizationID, bot.Name, bot.Description, bot.CustomInstruction, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
@@ -56,7 +56,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 
 func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]models.Chatbot, error) {
 	rows, err := pool.QueryContext(ctx, `
-        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
+        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, COALESCE(c.custom_instruction,'') AS custom_instruction, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
                c.created_at, c.updated_at, c.deleted_at,
                c.position, c.bot_message_color, c.user_message_color,
@@ -84,7 +84,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
 // GetChatbotsByWorkspace returns all chatbots for a specific workspace
 func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID string) ([]models.Chatbot, error) {
 	rows, err := pool.QueryContext(ctx, `
-        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
+        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, COALESCE(c.custom_instruction,'') AS custom_instruction, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
                c.created_at, c.updated_at, c.deleted_at,
                c.position, c.bot_message_color, c.user_message_color,
@@ -116,7 +116,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 		var c models.Chatbot
 		var sj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 		if err := rows.Scan(
-			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
+			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.CustomInstruction, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
 			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
@@ -190,7 +190,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 	var c models.Chatbot
 	var sj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 	err := pool.QueryRowContext(ctx, `
-        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, c.system_prompt, COALESCE(l.code,'') AS language_code, c.model,
+        SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, COALESCE(c.custom_instruction,'') AS custom_instruction, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
                c.created_at, c.updated_at, c.deleted_at,
                c.position, c.bot_message_color, c.user_message_color,
@@ -207,7 +207,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
         FROM chatbots c
         LEFT JOIN languages l ON l.id = c.language_id
         WHERE c.id=$1 AND c.deleted_at IS NULL`, id).Scan(
-		&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.SystemPrompt, &c.LanguageCode, &c.Model,
+		&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.CustomInstruction, &c.LanguageCode, &c.Model,
 		&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
 		&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 		&c.Position, &c.BotMessageColor, &c.UserMessageColor,
@@ -320,7 +320,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 	// Use pq.Array() to convert Go slices to PostgreSQL array format
 	_, err := pool.ExecContext(ctx, `
         UPDATE chatbots SET
-            name=$1, description=$2, system_prompt=$3, language_id=(SELECT id FROM languages WHERE code=$4), model=$5,
+            name=$1, description=$2, custom_instruction=$3, language_id=(SELECT id FROM languages WHERE code=$4), model=$5,
             temperature=$6, max_tokens=$7, theme_color=$8, welcome_message=$9,
             position=$10, bot_message_color=$11, user_message_color=$12,
             bot_message_text_color=$13, user_message_text_color=$14,
@@ -334,7 +334,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             confidence_threshold=$34, threshold_config=$35, fallback_messages=$36, topic_restrictions=$37,
             handoff_enabled=$38, handoff_type=$39, handoff_config=$40
         WHERE id=$41`,
-		bot.Name, bot.Description, bot.SystemPrompt, normalizeLocale(bot.LanguageCode), bot.Model,
+		bot.Name, bot.Description, bot.CustomInstruction, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,

@@ -2,41 +2,59 @@ package rag
 
 import (
 	"errors"
-	"os"
 	"strings"
+
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
 // ClientFactory manages LLM client creation
-type ClientFactory struct{}
+// Architecture: OpenRouter (primary LLM) + OpenAI (embeddings + fallback)
+type ClientFactory struct {
+	customClients map[string]LLMClient
+	cfg           *config.Config
+}
 
-// NewClientFactory creates a new ClientFactory
-func NewClientFactory() *ClientFactory {
-	return &ClientFactory{}
+// NewClientFactory creates a new ClientFactory with config
+func NewClientFactory(cfg *config.Config) *ClientFactory {
+	return &ClientFactory{
+		customClients: make(map[string]LLMClient),
+		cfg:           cfg,
+	}
+}
+
+// RegisterClient registers a custom client (useful for mocking)
+func (f *ClientFactory) RegisterClient(provider string, client LLMClient) {
+	if f.customClients == nil {
+		f.customClients = make(map[string]LLMClient)
+	}
+	f.customClients[strings.ToLower(provider)] = client
 }
 
 // GetClient returns an LLMClient for the specified provider
-// If provider is empty, it defaults to openai
+// Supported providers: openrouter (primary), openai (fallback + embeddings)
 func (f *ClientFactory) GetClient(provider string) (LLMClient, error) {
 	if provider == "" {
-		provider = "openai"
+		provider = "openrouter" // Default to OpenRouter for LLM calls
 	}
 
 	switch strings.ToLower(provider) {
-	case "openai":
-		return NewOpenAIClientFromEnv()
-	case "anthropic":
-		return NewAnthropicClientFromEnv()
-	case "google":
-		return NewGoogleAIClientFromEnv()
 	case "openrouter":
-		return NewOpenRouterClientFromEnv()
+		if c, ok := f.customClients["openrouter"]; ok {
+			return c, nil
+		}
+		return NewOpenRouterClient(f.cfg)
+	case "openai":
+		if c, ok := f.customClients["openai"]; ok {
+			return c, nil
+		}
+		return NewOpenAIClient(f.cfg)
 	default:
-		return nil, errors.New("unsupported provider: " + provider)
+		return nil, errors.New("unsupported provider: " + provider + " (use openrouter or openai)")
 	}
 }
 
 // GetClientForModel parses the model string (provider:model) and returns the appropriate client
+// Default provider is openrouter for LLM operations
 func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string, error) {
 	if !config.IsModelSupported(modelString) {
 		return nil, "", errors.New("unsupported model: " + modelString)
@@ -48,10 +66,18 @@ func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string
 	if len(parts) == 2 {
 		provider = parts[0]
 		modelName = parts[1]
+
+		// Map other providers to OpenRouter (except OpenAI which has native client)
+		if provider != "openai" && provider != "openrouter" {
+			// Construct OpenRouter model format: provider/model
+			// e.g. anthropic:claude -> anthropic/claude
+			modelName = provider + "/" + modelName
+			provider = "openrouter"
+		}
 	} else {
-		// Default to openai if no prefix
-		provider = "openai"
-		modelName = modelString
+		// Default to openrouter if no prefix (model passed directly)
+		provider = "openrouter"
+		modelName = "openai/" + modelString // OpenRouter format: provider/model
 	}
 
 	client, err := f.GetClient(provider)
@@ -66,33 +92,26 @@ func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string
 func (f *ClientFactory) GetAvailableProviders() []string {
 	providers := []string{}
 
-	if os.Getenv("OPENAI_API_KEY") != "" {
-		providers = append(providers, "openai")
-	}
-	if os.Getenv("ANTHROPIC_API_KEY") != "" {
-		providers = append(providers, "anthropic")
-	}
-	if os.Getenv("GOOGLE_AI_API_KEY") != "" {
-		providers = append(providers, "google")
-	}
-	if os.Getenv("OPENROUTER_API_KEY") != "" {
+	if f.cfg != nil && f.cfg.OPENROUTER_API_KEY != "" {
 		providers = append(providers, "openrouter")
+	}
+	if f.cfg != nil && f.cfg.OPENAI_API_KEY != "" {
+		providers = append(providers, "openai")
 	}
 
 	return providers
 }
 
-// IsProviderConfigured checks if a provider is configured (via env vars)
+// IsProviderConfigured checks if a provider is configured
 func (f *ClientFactory) IsProviderConfigured(provider string) bool {
+	if f.cfg == nil {
+		return false
+	}
 	switch strings.ToLower(provider) {
-	case "openai":
-		return os.Getenv("OPENAI_API_KEY") != ""
-	case "anthropic":
-		return os.Getenv("ANTHROPIC_API_KEY") != ""
-	case "google":
-		return os.Getenv("GOOGLE_AI_API_KEY") != ""
 	case "openrouter":
-		return os.Getenv("OPENROUTER_API_KEY") != ""
+		return f.cfg.OPENROUTER_API_KEY != ""
+	case "openai":
+		return f.cfg.OPENAI_API_KEY != ""
 	default:
 		return false
 	}

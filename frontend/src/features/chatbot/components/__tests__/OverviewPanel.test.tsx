@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import OverviewPanel from '../OverviewPanel'
 
 describe('OverviewPanel', () => {
-  it('renders and allows editing of name and system prompt', () => {
+  it('renders and allows editing of name and custom instruction', () => {
     const setName = vi.fn()
-    const setSystemPrompt = vi.fn()
+    const setCustomInstruction = vi.fn()
     const setModel = vi.fn()
     const setTemperature = vi.fn()
     const setMaxTokens = vi.fn()
@@ -14,8 +14,8 @@ describe('OverviewPanel', () => {
       <OverviewPanel
         name="Bot"
         setName={setName}
-        systemPrompt="Merhaba"
-        setSystemPrompt={setSystemPrompt}
+        customInstruction="Merhaba"
+        setCustomInstruction={setCustomInstruction}
         model="openai:gpt-4o"
         setModel={setModel}
         temperature={0.5}
@@ -30,8 +30,8 @@ describe('OverviewPanel', () => {
     fireEvent.change(nameInput, { target: { value: 'Destek Botu' } })
     expect(setName).toHaveBeenCalledWith('Destek Botu')
 
-    const promptTextarea = screen.getByPlaceholderText('Sen yardımcı bir asistansın...') as HTMLTextAreaElement
-    fireEvent.change(promptTextarea, { target: { value: 'Yeni sistem mesajı' } })
-    expect(setSystemPrompt).toHaveBeenCalledWith('Yeni sistem mesajı')
+    const promptTextarea = screen.getByPlaceholderText('Botunuza özel davranış kuralları ekleyin...') as HTMLTextAreaElement
+    fireEvent.change(promptTextarea, { target: { value: 'Yeni talimat' } })
+    expect(setCustomInstruction).toHaveBeenCalledWith('Yeni talimat')
   })
 })

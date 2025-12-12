@@ -76,7 +76,7 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 	// Check plan limits
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteLocalizedError(w, http.StatusInternalServerError, "get_plan_error: "+err.Error(), langCfg)
 		return
 	}
 
@@ -105,7 +105,7 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 
 	newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		api.WriteLocalizedError(w, http.StatusInternalServerError, "create_bot_error: "+err.Error(), langCfg)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, re
 		OrganizationID:       orgID,
 		Name:                 req.Name,
 		Description:          req.Description,
-		SystemPrompt:         defaultString(req.SystemPrompt, langCfg.ResponseTemplates.DefaultPersonaPrompt),
+		CustomInstruction:    defaultString(req.CustomInstruction, ""),
 		LanguageCode:         langCode,
 		Model:                defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
 		Temperature:          defaultFloat32(req.Temperature, 0.7),

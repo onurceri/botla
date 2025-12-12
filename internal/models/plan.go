@@ -72,6 +72,7 @@ type FilesConfig struct {
 }
 
 type ChatConfig struct {
+	DefaultModel      string    `json:"default_model,omitempty"` // e.g., "openai/gpt-4o-mini" for OpenRouter
 	AllowedModels     []string  `json:"allowed_models"`
 	MaxMonthlyTokens  int       `json:"max_monthly_tokens"`
 	RAG               RAGConfig `json:"rag"`

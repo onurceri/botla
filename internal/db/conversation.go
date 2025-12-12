@@ -44,9 +44,9 @@ func CreateMessage(ctx context.Context, pool *sql.DB, m *models.Message) (string
 	var id string
 	err := pool.QueryRowContext(ctx, `
         INSERT INTO messages (
-            conversation_id, role, content, tokens_used, thumbs_up
-        ) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-		m.ConversationID, m.Role, m.Content, m.TokensUsed, m.ThumbsUp,
+            conversation_id, role, content, tokens_used, thumbs_up, type
+        ) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+		m.ConversationID, m.Role, m.Content, m.TokensUsed, m.ThumbsUp, m.Type,
 	).Scan(&id)
 	if err != nil {
 		return "", err
@@ -63,7 +63,7 @@ func IncrementConversationMessageCount(ctx context.Context, pool *sql.DB, conver
 
 func ListRecentMessages(ctx context.Context, pool *sql.DB, conversationID string, limit int) ([]models.Message, error) {
 	rows, err := pool.QueryContext(ctx, `
-        SELECT id, conversation_id, role, content, tokens_used, thumbs_up, created_at
+        SELECT id, conversation_id, role, content, tokens_used, thumbs_up, created_at, type
         FROM messages
         WHERE conversation_id=$1
         ORDER BY created_at DESC
@@ -75,7 +75,7 @@ func ListRecentMessages(ctx context.Context, pool *sql.DB, conversationID string
 	var out []models.Message
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.TokensUsed, &m.ThumbsUp, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.TokensUsed, &m.ThumbsUp, &m.CreatedAt, &m.Type); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -90,17 +90,45 @@ func ListRecentMessages(ctx context.Context, pool *sql.DB, conversationID string
 	return out, nil
 }
 
-func UpdateMessageFeedback(ctx context.Context, pool *sql.DB, messageID string, thumbsUp bool) (string, error) {
+func UpdateMessageFeedback(ctx context.Context, pool *sql.DB, messageID string, thumbsUp bool) (string, *bool, error) {
 	var chatbotID string
-	// We need chatbot_id for analytics update, so we join tables
-	err := pool.QueryRowContext(ctx, `
+	var oldThumbsUp sql.NullBool
+
+	// Use a transaction to ensure atomicity (read-modify-write)
+	tx, err := pool.BeginTx(ctx, nil)
+	if err != nil {
+		return "", nil, err
+	}
+	defer tx.Rollback()
+
+	// Get current state and chatbot_id
+	err = tx.QueryRowContext(ctx, `
+		SELECT m.thumbs_up, c.chatbot_id 
+		FROM messages m
+		JOIN conversations c ON m.conversation_id = c.id
+		WHERE m.id=$1 FOR UPDATE
+	`, messageID).Scan(&oldThumbsUp, &chatbotID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Update
+	_, err = tx.ExecContext(ctx, `
 		UPDATE messages SET thumbs_up=$2
 		WHERE id=$1
-		RETURNING (
-			SELECT c.chatbot_id 
-			FROM conversations c 
-			WHERE c.id = messages.conversation_id
-		)
-	`, messageID, thumbsUp).Scan(&chatbotID)
-	return chatbotID, err
+	`, messageID, thumbsUp)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", nil, err
+	}
+
+	var oldVal *bool
+	if oldThumbsUp.Valid {
+		b := oldThumbsUp.Bool
+		oldVal = &b
+	}
+	return chatbotID, oldVal, nil
 }

@@ -40,7 +40,7 @@ const DEFAULT_THRESHOLD_CONFIG: ThresholdConfig = {
 export function useChatbotForm() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [systemPrompt, setSystemPrompt] = useState('')
+  const [customInstruction, setCustomInstruction] = useState('')
   const [model, setModel] = useState('openai:gpt-4o-mini')
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(512)
@@ -83,7 +83,7 @@ export function useChatbotForm() {
   function setFromServer(data: any) {
     setName(data.name || '')
     setDescription(data.description || '')
-    setSystemPrompt(data.system_prompt || '')
+    setCustomInstruction(data.custom_instruction || '')
     setModel(data.model || 'openai:gpt-4o-mini')
     setTemperature(data.temperature ?? 0.7)
     setMaxTokens(data.max_tokens ?? 512)
@@ -132,7 +132,7 @@ export function useChatbotForm() {
     return {
       name,
       description,
-      system_prompt: systemPrompt,
+      custom_instruction: customInstruction,
       model,
       temperature,
       max_tokens: maxTokens,
@@ -175,7 +175,7 @@ export function useChatbotForm() {
   return {
     name, setName,
     description, setDescription,
-    systemPrompt, setSystemPrompt,
+    customInstruction, setCustomInstruction,
     temperature, setTemperature,
     maxTokens, setMaxTokens,
     themeColor, setThemeColor,

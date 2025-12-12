@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
@@ -26,7 +27,7 @@ func ExtractTopics(ctx context.Context, client LLMClient, content string, langCo
 		SystemPrompt: sp,
 		Context:      ct,
 		UserMessage:  um,
-		Model:        "gpt-4o-mini", // Use default or specific model
+		Model:        config.ModelGPT4oMini,
 		Temperature:  0.0,
 		MaxTokens:    150,
 	}
@@ -55,7 +56,7 @@ func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content str
 		SystemPrompt: sp,
 		Context:      ct,
 		UserMessage:  um,
-		Model:        "gpt-4o-mini",
+		Model:        config.ModelGPT4oMini,
 		Temperature:  0.0,
 		MaxTokens:    300,
 	}

@@ -9,7 +9,8 @@ type Chatbot struct {
 	OrganizationID       *string    `json:"organization_id,omitempty"`
 	Name                 string     `json:"name"`
 	Description          *string    `json:"description,omitempty"`
-	SystemPrompt         string     `json:"system_prompt"`
+	SystemPrompt         string     `json:"-"`                   // Internal only, generated dynamically
+	CustomInstruction    string     `json:"custom_instruction"`  // User-editable instructions
 	LanguageCode         string     `json:"language"`
 	Model                string     `json:"model"`
 	Temperature          float32    `json:"temperature"`

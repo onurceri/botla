@@ -13,6 +13,7 @@ type LanguageConfig struct {
 type ResponseTemplates struct {
 	NoInfoFound                 string
 	DefaultSystemPrompt         string
+	LanguageDirective           string // Language enforcement directive
 	ErrorMessage                string
 	TopicExtractionSystemPrompt string
 	TopicExtractionUserPrompt   string
@@ -41,8 +42,15 @@ var Configs = map[string]LanguageConfig{
 		OCRLanguage:     "tur",
 		TokenizerData:   "data/sentences/turkish.json",
 		ResponseTemplates: ResponseTemplates{
-			NoInfoFound:                 "Yeterli bilgi bulamadım.",
-			DefaultSystemPrompt:         "Her zaman Türkçe yanıt ver ve sadece verilen bağlamı kullan.",
+			NoInfoFound: "Yeterli bilgi bulamadım.",
+			DefaultSystemPrompt: `Sen bir yapay zeka asistanısın.
+
+TEMEL KURALLAR:
+1. SADECE sana sağlanan kaynak belgelerindeki bilgilerle yanıt ver.
+2. Kaynaklarda olmayan konularda "Bu konuda bilgim yok" de.
+3. Kullanıcı numaralı listeden seçim yaparsa (örn: "1", "2", "6") konuşma bağlamından anlayarak doğru seçeneği yanıtla.
+4. Her zaman önceki konuşma mesajlarını dikkate al.`,
+			LanguageDirective: "ZORUNLU: Tüm yanıtlarını SADECE Türkçe ver. Başka dilde ASLA yanıt verme.",
 			ErrorMessage:                "Şu an bir hata oluştu, lütfen tekrar deneyin.",
 			TopicExtractionSystemPrompt: TR_TopicExtractionSystemPrompt,
 			TopicExtractionUserPrompt:   TR_TopicExtractionUserPrompt,
@@ -109,8 +117,15 @@ var Configs = map[string]LanguageConfig{
 		OCRLanguage:     "eng",
 		TokenizerData:   "data/sentences/english.json",
 		ResponseTemplates: ResponseTemplates{
-			NoInfoFound:                 "I could not find enough information.",
-			DefaultSystemPrompt:         "Always answer in English and use only the provided context.",
+			NoInfoFound: "I could not find enough information.",
+			DefaultSystemPrompt: `You are an AI assistant.
+
+CORE RULES:
+1. ONLY answer based on the provided source documents.
+2. For topics not in your sources, say "I don't have information on this topic."
+3. If user selects from a numbered list (e.g., "1", "2", "6"), understand from conversation context and respond appropriately.
+4. Always consider previous conversation messages.`,
+			LanguageDirective: "REQUIRED: Respond ONLY in English. NEVER switch to another language.",
 			ErrorMessage:                "An error occurred, please try again later.",
 			TopicExtractionSystemPrompt: EN_TopicExtractionSystemPrompt,
 			TopicExtractionUserPrompt:   EN_TopicExtractionUserPrompt,

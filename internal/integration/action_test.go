@@ -211,8 +211,9 @@ func TestChatWithTools(t *testing.T) {
 	defer mockServer.Close()
 	serverURL = mockServer.URL
 
-	// Set OpenAI Base URL to mock server
+	// Set OpenAI/OpenRouter Base URLs to mock server
 	t.Setenv("OPENAI_API_BASE", serverURL)
+	t.Setenv("OPENROUTER_API_BASE", serverURL+"/v1")
 	// Ensure we have a key
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
@@ -449,6 +450,7 @@ func TestToolExecutionError(t *testing.T) {
 	}))
 	defer mockServer.Close()
 	t.Setenv("OPENAI_API_BASE", mockServer.URL)
+	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
 	token := authTokenForAction(t, te.Server.URL, "err_user@example.com")

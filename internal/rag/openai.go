@@ -21,6 +21,32 @@ type OpenAIClient struct {
 	defaultModel string
 }
 
+// NewOpenAIClient creates an OpenAI client from config
+func NewOpenAIClient(cfg *config.Config) (*OpenAIClient, error) {
+	if cfg == nil || cfg.OPENAI_API_KEY == "" {
+		return nil, errors.New("OPENAI_API_KEY is empty")
+	}
+	base := cfg.OPENAI_API_BASE
+	if base == "" {
+		base = "https://api.openai.com"
+	}
+	to := time.Duration(cfg.OPENAI_TIMEOUT_MS) * time.Millisecond
+	if to <= 0 {
+		to = 30 * time.Second
+	}
+	defModel := cfg.DEFAULT_CHATBOT_MODEL
+	if defModel == "" {
+		defModel = config.ModelGPT4oMini
+	}
+	return &OpenAIClient{
+		apiKey:       cfg.OPENAI_API_KEY,
+		http:         &http.Client{Timeout: to},
+		base:         base,
+		defaultModel: defModel,
+	}, nil
+}
+
+// NewOpenAIClientFromEnv creates an OpenAI client from environment variables (backward compatibility)
 func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
 	k := os.Getenv("OPENAI_API_KEY")
 	if k == "" {
@@ -172,7 +198,7 @@ type chatResponse struct {
 
 func (c *OpenAIClient) GetModelInfo() models.ModelInfo {
 	return models.ModelInfo{
-		Name:              "gpt-4o-mini",
+		Name:              config.ModelGPT4oMini,
 		Provider:          "openai",
 		MaxTokens:         128000,
 		SupportedFeatures: []string{"chat", "tools"},

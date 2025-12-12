@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,6 +31,8 @@ func startTMStub() *TMStub {
 		s.mu.Lock()
 		s.Requests = append(s.Requests, req)
 		s.mu.Unlock()
+
+		log.Printf("Stub received request: %+v", req)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -164,6 +167,7 @@ func TestTemperatureParameter(t *testing.T) {
 	defer qd.Close()
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
+	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
@@ -244,6 +248,7 @@ func TestMaxTokensParameter(t *testing.T) {
 	defer qd.Close()
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
+	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
@@ -322,6 +327,7 @@ func TestModelConfiguration(t *testing.T) {
 	defer qd.Close()
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
+	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	// Enable other providers pointing to stub
@@ -352,11 +358,11 @@ func TestModelConfiguration(t *testing.T) {
 		model    *string
 		expected string
 	}{
-		{"Default Model", nil, "gpt-4o-mini"},
-		{"GPT-4o", stringPtr("gpt-4o"), "gpt-4o"},
-		{"GPT-4o-Mini", stringPtr("gpt-4o-mini"), "gpt-4o-mini"},
-		{"Anthropic", stringPtr("anthropic:claude-3-5-sonnet"), "claude-3-5-sonnet"},
-		{"Google", stringPtr("google:gemini-1.5-flash"), "gemini-1.5-flash"},
+		{"Default Model", nil, "openai/gpt-4o-mini"},
+		{"GPT-4o", stringPtr("gpt-4o"), "openai/gpt-4o"},
+		{"GPT-4o-Mini", stringPtr("gpt-4o-mini"), "openai/gpt-4o-mini"},
+		{"Anthropic", stringPtr("anthropic:claude-3-5-sonnet"), "anthropic/claude-3-5-sonnet"},
+		{"Google", stringPtr("google:gemini-1.5-flash"), "google/gemini-1.5-flash"},
 		{"OpenRouter", stringPtr("openrouter:meta-llama/llama-3"), "meta-llama/llama-3"},
 	}
 
@@ -429,6 +435,7 @@ func TestModelRestrictions(t *testing.T) {
 	defer qd.Close()
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
+	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
@@ -485,7 +492,7 @@ func TestModelRestrictions(t *testing.T) {
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.mu.Unlock()
 
-	if lastReq.Model != "gpt-4o-mini" {
+	if lastReq.Model != "openai/gpt-4o-mini" {
 		t.Errorf("expected fallback to gpt-4o-mini, got %s", lastReq.Model)
 	}
 }
@@ -498,6 +505,7 @@ func TestInvalidModel(t *testing.T) {
 	defer qd.Close()
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
+	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
@@ -540,13 +548,13 @@ func TestInvalidModel(t *testing.T) {
 	}
 	resCh.Body.Close()
 
-	// Verify Stub used gpt-4o-mini (ClientFactory fallback)
+	// Verify Stub used invalid-model (OpenRouter pass-through)
 	stub.mu.Lock()
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.mu.Unlock()
 
-	if lastReq.Model != "gpt-4o-mini" {
-		t.Errorf("expected fallback to gpt-4o-mini, got %s", lastReq.Model)
+	if lastReq.Model != "openai/invalid-model-name-xyz" {
+		t.Errorf("expected pass-through to openai/invalid-model-name-xyz, got %s", lastReq.Model)
 	}
 }
 

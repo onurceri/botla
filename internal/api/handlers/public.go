@@ -350,7 +350,7 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	// Verify message belongs to bot (optional but good)
 	// For now, simpler: UpdateMessageFeedback checks ID.
 	// We need to return the chatbotID for analytics increment, but UpdateMessageFeedback returns it.
-	chatbotID, err := db.UpdateMessageFeedback(r.Context(), h.DB, req.MessageID, req.ThumbsUp)
+	chatbotID, oldThumbsUp, err := db.UpdateMessageFeedback(r.Context(), h.DB, req.MessageID, req.ThumbsUp)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -370,7 +370,7 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), req.ThumbsUp)
+		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), oldThumbsUp, req.ThumbsUp)
 	}()
 
 	w.WriteHeader(http.StatusOK)

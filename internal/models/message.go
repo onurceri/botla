@@ -10,6 +10,7 @@ type Message struct {
 	TokensUsed     int       `json:"tokens_used"`
 	ThumbsUp       *bool           `json:"thumbs_up,omitempty"`
 	CreatedAt      time.Time       `json:"created_at"`
+	Type           string          `json:"type,omitempty"` // normal, handoff, welcome
 	Sources        []MessageSource `json:"sources,omitempty"`
 }
 

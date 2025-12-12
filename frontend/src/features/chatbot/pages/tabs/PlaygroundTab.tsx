@@ -109,8 +109,8 @@ export default function PlaygroundTab() {
         </div>
 
         {/* Preview Area */}
-        <div className="lg:col-span-8 bg-muted/30 rounded-3xl border border-border px-8 pb-8 pt-16 flex flex-col relative overflow-hidden shadow-inner">
-            <div className="absolute top-6 left-6 flex items-center gap-2 text-muted-foreground bg-background/80 backdrop-blur px-4 py-1.5 rounded-full text-xs font-medium border border-border/50 shadow-sm">
+        <div className="lg:col-span-8 bg-slate-50 rounded-3xl border border-border p-8 flex flex-col relative shadow-inner min-h-[700px]" style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+            <div className="absolute top-4 left-4 flex items-center gap-2 text-muted-foreground bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-xs font-medium border border-border/50 shadow-sm z-10">
                 <Smartphone className="w-3 h-3" />
                 Canlı Önizleme
             </div>

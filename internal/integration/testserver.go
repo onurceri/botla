@@ -7,6 +7,7 @@ import (
 
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/internal/processing"
+	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
@@ -67,7 +68,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	memStore := storage.NewMemoryStorage()
 	q, _ := processing.StartSourceQueue(pool, memStore)
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore}
-	chatSvc := services.NewChatService(pool, nil, nil, nil, nil) // nil clients -> lazy init
+	factory := rag.NewClientFactory(cfg)
+	chatSvc := services.NewChatService(pool, factory, nil, nil, log) // nil embedder/qc -> lazy init
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	acth := &handlers.ActionHandlers{DB: pool}
 	handh := &handlers.HandoffHandlers{DB: pool, Log: log}

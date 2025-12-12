@@ -85,7 +85,7 @@ func TestLoadConfig_QdrantMissing_Exit(t *testing.T) {
 	}
 }
 
-func TestLoadConfig_OpenAIMissing_Exit(t *testing.T) {
+func TestLoadConfig_OpenAIMissing_Warns(t *testing.T) {
 	env := []string{
 		"DB_HOST=localhost",
 		"DB_PORT=5432",
@@ -107,9 +107,13 @@ func TestLoadConfig_OpenAIMissing_Exit(t *testing.T) {
 			os.Setenv(k, v)
 		}
 	}
-	LoadConfig()
-	if calls == 0 {
-		t.Fatalf("expected fatalf to be called")
+	cfg := LoadConfig()
+	// OPENAI_API_KEY is optional (logs warning only), so fatalf should NOT be called
+	if calls != 0 {
+		t.Fatalf("expected fatalf NOT to be called for missing OPENAI_API_KEY")
+	}
+	if cfg == nil {
+		t.Fatalf("expected config to be returned")
 	}
 }
 

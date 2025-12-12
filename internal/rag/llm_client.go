@@ -24,3 +24,9 @@ type FullLLMClient interface {
 	LLMClient
 	EmbeddingClient
 }
+
+// ToolsLLMClient defines the interface for LLMs that support tool calling
+type ToolsLLMClient interface {
+	LLMClient
+	CreateCompletionWithTools(ctx context.Context, messages []ChatMessage, tools []Tool, model string, temperature float32, maxTokens int) (*ChatResponseWithTools, error)
+}

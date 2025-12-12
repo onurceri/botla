@@ -10,6 +10,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
@@ -24,10 +25,8 @@ type ChatService struct {
 }
 
 // NewChatService creates a new ChatService instance
+// The factory must be provided with config - use rag.NewClientFactory(cfg)
 func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc *rag.QdrantClient, log *logger.Logger) *ChatService {
-	if factory == nil {
-		factory = rag.NewClientFactory()
-	}
 	if embedder == nil {
 		if client, err := rag.NewOpenAIClientFromEnv(); err == nil {
 			embedder = client
@@ -48,7 +47,8 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	// Check if we should use tool-enabled flow
 	// For now, let's check if there are any enabled actions for this bot
 	actions, err := db.GetEnabledActions(ctx, s.DB, bot.ID)
-	if err == nil && len(actions) > 0 {
+	// Use tool flow if actions exist OR handoff is enabled (for built-in handoff tool)
+	if (err == nil && len(actions) > 0) || bot.HandoffEnabled {
 		return s.ProcessChatWithTools(ctx, req, bot, ragConfig, actions)
 	}
 
@@ -269,56 +269,102 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 		}
 	}
 
-	// Prepare system prompt and messages
+	// Prepare system prompt with language enforcement
 	langCode := normalizeLangCode(bot.LanguageCode)
 	cfg := langconfig.Get(langCode)
-	systemPrompt := resolveSystemPrompt(bot.SystemPrompt, cfg)
+	systemPrompt := buildSystemPrompt(bot, cfg)
 
-	// If no context found, normally we might just return "no info".
-	// But with tools, maybe the tools can answer?
-	// For now, let's include the context if found.
+	// Load conversation history for context
+	historyLimit := calculateHistoryLimit(ragConfig.MaxContextTokens)
+	historyMsgs, _ := db.ListRecentMessages(ctx, s.DB, conv.ID, historyLimit)
 
-	userMsgContent := "Context:\n" + contextText + "\n\nQuestion:\n" + req.Message
+	// Build messages array with system prompt first
 	messages := []rag.ChatMessage{
 		{Role: "system", Content: &systemPrompt},
-		{Role: "user", Content: &userMsgContent},
 	}
+
+	// Add conversation history (excluding the current message we just saved)
+	for _, m := range historyMsgs {
+		// Skip the current user message (already saved above, will be added with context)
+		if m.Content == req.Message && m.Role == "user" {
+			continue
+		}
+		content := m.Content
+		messages = append(messages, rag.ChatMessage{Role: m.Role, Content: &content})
+	}
+
+	// Add current user message with RAG context
+	userMsgContent := "Context:\n" + contextText + "\n\nQuestion:\n" + req.Message
+	messages = append(messages, rag.ChatMessage{Role: "user", Content: &userMsgContent})
 
 	// Tools
 	tools := rag.ConvertActionsToTools(actions)
 	tools = append(tools, rag.GetBuiltinTools()...)
 
-	// Get OpenAI Client
-	// Currently only OpenAI supports this implementation
-	client, modelName, err := s.Factory.GetClientForModel(bot.Model)
+	// Get LLM Client with tool support
+	// Try the bot's configured model first via the factory
+	useOpenAIOnly := !s.Factory.IsProviderConfigured("openrouter")
+	modelString := bot.Model
+	if useOpenAIOnly && !strings.HasPrefix(modelString, "openai:") {
+		modelString = "openai:" + modelString
+	}
+	client, modelName, err := s.Factory.GetClientForModel(modelString)
 	if err != nil {
-		client, _ = rag.NewOpenAIClientFromEnv()
-		modelName = "gpt-4o-mini"
-	}
-
-	openaiClient, ok := client.(*rag.OpenAIClient)
-	if !ok {
-		// Fallback to standard OpenAI client if the factory returned something else but we need OpenAI features
-		// Or just return error if other providers don't support tools yet
-		var err error
-		openaiClient, err = rag.NewOpenAIClientFromEnv()
-		if err != nil {
-			return nil, fmt.Errorf("tool support requires OpenAI client: %w", err)
+		// Fallback: try OpenRouter first (preferred for tool support with any model)
+		orClient, orErr := s.Factory.GetClient("openrouter")
+		if orErr == nil && orClient != nil {
+			client = orClient
+			modelName = config.ModelOpenRouterGPT4oMini // Default model for OpenRouter
+		} else {
+			// Last resort: try OpenAI directly
+			oaiClient, oaiErr := rag.NewOpenAIClientFromEnv()
+			if oaiErr == nil && oaiClient != nil {
+				client = oaiClient
+				modelName = config.ModelGPT4oMini // OpenAI model format (no prefix)
+			}
 		}
-		modelName = "gpt-4o-mini" // Force OpenAI model
+		if client == nil {
+			return nil, fmt.Errorf("no LLM client available: %w", err)
+		}
 	}
 
-	if openaiClient == nil {
-		return nil, fmt.Errorf("openai client unavailable")
+	toolsClient, ok := client.(rag.ToolsLLMClient)
+	if !ok {
+		// Client doesn't support tools - try OpenRouter which now supports ToolsLLMClient
+		orClient, orErr := s.Factory.GetClient("openrouter")
+		if orErr == nil {
+			if tc, tcOk := orClient.(rag.ToolsLLMClient); tcOk {
+				toolsClient = tc
+				// Use original model name if it looks like an OpenRouter model format
+				if !strings.Contains(modelName, "/") {
+					modelName = config.ModelOpenRouterGPT4oMini // Default to a known working model
+				}
+			}
+		}
+		// Still no tools client? Fall back to OpenAI
+		if toolsClient == nil {
+			c, err := rag.NewOpenAIClientFromEnv()
+			if err != nil {
+				return nil, fmt.Errorf("tool support requires OpenAI or OpenRouter client: %w", err)
+			}
+			toolsClient = c
+			modelName = config.ModelGPT4oMini
+		}
+	}
+
+	if toolsClient == nil {
+		return nil, fmt.Errorf("tools client unavailable")
 	}
 
 	executor := &rag.ToolExecutor{DB: s.DB, Log: s.Log}
 	var finalResponse string
 	var totalTokens int
+	var isHandoff bool
 
 	// Agentic loop
+AgentLoop:
 	for i := 0; i < 5; i++ {
-		response, err := openaiClient.CreateCompletionWithTools(ctx, messages, tools, modelName, bot.Temperature, bot.MaxTokens)
+		response, err := toolsClient.CreateCompletionWithTools(ctx, messages, tools, modelName, bot.Temperature, bot.MaxTokens)
 		if err != nil {
 			if s.Log != nil {
 				s.Log.Error("completion_with_tools_error", map[string]any{"error": err.Error()})
@@ -342,12 +388,25 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 		// Execute tools
 		for _, tc := range choice.Message.ToolCalls {
 			action := findActionByName(actions, tc.Function.Name)
-			result, err := executor.Execute(ctx, tc, action)
+			// Pass IDs to Executor (needed for handoff)
+			result, err := executor.Execute(ctx, tc, action, bot.ID, conv.ID)
 			content := ""
 			if err != nil {
 				content = fmt.Sprintf(`{"error": "%s"}`, err.Error())
 			} else {
 				content = result.Result
+			}
+
+			// Special handling for handoff tool success
+			if tc.Function.Name == "request_human_handoff" && err == nil {
+				// Use the configured handoff message
+				msg := cfg.ResponseTemplates.HandoffSuggestion // Default
+				if bot.FallbackMessages != nil && bot.FallbackMessages.HandoffMessage != "" {
+					msg = bot.FallbackMessages.HandoffMessage
+				}
+				finalResponse = msg
+				isHandoff = true
+				break AgentLoop // Stop agent loop, return handoff message immediately
 			}
 
 			messages = append(messages, rag.ChatMessage{
@@ -367,7 +426,11 @@ func (s *ChatService) ProcessChatWithTools(ctx context.Context, req models.ChatR
 	}
 
 	// Save assistant message
-	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: finalResponse, TokensUsed: totalTokens}
+	msgType := "normal"
+	if isHandoff {
+		msgType = "handoff"
+	}
+	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: finalResponse, TokensUsed: totalTokens, Type: msgType}
 	var amID string
 	if id, err := db.CreateMessage(ctx, s.DB, am); err == nil {
 		amID = id
@@ -423,11 +486,44 @@ func normalizeLangCode(code string) string {
 }
 
 // resolveSystemPrompt returns the custom prompt or falls back to the language default
+// Deprecated: Use buildSystemPrompt for new code
 func resolveSystemPrompt(customPrompt string, cfg langconfig.LanguageConfig) string {
 	if strings.TrimSpace(customPrompt) == "" {
 		return cfg.ResponseTemplates.DefaultSystemPrompt
 	}
 	return customPrompt
+}
+
+// buildSystemPrompt creates a complete system prompt with base rules, custom instructions, and language enforcement
+func buildSystemPrompt(bot *models.Chatbot, cfg langconfig.LanguageConfig) string {
+	// Start with base system prompt containing core rules
+	base := cfg.ResponseTemplates.DefaultSystemPrompt
+
+	// Add custom instructions if provided
+	if strings.TrimSpace(bot.CustomInstruction) != "" {
+		base = base + "\n\n### Ek Talimatlar:\n" + bot.CustomInstruction
+	}
+
+	// Append language enforcement directive
+	if cfg.ResponseTemplates.LanguageDirective != "" {
+		base = base + "\n\n" + cfg.ResponseTemplates.LanguageDirective
+	}
+
+	return base
+}
+
+// calculateHistoryLimit returns optimal message history count based on context budget
+func calculateHistoryLimit(maxContextTokens int) int {
+	// Reserve ~40% of context for history, assume ~150 tokens per message
+	historyBudget := int(float64(maxContextTokens) * 0.4)
+	limit := historyBudget / 150
+	if limit < 4 {
+		limit = 4 // minimum
+	}
+	if limit > 20 {
+		limit = 20 // maximum
+	}
+	return limit
 }
 
 // generateWithContext generates a response using LLM with the provided context
@@ -442,7 +538,7 @@ func (s *ChatService) generateWithContext(ctx context.Context, bot *models.Chatb
 			return "", 0, fmt.Errorf("openai client not configured: %w", e)
 		}
 		client = c
-		modelName = "gpt-4o-mini"
+		modelName = config.ModelGPT4oMini
 	}
 
 	if client == nil {
@@ -496,7 +592,7 @@ func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, us
 			return "", 0, fmt.Errorf("openai client not configured: %w", e)
 		}
 		client = c
-		modelName = "gpt-4o-mini"
+		modelName = config.ModelGPT4oMini
 	}
 
 	if client == nil {
@@ -549,4 +645,3 @@ func (s *ChatService) getCapabilitySummaries(ctx context.Context, chatbotID stri
 
 	return strings.Join(summaries, "\n")
 }
-

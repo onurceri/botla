@@ -63,15 +63,37 @@ func GetMonthlyTokenUsage(ctx context.Context, pool *sql.DB, userID string) (int
 }
 
 // IncrementFeedback updates the thumbs up/down count in analytics
-func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, date time.Time, isThumbsUp bool) error {
+func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, date time.Time, oldState *bool, newState bool) error {
 	dateStr := date.Format("2006-01-02")
 
 	upInc := 0
 	downInc := 0
-	if isThumbsUp {
-		upInc = 1
+
+	if oldState == nil {
+		// New feedback
+		if newState {
+			upInc = 1
+		} else {
+			downInc = 1
+		}
 	} else {
-		downInc = 1
+		if *oldState == newState {
+			// No change
+			return nil
+		}
+		if *oldState && !newState {
+			// Was up, now down
+			upInc = -1
+			downInc = 1
+		} else if !*oldState && newState {
+			// Was down, now up
+			downInc = -1
+			upInc = 1
+		}
+	}
+
+	if upInc == 0 && downInc == 0 {
+		return nil
 	}
 
 	query := `

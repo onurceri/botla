@@ -129,6 +129,7 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS allowed_domains TEXT`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS embed_secret VARCHAR(255)`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS secure_embed_enabled BOOLEAN DEFAULT false`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS custom_instruction TEXT`)
 	// Add missing columns for tests
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS include_paths JSONB`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS exclude_paths JSONB`)
@@ -152,7 +153,11 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS topic_restrictions JSONB DEFAULT '{}'`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_enabled BOOLEAN DEFAULT false`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_type TEXT DEFAULT 'email'`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_type TEXT DEFAULT 'email'`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_config JSONB DEFAULT '{}'`)
+
+	// ensure messages has type column
+	_, _ = db.Exec(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'normal'`)
 
 	// ensure new source columns exist for tests
 	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
@@ -196,6 +201,17 @@ func SetupTestEnv() (*TestEnv, error) {
         updated_at TIMESTAMPTZ,
         deleted_at TIMESTAMPTZ
     )`)
+	// Create handoff_requests table for tests
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS handoff_requests (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		chatbot_id UUID NOT NULL REFERENCES chatbots(id) ON DELETE CASCADE,
+		conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+		status TEXT DEFAULT 'pending',
+		assigned_to TEXT,
+		notes TEXT,
+		created_at TIMESTAMP DEFAULT NOW(),
+		resolved_at TIMESTAMP
+	)`)
 	// ensure cascade deletes are set up for tests
 	_, _ = db.Exec(`ALTER TABLE chatbots DROP CONSTRAINT IF EXISTS chatbots_workspace_id_fkey`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD CONSTRAINT chatbots_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE`)
@@ -213,7 +229,7 @@ func TeardownTestEnv(te *TestEnv) {
 		return
 	}
 	if te.DB != nil {
-		_, _ = te.DB.Exec("TRUNCATE TABLE refresh_tokens, messages, conversations, analytics, payments, data_sources, chatbots, users, organizations, memberships, workspaces RESTART IDENTITY CASCADE")
+		_, _ = te.DB.Exec("TRUNCATE TABLE plans, refresh_tokens, messages, conversations, analytics, payments, data_sources, chatbots, users, organizations, memberships, workspaces RESTART IDENTITY CASCADE")
 	}
 	if te.Server != nil {
 		te.Server.Close()

@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input'
 type Props = {
   name: string
   setName: (v: string) => void
-  systemPrompt: string
-  setSystemPrompt: (v: string) => void
+  customInstruction: string
+  setCustomInstruction: (v: string) => void
   model: string
   setModel: (v: string) => void
   temperature: number
@@ -16,7 +16,7 @@ type Props = {
 
 export default function OverviewPanel({ 
   name, setName, 
-  systemPrompt, setSystemPrompt,
+  customInstruction, setCustomInstruction,
   model, setModel,
   temperature, setTemperature,
   maxTokens, setMaxTokens
@@ -26,7 +26,7 @@ export default function OverviewPanel({
       <Card>
         <CardHeader>
           <CardTitle>Kimlik</CardTitle>
-          <CardDescription>Bot ismi ve sistem mesajı.</CardDescription>
+          <CardDescription>Bot ismi ve özel talimatlar.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -34,14 +34,14 @@ export default function OverviewPanel({
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">System Prompt</label>
+            <label className="text-sm font-medium">Özel Talimatlar</label>
             <textarea 
               className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Sen yardımcı bir asistansın..."
+              value={customInstruction}
+              onChange={(e) => setCustomInstruction(e.target.value)}
+              placeholder="Botunuza özel davranış kuralları ekleyin..."
             />
-            <div className="flex justify-end text-xs text-muted-foreground">{systemPrompt.length} karakter</div>
+            <div className="flex justify-end text-xs text-muted-foreground">{customInstruction.length} karakter</div>
           </div>
         </CardContent>
       </Card>
