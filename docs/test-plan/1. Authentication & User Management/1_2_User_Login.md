@@ -7,7 +7,7 @@ This test plan covers all user login functionality including authentication, tok
 
 ## Test Cases
 
-### 1.2.1 Valid Login Flow
+### 1.2.1 Valid Login Flow [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
@@ -18,7 +18,7 @@ This test plan covers all user login functionality including authentication, tok
 | 3 | Decode access token | Contains correct `user_id` claim |
 | 4 | Verify token expiry | Access token expires in configured time (e.g., 15 min) |
 
-**Existing Test:** `internal/integration/auth_test.go` - `TestLogin`
+**Existing Test:** `internal/integration/auth_test.go` - `TestAuth_Register_Login_Protected`
 
 ---
 
@@ -28,10 +28,10 @@ This test plan covers all user login functionality including authentication, tok
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | POST `/api/v1/auth/login` with non-existent email | 401 Unauthorized |
+| 1 | POST `/api/v1/auth/login` with non-existent email | 401 Unauthorized [x] |
 | 2 | Response body | Generic "invalid credentials" message (no email enumeration) |
 
-**Existing Test:** `internal/integration/auth_test.go`
+**Existing Test:** `internal/integration/auth_test.go` - `TestAuth_Login_InvalidEmail`
 
 ---
 
@@ -41,10 +41,10 @@ This test plan covers all user login functionality including authentication, tok
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | POST `/api/v1/auth/login` with valid email, wrong password | 401 Unauthorized |
+| 1 | POST `/api/v1/auth/login` with valid email, wrong password | 401 Unauthorized [x] |
 | 2 | Response body | Generic "invalid credentials" message |
 
-**Existing Test:** `internal/integration/auth_test.go`
+**Existing Test:** `internal/integration/auth_test.go` - `TestAuth_Login_InvalidPassword`
 
 ---
 
@@ -60,15 +60,17 @@ This test plan covers all user login functionality including authentication, tok
 
 ---
 
-### 1.2.5 Refresh Token Tracking
+### 1.2.5 Refresh Token Tracking [x]
 **Priority:** High  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login successfully | Tokens returned |
-| 2 | Query `refresh_tokens` table | New record with token hash exists |
-| 3 | Record contains user_id and expiry | Correct values |
+| 1 | Login successfully | Tokens returned [x] |
+| 2 | Query `refresh_tokens` table | New record with token hash exists [x] |
+| 3 | Record contains user_id and expiry | Correct values [x] |
+
+**Existing Test:** `internal/integration/auth_test.go` - `TestAuth_Login_RefreshTokenTracking`
 
 ---
 
@@ -91,21 +93,23 @@ This test plan covers all user login functionality including authentication, tok
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | POST `/api/v1/auth/login` with invalid JSON | 400 Bad Request |
+| 1 | POST `/api/v1/auth/login` with invalid JSON | 400 Bad Request [x] |
 | 2 | Response body | JSON parse error message |
 
 **Existing Test:** `internal/api/handlers/auth_badjson_test.go`
 
 ---
 
-### 1.2.8 Empty Credentials
+### 1.2.8 Empty Credentials [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | POST `/api/v1/auth/login` with empty email | 400 Bad Request |
-| 2 | POST `/api/v1/auth/login` with empty password | 400 Bad Request |
+| 1 | POST `/api/v1/auth/login` with empty email | 400 Bad Request [x] |
+| 2 | POST `/api/v1/auth/login` with empty password | 400 Bad Request [x] |
+
+**Existing Test:** `internal/integration/auth_test.go` - `TestAuth_Login_EmptyEmail`, `TestAuth_Login_EmptyPassword`
 
 ---
 
