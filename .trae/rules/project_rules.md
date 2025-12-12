@@ -15,6 +15,12 @@ If you need to check data from database, you can use the following command to ru
 make db
 ```
 
+While writing backend code, make sure that you are not shadowing any variable.
+Be aware of this error and avoid it: 
+
+```bash
+shadow: declaration of "err" shadows declaration at ..
+
 To run the backend project, you can use Docker to connect to the database container and run any select command.
 
 ```bash

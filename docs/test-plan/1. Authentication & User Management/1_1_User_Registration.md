@@ -92,7 +92,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 
 ---
 
-### 1.1.7 XSS Prevention in Registration Fields
+### 1.1.7 XSS Prevention in Registration Fields [x]
 **Priority:** High  
 **Type:** Security Test
 

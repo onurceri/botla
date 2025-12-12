@@ -3,8 +3,12 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestAuth_EdgeCases(t *testing.T) {
@@ -84,5 +88,55 @@ func TestAuth_Register_SQLInjectionEmailSafe(t *testing.T) {
 	}
 	if after < before {
 		t.Fatalf("users table appears corrupted: before=%d after=%d", before, after)
+	}
+}
+
+func TestAuth_Register_XSSFullNameEscaped(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	email := "xss+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
+	body := map[string]string{
+		"email":     email,
+		"password":  "pass1234",
+		"full_name": "<script>alert('xss')</script>",
+	}
+	b, _ := json.Marshal(body)
+	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+	var tr tokenResp
+	if decodeErr := json.NewDecoder(res.Body).Decode(&tr); decodeErr != nil {
+		t.Fatalf("decode failed: %v", decodeErr)
+	}
+	res.Body.Close()
+	if tr.Token == "" {
+		t.Fatalf("token empty")
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
+	req.Header.Set("Authorization", "Bearer "+tr.Token)
+	resMe, meErr := http.DefaultClient.Do(req)
+	if meErr != nil {
+		t.Fatalf("me request failed: %v", meErr)
+	}
+	if resMe.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resMe.StatusCode)
+	}
+	bodyBytes, readErr := io.ReadAll(resMe.Body)
+	resMe.Body.Close()
+	if readErr != nil {
+		t.Fatalf("read body failed: %v", readErr)
+	}
+	s := string(bodyBytes)
+	if strings.Contains(s, "<script>alert('xss')</script>") {
+		t.Fatalf("response body contains raw script tag: %s", s)
 	}
 }
