@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -19,10 +21,16 @@ type Claims struct {
 
 func GenerateToken(secret string, userID string, tokenType string, ttl time.Duration) (string, error) {
 	now := time.Now()
+	randomBytes := make([]byte, 16)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", err
+	}
+	jti := hex.EncodeToString(randomBytes)
 	claims := Claims{
 		UserID:    userID,
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        jti,
 			Subject:   userID,
 			Issuer:    JWTIssuer,
 			Audience:  jwt.ClaimStrings{JWTAudience},

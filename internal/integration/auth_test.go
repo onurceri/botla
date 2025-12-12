@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -260,6 +261,14 @@ func TestAuth_Login_InvalidEmail(t *testing.T) {
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
+
+	var errResp map[string]string
+	if err = json.NewDecoder(res.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode error response failed: %v", err)
+	}
+	if errResp["error"] != "Invalid credentials" {
+		t.Fatalf("expected 'Invalid credentials', got %v", errResp["error"])
+	}
 }
 
 func TestAuth_Login_InvalidPassword(t *testing.T) {
@@ -297,6 +306,13 @@ func TestAuth_Login_InvalidPassword(t *testing.T) {
 
 	if resLogin.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resLogin.StatusCode)
+	}
+	var errResp map[string]string
+	if err = json.NewDecoder(resLogin.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode error response failed: %v", err)
+	}
+	if errResp["error"] != "Invalid credentials" {
+		t.Fatalf("expected 'Invalid credentials', got %v", errResp["error"])
 	}
 }
 
@@ -343,6 +359,169 @@ func TestAuth_Login_EmptyPassword(t *testing.T) {
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
+	}
+}
+
+func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	baseEmail := fmt.Sprintf("TestCI+%d@Example.com", time.Now().UnixNano())
+	regBody := map[string]string{"email": baseEmail, "password": "pass1234", "full_name": "Case User"}
+	rb, err := json.Marshal(regBody)
+	if err != nil {
+		t.Fatalf("marshal register body failed: %v", err)
+	}
+	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	if resReg.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resReg.StatusCode)
+	}
+	resReg.Body.Close()
+
+	lowerEmail := strings.ToLower(baseEmail)
+	upperEmail := strings.ToUpper(baseEmail)
+
+	loginBodyLower := map[string]string{"email": lowerEmail, "password": "pass1234"}
+	lbLower, err := json.Marshal(loginBodyLower)
+	if err != nil {
+		t.Fatalf("marshal lower login body failed: %v", err)
+	}
+	resLower, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbLower))
+	if err != nil {
+		t.Fatalf("login lower failed: %v", err)
+	}
+	if resLower.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 for lower-case login, got %d", resLower.StatusCode)
+	}
+	resLower.Body.Close()
+
+	loginBodyUpper := map[string]string{"email": upperEmail, "password": "pass1234"}
+	lbUpper, err := json.Marshal(loginBodyUpper)
+	if err != nil {
+		t.Fatalf("marshal upper login body failed: %v", err)
+	}
+	resUpper, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbUpper))
+	if err != nil {
+		t.Fatalf("login upper failed: %v", err)
+	}
+	if resUpper.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 for upper-case login, got %d", resUpper.StatusCode)
+	}
+	resUpper.Body.Close()
+}
+
+func TestAuth_Login_MultipleSessions(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	email := fmt.Sprintf("multisession+%d@example.com", time.Now().UnixNano())
+	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "Multi Session User"}
+	rb, err := json.Marshal(regBody)
+	if err != nil {
+		t.Fatalf("marshal register body failed: %v", err)
+	}
+	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	if resReg.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resReg.StatusCode)
+	}
+	resReg.Body.Close()
+
+	loginBody := map[string]string{"email": email, "password": "pass1234"}
+	lb, err := json.Marshal(loginBody)
+	if err != nil {
+		t.Fatalf("marshal login body failed: %v", err)
+	}
+
+	resA, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	if err != nil {
+		t.Fatalf("login A failed: %v", err)
+	}
+	if resA.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 for login A, got %d", resA.StatusCode)
+	}
+	var tokensA tokenResp
+	if err = json.NewDecoder(resA.Body).Decode(&tokensA); err != nil {
+		t.Fatalf("decode login A response failed: %v", err)
+	}
+	resA.Body.Close()
+
+	resB, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	if err != nil {
+		t.Fatalf("login B failed: %v", err)
+	}
+	if resB.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 for login B, got %d", resB.StatusCode)
+	}
+	var tokensB tokenResp
+	if err = json.NewDecoder(resB.Body).Decode(&tokensB); err != nil {
+		t.Fatalf("decode login B response failed: %v", err)
+	}
+	resB.Body.Close()
+
+	if tokensA.RefreshToken == "" || tokensB.RefreshToken == "" {
+		t.Fatalf("expected non-empty refresh tokens for both sessions")
+	}
+	if tokensA.RefreshToken == tokensB.RefreshToken {
+		t.Fatalf("expected different refresh tokens for different sessions")
+	}
+
+	hashA := hashTokenForTest(tokensA.RefreshToken)
+	hashB := hashTokenForTest(tokensB.RefreshToken)
+
+	var revokedA bool
+	if err = te.DB.QueryRow("SELECT revoked FROM refresh_tokens WHERE token_hash=$1", hashA).Scan(&revokedA); err != nil {
+		t.Fatalf("query refresh token A failed: %v", err)
+	}
+	if revokedA {
+		t.Fatalf("expected refresh token A to be valid (not revoked)")
+	}
+
+	var revokedB bool
+	if err = te.DB.QueryRow("SELECT revoked FROM refresh_tokens WHERE token_hash=$1", hashB).Scan(&revokedB); err != nil {
+		t.Fatalf("query refresh token B failed: %v", err)
+	}
+	if revokedB {
+		t.Fatalf("expected refresh token B to be valid (not revoked)")
+	}
+
+	logoutReq := map[string]string{"refresh_token": tokensA.RefreshToken}
+	logoutBody, err := json.Marshal(logoutReq)
+	if err != nil {
+		t.Fatalf("marshal logout body failed: %v", err)
+	}
+	resLogout, err := http.Post(te.Server.URL+"/api/v1/auth/logout", "application/json", bytes.NewReader(logoutBody))
+	if err != nil {
+		t.Fatalf("logout request failed: %v", err)
+	}
+	if resLogout.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 for logout, got %d", resLogout.StatusCode)
+	}
+	resLogout.Body.Close()
+
+	if err = te.DB.QueryRow("SELECT revoked FROM refresh_tokens WHERE token_hash=$1", hashA).Scan(&revokedA); err != nil {
+		t.Fatalf("re-query refresh token A failed: %v", err)
+	}
+	if !revokedA {
+		t.Fatalf("expected refresh token A to be revoked after logout")
+	}
+
+	if err = te.DB.QueryRow("SELECT revoked FROM refresh_tokens WHERE token_hash=$1", hashB).Scan(&revokedB); err != nil {
+		t.Fatalf("re-query refresh token B failed: %v", err)
+	}
+	if revokedB {
+		t.Fatalf("expected refresh token B to remain valid after logout of A")
 	}
 }
 

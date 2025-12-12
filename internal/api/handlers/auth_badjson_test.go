@@ -29,6 +29,9 @@ func TestLoginHandler_BadJSON(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("want 400, got %d", rr.Code)
 	}
+	if !strings.Contains(rr.Body.String(), "error") {
+		t.Errorf("expected error in body, got %s", rr.Body.String())
+	}
 }
 
 func TestRefreshHandler_BadJSON(t *testing.T) {

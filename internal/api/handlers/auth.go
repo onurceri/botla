@@ -148,32 +148,32 @@ func slugifyEmail(email string) string {
 
 func (h *AuthHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	req.Email = strings.TrimSpace(req.Email)
 	if req.Email == "" || req.Password == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		respondError(w, http.StatusBadRequest, "Email and password are required")
 		return
 	}
 	var userID string
 	var hash string
-	err := h.DB.QueryRowContext(r.Context(), "SELECT id, password_hash FROM users WHERE email=$1", req.Email).Scan(&userID, &hash)
+	err := h.DB.QueryRowContext(r.Context(), "SELECT id, password_hash FROM users WHERE LOWER(email) = LOWER($1)", req.Email).Scan(&userID, &hash)
 	if err == sql.ErrNoRows {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "Database error")
 		return
 	}
 	if !auth.VerifyPassword(hash, req.Password) {
-		w.WriteHeader(http.StatusUnauthorized)
+		respondError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 

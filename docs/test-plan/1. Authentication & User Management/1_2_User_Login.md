@@ -22,41 +22,41 @@ This test plan covers all user login functionality including authentication, tok
 
 ---
 
-### 1.2.2 Invalid Email Login
+### 1.2.2 Invalid Email Login [x]
 **Priority:** High  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | POST `/api/v1/auth/login` with non-existent email | 401 Unauthorized [x] |
-| 2 | Response body | Generic "invalid credentials" message (no email enumeration) |
+| 2 | Response body | Generic "invalid credentials" message (no email enumeration) [x] |
 
 **Existing Test:** `internal/integration/auth_test.go` - `TestAuth_Login_InvalidEmail`
 
 ---
 
-### 1.2.3 Invalid Password Login
+### 1.2.3 Invalid Password Login [x]
 **Priority:** High  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | POST `/api/v1/auth/login` with valid email, wrong password | 401 Unauthorized [x] |
-| 2 | Response body | Generic "invalid credentials" message |
+| 2 | Response body | Generic "invalid credentials" message [x] |
 
 **Existing Test:** `internal/integration/auth_test.go` - `TestAuth_Login_InvalidPassword`
 
 ---
 
-### 1.2.4 Case-Insensitive Email Matching
+### 1.2.4 Case-Insensitive Email Matching [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Register user with email `Test@Example.com` | 201 Created |
-| 2 | Login with email `test@example.com` (lowercase) | 200 OK |
-| 3 | Login with email `TEST@EXAMPLE.COM` (uppercase) | 200 OK |
+| 1 | Register user with email `Test@Example.com` | 201 Created [x] |
+| 2 | Login with email `test@example.com` (lowercase) | 200 OK [x] |
+| 3 | Login with email `TEST@EXAMPLE.COM` (uppercase) | 200 OK [x] |
 
 ---
 
@@ -74,27 +74,27 @@ This test plan covers all user login functionality including authentication, tok
 
 ---
 
-### 1.2.6 Multiple Login Sessions
+### 1.2.6 Multiple Login Sessions [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login from "device A" | Get tokens A |
-| 2 | Login from "device B" | Get tokens B (different) |
-| 3 | Both refresh tokens valid | Both can be used independently |
-| 4 | Logout from device A | Only token A invalidated |
+| 1 | Login from "device A" | Get tokens A [x] |
+| 2 | Login from "device B" | Get tokens B (different) [x] |
+| 3 | Both refresh tokens valid | Both can be used independently [x] |
+| 4 | Logout from device A | Only token A invalidated [x] |
 
 ---
 
-### 1.2.7 Malformed JSON Request
+### 1.2.7 Malformed JSON Request [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | POST `/api/v1/auth/login` with invalid JSON | 400 Bad Request [x] |
-| 2 | Response body | JSON parse error message |
+| 2 | Response body | JSON parse error message [x] |
 
 **Existing Test:** `internal/api/handlers/auth_badjson_test.go`
 
