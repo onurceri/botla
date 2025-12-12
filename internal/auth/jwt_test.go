@@ -22,6 +22,18 @@ func TestGenerateAndVerifyToken(t *testing.T) {
 	if claims.TokenType != "access" {
 		t.Fatalf("want access got %s", claims.TokenType)
 	}
+	if claims.ExpiresAt == nil {
+		t.Fatalf("expected exp claim to be set")
+	}
+	if claims.IssuedAt == nil {
+		t.Fatalf("expected iat claim to be set")
+	}
+	if claims.ExpiresAt.Time.Before(time.Now()) {
+		t.Fatalf("expected exp in the future, got %v", claims.ExpiresAt.Time)
+	}
+	if claims.IssuedAt.Time.After(time.Now()) {
+		t.Fatalf("expected iat in the past, got %v", claims.IssuedAt.Time)
+	}
 }
 
 func TestExpiredToken(t *testing.T) {

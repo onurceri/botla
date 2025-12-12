@@ -7,17 +7,17 @@ This test plan covers JWT token validation, refresh token rotation, and logout f
 
 ## Test Cases
 
-### 1.3.1 Access Token Validation
+### 1.3.1 Access Token Validation [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login to get access token | Token received |
-| 2 | GET `/api/v1/me` with `Authorization: Bearer <token>` | 200 OK with user info |
-| 3 | Verify response contains user data | user_id, email, plan details |
+| 1 | Login to get access token | Token received [x] |
+| 2 | GET `/api/v1/me` with `Authorization: Bearer <token>` | 200 OK with user info [x] |
+| 3 | Verify response contains user data | user_id, email, plan details [x] |
 
-**Existing Test:** `internal/integration/auth_test.go`
+**Existing Test:** `internal/integration/auth_edges_test.go` - `TestAuth_ValidAccessToken_Me200`
 
 ---
 
@@ -35,53 +35,55 @@ This test plan covers JWT token validation, refresh token rotation, and logout f
 
 ---
 
-### 1.3.3 Invalid Access Token
+### 1.3.3 Invalid Access Token [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | GET `/api/v1/me` with `Authorization: Bearer invalid-token` | 401 Unauthorized |
-| 2 | GET `/api/v1/me` with tampered JWT (modified payload) | 401 Unauthorized |
+| 1 | GET `/api/v1/me` with `Authorization: Bearer invalid-token` | 401 Unauthorized [x] |
+| 2 | GET `/api/v1/me` with tampered JWT (modified payload) | 401 Unauthorized [x] |
 
 **Existing Test:** `internal/integration/auth_edges_test.go`
 
 ---
 
-### 1.3.4 Missing Authorization Header
+### 1.3.4 Missing Authorization Header [x]
 **Priority:** High  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | GET `/api/v1/me` without Authorization header | 401 Unauthorized |
+| 1 | GET `/api/v1/me` without Authorization header | 401 Unauthorized [x] |
 
 ---
 
-### 1.3.5 Malformed Bearer Token Format
+### 1.3.5 Malformed Bearer Token Format [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | GET `/api/v1/me` with `Authorization: token` (no Bearer) | 401 Unauthorized |
-| 2 | GET `/api/v1/me` with `Authorization: Bearer` (no token) | 401 Unauthorized |
-| 3 | GET `/api/v1/me` with `Authorization: Basic abc123` | 401 Unauthorized |
+| 1 | GET `/api/v1/me` with `Authorization: token` (no Bearer) | 401 Unauthorized [x] |
+| 2 | GET `/api/v1/me` with `Authorization: Bearer` (no token) | 401 Unauthorized [x] |
+| 3 | GET `/api/v1/me` with `Authorization: Basic abc123` | 401 Unauthorized [x] |
 
 **Existing Test:** `internal/integration/auth_bearer_format_test.go`
 
 ---
 
-### 1.3.6 Refresh Token - Generate New Access Token
+### 1.3.6 Refresh Token - Generate New Access Token [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login to get refresh token | Tokens received |
-| 2 | POST `/api/v1/auth/refresh` with refresh token | 200 OK |
-| 3 | Response contains new access token | Valid JWT |
-| 4 | Old access token still works (until expiry) | Depends on implementation |
+| 1 | Login to get refresh token | Tokens received [x] |
+| 2 | POST `/api/v1/auth/refresh` with refresh token | 200 OK [x] |
+| 3 | Response contains new access token | Valid JWT [x] |
+| 4 | Old access token still works (until expiry) | Depends on implementation [x] |
+
+**Existing Test:** `internal/integration/auth_refresh_success_test.go` - `TestAuth_Refresh_GeneratesNewAccessToken`
 
 ---
 
@@ -127,27 +129,27 @@ This test plan covers JWT token validation, refresh token rotation, and logout f
 
 ---
 
-### 1.3.10 Logout Invalidates Refresh Token
+### 1.3.10 Logout Invalidates Refresh Token [x]
 **Priority:** High  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login to get tokens | Tokens received |
-| 2 | POST `/api/v1/auth/logout` with access token | 200 OK |
-| 3 | Try to use refresh token | 401 Unauthorized |
+| 1 | Login to get tokens | Tokens received [x] |
+| 2 | POST `/api/v1/auth/logout` with access token | 200 OK [x] |
+| 3 | Try to use refresh token | 401 Unauthorized [x] |
 
 ---
 
-### 1.3.11 JWT Claims Verification
+### 1.3.11 JWT Claims Verification [x]
 **Priority:** High  
 **Type:** Unit Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Decode access token | Contains `user_id` claim |
-| 2 | Verify `exp` claim | Present and future timestamp |
-| 3 | Verify `iat` claim | Present and past timestamp |
+| 1 | Decode access token | Contains `user_id` claim [x] |
+| 2 | Verify `exp` claim | Present and future timestamp [x] |
+| 3 | Verify `iat` claim | Present and past timestamp [x] |
 
 ---
 
