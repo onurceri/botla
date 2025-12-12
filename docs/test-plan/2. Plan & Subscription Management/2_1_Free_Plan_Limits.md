@@ -53,7 +53,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.5 PDF File Limits
+### 2.1.5 PDF File Limits [x]
 **Priority:** High  
 **Type:** Integration Test
 
@@ -65,7 +65,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.6 Storage Limit - 10MB Total
+### 2.1.6 Storage Limit - 10MB Total [x]
 **Priority:** High  
 **Type:** Integration Test
 
