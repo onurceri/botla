@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"html"
 	"net/http"
 	"time"
 
@@ -168,10 +169,16 @@ func (h *MeHandlers) getUserUsage(ctx context.Context, userID string) Usage {
 
 // buildMeResponse constructs the response from user, plan, and usage data
 func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage) MeResponse {
+	var sanitizedFullName *string
+	if u.FullName != nil {
+		escaped := html.EscapeString(*u.FullName)
+		sanitizedFullName = &escaped
+	}
+
 	return MeResponse{
 		ID:              u.ID,
 		Email:           u.Email,
-		FullName:        u.FullName,
+		FullName:        sanitizedFullName,
 		AvatarURL:       u.AvatarURL,
 		PlanID:          plan.ID,
 		PlanCode:        plan.Code,

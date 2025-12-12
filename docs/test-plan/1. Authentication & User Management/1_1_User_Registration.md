@@ -90,6 +90,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
   -d '{"email": "'"'"'; DROP TABLE users;--", "password": "testpassword123"}'
 ```
 
+**Existing Test:** `internal/integration/auth_security_test.go` - `TestAuth_Register_SQLInjectionEmail`
+
 ---
 
 ### 1.1.7 XSS Prevention in Registration Fields [x]
@@ -100,7 +102,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 |------|--------|-----------------|
 | 1 | POST `/api/v1/auth/register` with full_name `<script>alert('xss')</script>` | User created with sanitized/escaped name |
 | 2 | Retrieve user profile | No raw script tags returned |
-
+**Existing Test:** `internal/integration/auth_security_test.go` - `TestAuth_Register_XSSFullName`
 ---
 
 ### 1.1.8 Password Hashing Verification
@@ -149,5 +151,5 @@ go test -v ./internal/integration/... -run TestRegistrationSideEffects
 
 ## Coverage Notes
 - Existing tests cover most happy path and validation scenarios
-- Security tests (SQL injection, XSS) may need manual verification
+- Security tests (SQL injection, XSS) now have automated coverage plus optional manual verification
 - Password hashing is implicitly tested by login tests

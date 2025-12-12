@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"regexp"
 	"strings"
 	"time"
@@ -71,6 +72,10 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	req.FullName = strings.TrimSpace(req.FullName)
 	if req.Email == "" {
 		respondError(w, http.StatusBadRequest, "Email is required")
+		return
+	}
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid email format")
 		return
 	}
 	if len(req.Password) < 8 {
