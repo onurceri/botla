@@ -7,7 +7,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ## Test Cases
 
-### 2.1.1 Free Plan Default Assignment
+10→### 2.1.1 Free Plan Default Assignment [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
@@ -18,7 +18,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.2 Model Restriction - Only gpt-4o-mini
+21→### 2.1.2 Model Restriction - Only gpt-4o-mini [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
