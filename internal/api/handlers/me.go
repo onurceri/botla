@@ -17,6 +17,7 @@ import (
 type MeResponse struct {
 	ID              string            `json:"id"`
 	Email           string            `json:"email"`
+	CreatedAt       time.Time         `json:"created_at"`
 	FullName        *string           `json:"full_name,omitempty"`
 	AvatarURL       *string           `json:"avatar_url,omitempty"`
 	PlanID          string            `json:"plan_id"`
@@ -27,6 +28,7 @@ type MeResponse struct {
 	PlanCurrency    string            `json:"plan_currency"`
 	Config          models.PlanConfig `json:"config"`
 	Usage           Usage             `json:"usage"`
+	Organizations   []Organization    `json:"organizations,omitempty"`
 }
 
 // Usage represents user usage statistics
@@ -40,6 +42,12 @@ type Usage struct {
 	IngestionsUsed           int `json:"ingestions_used"`
 	IngestionEmbeddingTokens int `json:"ingestion_embedding_tokens"`
 	RefreshCount             int `json:"refresh_count"`
+}
+
+type Organization struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
 }
 
 // planInfo holds plan-related data
@@ -76,18 +84,23 @@ func (h *MeHandlers) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get plan info
 	plan, err := h.getPlanInfo(r.Context(), u)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Get usage stats
+	createdAt, err := h.getUserCreatedAt(r.Context(), u.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	usage := h.getUserUsage(r.Context(), u.ID)
 
-	// Build response
-	res := h.buildMeResponse(u, plan, usage)
+	orgs := h.getUserOrganizations(r.Context(), u.ID)
+
+	res := h.buildMeResponse(u, plan, usage, createdAt, orgs)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -167,8 +180,45 @@ func (h *MeHandlers) getUserUsage(ctx context.Context, userID string) Usage {
 	}
 }
 
+func (h *MeHandlers) getUserCreatedAt(ctx context.Context, userID string) (time.Time, error) {
+	var createdAt time.Time
+	err := h.DB.QueryRowContext(ctx, `
+		SELECT created_at
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&createdAt)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return createdAt, nil
+}
+
+func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) []Organization {
+	rows, err := h.DB.QueryContext(ctx, `
+		SELECT o.id, o.name, m.role
+		FROM organizations o
+		JOIN memberships m ON o.id = m.organization_id
+		WHERE m.user_id = $1
+		ORDER BY o.created_at
+	`, userID)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = rows.Close() }()
+
+	var orgs []Organization
+	for rows.Next() {
+		var org Organization
+		if err = rows.Scan(&org.ID, &org.Name, &org.Role); err != nil {
+			return nil
+		}
+		orgs = append(orgs, org)
+	}
+	return orgs
+}
+
 // buildMeResponse constructs the response from user, plan, and usage data
-func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage) MeResponse {
+func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage, createdAt time.Time, orgs []Organization) MeResponse {
 	var sanitizedFullName *string
 	if u.FullName != nil {
 		escaped := html.EscapeString(*u.FullName)
@@ -178,6 +228,7 @@ func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage
 	return MeResponse{
 		ID:              u.ID,
 		Email:           u.Email,
+		CreatedAt:       createdAt,
 		FullName:        sanitizedFullName,
 		AvatarURL:       u.AvatarURL,
 		PlanID:          plan.ID,
@@ -188,6 +239,7 @@ func (h *MeHandlers) buildMeResponse(u *models.User, plan *planInfo, usage Usage
 		PlanCurrency:    plan.Currency,
 		Config:          plan.Config,
 		Usage:           usage,
+		Organizations:   orgs,
 	}
 }
 

@@ -7,73 +7,73 @@ This test plan covers user profile retrieval and the `/me` endpoint functionalit
 
 ## Test Cases
 
-### 1.4.1 Get Current User Profile
+### 1.4.1 Get Current User Profile [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login to get access token | Token received |
-| 2 | GET `/api/v1/me` with valid token | 200 OK |
-| 3 | Response contains user info | id, email, full_name, created_at |
+| 1 | Login to get access token | Token received [x] |
+| 2 | GET `/api/v1/me` with valid token | 200 OK [x] |
+| 3 | Response contains user info | id, email, full_name, created_at [x] |
 
 ---
 
-### 1.4.2 Profile Includes Plan Details
+### 1.4.2 Profile Includes Plan Details [x]
 **Priority:** High  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | GET `/api/v1/me` | 200 OK |
-| 2 | Response contains plan info | plan.code, plan.config |
-| 3 | Plan config includes limits | allowed_models, max_monthly_tokens, etc. |
+| 1 | GET `/api/v1/me` | 200 OK [x] |
+| 2 | Response contains plan info | plan.code, plan.config [x] |
+| 3 | Plan config includes limits | allowed_models, max_monthly_tokens, etc. [x] |
 
 ---
 
-### 1.4.3 Profile Includes Usage Statistics
+### 1.4.3 Profile Includes Usage Statistics [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | GET `/api/v1/me` | 200 OK |
-| 2 | Response contains usage stats | monthly_tokens_used, storage_used |
+| 1 | GET `/api/v1/me` | 200 OK [x] |
+| 2 | Response contains usage stats | monthly_tokens_used, storage_used [x] |
 
 ---
 
-### 1.4.4 Unauthorized Profile Access
+### 1.4.4 Unauthorized Profile Access [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | GET `/api/v1/me` without token | 401 Unauthorized |
-| 2 | GET `/api/v1/me` with invalid token | 401 Unauthorized |
+| 1 | GET `/api/v1/me` without token | 401 Unauthorized [x] |
+| 2 | GET `/api/v1/me` with invalid token | 401 Unauthorized [x] |
 
 ---
 
-### 1.4.5 Profile Includes Organization Memberships
+### 1.4.5 Profile Includes Organization Memberships [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | GET `/api/v1/me` | 200 OK |
-| 2 | Response contains organizations | Array of organization memberships |
-| 3 | Each org includes role | owner, admin, or member |
+| 1 | GET `/api/v1/me` | 200 OK [x] |
+| 2 | Response contains organizations | Array of organization memberships [x] |
+| 3 | Each org includes role | owner, admin, or member [x] |
 
 ---
 
-### 1.4.6 Cross-User Profile Access Prevention
+### 1.4.6 Cross-User Profile Access Prevention [x]
 **Priority:** Critical  
 **Type:** Security Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Login as User A | Token A received |
-| 2 | GET `/api/v1/me` with Token A | Returns User A's profile |
-| 3 | Attempt to access User B's data | Only User A's data accessible via /me |
+| 1 | Login as User A | Token A received [x] |
+| 2 | GET `/api/v1/me` with Token A | Returns User A's profile [x] |
+| 3 | Attempt to access User B's data | Only User A's data accessible via /me [x] |
 
 **Note:** The `/me` endpoint only returns the authenticated user's data, so cross-user access is inherently prevented by design.
 

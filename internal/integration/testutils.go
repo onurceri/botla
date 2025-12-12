@@ -115,8 +115,8 @@ func SetupTestEnv() (*TestEnv, error) {
         ('en-US','English (United States)',false)
         ON CONFLICT (code) DO NOTHING`)
 	_, _ = db.Exec(`INSERT INTO plans (code, status, billing_cycle, price, currency, trial_days, config) VALUES
-        ('free','active','lifetime',0,'TRY',0,'{"scraping": {"max_pages_per_crawl": 10, "max_urls_per_bot": 100}}'::jsonb),
-        ('pro','active','monthly',199,'TRY',7,'{"scraping": {"max_pages_per_crawl": 100, "max_urls_per_bot": 1000}}'::jsonb)
+        ('free','active','lifetime',0,'TRY',0,'{"scraping":{"max_pages_per_crawl":10,"max_urls_per_bot":100},"chat":{"allowed_models":["gpt-4o-mini"],"max_monthly_tokens":100000}}'::jsonb),
+        ('pro','active','monthly',199,'TRY',7,'{"scraping":{"max_pages_per_crawl":100,"max_urls_per_bot":1000},"chat":{"allowed_models":["gpt-4o"],"max_monthly_tokens":1000000}}'::jsonb)
         ON CONFLICT (code) DO UPDATE SET config = EXCLUDED.config`)
 	// ensure users has plan_id column for tests
 	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_id UUID`)
