@@ -105,7 +105,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 **Existing Test:** `internal/integration/auth_security_test.go` - `TestAuth_Register_XSSFullName`
 ---
 
-### 1.1.8 Password Hashing Verification
+### 1.1.8 Password Hashing Verification [x]
 **Priority:** Critical  
 **Type:** Unit/Integration Test
 
@@ -114,6 +114,8 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 | 1 | Register user with password `mypassword123` | 201 Created |
 | 2 | Query database directly | `password_hash` is bcrypt hash, not plaintext |
 | 3 | Verify hash format | Starts with `$2a$` or `$2b$` (bcrypt) |
+
+**Existing Test:** `internal/integration/auth_password_hash_test.go` - `TestAuth_Register_PasswordHashing`
 
 ---
 
