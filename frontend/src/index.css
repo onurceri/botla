@@ -60,3 +60,51 @@
 
 
 
+
+/* Markdown Content Styles */
+.markdown-content p {
+  margin-bottom: 0.5rem;
+}
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+.markdown-content strong {
+  font-weight: 600;
+  color: inherit;
+}
+.markdown-content em {
+  font-style: italic;
+}
+.markdown-content ul, .markdown-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+}
+.markdown-content ol {
+  list-style-type: decimal;
+}
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+.markdown-content code {
+  background-color: rgba(0,0,0,0.1);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+.markdown-content pre {
+  background-color: rgba(0,0,0,0.1);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+}
+.markdown-content a {
+  text-decoration: underline;
+  color: inherit;
+}

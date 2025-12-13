@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, createElement } from 'react'
+import Markdown from 'markdown-to-jsx'
 
 type Msg = { 
   id?: string
@@ -158,7 +159,9 @@ export function Message({ m, onFeedback, onSubmitEmail }: Props) {
       )}
       
       <div className={`cbw-msg ${m.role}`}>
-        <div className="cbw-content">{m.content}</div>
+        <div className="cbw-content">
+          <Markdown options={{ createElement }}>{m.content}</Markdown>
+        </div>
         <div className="cbw-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
           {!isUser && m.id && onFeedback && (
             <div className="cbw-feedback" style={{ display: 'flex', gap: '4px' }}>

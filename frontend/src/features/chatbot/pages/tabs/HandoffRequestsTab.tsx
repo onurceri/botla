@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import Markdown from 'markdown-to-jsx'
 import { getHandoffRequests, getHandoffRequestDetail, updateHandoffStatus, HandoffRequest, HandoffRequestDetail } from '@/api/handoff'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -289,7 +290,9 @@ export default function HandoffRequestsTab() {
                                 : 'bg-muted'
                             }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            <div className="text-sm markdown-content">
+                              <Markdown>{msg.content}</Markdown>
+                            </div>
                             <p className="text-xs opacity-60 mt-1">
                               {new Date(msg.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                             </p>

@@ -37,7 +37,7 @@ interface ChatbotContextType extends ChatbotFormReturn {
   userPlan: string
 }
 
-const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined)
+export const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined)
 
 export function ChatbotProvider({ 
   children, 
