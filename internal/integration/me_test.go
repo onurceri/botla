@@ -1,9 +1,12 @@
 package integration
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
@@ -98,6 +101,68 @@ func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
 	}
 	if body.Usage.TokensUsed != 0 {
 		t.Errorf("expected 0 tokens, got %d", body.Usage.TokensUsed)
+	}
+}
+
+func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	email := fmt.Sprintf("free-default-%d@example.com", time.Now().UnixNano())
+	regBody := map[string]string{
+		"email":     email,
+		"password":  "pass1234",
+		"full_name": "Free Default",
+	}
+	b, err := json.Marshal(regBody)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+
+	var tr tokenResp
+	if err = json.NewDecoder(res.Body).Decode(&tr); err != nil {
+		t.Fatalf("decode register response failed: %v", err)
+	}
+	res.Body.Close()
+	if tr.Token == "" {
+		t.Fatalf("token empty")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
+	if err != nil {
+		t.Fatalf("failed to create /me request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+tr.Token)
+
+	resMe, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to call /me: %v", err)
+	}
+	if resMe.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from /me, got %d", resMe.StatusCode)
+	}
+	defer resMe.Body.Close()
+
+	var body struct {
+		PlanCode string `json:"plan_code"`
+	}
+	if err = json.NewDecoder(resMe.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode /me response: %v", err)
+	}
+
+	if body.PlanCode != "free" {
+		t.Fatalf("expected plan_code free, got %s", body.PlanCode)
 	}
 }
 

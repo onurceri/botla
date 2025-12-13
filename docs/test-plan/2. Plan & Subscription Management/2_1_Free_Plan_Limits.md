@@ -7,18 +7,18 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ## Test Cases
 
-10→### 2.1.1 Free Plan Default Assignment [x]
+### 2.1.1 Free Plan Default Assignment [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Register new user | 201 Created |
-| 2 | GET `/api/v1/me` | User has plan.code = "free" |
+| 1 | Register new user | 201 Created [x] |
+| 2 | GET `/api/v1/me` | User has plan.code = "free" [x] |
 
 ---
 
-21→### 2.1.2 Model Restriction - Only gpt-4o-mini [x]
+### 2.1.2 Model Restriction - Only gpt-4o-mini [x]
 **Priority:** Critical  
 **Type:** Integration Test
 
