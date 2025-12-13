@@ -5,7 +5,17 @@ This test plan covers guardrails, threshold config, fallback messages, topic res
 
 ---
 
-## 3.5.1 Confidence Thresholds
+### 3.5.1 Confidence Thresholds
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/chatbot_advanced_config_test.go`
+- **Setup:**
+  - Create a bot.
+- **Steps:**
+  1. Fetch bot. Verify default thresholds (0.50, 0.30).
+  2. Update `high=0.70`, `medium=0.40`. Expect 200.
+  3. Update `high=0.30`, `medium=0.50`. Expect 400.
+  4. Update `high=1.5`. Expect 400.
 
 ### Test Cases
 
@@ -22,6 +32,16 @@ This test plan covers guardrails, threshold config, fallback messages, topic res
 
 ## 3.5.2 Fallback Modes
 
+**Implementation Plan:**
+- **Test File:** `internal/integration/chatbot_advanced_config_test.go`
+- **Setup:**
+  - Create Pro bot, Free bot.
+- **Steps:**
+  1. Pro: Update `fallback_mode="static"`. Expect 200.
+  2. Pro: Update `fallback_mode="smart"`. Expect 200.
+  3. Free: Update `fallback_mode="smart"`. Expect 403.
+  4. Trigger chat with low confidence. Verify behavior matches mode (mocked).
+
 ### Test Cases
 
 | Test | Action | Expected Result |
@@ -34,6 +54,15 @@ This test plan covers guardrails, threshold config, fallback messages, topic res
 ---
 
 ## 3.5.3 Fallback Messages
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/chatbot_advanced_config_test.go`
+- **Setup:**
+  - Create bot.
+- **Steps:**
+  1. Update `fallback_messages.no_info_found="Custom"`. Expect 200.
+  2. Chat with no sources. Expect "Custom" response.
+  3. Create Turkish bot. Verify defaults are in Turkish.
 
 ### Test Cases
 
@@ -49,6 +78,15 @@ This test plan covers guardrails, threshold config, fallback messages, topic res
 
 ## 3.5.4 Topic Restrictions
 
+**Implementation Plan:**
+- **Test File:** `internal/integration/chatbot_advanced_config_test.go`
+- **Setup:**
+  - Create Pro bot.
+- **Steps:**
+  1. Set `blocked_topics=["politics"]`.
+  2. Chat "What about politics?".
+  3. Verify response matches `blocked_message`.
+
 ### Test Cases
 
 | Test | Action | Expected Result |
@@ -62,6 +100,16 @@ This test plan covers guardrails, threshold config, fallback messages, topic res
 ---
 
 ## 3.5.5 Handoff Configuration
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/chatbot_advanced_config_test.go`
+- **Setup:**
+  - Create bot.
+- **Steps:**
+  1. Update `handoff_enabled=true`, `email="admin@example.com"`.
+  2. Trigger "escalate" mode (low confidence).
+  3. Verify response asks for user email (tool call `request_human_handoff`).
+  4. Provide email. Verify `handoff_requests` table entry.
 
 ### Test Cases
 

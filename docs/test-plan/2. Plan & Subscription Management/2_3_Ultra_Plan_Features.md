@@ -38,6 +38,15 @@ This test plan verifies all Ultra plan features including Claude model access an
 | 1 | Create chatbot with model `claude-3-5-sonnet` | 201 Created |
 | 2 | Chat with Claude model | Response from Claude |
 
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+- **Steps:**
+  1. Create a chatbot with `model="claude-3-5-sonnet"`. Expect `201 Created`.
+  2. Send a chat message.
+  3. Verify in the LLM mock that the request was routed to the Claude provider/model.
+
 ---
 
 ### 2.3.2 Monthly Token Limit - 5,000,000
@@ -48,6 +57,16 @@ This test plan verifies all Ultra plan features including Claude model access an
 |------|--------|-----------------|
 | 1 | Use tokens up to 4,999,999 | Chat succeeds |
 | 2 | Exceed 5,000,000 total | 429 Too Many Requests |
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+  - Manually set usage to 4,999,990 tokens.
+- **Steps:**
+  1. Send a chat. Expect `200 OK`.
+  2. Increment usage to > 5,000,000.
+  3. Send a chat. Expect `429 Too Many Requests`.
 
 ---
 
@@ -61,6 +80,15 @@ This test plan verifies all Ultra plan features including Claude model access an
 | 2 | Upload 101st PDF | 403 Forbidden |
 | 3 | Upload PDF > 50MB | 413 Payload Too Large |
 
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+- **Steps:**
+  1. Upload 100 PDFs (mocking the storage/processing to be fast). Expect `201 Created` for all.
+  2. Upload 101st PDF. Expect `403 Forbidden`.
+  3. Upload a 51MB file. Expect `413 Payload Too Large`.
+
 ---
 
 ### 2.3.4 Storage Limit - 2GB Total
@@ -71,6 +99,14 @@ This test plan verifies all Ultra plan features including Claude model access an
 |------|--------|-----------------|
 | 1 | Upload files totaling 2GB | Success |
 | 2 | Upload additional file | 403 Forbidden |
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+  - Set storage usage to ~2GB.
+- **Steps:**
+  1. Attempt to upload another file. Expect `403 Forbidden` (or 402).
 
 ---
 
@@ -83,6 +119,14 @@ This test plan verifies all Ultra plan features including Claude model access an
 | 1 | Add 50 URL sources | All succeed |
 | 2 | Add 51st URL | 403 Forbidden |
 
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+- **Steps:**
+  1. Add 50 URLs. Expect `201 Created`.
+  2. Add 51st URL. Expect `403 Forbidden`.
+
 ---
 
 ### 2.3.6 Discovery Mode - Max 100 Pages
@@ -93,6 +137,15 @@ This test plan verifies all Ultra plan features including Claude model access an
 |------|--------|-----------------|
 | 1 | Set discovery_mode = "auto" | 200 OK |
 | 2 | Add URL with 150 sub-pages | Only 100 pages discovered |
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+  - Mock crawler returning 150 links.
+- **Steps:**
+  1. Add source with `discovery_mode="auto"`.
+  2. Verify that 100 (or 101) total sources are created.
 
 ---
 
@@ -107,6 +160,15 @@ This test plan verifies all Ultra plan features including Claude model access an
 | 3 | Set custom_branding.link | 200 OK |
 | 4 | Widget shows custom branding | Custom logo/text displayed |
 
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+- **Steps:**
+  1. Update chatbot with `{"custom_branding": {"logo_url": "...", "text": "...", "link": "..."}}`.
+  2. Expect `200 OK`.
+  3. Fetch config to verify persistence.
+
 ---
 
 ### 2.3.8 RAG Enhanced Configuration
@@ -117,6 +179,14 @@ This test plan verifies all Ultra plan features including Claude model access an
 |------|--------|-----------------|
 | 1 | Verify plan config | top_k = 10, max_context_tokens = 8000 |
 | 2 | Chat retrieves up to 10 sources | Correct number of chunks |
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/plan_features_ultra_test.go`
+- **Setup:**
+  - Create a user on the `ultra` plan.
+- **Steps:**
+  1. Send chat message.
+  2. Verify Qdrant mock receives `limit=10`.
 
 ---
 
