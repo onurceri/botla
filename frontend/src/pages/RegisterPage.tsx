@@ -117,6 +117,7 @@ const RegisterPage = () => {
                   <Input 
                     id="password" 
                     type="password" 
+                    placeholder="********"
                     className="pl-9"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

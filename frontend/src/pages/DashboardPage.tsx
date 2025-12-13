@@ -179,7 +179,7 @@ const DashboardPage = () => {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Botlarınızın performansına genel bakış.</p>
         </div>
-        <Link to="/chatbots/new">
+        <Link to="/dashboard/chatbots/new">
           <Button className="gap-2 shadow-lg shadow-primary/20">
             <Plus className="w-4 h-4" /> Yeni Chatbot
           </Button>
@@ -352,7 +352,7 @@ const DashboardPage = () => {
               {recentBots.map((bot) => (
                 <Link 
                   key={bot.id} 
-                  to={`/chatbots/${bot.id}`}
+                  to={`/dashboard/chatbots/${bot.id}`}
                   className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer group"
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/10">

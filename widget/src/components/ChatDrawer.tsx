@@ -24,6 +24,18 @@ export function ChatDrawer(
     }
   }
 
+  // Restore focus after loading finishes (message sent)
+  const prevLoading = useRef(loading)
+  useEffect(() => {
+    if (prevLoading.current && !loading) {
+      // Small timeout to ensure DOM is ready and enabled
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 10)
+    }
+    prevLoading.current = loading
+  }, [loading])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages, loading])

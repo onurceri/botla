@@ -11,6 +11,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import { OrganizationProvider } from '@/features/organization/context/OrganizationContext'
 import { OrganizationSettingsPage } from '@/features/organization/pages/OrganizationSettingsPage'
 import { WorkspaceSettingsPage } from '@/features/organization/pages/WorkspaceSettingsPage'
+import LandingPage from '@/pages/LandingPage'
 
 import OverviewTab from '@/features/chatbot/pages/tabs/OverviewTab'
 import GuardrailsTab from '@/features/chatbot/pages/tabs/GuardrailsTab'
@@ -41,11 +42,12 @@ function App() {
       <Router>
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
           {/* Protected Routes */}
-          <Route path="/" element={
+          <Route path="/dashboard" element={
             <PrivateRoute>
               <OrganizationProvider>
                 <DashboardLayout />
@@ -69,7 +71,7 @@ function App() {
               <Route path="requests" element={<HandoffRequestsTab />} />
             </Route>
 
-            <Route path="settings" element={<Navigate to="/settings/profile" replace />} />
+            <Route path="settings" element={<Navigate to="/dashboard/settings/profile" replace />} />
             <Route path="settings/profile" element={<ProfilePage />} />
             <Route path="settings/organization" element={<OrganizationSettingsPage />} />
             <Route path="settings/workspace" element={<WorkspaceSettingsPage />} />

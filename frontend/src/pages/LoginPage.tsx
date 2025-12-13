@@ -27,7 +27,7 @@ const LoginPage = () => {
       localStorage.setItem('botla_token', data.token)
       localStorage.setItem('botla_refresh_token', data.refresh_token)
       toast('Giriş başarılı! Yönlendiriliyorsunuz...', 'success')
-      navigate('/')
+      navigate('/dashboard')
     } catch {
       toast('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'error')
     } finally {
@@ -101,6 +101,7 @@ const LoginPage = () => {
                   <Input 
                     id="password" 
                     type="password" 
+                    placeholder="********"
                     className="pl-9 h-11"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

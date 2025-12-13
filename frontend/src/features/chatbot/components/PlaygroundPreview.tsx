@@ -76,7 +76,7 @@ export default function PlaygroundPreview({
         hideBrandingOverride={hideBranding}
         customBrandingOverride={customBranding || undefined}
         positionStrategy="absolute"
-        panelHeight="500px"
+        panelHeight="650px"
       />
     </div>
   )

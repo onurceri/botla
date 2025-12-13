@@ -93,13 +93,13 @@ const DashboardLayout = () => {
   }, [])
 
   const navItems = [
-    { icon: LayoutDashboard, label: 'Panel', to: '/' },
-    { icon: Bot, label: 'Chatbotlar', to: '/chatbots' },
+    { icon: LayoutDashboard, label: 'Panel', to: '/dashboard' },
+    { icon: Bot, label: 'Chatbotlar', to: '/dashboard/chatbots' },
   ]
 
   const settingsItems = [
-    { icon: User, label: 'Profil', to: '/settings/profile' },
-    { icon: CreditCard, label: 'Plan & Fatura', to: '/settings/plan' },
+    { icon: User, label: 'Profil', to: '/dashboard/settings/profile' },
+    { icon: CreditCard, label: 'Plan & Fatura', to: '/dashboard/settings/plan' },
   ]
 
   return (
@@ -160,7 +160,7 @@ const DashboardLayout = () => {
               icon={item.icon}
               label={item.label}
               to={item.to}
-              active={location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))}
+              active={item.to === '/dashboard' ? location.pathname === '/dashboard' : location.pathname.startsWith(item.to)}
               collapsed={isCollapsed}
             />
           ))}
@@ -174,7 +174,7 @@ const DashboardLayout = () => {
               icon={item.icon}
               label={item.label}
               to={item.to}
-              active={location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))}
+              active={location.pathname.startsWith(item.to)}
               collapsed={isCollapsed}
             />
           ))}

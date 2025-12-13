@@ -64,6 +64,43 @@ func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 	}
 }
 
+// OptionalAuthMiddleware attempts to extract the user ID from the token if present,
+// but does not enforce authentication.
+func OptionalAuthMiddleware(secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := r.Header.Get("Authorization")
+			if h == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			parts := strings.SplitN(h, " ", 2)
+			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			claims, err := auth.VerifyToken(secret, parts[1])
+			if err != nil {
+				// Ignore invalid tokens in optional auth
+				next.ServeHTTP(w, r)
+				return
+			}
+			if claims.UserID == "" || claims.TokenType != "access" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// If the writer is our statusRecorder (from RequestLogger), set the userID directly
+			if sr, ok := w.(*statusRecorder); ok {
+				sr.SetUserID(claims.UserID)
+			}
+
+			ctx := context.WithValue(r.Context(), ContextKeyUserID, claims.UserID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 func UserIDFromContext(ctx context.Context) (string, bool) {
 	v := ctx.Value(ContextKeyUserID)
 	s, ok := v.(string)

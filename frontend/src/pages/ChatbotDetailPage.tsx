@@ -60,7 +60,7 @@ function ChatbotDetailContent() {
       if (isNew) {
         const { data } = await api.post('/api/v1/chatbots', payload)
         toast('Chatbot başarıyla oluşturuldu.', 'success')
-        navigate(`/chatbots/${data.id}`)
+        navigate(`/dashboard/chatbots/${data.id}`)
       } else {
         await api.put(`/api/v1/chatbots/${id}`, payload)
         toast('Değişiklikler kaydedildi.', 'success')
@@ -81,7 +81,7 @@ function ChatbotDetailContent() {
     try {
       await api.delete(`/api/v1/chatbots/${id}`)
       toast('Chatbot silindi.', 'success')
-      navigate('/chatbots')
+      navigate('/dashboard/chatbots')
     } catch {
       toasts.error('Silme işlemi başarısız oldu.')
     } finally {
@@ -148,7 +148,7 @@ const ChatbotDetailPage = () => {
   useEffect(() => {
     if (currentWorkspace?.id) {
       if (prevWorkspaceIdRef.current && prevWorkspaceIdRef.current !== currentWorkspace.id) {
-        navigate('/chatbots')
+        navigate('/dashboard/chatbots')
       }
       prevWorkspaceIdRef.current = currentWorkspace.id
     }

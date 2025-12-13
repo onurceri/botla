@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -297,7 +299,10 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 		reqBody.ToolChoice = "auto"
 	}
 
-	b, _ := json.Marshal(reqBody)
+	b, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
@@ -308,8 +313,13 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 		case err != nil:
 			lastErr = err
 		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
+			body, _ := io.ReadAll(io.LimitReader(res.Body, 8192))
 			_ = res.Body.Close()
+			if len(body) > 0 {
+				lastErr = fmt.Errorf("openai error: %s: %s", res.Status, string(body))
+			} else {
+				lastErr = errors.New(res.Status)
+			}
 		default:
 			var cr ChatResponseWithTools
 			err := json.NewDecoder(res.Body).Decode(&cr)

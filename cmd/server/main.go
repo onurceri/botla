@@ -116,7 +116,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log}
 	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, sugh, rlSources))
 
-	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/api/v1/public/chatbots/", middleware.OptionalAuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
 		// Public email submission for handoff: /api/v1/public/chatbots/:botId/handoff/:requestId/contact
 		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff/") && strings.HasSuffix(r.URL.Path, "/contact") {
@@ -140,7 +140,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 			return
 		}
 		handlers.PublicChatbotConfig(pool)(w, r)
-	}))
+	})))
 
 	// Feedback (protected)
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))

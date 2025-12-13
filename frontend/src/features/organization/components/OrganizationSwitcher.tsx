@@ -60,7 +60,7 @@ export const OrganizationSwitcher: React.FC = () => {
             return
           }
           if (val === 'settings') {
-            navigate('/settings/organization')
+            navigate('/dashboard/settings/organization')
             return
           }
           selectOrganization(val)
@@ -126,7 +126,7 @@ export const OrganizationSwitcher: React.FC = () => {
             if (val === 'create-new') {
               setCreateWsOpen(true)
             } else if (val === 'settings') {
-              navigate('/settings/workspace')
+              navigate('/dashboard/settings/workspace')
             } else if (val !== 'none') {
               selectWorkspace(val)
             }

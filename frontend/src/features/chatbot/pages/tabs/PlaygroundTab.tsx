@@ -45,9 +45,9 @@ export default function PlaygroundTab() {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-12 gap-8 h-[calc(100vh-220px)] min-h-[600px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:h-[calc(100vh-350px)] lg:min-h-[600px]">
         {/* Settings Sidebar */}
-        <div className="lg:col-span-4 overflow-y-auto pr-2 space-y-6">
+        <div className="lg:col-span-4 lg:overflow-y-auto pr-2 space-y-6">
              <div className="flex items-center gap-2 pb-2 border-b border-border">
                 <Palette className="w-5 h-5 text-primary" />
                 <h3 className="font-semibold text-foreground">Özelleştirme</h3>
@@ -109,35 +109,52 @@ export default function PlaygroundTab() {
         </div>
 
         {/* Preview Area */}
-        <div className="lg:col-span-8 bg-slate-50 rounded-3xl border border-border p-8 flex flex-col relative shadow-inner min-h-[700px]" style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-            <div className="absolute top-4 left-4 flex items-center gap-2 text-muted-foreground bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-xs font-medium border border-border/50 shadow-sm z-10">
-                <Smartphone className="w-3 h-3" />
-                Canlı Önizleme
+        <div className="lg:col-span-8 relative h-[600px] lg:h-auto lg:min-h-[600px] bg-slate-50/40 rounded-3xl border-2 border-dashed border-slate-200 overflow-hidden">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+
+            {/* Instructional Overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground select-none pointer-events-none">
+                <div className="bg-white/80 backdrop-blur-sm p-4 rounded-full shadow-sm mb-4 ring-1 ring-black/5 animate-in fade-in zoom-in duration-500">
+                    <Smartphone className="w-8 h-8 text-primary/80" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground/80 mb-2">Canlı Önizleme Ortamı</h3>
+                <p className="max-w-[420px] mb-6 text-balance leading-relaxed">
+                    Chatbotunuz web sitenizde ziyaretçilerinize görüneceği şekilde burada aktiftir. 
+                    Şu an <strong>{position === 'bottom-left' ? 'Sol Alt' : 'Sağ Alt'}</strong> köşede konumlanmıştır.
+                </p>
+                <div className="flex items-center gap-2 text-sm bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-border/50 shadow-sm text-foreground/70">
+                    <Palette className="w-4 h-4" />
+                    <span>Görünümü soldaki panelden özelleştirebilirsiniz</span>
+                </div>
             </div>
-            
-            <PlaygroundPreview
-              id={id || 'preview'}
-              themeColor={themeColor}
-              chatHeaderColor={chatHeaderColor}
-              chatHeaderTextColor={chatHeaderTextColor}
-              botMessageColor={botMessageColor}
-              botMessageTextColor={botMessageTextColor}
-              userMessageColor={userMessageColor}
-              userMessageTextColor={userMessageTextColor}
-              chatFontFamily={chatFontFamily}
-              position={position}
-              botDisplayName={botDisplayName}
-              botIcon={botIcon}
-              chatBackgroundColor={chatBackgroundColor}
-              welcomeMessage={welcomeMessage}
-              previewOpen={previewOpen}
-              sessionId={sessionId}
-              suggestionsEnabled={suggestionsEnabled}
-              suggestedQuestions={suggestedQuestions}
-              refreshKey={previewRefreshKey}
-              hideBranding={hideBranding}
-              customBranding={customBranding}
-            />
+
+            {/* Live Chatbot Layer */}
+            <div className="absolute inset-0 z-10">
+                <PlaygroundPreview
+                  id={id || 'preview'}
+                  themeColor={themeColor}
+                  chatHeaderColor={chatHeaderColor}
+                  chatHeaderTextColor={chatHeaderTextColor}
+                  botMessageColor={botMessageColor}
+                  botMessageTextColor={botMessageTextColor}
+                  userMessageColor={userMessageColor}
+                  userMessageTextColor={userMessageTextColor}
+                  chatFontFamily={chatFontFamily}
+                  position={position}
+                  botDisplayName={botDisplayName}
+                  botIcon={botIcon}
+                  chatBackgroundColor={chatBackgroundColor}
+                  welcomeMessage={welcomeMessage}
+                  previewOpen={previewOpen}
+                  sessionId={sessionId}
+                  suggestionsEnabled={suggestionsEnabled}
+                  suggestedQuestions={suggestedQuestions}
+                  refreshKey={previewRefreshKey}
+                  hideBranding={hideBranding}
+                  customBranding={customBranding}
+                />
+            </div>
         </div>
       </div>
     </div>

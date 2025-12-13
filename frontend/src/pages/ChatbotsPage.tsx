@@ -81,7 +81,7 @@ const ChatbotsPage = () => {
           <h1 className="text-3xl font-bold tracking-tight">Chatbotlarım</h1>
           <p className="text-muted-foreground">Tüm yapay zeka asistanlarınızı buradan yönetin.</p>
         </div>
-        <Link to="/chatbots/new">
+        <Link to="/dashboard/chatbots/new">
           <Button className="gap-2 shadow-lg shadow-primary/20">
             <Plus className="w-4 h-4" /> Yeni Oluştur
           </Button>
@@ -136,7 +136,7 @@ const ChatbotsPage = () => {
               </div>
             </CardContent>
             <CardFooter className="pt-0">
-              <Link to={`/chatbots/${bot.id}`} className="w-full">
+              <Link to={`/dashboard/chatbots/${bot.id}`} className="w-full">
                 <Button variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all">
                   Yönet
                 </Button>
@@ -146,7 +146,7 @@ const ChatbotsPage = () => {
         ))}
 
         {/* Empty State / Create New Card */}
-        <Link to="/chatbots/new" className="group relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-border bg-muted/30 p-8 text-center hover:border-primary/50 hover:bg-muted/50 transition-all duration-300">
+        <Link to="/dashboard/chatbots/new" className="group relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-border bg-muted/30 p-8 text-center hover:border-primary/50 hover:bg-muted/50 transition-all duration-300">
           <div className="rounded-full bg-muted p-4 group-hover:scale-110 transition-transform duration-300">
             <Plus className="h-8 w-8 text-muted-foreground group-hover:text-primary" />
           </div>

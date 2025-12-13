@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 export function usePreview() {
-  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(true)
   const [sessionId, setSessionId] = useState('')
 
   useEffect(() => {
