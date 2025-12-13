@@ -28,6 +28,10 @@ func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
 			Chat struct {
 				AllowedModels    []string `json:"allowed_models"`
 				MaxMonthlyTokens int      `json:"max_monthly_tokens"`
+				RAG              struct {
+					TopK             int `json:"top_k"`
+					MaxContextTokens int `json:"max_context_tokens"`
+				} `json:"rag"`
 			} `json:"chat"`
 		} `json:"config"`
 		Plan struct {
@@ -36,6 +40,10 @@ func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
 				Chat struct {
 					AllowedModels    []string `json:"allowed_models"`
 					MaxMonthlyTokens int      `json:"max_monthly_tokens"`
+					RAG              struct {
+						TopK             int `json:"top_k"`
+						MaxContextTokens int `json:"max_context_tokens"`
+					} `json:"rag"`
 				} `json:"chat"`
 			} `json:"config"`
 		} `json:"plan"`
@@ -67,6 +75,19 @@ func TestMe_ReturnsSubscriptionPlan(t *testing.T) {
 	}
 	if body.Plan.Config.Chat.MaxMonthlyTokens == 0 {
 		t.Errorf("expected max monthly tokens to be set in nested plan config")
+	}
+
+	if body.Config.Chat.RAG.TopK != 3 {
+		t.Errorf("expected RAG top_k 3, got %d", body.Config.Chat.RAG.TopK)
+	}
+	if body.Config.Chat.RAG.MaxContextTokens != 2000 {
+		t.Errorf("expected RAG max_context_tokens 2000, got %d", body.Config.Chat.RAG.MaxContextTokens)
+	}
+	if body.Plan.Config.Chat.RAG.TopK != 3 {
+		t.Errorf("expected nested plan RAG top_k 3, got %d", body.Plan.Config.Chat.RAG.TopK)
+	}
+	if body.Plan.Config.Chat.RAG.MaxContextTokens != 2000 {
+		t.Errorf("expected nested plan RAG max_context_tokens 2000, got %d", body.Plan.Config.Chat.RAG.MaxContextTokens)
 	}
 
 	if body.Usage.FilesCount != 0 {

@@ -42,7 +42,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.4 RAG Configuration Limits
+### 2.1.4 RAG Configuration Limits [x]
 **Priority:** Medium  
 **Type:** Integration Test
 

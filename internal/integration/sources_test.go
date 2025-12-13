@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -88,6 +89,53 @@ func startQdrantStub() *httptest.Server {
 	})
 	h.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	return httptest.NewServer(h)
+}
+
+type QdrantTopKStub struct {
+	Server          *httptest.Server
+	mu              sync.Mutex
+	LastSearchLimit int
+	SearchCalls     int
+}
+
+func (s *QdrantTopKStub) recordSearchLimit(limit int) {
+	s.mu.Lock()
+	s.LastSearchLimit = limit
+	s.SearchCalls++
+	s.mu.Unlock()
+}
+
+func startQdrantTopKStub() *QdrantTopKStub {
+	s := &QdrantTopKStub{}
+	h := http.NewServeMux()
+	h.HandleFunc("/collections/embeddings/points/search", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		var reqBody struct {
+			Limit int `json:"limit"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
+		s.recordSearchLimit(reqBody.Limit)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		result := []map[string]any{{
+			"id":    "p1",
+			"score": 0.9,
+			"payload": map[string]any{
+				"chatbot_id":    "stub-bot",
+				"source_id":     "stub-source",
+				"chunk_index":   0,
+				"original_text": "stub text chunk",
+				"source_type":   "text",
+			},
+		}}
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "result": result})
+	})
+	s.Server = httptest.NewServer(h)
+	return s
 }
 
 func TestSources_Text_Ingest_Status_Delete(t *testing.T) {

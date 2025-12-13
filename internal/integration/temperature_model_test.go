@@ -558,6 +558,71 @@ func TestInvalidModel(t *testing.T) {
 	}
 }
 
+func TestFreePlan_RAGTopK_UsesPlanLimit(t *testing.T) {
+	stub := startTMStub()
+	defer stub.Server.Close()
+
+	qd := startQdrantTopKStub()
+	defer qd.Server.Close()
+
+	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
+	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
+	t.Setenv("QDRANT_URL", qd.Server.URL)
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	token := authToken(t, te.Server.URL, "rag_topk@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "rag_topk@example.com")
+
+	create := map[string]any{"name": "RAG TopK Bot"}
+	cbj, _ := json.Marshal(create)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, err := http.DefaultClient.Do(reqC)
+	if err != nil {
+		t.Fatalf("create request failed: %v", err)
+	}
+	if resC.StatusCode != http.StatusCreated {
+		t.Fatalf("create failed: %d", resC.StatusCode)
+	}
+	var bot struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	cr := map[string]string{"message": "hello", "session_id": "s-rag-topk"}
+	crb, _ := json.Marshal(cr)
+	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
+	reqCh.Header.Set("Authorization", "Bearer "+token)
+	reqCh.Header.Set("Content-Type", "application/json")
+	resCh, err := http.DefaultClient.Do(reqCh)
+	if err != nil {
+		t.Fatalf("chat request failed: %v", err)
+	}
+	if resCh.StatusCode != http.StatusOK {
+		t.Fatalf("chat failed: %d", resCh.StatusCode)
+	}
+	resCh.Body.Close()
+
+	qd.mu.Lock()
+	limit := qd.LastSearchLimit
+	calls := qd.SearchCalls
+	qd.mu.Unlock()
+
+	if calls == 0 {
+		t.Fatalf("expected at least one search call to Qdrant stub")
+	}
+	if limit != 3 {
+		t.Errorf("expected search limit 3 from plan RAG config, got %d", limit)
+	}
+}
+
 func stringPtr(s string) *string {
 	return &s
 }
