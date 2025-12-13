@@ -99,8 +99,9 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 			s.Log.Warn("tiered_search_error", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
 		}
 		if searchResult != nil {
-			chunkMetas = searchResult.AllChunks
-			for _, m := range searchResult.AllChunks {
+			// Only mark as "used" the chunks that were actually included in the prompt context.
+			chunkMetas = searchResult.Chunks
+			for _, m := range searchResult.Chunks {
 				sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
 			}
 		}
@@ -115,8 +116,9 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	// Collect tools
 	tools, actions := s.collectTools(ctx, bot)
 
-	// Prepare system prompt with language enforcement
-	systemPrompt := buildSystemPrompt(bot, cfg)
+	// Prepare system prompt with language enforcement (English prompt + language directive)
+	capabilities := s.getCapabilitySummaries(ctx, bot.ID)
+	systemPrompt := BuildSystemPrompt(strings.TrimSpace(bot.CustomInstruction), capabilities, cfg.Name)
 
 	// Load conversation history for context
 	historyLimit := calculateHistoryLimit(ragConfig.MaxContextTokens)
@@ -141,7 +143,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	contextText := searchResult.ContextText
 	var userMsgContent string
 	if strings.TrimSpace(contextText) != "" {
-		userMsgContent = cfg.ResponseTemplates.RAGContextIntro + contextText + "\n\nQuestion:\n" + req.Message
+		userMsgContent = RAGContextIntroEN + contextText + "\n\nQuestion:\n" + req.Message
 	} else {
 		userMsgContent = req.Message
 	}
@@ -161,7 +163,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 
 	// Handle Low tier with static fallback mode - skip LLM call entirely
 	if searchResult.Tier == rag.TierLow && thresholdCfg.FallbackMode == "static" {
-		finalResponse = cfg.ResponseTemplates.NoInfoFound
+		finalResponse = cfg.UserMessages.NoInfoFound
 		if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
 			finalResponse = bot.FallbackMessages.NoInfoFound
 		}
@@ -176,7 +178,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 					s.Log.Error("completion_with_tools_error", map[string]any{"error": err.Error()})
 				}
 				// Fallback to error message
-				finalResponse = cfg.ResponseTemplates.ErrorMessage
+				finalResponse = cfg.UserMessages.ErrorMessage
 				if bot.FallbackMessages != nil && bot.FallbackMessages.ErrorMessage != "" {
 					finalResponse = bot.FallbackMessages.ErrorMessage
 				}
@@ -223,7 +225,7 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 					}
 
 					// Use the configured handoff message
-					msg := cfg.ResponseTemplates.HandoffSuggestion
+					msg := cfg.UserMessages.HandoffSuggestion
 					if bot.FallbackMessages != nil && bot.FallbackMessages.HandoffMessage != "" {
 						msg = bot.FallbackMessages.HandoffMessage
 					}
@@ -249,33 +251,33 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 			switch thresholdCfg.FallbackMode {
 			case "smart":
 				// Try smart fallback as last resort
-				smartResp, smartTokens, smartErr := s.smartFallback(ctx, bot, req.Message, cfg)
+				smartResp, smartTokens, smartErr := s.smartFallback(ctx, bot, req.Message, cfg.Name)
 				if smartErr == nil {
 					finalResponse = smartResp
 					totalTokens += smartTokens
 				} else {
-					finalResponse = cfg.ResponseTemplates.NoInfoFound
+					finalResponse = cfg.UserMessages.NoInfoFound
 					if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
 						finalResponse = bot.FallbackMessages.NoInfoFound
 					}
 				}
 			case "escalate":
-				finalResponse = cfg.ResponseTemplates.HandoffSuggestion
+				finalResponse = cfg.UserMessages.HandoffSuggestion
 			default: // "static"
-				finalResponse = cfg.ResponseTemplates.NoInfoFound
+				finalResponse = cfg.UserMessages.NoInfoFound
 				if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
 					finalResponse = bot.FallbackMessages.NoInfoFound
 				}
 			}
 		default:
 			// For high/medium tiers, use error message
-			finalResponse = cfg.ResponseTemplates.ErrorMessage
+			finalResponse = cfg.UserMessages.ErrorMessage
 			if bot.FallbackMessages != nil && bot.FallbackMessages.ErrorMessage != "" {
 				finalResponse = bot.FallbackMessages.ErrorMessage
 			}
 		}
 	} else if searchResult.Tier == rag.TierMedium && thresholdCfg.ShowConfidenceWarning && !isHandoff {
-		finalResponse += cfg.ResponseTemplates.ConfidenceWarning
+		finalResponse += cfg.UserMessages.ConfidenceWarning
 	}
 
 	// Save assistant message
@@ -435,24 +437,6 @@ func normalizeLangCode(code string) string {
 	return s
 }
 
-// buildSystemPrompt creates a complete system prompt with base rules, custom instructions, and language enforcement
-func buildSystemPrompt(bot *models.Chatbot, cfg langconfig.LanguageConfig) string {
-	// Start with base system prompt containing core rules
-	base := cfg.ResponseTemplates.DefaultSystemPrompt
-
-	// Add custom instructions if provided
-	if strings.TrimSpace(bot.CustomInstruction) != "" {
-		base = base + "\n\n### Ek Talimatlar:\n" + bot.CustomInstruction
-	}
-
-	// Append language enforcement directive
-	if cfg.ResponseTemplates.LanguageDirective != "" {
-		base = base + "\n\n" + cfg.ResponseTemplates.LanguageDirective
-	}
-
-	return base
-}
-
 // calculateHistoryLimit returns optimal message history count based on context budget
 func calculateHistoryLimit(maxContextTokens int) int {
 	// Reserve ~40% of context for history, assume ~150 tokens per message
@@ -468,16 +452,12 @@ func calculateHistoryLimit(maxContextTokens int) int {
 }
 
 // smartFallback generates a helpful response when no context is available
-func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, userMessage string, cfg langconfig.LanguageConfig) (string, int, error) {
+func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, userMessage string, langName string) (string, int, error) {
 	// Get capability summaries from sources
 	capabilities := s.getCapabilitySummaries(ctx, bot.ID)
 
-	// Build the smart fallback prompt
-	capabilityText := ""
-	if capabilities != "" {
-		capabilityText = cfg.ResponseTemplates.CapabilityIntro + "\n" + capabilities
-	}
-	systemPrompt := fmt.Sprintf(cfg.ResponseTemplates.SmartFallbackPrompt, capabilityText)
+	// Build the smart fallback prompt (English + language directive)
+	systemPrompt := BuildSmartFallbackPrompt(capabilities, langName)
 
 	// Get client for the model
 	client, modelName, err := s.Factory.GetClientForModel(bot.Model)
@@ -533,9 +513,9 @@ func (s *ChatService) getCapabilitySummaries(ctx context.Context, chatbotID stri
 		return ""
 	}
 
-	// Limit to first 5 to avoid too long prompt
-	if len(summaries) > 5 {
-		summaries = summaries[:5]
+	// Limit to first 20 to avoid too long prompt
+	if len(summaries) > 20 {
+		summaries = summaries[:20]
 	}
 
 	return strings.Join(summaries, "\n")

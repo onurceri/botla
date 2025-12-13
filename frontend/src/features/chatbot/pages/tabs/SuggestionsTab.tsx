@@ -11,6 +11,7 @@ export default function SuggestionsTab() {
   const {
     suggestionsEnabled, setSuggestionsEnabled,
     suggestedQuestions, setSuggestedQuestions,
+    allSuggestedQuestions, setAllSuggestedQuestions,
   } = useChatbotContext()
 
   const [isRegenerating, setIsRegenerating] = useState(false)
@@ -25,6 +26,9 @@ export default function SuggestionsTab() {
         const { data } = await api.get(`/api/v1/chatbots/${chatbotId}`)
         if (data.suggested_questions) {
           setSuggestedQuestions(() => data.suggested_questions)
+        }
+        if (data.all_suggested_questions) {
+          setAllSuggestedQuestions(() => data.all_suggested_questions)
         }
         setIsRegenerating(false)
       }, 2000) // Wait 2 seconds for background processing
@@ -60,6 +64,7 @@ export default function SuggestionsTab() {
         setSuggestionsEnabled={setSuggestionsEnabled}
         suggestedQuestions={suggestedQuestions}
         setSuggestedQuestions={setSuggestedQuestions}
+        allSuggestedQuestions={allSuggestedQuestions}
       />
     </div>
   )

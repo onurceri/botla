@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -24,10 +23,7 @@ func TestChat_NoInfoFound(t *testing.T) {
 	qd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Error(w, "fail", http.StatusInternalServerError) }))
 	defer qd.Close()
 	t.Setenv("QDRANT_URL", qd.URL)
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 	var uid string
 	var freePlanID string

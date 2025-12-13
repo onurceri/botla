@@ -200,7 +200,7 @@ func (q *SourceQueue) processSource(id string) {
 	case "pdf":
 		result = q.pdfProcessor.Process(context.Background(), s, bot, langCode, plan)
 	case "text":
-		result = q.textProcessor.Process(context.Background(), s, bot, langCode)
+		result = q.textProcessor.Process(context.Background(), s, bot, langCode, plan)
 	default:
 		q.fail(id, "unknown_source_type")
 		return

@@ -1,36 +1,37 @@
 package langconfig
 
+// LanguageConfig holds configuration for a specific language.
 type LanguageConfig struct {
-	Code              string
-	Name              string
-	Abbreviations     []string          // For sentence splitting (e.g., "Dr.", "Mr.")
-	TokenMultiplier   float64           // For token estimation
-	OCRLanguage       string            // Tesseract language code (e.g., "tur", "eng")
-	TokenizerData     string            // Path to the JSON training data
-	ResponseTemplates ResponseTemplates // Localized response strings
+	Code            string
+	Name            string
+	Abbreviations   []string // For sentence splitting (e.g., "Dr.", "Mr.")
+	TokenMultiplier float64  // For token estimation
+	OCRLanguage     string   // Tesseract language code (e.g., "tur", "eng")
+	TokenizerData   string   // Path to the JSON training data
+	// UserMessages contains localized strings shown to end users
+	UserMessages UserMessages
 }
 
-type ResponseTemplates struct {
-	NoInfoFound                 string
-	DefaultSystemPrompt         string
-	LanguageDirective           string // Language enforcement directive
-	ErrorMessage                string
-	TopicExtractionSystemPrompt string
-	TopicExtractionUserPrompt   string
-	WelcomeMessage              string
-	DefaultPersonaPrompt        string
-	DefaultOrgName              string // Default org name when no user name
-	DefaultOrgNameFormat        string // Format: "%s's Workspace"
-	DefaultWorkspaceName        string // Default workspace name
-	// Tiered threshold templates
-	ConfidenceWarning   string // Warning for medium confidence responses
-	SmartFallbackPrompt string // System prompt for smart fallback mode
-	CapabilityIntro     string // Intro for listing bot capabilities
-	HandoffSuggestion   string // Suggestion to use human support
-	RAGContextIntro     string // Intro for RAG context (before documents)
-	Errors              map[string]string
+// UserMessages contains all user-facing localized strings.
+// LLM prompts are NOT included here - they are always in English (see services/chat_prompts.go).
+type UserMessages struct {
+	// Fallback and error messages shown to users
+	NoInfoFound       string // "I couldn't find information on this topic"
+	ErrorMessage      string // "An error occurred, please try again"
+	WelcomeMessage    string // Default welcome message
+	ConfidenceWarning string // Warning appended to medium-confidence responses
+	HandoffSuggestion string // Message suggesting human support
+
+	// Organization/Workspace defaults
+	DefaultOrgName       string // Default org name when no user name
+	DefaultOrgNameFormat string // Format: "%s's Workspace"
+	DefaultWorkspaceName string // Default workspace name
+
+	// API Error messages
+	Errors map[string]string
 }
 
+// Configs holds all supported language configurations.
 var Configs = map[string]LanguageConfig{
 	"tr": {
 		Code: "tr",
@@ -41,37 +42,17 @@ var Configs = map[string]LanguageConfig{
 		TokenMultiplier: 1.3,
 		OCRLanguage:     "tur",
 		TokenizerData:   "data/sentences/turkish.json",
-		ResponseTemplates: ResponseTemplates{
-			NoInfoFound: "Yeterli bilgi bulamadım.",
-			DefaultSystemPrompt: `Sen bir yapay zeka asistanısın.
-
-TEMEL KURALLAR:
-1. SADECE sana sağlanan kaynak belgelerindeki bilgilerle yanıt ver.
-2. Kaynaklarda olmayan konularda "Bu konuda bilgim yok" de.
-3. Kullanıcı numaralı listeden seçim yaparsa (örn: "1", "2", "6") konuşma bağlamından anlayarak doğru seçeneği yanıtla.
-4. Her zaman önceki konuşma mesajlarını dikkate al.`,
-			LanguageDirective:           "ZORUNLU: Tüm yanıtlarını SADECE Türkçe ver. Başka dilde ASLA yanıt verme.",
-			ErrorMessage:                "Şu an bir hata oluştu, lütfen tekrar deneyin.",
-			TopicExtractionSystemPrompt: TR_TopicExtractionSystemPrompt,
-			TopicExtractionUserPrompt:   TR_TopicExtractionUserPrompt,
-			WelcomeMessage:              "Merhaba! Size nasıl yardımcı olabilirim?",
-			DefaultPersonaPrompt:        "Sen yararlı, kibar ve bilgili bir yapay zeka asistanısın.",
-			DefaultOrgName:              "Kişisel Organizasyon",
-			DefaultOrgNameFormat:        "%s Organizasyonu",
-			DefaultWorkspaceName:        "Varsayılan",
-			// Tiered threshold templates
+		UserMessages: UserMessages{
+			NoInfoFound:       "Yeterli bilgi bulamadım.",
+			ErrorMessage:      "Şu an bir hata oluştu, lütfen tekrar deneyin.",
+			WelcomeMessage:    "Merhaba! Size nasıl yardımcı olabilirim?",
 			ConfidenceWarning: "\n\n⚠️ *Bu yanıt, sınırlı bilgi kaynaklarına dayanmaktadır ve kesin doğruluğu garanti edilemez.*",
-			SmartFallbackPrompt: `Sen bir müşteri destek asistanısın. Kullanıcı sana bir soru sordu ama bu konuda bilgi kaynağın yok.
-
-ÖNEMLİ KURALLAR:
-1. ASLA uydurma veya tahmine dayalı bilgi verme
-2. Kibarca bu konuda bilgin olmadığını belirt
-3. Eğer verilmişse, hangi konularda yardımcı olabileceğini belirt:
-%s
-4. Kısa ve nazik bir şekilde cevap ver.`,
-			CapabilityIntro:   "Ben şu konularda size yardımcı olabilirim:",
 			HandoffSuggestion: "Bu konuda size en iyi şekilde yardımcı olabilmem için bir uzmanımızla görüşmenizi öneririm. 'İnsan Desteği İste' butonunu kullanabilirsiniz.",
-			RAGContextIntro:   "Aşağıdaki belgeler sorgularına cevap vermek için kullanılmıştır:\n\n",
+
+			DefaultOrgName:       "Kişisel Organizasyon",
+			DefaultOrgNameFormat: "%s Organizasyonu",
+			DefaultWorkspaceName: "Varsayılan",
+
 			Errors: map[string]string{
 				"ERR_MONTHLY_TOKENS_EXCEEDED":       "Aylık token sınırı aşıldı",
 				"ERR_NAME_AND_ACTION_TYPE_REQUIRED": "'name' ve 'action_type' alanları zorunludur",
@@ -116,37 +97,17 @@ TEMEL KURALLAR:
 		TokenMultiplier: 1.0,
 		OCRLanguage:     "eng",
 		TokenizerData:   "data/sentences/english.json",
-		ResponseTemplates: ResponseTemplates{
-			NoInfoFound: "I could not find enough information.",
-			DefaultSystemPrompt: `You are an AI assistant.
-
-CORE RULES:
-1. ONLY answer based on the provided source documents.
-2. For topics not in your sources, say "I don't have information on this topic."
-3. If user selects from a numbered list (e.g., "1", "2", "6"), understand from conversation context and respond appropriately.
-4. Always consider previous conversation messages.`,
-			LanguageDirective:           "REQUIRED: Respond ONLY in English. NEVER switch to another language.",
-			ErrorMessage:                "An error occurred, please try again later.",
-			TopicExtractionSystemPrompt: EN_TopicExtractionSystemPrompt,
-			TopicExtractionUserPrompt:   EN_TopicExtractionUserPrompt,
-			WelcomeMessage:              "Hello! How can I help you today?",
-			DefaultPersonaPrompt:        "You are a helpful, polite, and knowledgeable AI assistant.",
-			DefaultOrgName:              "Personal Workspace",
-			DefaultOrgNameFormat:        "%s's Workspace",
-			DefaultWorkspaceName:        "Default",
-			// Tiered threshold templates
+		UserMessages: UserMessages{
+			NoInfoFound:       "I could not find enough information.",
+			ErrorMessage:      "An error occurred, please try again later.",
+			WelcomeMessage:    "Hello! How can I help you today?",
 			ConfidenceWarning: "\n\n⚠️ *This response is based on limited sources and accuracy cannot be guaranteed.*",
-			SmartFallbackPrompt: `You are a customer support assistant. The user asked a question but you don't have information on this topic.
-
-IMPORTANT RULES:
-1. NEVER provide made-up or speculative information
-2. Politely indicate you don't have information on this topic
-3. If provided, mention what topics you CAN help with:
-%s
-4. Keep your response short and polite.`,
-			CapabilityIntro:   "I can help you with the following topics:",
 			HandoffSuggestion: "For the best assistance on this topic, I recommend speaking with one of our specialists. You can use the 'Request Human Support' button.",
-			RAGContextIntro:   "The following documents were used to answer your query:\n\n",
+
+			DefaultOrgName:       "Personal Workspace",
+			DefaultOrgNameFormat: "%s's Workspace",
+			DefaultWorkspaceName: "Default",
+
 			Errors: map[string]string{
 				"ERR_MONTHLY_TOKENS_EXCEEDED":       "Monthly token limit exceeded",
 				"ERR_NAME_AND_ACTION_TYPE_REQUIRED": "name and action_type are required",

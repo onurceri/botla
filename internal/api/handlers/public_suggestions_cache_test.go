@@ -10,9 +10,9 @@ import (
 
 	"database/sql"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/testdb"
 )
 
 func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
@@ -85,10 +85,6 @@ func jsonArr(in []string) []byte { b, _ := json.Marshal(in); return b }
 
 func mustInitDB(t *testing.T) (*sql.DB, func()) {
 	t.Helper()
-	dsn := "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable"
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
+	db := testdb.OpenTestDB(t)
 	return db, func() { db.Close() }
 }

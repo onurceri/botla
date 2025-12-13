@@ -33,7 +33,7 @@ func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, 
 }
 
 // Process processes a text source
-func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string) ProcessResult {
+func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
 	if s.FilePath == nil || *s.FilePath == "" {
 		return ProcessResult{Error: &ProcessingError{Msg: "empty_file_path"}}
 	}
@@ -61,7 +61,11 @@ func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *
 	content = text.NormalizeTR(content)
 
 	// Extract and persist metadata
-	p.persistIngestionMetadata(ctx, content, langCode, s)
+	maxQuestions := 0
+	if plan != nil && plan.Config.Chat.MaxSuggestedQuestions > 0 {
+		maxQuestions = plan.Config.Chat.MaxSuggestedQuestions
+	}
+	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
 	// Chunk and embed
 	rc, rerr := rag.ChunkText(content, 512, langCode)
@@ -84,8 +88,8 @@ func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *
 }
 
 // persistIngestionMetadata extracts and saves metadata for the source
-func (p *TextProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource) {
-	meta, err := rag.ExtractIngestionMetadata(ctx, p.OpenAIClient, content, langCode)
+func (p *TextProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource, maxQuestions int) {
+	meta, err := rag.ExtractIngestionMetadata(ctx, p.OpenAIClient, content, langCode, maxQuestions)
 	if err != nil {
 		p.logWarn("extract_metadata_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
 		return

@@ -56,7 +56,7 @@ const DashboardLayout = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [sidebarMode, setSidebarMode] = useState<'pinned' | 'hover'>(() => (localStorage.getItem('botla_sidebar_mode') as 'pinned' | 'hover') || 'pinned')
+  const [sidebarMode, setSidebarMode] = useState<'pinned' | 'hover'>(() => (localStorage.getItem('botla_sidebar_mode') as 'pinned' | 'hover') || 'hover')
   const isCollapsed = sidebarMode === 'hover'
   const [profileName, setProfileName] = useState<string>('')
   const [profileEmail, setProfileEmail] = useState<string>('')

@@ -2,22 +2,18 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestMe_Success(t *testing.T) {
-	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db: %v", err)
-	}
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 	var uid string
 	var proPlanID string

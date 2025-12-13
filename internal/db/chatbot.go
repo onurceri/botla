@@ -72,7 +72,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
                c.chat_background_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.suggestions_enabled,
+               c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
@@ -100,7 +100,7 @@ func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID strin
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
                c.chat_background_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.suggestions_enabled,
+               c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
@@ -122,7 +122,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
+		var sj, asj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.CustomInstruction, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -132,7 +132,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
 			&c.ChatBackgroundColor,
 			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
-			&sj, &c.SuggestionsEnabled,
+			&sj, &asj, &c.SuggestionsEnabled,
 			&ipj, &epj, &swj, &c.DiscoveryMode,
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 			&c.HideBranding, &cbj,
@@ -145,6 +145,11 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			var arr []string
 			_ = json.Unmarshal(sj, &arr)
 			c.SuggestedQuestions = arr
+		}
+		if len(asj) > 0 {
+			var arr []string
+			_ = json.Unmarshal(asj, &arr)
+			c.AllSuggestedQuestions = arr
 		}
 		if len(ipj) > 0 {
 			var arr []string
@@ -196,7 +201,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 
 func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatbot, error) {
 	var c models.Chatbot
-	var sj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
+	var sj, asj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, COALESCE(c.custom_instruction,'') AS custom_instruction, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
@@ -206,7 +211,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
                c.chat_background_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.suggestions_enabled,
+               c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
@@ -223,7 +228,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
 		&c.ChatBackgroundColor,
 		&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
-		&sj, &c.SuggestionsEnabled,
+		&sj, &asj, &c.SuggestionsEnabled,
 		&ipj, &epj, &swj, &c.DiscoveryMode,
 		&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 		&c.HideBranding, &cbj,
@@ -240,6 +245,11 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		var arr []string
 		_ = json.Unmarshal(sj, &arr)
 		c.SuggestedQuestions = arr
+	}
+	if len(asj) > 0 {
+		var arr []string
+		_ = json.Unmarshal(asj, &arr)
+		c.AllSuggestedQuestions = arr
 	}
 	if len(ipj) > 0 {
 		var arr []string

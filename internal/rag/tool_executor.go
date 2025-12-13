@@ -32,7 +32,7 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 		// Built-in tools
 		switch toolCall.Function.Name {
 		case "list_sources":
-			return e.executeBuiltin(toolCall)
+			return e.executeBuiltin(ctx, toolCall, chatbotID)
 		case "request_human_handoff":
 			return e.executeHandoff(ctx, toolCall, chatbotID, conversationID)
 		default:
@@ -42,7 +42,7 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 
 	switch action.ActionType {
 	case models.ActionTypeBuiltin:
-		return e.executeBuiltin(toolCall)
+		return e.executeBuiltin(ctx, toolCall, chatbotID)
 	case models.ActionTypeHTTP:
 		return e.executeHTTP(ctx, toolCall, action)
 	case models.ActionTypeZapier:
@@ -52,14 +52,69 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 	}
 }
 
-func (e *ToolExecutor) executeBuiltin(toolCall ToolCall) (*ToolResult, error) {
+func (e *ToolExecutor) executeBuiltin(ctx context.Context, toolCall ToolCall, chatbotID string) (*ToolResult, error) {
 	switch toolCall.Function.Name {
 	case "list_sources":
-		// Return capability summaries
-		// In a real implementation, this would query the DB for sources
+		if e == nil || e.DB == nil {
+			return &ToolResult{
+				ToolCallID: toolCall.ID,
+				Result:     `{"sources": []}`,
+			}, nil
+		}
+		if chatbotID == "" {
+			return &ToolResult{
+				ToolCallID: toolCall.ID,
+				Result:     `{"sources": []}`,
+			}, nil
+		}
+		sources, err := db.ListSourcesByChatbotID(ctx, e.DB, chatbotID)
+		if err != nil {
+			return nil, fmt.Errorf("list_sources query failed: %w", err)
+		}
+
+		type sourceItem struct {
+			ID                  string  `json:"id"`
+			SourceType          string  `json:"source_type"`
+			Status              string  `json:"status"`
+			ChunkCount          int     `json:"chunk_count"`
+			SourceURL           *string `json:"source_url,omitempty"`
+			FilePath            *string `json:"file_path,omitempty"`
+			CapabilitySummary   *string `json:"capability_summary,omitempty"`
+			IsDiscovered        bool    `json:"is_discovered"`
+			OriginalFilename    *string `json:"original_filename,omitempty"`
+			LastRefreshedAtUnix *int64  `json:"last_refreshed_at_unix,omitempty"`
+		}
+
+		items := make([]sourceItem, 0, len(sources))
+		for i := range sources {
+			src := sources[i]
+			var refreshedUnix *int64
+			if src.LastRefreshedAt != nil {
+				u := src.LastRefreshedAt.Unix()
+				refreshedUnix = &u
+			}
+			items = append(items, sourceItem{
+				ID:                  src.ID,
+				SourceType:          src.SourceType,
+				Status:              src.Status,
+				ChunkCount:          src.ChunkCount,
+				SourceURL:           src.SourceURL,
+				FilePath:            src.FilePath,
+				CapabilitySummary:   src.CapabilitySummary,
+				IsDiscovered:        src.IsDiscovered,
+				OriginalFilename:    src.OriginalFilename,
+				LastRefreshedAtUnix: refreshedUnix,
+			})
+		}
+
+		payload := map[string]any{"sources": items}
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("list_sources marshal failed: %w", err)
+		}
 		return &ToolResult{
 			ToolCallID: toolCall.ID,
-			Result:     `{"sources": "Knowledge base contains documents and website content loaded into the chatbot."}`,
+			Result:     string(b),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown builtin tool: %s", toolCall.Function.Name)

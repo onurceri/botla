@@ -138,3 +138,28 @@ func TestCreateCompletion_Success(t *testing.T) {
 		t.Fatalf("completion err: %v", err)
 	}
 }
+
+func TestCreateCompletionWithTools_IncludesErrorBody(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "k")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/chat/completions" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":{"message":"invalid tools"}}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+	t.Setenv("OPENAI_API_BASE", srv.URL)
+
+	c, _ := NewOpenAIClientFromEnv()
+	msg := "hi"
+	_, err := c.CreateCompletionWithTools(context.Background(), []ChatMessage{{Role: "user", Content: &msg}}, []Tool{{Type: "function", Function: ToolFunction{Name: "list_sources", Description: "d", Parameters: json.RawMessage(`{"type":"object"}`)}}}, "gpt-4o-mini", 0, 10)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if err.Error() == "400 Bad Request" || err.Error() == "Bad Request" {
+		t.Fatalf("expected error to include response body, got: %s", err.Error())
+	}
+}

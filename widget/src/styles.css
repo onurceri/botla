@@ -294,6 +294,69 @@
   width: 100%;
 }
 
+.cbw-suggestions-carousel {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cbw-carousel-viewport {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+.cbw-carousel-item {
+  width: 100%;
+  text-align: center !important;
+  justify-content: center !important;
+  white-space: normal !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  animation: cbw-fade-in 0.2s ease;
+}
+
+@keyframes cbw-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cbw-carousel-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.cbw-carousel-btn:hover {
+  background: #f9fafb;
+  color: #111827;
+  transform: scale(1.1);
+  border-color: rgba(0,0,0,0.15);
+}
+
+.cbw-carousel-btn:active {
+  transform: scale(0.95);
+}
+
+.cbw-suggestions-scroller::-webkit-scrollbar {
+  display: none;
+}
+
 .cbw-suggestions-header {
   font-size: 10px;
   text-transform: uppercase;
@@ -309,10 +372,10 @@
 
 .cbw-suggestion {
   text-align: left;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 8px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 13px;
   color: #374151;
   cursor: pointer;
@@ -320,17 +383,19 @@
   position: relative;
   overflow: hidden;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  
+  /* Horizontal Scroll props - removed */
 }
 
 .cbw-suggestion:hover {
   background: #ffffff;
-  transform: scale(1.02);
+  transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .cbw-suggestion:active {
-  transform: scale(0.98);
+  transform: translateY(0);
 }
 
 /* Handoff Bar */

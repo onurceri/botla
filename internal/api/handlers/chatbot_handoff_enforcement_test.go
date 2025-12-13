@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,31 +10,26 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
-	pool, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db open: %v", err)
-	}
+	pool := testdb.OpenTestDB(t)
 	defer pool.Close()
 
 	// Ensure pro plan exists and has correct config
 	var proPlanID string
-	err = pool.QueryRow(`SELECT id FROM plans WHERE code='pro'`).Scan(&proPlanID)
-	if err != nil {
+	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='pro'`).Scan(&proPlanID); err != nil {
 		t.Fatalf("pro plan not found: %v", err)
 	}
 
 	// Create user with PRO plan
 	var userID string
 	email := fmt.Sprintf("handoff-pro+%d@example.com", time.Now().UnixNano())
-	err = pool.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", proPlanID).Scan(&userID)
-	if err != nil {
+	if err := pool.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", proPlanID).Scan(&userID); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 

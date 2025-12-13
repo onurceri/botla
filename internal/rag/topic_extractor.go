@@ -13,15 +13,51 @@ import (
 	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
+// =============================================================================
+// LLM PROMPTS FOR TOPIC EXTRACTION - ALWAYS IN ENGLISH
+// Language-specific output is controlled via language directive in the prompt
+// =============================================================================
+
+// topicExtractionSystemPrompt is the system prompt for capability extraction.
+const topicExtractionSystemPrompt = "You are a helpful assistant."
+
+// topicExtractionUserPromptTemplate is for simple capability extraction.
+// %s placeholder is for the target language name.
+const topicExtractionUserPromptTemplate = `The text above is a knowledge source for a chatbot. Write a single sentence summarizing what capabilities or information this text provides to the chatbot.
+Only rely on the information present in the text. If the text is meaningless or contains no information, state that.
+Example: "Provides information about the company's history and vision."
+
+IMPORTANT: Write the summary in %s.
+Summary:`
+
+// topicExtractionJSONPromptTemplate is for structured metadata extraction.
+// %s placeholder is for the target language name.
+// topicExtractionJSONPromptTemplate is for structured metadata extraction.
+// First %d is for max questions, second %s is for language name.
+const topicExtractionJSONPromptTemplate = `The text above is a knowledge source for a chatbot. 
+Write a single sentence summarizing what capabilities or information this text provides to the chatbot.
+Only rely on the information present in the text. If the text is meaningless or contains no information, state that.
+Example: "Provides information about the company's history and vision."
+
+Respond ONLY in JSON format:
+{
+  "capability_summary": <short sentence>,
+  "suggested_questions": [<%d short and varied questions>]
+}
+No extra explanation or text. Write the summary and questions in %s.`
+
+// DefaultMaxSuggestedQuestions is the fallback when plan limit is not specified.
+const DefaultMaxSuggestedQuestions = 6
+
 // ExtractTopics remains for backward compatibility.
 func ExtractTopics(ctx context.Context, client LLMClient, content string, langCode string) (string, error) {
 	if len(content) > 2000 {
 		content = content[:2000]
 	}
 	cfg := langconfig.Get(langCode)
-	sp := cfg.ResponseTemplates.TopicExtractionSystemPrompt
-	ct := fmt.Sprintf("Metin:\n%s", content)
-	um := cfg.ResponseTemplates.TopicExtractionUserPrompt
+	sp := topicExtractionSystemPrompt
+	ct := fmt.Sprintf("Text:\n%s", content)
+	um := fmt.Sprintf(topicExtractionUserPromptTemplate, cfg.Name)
 
 	params := models.CompletionParams{
 		SystemPrompt: sp,
@@ -42,15 +78,19 @@ func ExtractTopics(ctx context.Context, client LLMClient, content string, langCo
 var fenceRe = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
 
 // ExtractIngestionMetadata asks the LLM for structured output with capability summary and example questions.
-func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content string, langCode string) (models.IngestionMetadata, error) {
+// maxQuestions specifies the plan-based limit for suggested questions.
+func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content string, langCode string, maxQuestions int) (models.IngestionMetadata, error) {
 	if len(content) > 4000 {
 		content = content[:4000]
 	}
+	if maxQuestions <= 0 {
+		maxQuestions = DefaultMaxSuggestedQuestions
+	}
 	cfg := langconfig.Get(langCode)
-	sp := cfg.ResponseTemplates.TopicExtractionSystemPrompt
-	ct := fmt.Sprintf("Metin:\n%s", content)
-	// Strict JSON instruction; model will often still wrap in fences — we handle both.
-	um := cfg.ResponseTemplates.TopicExtractionUserPrompt + "\n\nYanıtı YALNIZCA JSON olarak ver. Şu formatta:\n{\n  \"capability_summary\": <kısa cümle>,\n  \"suggested_questions\": [<3-6 kısa ve farklı soru>]\n}\nEkstra açıklama, ön/son metin ekleme. Soruları \"" + cfg.Code + "\" dilinde yaz."
+	sp := topicExtractionSystemPrompt
+	ct := fmt.Sprintf("Text:\n%s", content)
+	// English prompt with language directive for output
+	um := fmt.Sprintf(topicExtractionJSONPromptTemplate, maxQuestions, cfg.Name)
 
 	params := models.CompletionParams{
 		SystemPrompt: sp,

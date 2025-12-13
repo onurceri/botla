@@ -45,7 +45,7 @@ export default function PlaygroundTab() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:h-[calc(100vh-350px)] lg:min-h-[600px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-250px)] min-h-[500px] lg:h-[calc(100vh-280px)] lg:min-h-[550px]">
         {/* Settings Sidebar */}
         <div className="lg:col-span-4 lg:overflow-y-auto pr-2 space-y-6">
              <div className="flex items-center gap-2 pb-2 border-b border-border">
@@ -109,7 +109,7 @@ export default function PlaygroundTab() {
         </div>
 
         {/* Preview Area */}
-        <div className="lg:col-span-8 relative h-[600px] lg:h-auto lg:min-h-[600px] bg-slate-50/40 rounded-3xl border-2 border-dashed border-slate-200 overflow-hidden">
+        <div className="lg:col-span-8 relative h-full min-h-[450px] md:min-h-[500px] bg-slate-50/40 rounded-3xl border-2 border-dashed border-slate-200 overflow-hidden">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 

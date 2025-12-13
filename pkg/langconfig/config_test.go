@@ -9,20 +9,17 @@ func TestGet_DefaultsToTR(t *testing.T) {
 	}
 }
 
-func TestTemplates_ENandTR(t *testing.T) {
-	en := Get("en").ResponseTemplates
-	tr := Get("tr").ResponseTemplates
-	if en.DefaultSystemPrompt == "" || tr.DefaultSystemPrompt == "" {
-		t.Fatalf("default system prompts must not be empty")
-	}
+func TestUserMessages_ENandTR(t *testing.T) {
+	en := Get("en").UserMessages
+	tr := Get("tr").UserMessages
 	if en.NoInfoFound == "" || tr.NoInfoFound == "" {
-		t.Fatalf("NoInfoFound templates must not be empty")
+		t.Fatalf("NoInfoFound messages must not be empty")
 	}
-	if EN_TopicExtractionSystemPrompt == "" || TR_TopicExtractionSystemPrompt == "" {
-		t.Fatalf("topic extraction system prompts must not be empty")
+	if en.ErrorMessage == "" || tr.ErrorMessage == "" {
+		t.Fatalf("ErrorMessage must not be empty")
 	}
-	if EN_TopicExtractionUserPrompt == "" || TR_TopicExtractionUserPrompt == "" {
-		t.Fatalf("topic extraction user prompts must not be empty")
+	if en.WelcomeMessage == "" || tr.WelcomeMessage == "" {
+		t.Fatalf("WelcomeMessage must not be empty")
 	}
 	if en.Errors["CHAT_TIMEOUT_OR_INCOMPLETE"] == "" || tr.Errors["CHAT_TIMEOUT_OR_INCOMPLETE"] == "" {
 		t.Fatalf("chat timeout/incomplete messages must not be empty")
@@ -32,9 +29,19 @@ func TestTemplates_ENandTR(t *testing.T) {
 	}
 }
 
+func TestLanguageConfig_HasName(t *testing.T) {
+	en := Get("en")
+	tr := Get("tr")
+	if en.Name != "English" {
+		t.Errorf("Expected English Name to be 'English', got %q", en.Name)
+	}
+	if tr.Name != "Turkish" {
+		t.Errorf("Expected Turkish Name to be 'Turkish', got %q", tr.Name)
+	}
+}
+
 func TestTurkishErrorMessages(t *testing.T) {
-	// TRK-010 to TRK-015
-	tr := Get("tr").ResponseTemplates
+	tr := Get("tr").UserMessages
 
 	expectedErrors := map[string]string{
 		"ERR_MONTHLY_TOKENS_EXCEEDED": "Aylık token sınırı aşıldı",
@@ -52,19 +59,7 @@ func TestTurkishErrorMessages(t *testing.T) {
 		t.Errorf("Expected NoInfoFound to be 'Yeterli bilgi bulamadım.', got %q", tr.NoInfoFound)
 	}
 
-	if tr.DefaultSystemPrompt != "Her zaman Türkçe yanıt ver ve sadece verilen bağlamı kullan." {
-		t.Errorf("Expected DefaultSystemPrompt to be 'Her zaman Türkçe yanıt ver ve sadece verilen bağlamı kullan.', got %q", tr.DefaultSystemPrompt)
-	}
-
-	// TRK-013: Verify all 21 error codes have Turkish translations
-	// This is a rough count based on the list in the markdown file
-	expectedCount := 21
-	// We might have more, but we should check if we have at least these many
-	if len(tr.Errors) < expectedCount {
-		t.Logf("Warning: Expected at least %d error messages, got %d", expectedCount, len(tr.Errors))
-	}
-
-	// Check for presence of key ones mentioned in the doc
+	// TRK-013: Verify all key error codes have Turkish translations
 	keysToCheck := []string{
 		"ERR_MONTHLY_TOKENS_EXCEEDED",
 		"ERR_NAME_AND_ACTION_TYPE_REQUIRED",

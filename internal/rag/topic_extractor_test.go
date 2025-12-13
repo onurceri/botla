@@ -33,7 +33,7 @@ func TestExtractIngestionMetadata_JSONHappyPath(t *testing.T) {
         "capability_summary": "Provides info about products.",
         "suggested_questions": ["What products do you offer?", "How can I purchase?", "Do you ship internationally?"]
     }`
-	im, err := ExtractIngestionMetadata(context.Background(), mockLLM{out: js}, "demo content", "en")
+	im, err := ExtractIngestionMetadata(context.Background(), mockLLM{out: js}, "demo content", "en", 0)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestExtractIngestionMetadata_JSONHappyPath(t *testing.T) {
 
 func TestExtractIngestionMetadata_FallbackFromFence(t *testing.T) {
 	fenced := "```json\n{\n  \"capability_summary\": \"Bilgi\",\n  \"suggested_questions\": [\"\", \"  \", \"Kısa bir genel bakış verir misin?\"]\n}\n```"
-	im, err := ExtractIngestionMetadata(context.Background(), mockLLM{out: fenced}, "demo", "tr")
+	im, err := ExtractIngestionMetadata(context.Background(), mockLLM{out: fenced}, "demo", "tr", 0)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestExtractIngestionMetadata_FallbackFromFence(t *testing.T) {
 
 func TestExtractIngestionMetadata_FallbackError(t *testing.T) {
 	// invalid JSON triggers fallback, errLLM returns error -> overall error
-	_, err := ExtractIngestionMetadata(context.Background(), errLLM{}, "demo", "en")
+	_, err := ExtractIngestionMetadata(context.Background(), errLLM{}, "demo", "en", 0)
 	if err == nil {
 		t.Fatalf("expected error when fallback summary fails")
 	}
@@ -86,7 +86,7 @@ func TestExtractIngestionMetadata_EmptyQuestionsInJSON(t *testing.T) {
         "capability_summary": "This text describes the refund policy.",
         "suggested_questions": []
     }`
-	im, err := ExtractIngestionMetadata(context.Background(), mockLLM{out: js}, "demo content", "en")
+	im, err := ExtractIngestionMetadata(context.Background(), mockLLM{out: js}, "demo content", "en", 0)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

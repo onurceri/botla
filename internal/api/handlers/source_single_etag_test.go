@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
@@ -11,16 +10,13 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 func TestSources_ETag_Status(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 	var uid string
 	var freePlanID string

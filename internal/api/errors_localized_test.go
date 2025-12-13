@@ -20,7 +20,7 @@ func TestWriteLocalizedError_TR(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("json error: %v", err)
 	}
-	if resp.Error != cfg.ResponseTemplates.Errors[ErrMonthlyTokensExceeded] {
+	if resp.Error != cfg.UserMessages.Errors[ErrMonthlyTokensExceeded] {
 		t.Fatalf("unexpected error text: %q", resp.Error)
 	}
 	if resp.Code != ErrMonthlyTokensExceeded {
@@ -39,7 +39,7 @@ func TestWriteLocalizedError_EN(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("json error: %v", err)
 	}
-	if resp.Error != cfg.ResponseTemplates.Errors[ErrInvalidRequestBody] {
+	if resp.Error != cfg.UserMessages.Errors[ErrInvalidRequestBody] {
 		t.Fatalf("unexpected error text: %q", resp.Error)
 	}
 	if resp.Code != ErrInvalidRequestBody {

@@ -136,7 +136,7 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, re
 		Temperature:          defaultFloat32(req.Temperature, 0.7),
 		MaxTokens:            defaultInt(req.MaxTokens, 4096),
 		ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),
-		WelcomeMessage:       defaultString(req.WelcomeMessage, langCfg.ResponseTemplates.WelcomeMessage),
+		WelcomeMessage:       defaultString(req.WelcomeMessage, langCfg.UserMessages.WelcomeMessage),
 		Position:             defaultString(req.Position, "bottom-right"),
 		BotMessageColor:      defaultString(req.BotMessageColor, "#fcfcfd"),
 		UserMessageColor:     defaultString(req.UserMessageColor, "#2e408a"),

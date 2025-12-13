@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,15 +10,12 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
-	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db: %v", err)
-	}
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 
 	var freePlanID string

@@ -10,6 +10,7 @@ import (
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	pkgconfig "github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -82,14 +83,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 			return
 		}
 		if len(plan.Config.Chat.AllowedModels) > 0 {
-			allowed := false
-			for _, m := range plan.Config.Chat.AllowedModels {
-				if m == *req.Model {
-					allowed = true
-					break
-				}
-			}
-			if !allowed {
+			if !pkgconfig.IsModelAllowed(*req.Model, plan.Config.Chat.AllowedModels) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				_ = json.NewEncoder(w).Encode(map[string]interface{}{

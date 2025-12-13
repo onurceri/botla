@@ -3,36 +3,30 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
-	pool, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db open: %v", err)
-	}
+	pool := testdb.OpenTestDB(t)
 	defer pool.Close()
 
 	var freePlanID string
-	err = pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID)
-	if err != nil {
+	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
 		t.Fatalf("free plan: %v", err)
 	}
 
 	var userID string
 	email := fmt.Sprintf("auto-refresh-free+%d@example.com", time.Now().UnixNano())
-	err = pool.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&userID)
-	if err != nil {
+	if err := pool.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&userID); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 
@@ -43,6 +37,7 @@ func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
 		Model:        "gpt-4o-mini",
 	}
 	var botID string
+	var err error
 	botID, err = db.CreateChatbot(context.Background(), pool, bot)
 	if err != nil {
 		t.Fatalf("create chatbot: %v", err)
@@ -63,22 +58,17 @@ func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
 }
 
 func TestUpdateChatbot_SecureEmbedForbidden_ForFreePlan(t *testing.T) {
-	pool, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db open: %v", err)
-	}
+	pool := testdb.OpenTestDB(t)
 	defer pool.Close()
 
 	var freePlanID string
-	err = pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID)
-	if err != nil {
+	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
 		t.Fatalf("free plan: %v", err)
 	}
 
 	var userID string
 	email := fmt.Sprintf("secure-embed-free+%d@example.com", time.Now().UnixNano())
-	err = pool.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&userID)
-	if err != nil {
+	if err := pool.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&userID); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 
@@ -89,6 +79,7 @@ func TestUpdateChatbot_SecureEmbedForbidden_ForFreePlan(t *testing.T) {
 		Model:        "gpt-4o-mini",
 	}
 	var botID string
+	var err error
 	botID, err = db.CreateChatbot(context.Background(), pool, bot)
 	if err != nil {
 		t.Fatalf("create chatbot: %v", err)

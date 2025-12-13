@@ -8,7 +8,7 @@ import (
 func setAllEnv() {
 	os.Setenv("DB_HOST", "localhost")
 	os.Setenv("DB_PORT", "5432")
-	os.Setenv("DB_NAME", "botla_dev")
+	os.Setenv("DB_NAME", "botla_test")
 	os.Setenv("DB_USER", "botla")
 	os.Setenv("DB_PASSWORD", "botla")
 	os.Setenv("QDRANT_URL", "http://localhost:6333")
@@ -61,7 +61,7 @@ func TestLoadConfig_QdrantMissing_Exit(t *testing.T) {
 	env := []string{
 		"DB_HOST=localhost",
 		"DB_PORT=5432",
-		"DB_NAME=botla_dev",
+		"DB_NAME=botla_test",
 		"DB_USER=botla",
 		"DB_PASSWORD=botla",
 		"QDRANT_URL=",
@@ -89,7 +89,7 @@ func TestLoadConfig_OpenAIMissing_Warns(t *testing.T) {
 	env := []string{
 		"DB_HOST=localhost",
 		"DB_PORT=5432",
-		"DB_NAME=botla_dev",
+		"DB_NAME=botla_test",
 		"DB_USER=botla",
 		"DB_PASSWORD=botla",
 		"QDRANT_URL=http://localhost:6333",
@@ -121,7 +121,7 @@ func TestLoadConfig_JWTMissing_Exit(t *testing.T) {
 	env := []string{
 		"DB_HOST=localhost",
 		"DB_PORT=5432",
-		"DB_NAME=botla_dev",
+		"DB_NAME=botla_test",
 		"DB_USER=botla",
 		"DB_PASSWORD=botla",
 		"QDRANT_URL=http://localhost:6333",
@@ -149,7 +149,7 @@ func TestLoadConfig_PortMissing_Exit(t *testing.T) {
 	env := []string{
 		"DB_HOST=localhost",
 		"DB_PORT=5432",
-		"DB_NAME=botla_dev",
+		"DB_NAME=botla_test",
 		"DB_USER=botla",
 		"DB_PASSWORD=botla",
 		"QDRANT_URL=http://localhost:6333",

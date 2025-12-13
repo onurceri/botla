@@ -8,10 +8,11 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/testdb"
 )
 
 func TestConversation_Messages_DB(t *testing.T) {
-	db := openTestDB(t)
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 	uid := createUser(t, db)
 	// create bot

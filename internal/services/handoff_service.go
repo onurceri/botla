@@ -46,7 +46,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	cfg := langconfig.Get(lc)
 	// Validate handoff is enabled
 	if !bot.HandoffEnabled {
-		return nil, errors.New(cfg.ResponseTemplates.Errors["HANDOFF_NOT_ENABLED"])
+		return nil, errors.New(cfg.UserMessages.Errors["HANDOFF_NOT_ENABLED"])
 	}
 
 	// Create handoff request in database
@@ -57,7 +57,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	}
 	if exists {
 		// Return specific error that can be handled by caller
-		return nil, errors.New(cfg.ResponseTemplates.Errors["HANDOFF_ALREADY_EXISTS"])
+		return nil, errors.New(cfg.UserMessages.Errors["HANDOFF_ALREADY_EXISTS"])
 	}
 
 	req := &models.HandoffRequest{
@@ -68,7 +68,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 
 	requestID, err := db.CreateHandoffRequest(ctx, s.DB, req)
 	if err != nil {
-		msg := cfg.ResponseTemplates.Errors["HANDOFF_CREATE_FAILED"]
+		msg := cfg.UserMessages.Errors["HANDOFF_CREATE_FAILED"]
 		if msg == "" {
 			msg = "failed to create handoff request"
 		}
@@ -108,7 +108,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	if bot.FallbackMessages != nil && bot.FallbackMessages.HandoffMessage != "" {
 		result.Message = bot.FallbackMessages.HandoffMessage
 	} else {
-		hm := cfg.ResponseTemplates.Errors["HANDOFF_RECEIVED"]
+		hm := cfg.UserMessages.Errors["HANDOFF_RECEIVED"]
 		if hm == "" {
 			hm = "Talebiniz alındı. En kısa sürede bir temsilcimiz sizinle iletişime geçecektir."
 		}
@@ -126,13 +126,13 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 	}
 	cfg := langconfig.Get(lc)
 	if bot.HandoffConfig == nil || bot.HandoffConfig.EmailTo == "" {
-		return errors.New(cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_NOT_CONFIGURED"])
+		return errors.New(cfg.UserMessages.Errors["HANDOFF_EMAIL_NOT_CONFIGURED"])
 	}
 
 	// Load conversation messages (last 50 messages should be enough for handoff)
 	messages, err := db.ListRecentMessages(ctx, s.DB, conversationID, 50)
 	if err != nil {
-		msg := cfg.ResponseTemplates.Errors["HANDOFF_CONVERSATION_LOAD_FAILED"]
+		msg := cfg.UserMessages.Errors["HANDOFF_CONVERSATION_LOAD_FAILED"]
 		if msg == "" {
 			msg = "failed to load conversation"
 		}
@@ -145,7 +145,7 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 	// Get email subject
 	subject := bot.HandoffConfig.EmailSubject
 	if subject == "" {
-		tmpl := cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_SUBJECT"]
+		tmpl := cfg.UserMessages.Errors["HANDOFF_EMAIL_SUBJECT"]
 		if tmpl == "" {
 			tmpl = "[Botla] New Support Request - %s"
 		}
@@ -187,27 +187,27 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 func (s *HandoffService) buildHandoffEmailBody(botName, requestID string, messages []models.Message, notes string, cfg langconfig.LanguageConfig) string {
 	var sb strings.Builder
 
-	sb.WriteString(cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_BODY_HEADER"])
+	sb.WriteString(cfg.UserMessages.Errors["HANDOFF_EMAIL_BODY_HEADER"])
 	sb.WriteString(fmt.Sprintf("Bot: %s\n", botName))
-	sb.WriteString(fmt.Sprintf("%s: %s\n", cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_LABEL_REQUEST_ID"], requestID))
-	sb.WriteString(fmt.Sprintf("%s: %s\n", cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_LABEL_DATE"], time.Now().Format("2006-01-02 15:04:05")))
+	sb.WriteString(fmt.Sprintf("%s: %s\n", cfg.UserMessages.Errors["HANDOFF_EMAIL_LABEL_REQUEST_ID"], requestID))
+	sb.WriteString(fmt.Sprintf("%s: %s\n", cfg.UserMessages.Errors["HANDOFF_EMAIL_LABEL_DATE"], time.Now().Format("2006-01-02 15:04:05")))
 
 	if notes != "" {
-		sb.WriteString(fmt.Sprintf("\n%s:\n%s\n", cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_LABEL_USER_NOTE"], notes))
+		sb.WriteString(fmt.Sprintf("\n%s:\n%s\n", cfg.UserMessages.Errors["HANDOFF_EMAIL_LABEL_USER_NOTE"], notes))
 	}
 
 	sb.WriteString("\n--- Konuşma Dökümü ---\n\n")
 
 	for _, msg := range messages {
-		role := cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_LABEL_USER"]
+		role := cfg.UserMessages.Errors["HANDOFF_EMAIL_LABEL_USER"]
 		if msg.Role == "assistant" {
-			role = cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_LABEL_BOT"]
+			role = cfg.UserMessages.Errors["HANDOFF_EMAIL_LABEL_BOT"]
 		}
 		sb.WriteString(fmt.Sprintf("[%s] %s:\n%s\n\n", msg.CreatedAt.Format("15:04"), role, msg.Content))
 	}
 
 	sb.WriteString("---\n")
-	sb.WriteString(cfg.ResponseTemplates.Errors["HANDOFF_EMAIL_BODY_FOOTER"])
+	sb.WriteString(cfg.UserMessages.Errors["HANDOFF_EMAIL_BODY_FOOTER"])
 
 	return sb.String()
 }
@@ -227,7 +227,7 @@ func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, sta
 	}
 	if !validStatuses[status] {
 		lc := "tr"
-		msg := langconfig.Get(lc).ResponseTemplates.Errors["ERR_INVALID_STATUS"]
+		msg := langconfig.Get(lc).UserMessages.Errors["ERR_INVALID_STATUS"]
 		formatted := fmt.Sprintf(msg, status)
 		return errors.New(formatted)
 	}

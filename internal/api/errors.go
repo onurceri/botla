@@ -29,17 +29,17 @@ func WriteErrorWithDetails(w http.ResponseWriter, status int, message string, co
 }
 
 func WriteLocalizedError(w http.ResponseWriter, status int, code string, cfg langconfig.LanguageConfig) {
-	msg := cfg.ResponseTemplates.Errors[code]
+	msg := cfg.UserMessages.Errors[code]
 	if msg == "" {
-		msg = cfg.ResponseTemplates.ErrorMessage
+		msg = cfg.UserMessages.ErrorMessage
 	}
 	WriteError(w, status, msg, code)
 }
 
 func WriteLocalizedErrorWithDetails(w http.ResponseWriter, status int, code string, details any, cfg langconfig.LanguageConfig) {
-	msg := cfg.ResponseTemplates.Errors[code]
+	msg := cfg.UserMessages.Errors[code]
 	if msg == "" {
-		msg = cfg.ResponseTemplates.ErrorMessage
+		msg = cfg.UserMessages.ErrorMessage
 	}
 	WriteErrorWithDetails(w, status, msg, code, details)
 }

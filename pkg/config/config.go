@@ -176,6 +176,38 @@ func GetDefaultModelForProvider(provider string) string {
 	}
 }
 
+// NormalizeModelName extracts the bare model name from a provider-prefixed string.
+// Handles formats: "openai:gpt-4o-mini", "openai/gpt-4o-mini", "gpt-4o-mini"
+// Returns the bare model name (e.g., "gpt-4o-mini") for unified comparison.
+func NormalizeModelName(model string) string {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return ""
+	}
+	// Handle colon prefix (openai:gpt-4o-mini)
+	if parts := strings.SplitN(model, ":", 2); len(parts) == 2 {
+		model = parts[1]
+	}
+	// Handle slash prefix (openai/gpt-4o-mini)
+	if parts := strings.SplitN(model, "/", 2); len(parts) == 2 {
+		model = parts[1]
+	}
+	return model
+}
+
+// IsModelAllowed checks if a model (possibly with provider prefix) matches any allowed model.
+// The allowed models list can contain either bare names or prefixed names.
+func IsModelAllowed(model string, allowedModels []string) bool {
+	normalizedInput := NormalizeModelName(model)
+	for _, allowed := range allowedModels {
+		normalizedAllowed := NormalizeModelName(allowed)
+		if normalizedInput == normalizedAllowed {
+			return true
+		}
+	}
+	return false
+}
+
 // IsModelSupported checks if a model is supported by the system
 // Architecture: OpenRouter (primary LLM) + OpenAI (embeddings + fallback)
 func IsModelSupported(model string) bool {

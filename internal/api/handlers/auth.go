@@ -119,14 +119,14 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if h.OrgService != nil {
 		// Use default language (tr) for localized strings
 		cfg := langconfig.Get("tr")
-		orgName := cfg.ResponseTemplates.DefaultOrgName
+		orgName := cfg.UserMessages.DefaultOrgName
 		if req.FullName != "" {
-			orgName = fmt.Sprintf(cfg.ResponseTemplates.DefaultOrgNameFormat, req.FullName)
+			orgName = fmt.Sprintf(cfg.UserMessages.DefaultOrgNameFormat, req.FullName)
 		}
 		orgSlug := slugifyEmail(req.Email)
 		org, err := h.OrgService.CreateOrganization(r.Context(), orgName, orgSlug, userID)
 		if err == nil && org != nil && h.WorkspaceService != nil {
-			_, _ = h.WorkspaceService.CreateWorkspace(r.Context(), org.ID, cfg.ResponseTemplates.DefaultWorkspaceName, "default", nil)
+			_, _ = h.WorkspaceService.CreateWorkspace(r.Context(), org.ID, cfg.UserMessages.DefaultWorkspaceName, "default", nil)
 		}
 	}
 

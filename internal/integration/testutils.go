@@ -42,7 +42,7 @@ func SetupTestEnv() (*TestEnv, error) {
 		_ = os.Setenv("DB_PORT", "5432")
 	}
 	if os.Getenv("DB_NAME") == "" {
-		_ = os.Setenv("DB_NAME", "botla_dev")
+		_ = os.Setenv("DB_NAME", "botla_test")
 	}
 	if os.Getenv("DB_USER") == "" {
 		_ = os.Setenv("DB_USER", "botla")

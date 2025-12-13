@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -12,17 +11,14 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 // TestSources_TextCreation tests text source creation end-to-end
 func TestSources_TextCreation(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db not available: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 
 	var uid string
@@ -77,10 +73,7 @@ func TestSources_TextCreation(t *testing.T) {
 
 // TestSources_URLCreation tests URL source creation end-to-end
 func TestSources_URLCreation(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db not available: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 
 	var uid string
@@ -135,10 +128,7 @@ func TestSources_URLCreation(t *testing.T) {
 
 // TestSources_EmptyText_BadRequest tests empty text rejection
 func TestSources_EmptyText_BadRequest(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db not available: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 
 	var uid string
@@ -187,10 +177,7 @@ func TestSources_EmptyText_BadRequest(t *testing.T) {
 
 // TestSources_EmptyURL_BadRequest tests empty URL rejection
 func TestSources_EmptyURL_BadRequest(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db not available: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 
 	var uid string
@@ -239,10 +226,7 @@ func TestSources_EmptyURL_BadRequest(t *testing.T) {
 
 // TestSources_DuplicateURL_Conflict tests duplicate URL rejection
 func TestSources_DuplicateURL_Conflict(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db not available: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 
 	var uid string
@@ -309,10 +293,7 @@ func TestSources_DuplicateURL_Conflict(t *testing.T) {
 
 // TestSources_InvalidSourceType_BadRequest tests invalid source type
 func TestSources_InvalidSourceType_BadRequest(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db not available: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 
 	var uid string

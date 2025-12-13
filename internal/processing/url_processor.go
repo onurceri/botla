@@ -155,7 +155,11 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	}
 
 	// Extract and persist metadata
-	p.persistIngestionMetadata(ctx, content, langCode, s)
+	maxQuestions := 0
+	if plan != nil && plan.Config.Chat.MaxSuggestedQuestions > 0 {
+		maxQuestions = plan.Config.Chat.MaxSuggestedQuestions
+	}
+	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
 	// Chunk and embed
 	p.logInfo("url_processing_chunking_started", map[string]any{
@@ -391,8 +395,8 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 }
 
 // persistIngestionMetadata extracts and saves metadata for the source
-func (p *URLProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource) {
-	meta, err := rag.ExtractIngestionMetadata(ctx, p.OpenAIClient, content, langCode)
+func (p *URLProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource, maxQuestions int) {
+	meta, err := rag.ExtractIngestionMetadata(ctx, p.OpenAIClient, content, langCode, maxQuestions)
 	if err != nil {
 		p.logWarn("extract_metadata_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
 		return

@@ -2,9 +2,12 @@ package rag
 
 import (
 	"encoding/json"
+	"regexp"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
+
+var toolNameRE = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 type ChatMessage struct {
 	Role       string     `json:"role"`
@@ -34,6 +37,34 @@ type ToolCall struct {
 	} `json:"function"`
 }
 
+func IsValidToolName(name string) bool {
+	return toolNameRE.MatchString(name)
+}
+
+func normalizeToolParameters(raw *json.RawMessage) json.RawMessage {
+	if raw == nil || len(*raw) == 0 {
+		return json.RawMessage(`{"type": "object", "properties": {}}`)
+	}
+
+	var m map[string]any
+	if err := json.Unmarshal(*raw, &m); err != nil {
+		return json.RawMessage(`{"type": "object", "properties": {}}`)
+	}
+	if m == nil {
+		return json.RawMessage(`{"type": "object", "properties": {}}`)
+	}
+	if t, ok := m["type"].(string); !ok || t != "object" {
+		m["type"] = "object"
+	}
+	if _, ok := m["properties"]; !ok {
+		m["properties"] = map[string]any{}
+	}
+	if b, err := json.Marshal(m); err == nil {
+		return b
+	}
+	return json.RawMessage(`{"type": "object", "properties": {}}`)
+}
+
 // ConvertActionsToTools converts ChatbotActions to OpenAI tool format
 func ConvertActionsToTools(actions []*models.ChatbotAction) []Tool {
 	var tools []Tool
@@ -41,16 +72,14 @@ func ConvertActionsToTools(actions []*models.ChatbotAction) []Tool {
 		if !action.Enabled {
 			continue
 		}
+		if !IsValidToolName(action.Name) {
+			continue
+		}
 		desc := ""
 		if action.Description != nil {
 			desc = *action.Description
 		}
-		var params json.RawMessage
-		if action.Parameters != nil {
-			params = *action.Parameters
-		} else {
-			params = json.RawMessage(`{"type": "object", "properties": {}}`)
-		}
+		params := normalizeToolParameters(action.Parameters)
 
 		tools = append(tools, Tool{
 			Type: "function",
@@ -88,7 +117,7 @@ func GetBuiltinToolsWithOptions(options BuiltinToolOptions) []Tool {
 			Function: ToolFunction{
 				Name:        "list_sources",
 				Description: "Lists the available knowledge sources and their capabilities",
-				Parameters:  json.RawMessage(`{"type": "object", "properties": {}}`),
+				Parameters:  normalizeToolParameters(nil),
 			},
 		})
 	}
@@ -99,7 +128,7 @@ func GetBuiltinToolsWithOptions(options BuiltinToolOptions) []Tool {
 			Function: ToolFunction{
 				Name:        "request_human_handoff",
 				Description: "Request to transfer the conversation to a human support agent. Use this when you cannot help the user or when they explicitly ask for a human.",
-				Parameters:  json.RawMessage(`{"type": "object", "properties": {}}`),
+				Parameters:  normalizeToolParameters(nil),
 			},
 		})
 	}

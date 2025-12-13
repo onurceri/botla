@@ -1,13 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/api/handlers"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
@@ -54,10 +53,7 @@ func TestStartAndShutdownServer(t *testing.T) {
 	srv := newHTTPServer("0", mux)
 	log := logger.New("ERROR")
 	startServerAsync(srv, log, "0")
-	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db connection failed: %v", err)
-	}
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 	shutdownServer(srv, log, db)
 }

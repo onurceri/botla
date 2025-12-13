@@ -7,27 +7,9 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/testdb"
 )
-
-func openTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	dsn := "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable&options=-c%20search_path%3Dtest"
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	// Explicitly set search_path in case connection options don't work
-	if _, err := db.Exec("SET search_path TO test"); err != nil {
-		t.Fatalf("set search_path: %v", err)
-	}
-	// Ensure new columns exist for sources
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
-	return db
-}
 
 func createUser(t *testing.T, db *sql.DB) string {
 	t.Helper()
@@ -44,7 +26,7 @@ func createUser(t *testing.T, db *sql.DB) string {
 }
 
 func TestChatbot_CRUD_DB(t *testing.T) {
-	db := openTestDB(t)
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 	uid := createUser(t, db)
 	t.Cleanup(func() {

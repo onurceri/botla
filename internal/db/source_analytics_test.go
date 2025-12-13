@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/testdb"
 )
 
 func TestGetSourceUsageStats(t *testing.T) {
-	db := openTestDB(t)
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 
 	// Ensure message_sources table exists (in case migration didn't run on test schema)

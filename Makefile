@@ -4,7 +4,7 @@ SHELL := /bin/sh
 
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
 MIGRATIONS_DIR ?= db/migrations
-TEST_DATABASE_URL ?= $(DATABASE_URL)&options=-c%20search_path%3Dtest
+TEST_DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_test?sslmode=disable&options=-c%20search_path%3Dtest
 
 DOCKER_DATABASE_URL ?= postgres://botla:botla@botla-postgres:5432/botla_dev?sslmode=disable
 DOCKER_TEST_DATABASE_URL ?= $(DOCKER_DATABASE_URL)&options=-c%20search_path%3Dtest

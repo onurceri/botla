@@ -2,14 +2,13 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
@@ -54,10 +53,7 @@ func TestChatbotSources_InvalidPath(t *testing.T) {
 
 // TestChatbotSources_MethodNotAllowed tests unsupported HTTP methods
 func TestChatbotSources_MethodNotAllowed(t *testing.T) {
-	dbx, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Skipf("db not available: %v", err)
-	}
+	dbx := testdb.OpenTestDB(t)
 	defer dbx.Close()
 
 	// Create test user and chatbot

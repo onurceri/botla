@@ -318,3 +318,33 @@ func TestOpenRouterClient_GetModelInfo(t *testing.T) {
 		t.Error("Expected MaxTokens > 0")
 	}
 }
+
+func TestOpenRouterClient_CreateCompletionWithTools_IncludesErrorBody(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/chat/completions" {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"message":"invalid tools"}}`))
+	}
+	server := httptest.NewServer(http.HandlerFunc(handler))
+	defer server.Close()
+
+	client := &OpenRouterClient{
+		apiKey: "test-key",
+		base:   server.URL,
+		http:   server.Client(),
+	}
+
+	ctx := context.Background()
+	msg := "hi"
+	_, err := client.CreateCompletionWithTools(ctx, []ChatMessage{{Role: "user", Content: &msg}}, []Tool{{Type: "function", Function: ToolFunction{Name: "list_sources", Description: "d", Parameters: json.RawMessage(`{"type":"object"}`)}}}, "openai/gpt-4o-mini", 0.1, 10)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if err.Error() == "OpenRouter error: 400 Bad Request" {
+		t.Fatalf("expected error to include response body, got: %s", err.Error())
+	}
+}

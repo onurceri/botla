@@ -11,21 +11,14 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func setupTestDB(t *testing.T) *sql.DB {
-	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db connection failed: %v", err)
-	}
-	if err := db.Ping(); err != nil {
-		t.Skipf("skipping test: db not available: %v", err)
-	}
-	return db
+	return testdb.OpenTestDB(t)
 }
 
 func createTestUser(t *testing.T, db *sql.DB) string {

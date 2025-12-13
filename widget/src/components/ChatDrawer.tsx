@@ -77,22 +77,10 @@ export function ChatDrawer(
       <div className="cbw-messages">
         {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} />)}
         {(!messages || (messages.filter(m => m.role === 'user').length === 0 && !messages.some(m => m.type === 'handoff'))) && suggestions && suggestions.length > 0 && (
-          <div className="cbw-msg-row assistant" style={{ justifyContent: 'flex-start', alignItems: 'flex-start' }}>
-            <div className="cbw-avatar" style={{ marginTop: '4px' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 8V4H8" />
-                <rect width="16" height="12" x="4" y="8" rx="2" />
-                <path d="M2 14h2" />
-                <path d="M20 14h2" />
-                <path d="M15 13v2" />
-                <path d="M9 13v2" />
-              </svg>
-            </div>
-            <div style={{ maxWidth: '85%' }}>
-              <Suggestions items={suggestions} disabled={!!loading} onPick={(q) => {
-                if (onPickSuggestion) onPickSuggestion(q)
-              }} />
-            </div>
+          <div className="cbw-suggestions-container" style={{ width: '100%', padding: '0 8px', margin: '8px 0 16px 0' }}>
+            <Suggestions items={suggestions} disabled={!!loading} onPick={(q) => {
+              if (onPickSuggestion) onPickSuggestion(q)
+            }} />
           </div>
         )}
         {loading && (

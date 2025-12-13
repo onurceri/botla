@@ -1,22 +1,18 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestHealth_OK(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 	defer srv.Close()
-	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db: %v", err)
-	}
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 	h := &HealthHandlers{DB: db, Cfg: &config.Config{QDRANT_URL: srv.URL}}
 	rr := httptest.NewRecorder()
@@ -30,10 +26,7 @@ func TestHealth_OK(t *testing.T) {
 func TestHealth_Degraded(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) }))
 	defer srv.Close()
-	db, err := sql.Open("pgx", "postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable")
-	if err != nil {
-		t.Fatalf("db: %v", err)
-	}
+	db := testdb.OpenTestDB(t)
 	defer db.Close()
 	h := &HealthHandlers{DB: db, Cfg: &config.Config{QDRANT_URL: srv.URL}}
 	rr := httptest.NewRecorder()
