@@ -29,6 +29,9 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	oai := startOpenAIStub()
 	defer oai.Close()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	qd := startQdrantStub()
+	defer qd.Close()
+	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -55,6 +58,23 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
 
+	// First chat under quota should succeed
+	firstReq := chatReq{Message: "Hello before limit", SessionID: "sess-ok"}
+	firstBody, _ := json.Marshal(firstReq)
+	reqOK, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(firstBody))
+	reqOK.Header.Set("Authorization", "Bearer "+token)
+	reqOK.Header.Set("Content-Type", "application/json")
+	resOK, _ := http.DefaultClient.Do(reqOK)
+	if resOK.StatusCode != http.StatusOK {
+		t.Fatalf("QTA-001: expected first chat 200 OK, got %d", resOK.StatusCode)
+	}
+	var okResp chatResp
+	json.NewDecoder(resOK.Body).Decode(&okResp)
+	resOK.Body.Close()
+	if okResp.TokensUsed <= 0 {
+		t.Fatalf("QTA-001: expected tokens_used > 0, got %d", okResp.TokensUsed)
+	}
+
 	// Manually insert usage to exceed limit
 	// We need 150 tokens to exceed 100 limit
 	// IncrementAnalytics updates the analytics table
@@ -63,9 +83,9 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 		t.Fatalf("failed to increment usage: %v", err)
 	}
 
-	// Try chat
-	chatReq := map[string]string{"message": "Hello", "session_id": "sess1"}
-	cb, _ := json.Marshal(chatReq)
+	// Try chat after limit exceeded
+	overReq := chatReq{Message: "Hello over limit", SessionID: "sess1"}
+	cb, _ := json.Marshal(overReq)
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")

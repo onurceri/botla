@@ -30,7 +30,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.3 Monthly Token Limit - 100,000
+### 2.1.3 Monthly Token Limit - 100,000 [x]
 **Priority:** High  
 **Type:** Integration Test
 
