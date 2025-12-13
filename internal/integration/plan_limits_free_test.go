@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,16 @@ import (
 type chatbotBranding struct {
 	ID           string `json:"id"`
 	HideBranding bool   `json:"hide_branding"`
+}
+
+func startDynamicHTMLStub() *httptest.Server {
+	h := http.NewServeMux()
+	h.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!doctype html><html><body><script>document.body.innerHTML='<p>Merhaba Dinamik</p>'</script></body></html>`))
+	})
+	return httptest.NewServer(h)
 }
 
 func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
@@ -108,6 +119,94 @@ func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
 
 	if code, ok := errResp["code"].(string); !ok || code != "ERR_URL_LIMIT_REACHED" {
 		t.Fatalf("expected error code ERR_URL_LIMIT_REACHED, got %v", errResp)
+	}
+}
+
+func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
+	oai := startOpenAIStub()
+	qd := startQdrantStub()
+	page := startDynamicHTMLStub()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("QDRANT_URL", qd.URL)
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+	defer oai.Close()
+	defer qd.Close()
+	defer page.Close()
+
+	_, _ = te.DB.Exec(`UPDATE plans SET config = '{
+  "scraping": {
+    "dynamic_enabled": false,
+    "max_urls_per_bot": 1,
+    "max_pages_per_crawl": 0
+  },
+  "files": {
+    "ocr_enabled": false,
+    "max_size_mb": 5,
+    "max_files_per_bot": 1,
+    "total_storage_mb": 10
+  },
+  "chat": {
+    "allowed_models": ["gpt-4o-mini"],
+    "max_monthly_tokens": 100000,
+    "rag": {
+      "top_k": 3,
+      "max_context_tokens": 2000
+    }
+  }
+}'::jsonb WHERE code = 'free'`)
+
+	email := "dynamic_free@example.com"
+	token := authToken(t, te.Server.URL, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, email)
+
+	create := map[string]any{"name": "Dynamic Disabled Bot"}
+	cbj, _ := json.Marshal(create)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
+		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
+	}
+	var bot chatbot
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	var body strings.Builder
+	mw := multipart.NewWriter(&body)
+	mw.WriteField("source_type", "url")
+	mw.WriteField("source_url", page.URL)
+	mw.Close()
+
+	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body.String()))
+	reqS.Header.Set("Authorization", "Bearer "+token)
+	reqS.Header.Set("Content-Type", mw.FormDataContentType())
+	resS, _ := http.DefaultClient.Do(reqS)
+	if resS.StatusCode != http.StatusCreated {
+		t.Fatalf("expected url source 201, got %d", resS.StatusCode)
+	}
+	var sid map[string]string
+	json.NewDecoder(resS.Body).Decode(&sid)
+	resS.Body.Close()
+	sourceID := sid["id"]
+
+	waitForProcessing(t, te, token, sourceID)
+
+	src, err := db.GetSourceByID(context.Background(), te.DB, sourceID)
+	if err != nil {
+		t.Fatalf("failed to load source: %v", err)
+	}
+	if src == nil {
+		t.Fatalf("expected source to exist")
+	}
+	if src.ChunkCount != 0 {
+		t.Fatalf("expected zero chunks for dynamic-disabled free plan, got %d", src.ChunkCount)
 	}
 }
 

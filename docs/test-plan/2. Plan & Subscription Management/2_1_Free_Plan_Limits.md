@@ -131,14 +131,14 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.9 Dynamic Scraping Disabled
+### 2.1.9 Dynamic Scraping Disabled [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Add URL requiring JavaScript rendering | Source created |
-| 2 | Check scraped content | Static HTML only (no JS-rendered content) |
+| 1 | Add URL requiring JavaScript rendering | Source created [x] |
+| 2 | Check scraped content | Static HTML only (no JS-rendered content) [x] |
 
 **Implementation Plan:**
 - **Test File:** `internal/integration/plan_limits_free_test.go`
