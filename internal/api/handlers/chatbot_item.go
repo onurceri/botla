@@ -177,9 +177,50 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	if req.ThresholdConfig != nil && req.ThresholdConfig.FallbackMode == "escalate" {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil || !plan.Config.Guardrails.CanUseEscalateFallback {
+	if req.AllowedDomains != nil {
+		planSecurity, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if planErr != nil || planSecurity == nil || !planSecurity.Config.Security.SecureEmbedEnabled {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Secure embed is not available on your plan",
+				"upgrade_required": true,
+				"feature":          "secure_embed",
+			})
+			return
+		}
+	}
+
+	if req.ThresholdConfig != nil {
+		planGuardrails, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if planErr != nil || planGuardrails == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if (req.ThresholdConfig.HighThreshold != 0 || req.ThresholdConfig.MediumThreshold != 0 || req.ThresholdConfig.ShowConfidenceWarning) && !planGuardrails.Config.Guardrails.CanCustomizeThresholds {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Threshold customization is not available on your plan",
+				"upgrade_required": true,
+				"feature":          "thresholds",
+			})
+			return
+		}
+
+		if req.ThresholdConfig.FallbackMode == "smart" && !planGuardrails.Config.Guardrails.CanUseSmartFallback {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Smart fallback is not available on your plan",
+				"upgrade_required": true,
+				"feature":          "smart_fallback",
+			})
+			return
+		}
+
+		if req.ThresholdConfig.FallbackMode == "escalate" && !planGuardrails.Config.Guardrails.CanUseEscalateFallback {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -192,14 +233,28 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 	}
 
 	if req.HandoffEnabled != nil && *req.HandoffEnabled {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil || !plan.Config.Guardrails.CanUseEscalateFallback {
+		planGuardrails, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if planErr != nil || planGuardrails == nil || !planGuardrails.Config.Guardrails.CanUseEscalateFallback {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":            "Human handoff is not available on your plan",
 				"upgrade_required": true,
 				"feature":          "escalate_fallback",
+			})
+			return
+		}
+	}
+
+	if req.TopicRestrictions != nil {
+		planTopics, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
+		if planErr != nil || planTopics == nil || !planTopics.Config.Guardrails.CanManageTopics {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":            "Topic restrictions are not available on your plan",
+				"upgrade_required": true,
+				"feature":          "topic_restrictions",
 			})
 			return
 		}
