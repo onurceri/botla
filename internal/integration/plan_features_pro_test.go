@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/models"
 )
 
 func updateProPlanConfig(t *testing.T, te *TestEnv) {
@@ -366,6 +368,25 @@ func TestProPlan_PDFLimits(t *testing.T) {
 			t.Fatalf("expected 413 for large PDF, got %d", resS.StatusCode)
 		}
 		resS.Body.Close()
+	}
+}
+
+func TestProPlan_PDF_OCREnabledFlag(t *testing.T) {
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	updateProPlanConfig(t, te)
+
+	var cfg models.PlanConfig
+	err = te.DB.QueryRow(`SELECT config FROM plans WHERE code = 'pro'`).Scan(&cfg)
+	if err != nil {
+		t.Fatalf("failed to load pro plan config: %v", err)
+	}
+	if !cfg.Files.OCREnabled {
+		t.Fatalf("expected pro plan OCR to be enabled")
 	}
 }
 

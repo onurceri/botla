@@ -29,7 +29,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ## Test Cases
 
-### 2.2.1 Model Selection - gpt-4o Available
+### [x] 2.2.1 Model Selection - gpt-4o Available
 **Priority:** Critical  
 **Type:** Integration Test
 
@@ -50,7 +50,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.2 Monthly Token Limit - 1,000,000
+### [x] 2.2.2 Monthly Token Limit - 1,000,000
 **Priority:** High  
 **Type:** Integration Test
 
@@ -71,7 +71,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.3 PDF Limits - 20 per Bot, 20MB each
+### [x] 2.2.3 PDF Limits - 20 per Bot, 20MB each
 **Priority:** High  
 **Type:** Integration Test
 
@@ -92,7 +92,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.4 OCR Enabled
+### [-] 2.2.4 OCR Enabled
 **Priority:** Medium  
 **Type:** Integration Test
 
@@ -113,7 +113,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.5 URL Limits - 10 per Bot
+### [x] 2.2.5 URL Limits - 10 per Bot
 **Priority:** High  
 **Type:** Integration Test
 
@@ -133,14 +133,14 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.6 Dynamic Scraping Enabled
+### [-] 2.2.6 Dynamic Scraping Enabled
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Add URL with JS-rendered content | Source created |
-| 2 | Check scraped content | JS-rendered content included |
+| [x] 1 | Add URL with JS-rendered content | Source created |
+| [ ] 2 | Check scraped content | JS-rendered content included |
 
 **Implementation Plan:**
 - **Test File:** `internal/integration/plan_features_pro_test.go`
@@ -152,7 +152,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.7 Discovery Mode - Max 10 Pages
+### [x] 2.2.7 Discovery Mode - Max 10 Pages
 **Priority:** High  
 **Type:** Integration Test
 
@@ -174,7 +174,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.8 Refresh Available
+### [x] 2.2.8 Refresh Available
 **Priority:** High  
 **Type:** Integration Test
 
@@ -194,7 +194,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.9 Hide Branding Allowed
+### [x] 2.2.9 Hide Branding Allowed
 **Priority:** High  
 **Type:** Integration Test
 
@@ -214,7 +214,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.10 Custom Branding NOT Allowed
+### [x] 2.2.10 Custom Branding NOT Allowed
 **Priority:** Medium  
 **Type:** Integration Test
 
@@ -231,7 +231,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.11 Secure Embed Enabled
+### [x] 2.2.11 Secure Embed Enabled
 **Priority:** High  
 **Type:** Integration Test
 
@@ -250,7 +250,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### 2.2.12 Guardrails Full Access
+### [x] 2.2.12 Guardrails Full Access
 **Priority:** Medium  
 **Type:** Integration Test
 
