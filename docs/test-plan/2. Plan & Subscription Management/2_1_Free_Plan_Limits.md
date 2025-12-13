@@ -42,7 +42,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.4 RAG Configuration Limits
+### 2.1.4 RAG Configuration Limits [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
@@ -87,7 +87,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.7 OCR Disabled
+### 2.1.7 OCR Disabled [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
@@ -239,7 +239,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.14 Ingestion Limits
+### 2.1.14 Ingestion Limits [x]
 **Priority:** High  
 **Type:** Integration Test
 
@@ -259,7 +259,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 
 ---
 
-### 2.1.15 Re-add Cooldown - 60 Minutes
+### 2.1.15 Re-add Cooldown - 60 Minutes [x]
 **Priority:** Medium  
 **Type:** Integration Test
 
