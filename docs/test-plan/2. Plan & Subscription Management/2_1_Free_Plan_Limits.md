@@ -37,7 +37,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | Use tokens up to 99,999 | Chat succeeds |
-| 2 | Use chat that exceeds 100,000 total | 429 Too Many Requests |
+| 2 | Use chat that exceeds 100,000 total | 402 Payment Required |
 | 3 | Response includes upgrade message | Contains plan upgrade info |
 
 ---
@@ -72,7 +72,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | Upload files totaling 10MB | Success |
-| 2 | Upload additional file | 403 Forbidden (storage exceeded) |
+| 2 | Upload additional file | 402 Payment Required (storage exceeded) |
 
 ---
 
@@ -160,7 +160,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | 1 | Add 50 sources in a month | All succeed |
-| 2 | Add 51st source | 403 Forbidden (max_monthly_ingestions) |
+| 2 | Add 51st source | 402 Payment Required (max_monthly_ingestions) |
 
 ---
 
@@ -172,7 +172,7 @@ This test plan verifies all Free plan restrictions are properly enforced both on
 |------|--------|-----------------|
 | 1 | Add URL source | 201 Created |
 | 2 | Delete source | 200 OK |
-| 3 | Re-add same URL immediately | 403 Forbidden (cooldown) |
+| 3 | Re-add same URL immediately | 429 Too Many Requests (cooldown) |
 | 4 | Wait 60 minutes, re-add | 201 Created |
 
 ---
