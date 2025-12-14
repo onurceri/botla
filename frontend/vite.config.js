@@ -15,6 +15,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  build: {
+    outDir: '../dist',  // Output to project root /dist
+    emptyOutDir: true,
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
