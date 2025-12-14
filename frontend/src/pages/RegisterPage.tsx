@@ -48,7 +48,7 @@ const RegisterPage = () => {
         
         <div className="relative z-10 flex items-center gap-2 font-bold text-2xl">
           <img src="/logo-128.png" alt="Botla Logo" className="w-10 h-10 rounded-xl shadow-lg shadow-primary/20" />
-          <span className="text-foreground">Botla.co</span>
+          <span className="text-foreground">botla.app</span>
         </div>
 
         <div className="relative z-10 max-w-lg">
@@ -61,7 +61,7 @@ const RegisterPage = () => {
         </div>
 
         <div className="relative z-10 text-sm text-muted-foreground">
-          © 2024 Botla.co. Tüm hakları saklıdır.
+          © 2024 botla.app. Tüm hakları saklıdır.
         </div>
       </div>
 

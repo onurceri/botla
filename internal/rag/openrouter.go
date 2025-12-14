@@ -104,7 +104,7 @@ func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		// OpenRouter specific headers
-		req.Header.Set("HTTP-Referer", "https://botla.co") // Placeholder
+		req.Header.Set("HTTP-Referer", "https://botla.app") // Placeholder
 		req.Header.Set("X-Title", "Botla")
 
 		res, err := c.http.Do(req)
@@ -147,7 +147,7 @@ func (c *OpenRouterClient) CreateEmbeddingsBatch(ctx context.Context, texts []st
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/embeddings", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("HTTP-Referer", "https://botla.co")
+		req.Header.Set("HTTP-Referer", "https://botla.app")
 		req.Header.Set("X-Title", "Botla")
 
 		res, err := c.http.Do(req)
@@ -213,7 +213,7 @@ func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.C
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/chat/completions", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("HTTP-Referer", "https://botla.co")
+		req.Header.Set("HTTP-Referer", "https://botla.app")
 		req.Header.Set("X-Title", "Botla")
 
 		res, err := c.http.Do(req)
@@ -278,7 +278,7 @@ func (c *OpenRouterClient) CreateCompletionWithTools(
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/chat/completions", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("HTTP-Referer", "https://botla.co")
+		req.Header.Set("HTTP-Referer", "https://botla.app")
 		req.Header.Set("X-Title", "Botla")
 
 		res, err := c.http.Do(req)

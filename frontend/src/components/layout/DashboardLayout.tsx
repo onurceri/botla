@@ -127,7 +127,7 @@ const DashboardLayout = () => {
           <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
             <img src="/logo-128.png" alt="Botla Logo" className="w-8 h-8 rounded-lg shadow-lg shadow-primary/20" />
             <span className={cn("text-foreground", isCollapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>
-              Botla.co
+              botla.app
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">

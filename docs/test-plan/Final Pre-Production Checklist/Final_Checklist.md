@@ -48,7 +48,7 @@ This is the final checklist before deploying to production.
 2. Verify backup schedule in cron/cloud provider.
 3. Trigger test error and verify alert in Sentry.
 4. Check logs in Kibana/CloudWatch.
-5. Verify `https://api.botla.co` works.
+5. Verify `https://api.botla.app` works.
 
 ---
 

@@ -169,7 +169,7 @@ export function Component({ title, onAction }: ComponentProps) {
 VITE_API_URL=http://localhost:8080
 
 # .env.production
-VITE_API_URL=https://api.botla.co
+VITE_API_URL=https://api.botla.app
 ```
 
 ## UI Component Library

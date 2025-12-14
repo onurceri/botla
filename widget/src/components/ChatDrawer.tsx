@@ -136,7 +136,7 @@ export function ChatDrawer(
               )}
             </div>
           ) : !hideBranding ? (
-            <div className="cbw-brand">Powered by <a href="https://botla.co" target="_blank" rel="noreferrer">Botla</a></div>
+            <div className="cbw-brand">Powered by <a href="https://botla.app" target="_blank" rel="noreferrer">Botla</a></div>
           ) : (
             <div></div>
           )}

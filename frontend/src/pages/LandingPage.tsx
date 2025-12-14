@@ -72,7 +72,7 @@ const Navbar = () => {
             <div className="bg-primary/10 p-2 rounded-xl border border-primary/15">
               <Bot className="w-5 h-5 text-primary" />
             </div>
-            <span className="font-semibold text-lg tracking-tight text-foreground">Botla.co</span>
+            <span className="font-semibold text-lg tracking-tight text-foreground">botla.app</span>
           </div>
 
           {/* Desktop Nav */}
@@ -375,7 +375,7 @@ const Pricing = () => {
         { text: "1 Web Sitesi Kaynağı", included: true },
         { text: "1 PDF Dosyası (Max 5MB)", included: true },
         { text: "GPT-4o Mini Modeli", included: true },
-        { text: "Botla.co İmzası", included: true },
+        { text: "botla.app İmzası", included: true },
         { text: "Gelişmiş Guardrails", included: false },
         { text: "Dinamik Web Tarama", included: false },
       ]
@@ -399,7 +399,7 @@ const Pricing = () => {
     {
       title: "Ultra",
       price: "999 TL",
-      cta: { text: "İletişime Geç", href: "mailto:sales@botla.co" },
+      cta: { text: "İletişime Geç", href: "mailto:sales@botla.app" },
       features: [
         { text: "100 Adet Chatbot", included: true },
         { text: "Aylık 5.000.000 Token", included: true },
@@ -633,7 +633,7 @@ const Footer = () => (
             <div className="bg-primary p-2 rounded-lg">
               <Bot className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="font-bold text-2xl text-background">Botla.co</span>
+            <span className="font-bold text-2xl text-background">botla.app</span>
           </div>
           <p className="text-background/70 mb-6">
             Yeni nesil web siteleri için geliştirilmiş, verilerinizle eğitilen akıllı müşteri asistanı.
@@ -669,7 +669,7 @@ const Footer = () => (
       </div>
       
       <div className="border-t border-background/15 mt-12 pt-8 text-center text-sm text-background/60">
-        &copy; {new Date().getFullYear()} Botla.co. Tüm hakları saklıdır.
+        &copy; {new Date().getFullYear()} botla.app. Tüm hakları saklıdır.
       </div>
     </div>
   </footer>
