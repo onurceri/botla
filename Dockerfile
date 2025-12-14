@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine3.19 AS builder
+FROM golang:1.25-alpine3.19 AS builder
 RUN apk add --no-cache git ca-certificates make mupdf-dev build-base
 WORKDIR /app
 COPY go.mod go.sum ./
