@@ -184,11 +184,11 @@ func UpdateSourceSuggestions(ctx context.Context, pool *sql.DB, id string, sugge
 	return err
 }
 
-// CountSourcesByType counts sources of a specific type for a chatbot.
+// CountSourcesByType counts non-deleted sources of a specific type for a chatbot.
 func CountSourcesByType(ctx context.Context, pool *sql.DB, chatbotID string, sourceType string) (int, error) {
 	var count int
 	err := pool.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM data_sources WHERE chatbot_id=$1 AND source_type=$2
+		SELECT COUNT(*) FROM data_sources WHERE chatbot_id=$1 AND source_type=$2 AND deleted_at IS NULL
 	`, chatbotID, sourceType).Scan(&count)
 	return count, err
 }

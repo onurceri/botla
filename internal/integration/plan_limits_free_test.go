@@ -122,6 +122,103 @@ func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
 	}
 }
 
+func TestFreePlan_URLLimit_AllowsNewURLAfterDelete(t *testing.T) {
+	oai := startOpenAIStub()
+	qd := startQdrantStub()
+	page := startHTMLStub()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("QDRANT_URL", qd.URL)
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+	defer oai.Close()
+	defer qd.Close()
+	defer page.Close()
+
+	_, _ = te.DB.Exec(`UPDATE plans SET config = '{
+  "scraping": {
+    "dynamic_enabled": false,
+    "max_urls_per_bot": 1,
+    "max_pages_per_crawl": 0
+  },
+  "files": {
+    "ocr_enabled": false,
+    "max_size_mb": 5,
+    "max_files_per_bot": 1,
+    "total_storage_mb": 10
+  },
+  "chat": {
+    "allowed_models": ["gpt-4o-mini"],
+    "max_monthly_tokens": 100000,
+    "rag": {
+      "top_k": 3,
+      "max_context_tokens": 2000
+    }
+  }
+}'::jsonb WHERE code = 'free'`)
+
+	token := authToken(t, te.Server.URL, "url_limit_delete@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "url_limit_delete@example.com")
+
+	create := map[string]any{"name": "URL Limit Delete Bot"}
+	cbj, _ := json.Marshal(create)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
+		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
+	}
+	var bot chatbot
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	var body1 strings.Builder
+	mw1 := multipart.NewWriter(&body1)
+	mw1.WriteField("source_type", "url")
+	mw1.WriteField("source_url", page.URL+"/1")
+	mw1.Close()
+
+	reqS1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body1.String()))
+	reqS1.Header.Set("Authorization", "Bearer "+token)
+	reqS1.Header.Set("Content-Type", mw1.FormDataContentType())
+	resS1, _ := http.DefaultClient.Do(reqS1)
+	if resS1.StatusCode != http.StatusCreated {
+		t.Fatalf("expected first URL 201, got %d", resS1.StatusCode)
+	}
+	var first map[string]string
+	json.NewDecoder(resS1.Body).Decode(&first)
+	resS1.Body.Close()
+	sourceID := first["id"]
+
+	reqDel, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/sources/"+sourceID, nil)
+	reqDel.Header.Set("Authorization", "Bearer "+token)
+	resDel, _ := http.DefaultClient.Do(reqDel)
+	if resDel.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected delete 204, got %d", resDel.StatusCode)
+	}
+	resDel.Body.Close()
+
+	var body2 strings.Builder
+	mw2 := multipart.NewWriter(&body2)
+	mw2.WriteField("source_type", "url")
+	mw2.WriteField("source_url", page.URL+"/2")
+	mw2.Close()
+
+	reqS2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body2.String()))
+	reqS2.Header.Set("Authorization", "Bearer "+token)
+	reqS2.Header.Set("Content-Type", mw2.FormDataContentType())
+	resS2, _ := http.DefaultClient.Do(reqS2)
+	if resS2.StatusCode != http.StatusCreated {
+		t.Fatalf("expected second URL 201 after delete, got %d", resS2.StatusCode)
+	}
+	resS2.Body.Close()
+}
+
 func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
 	oai := startOpenAIStub()
 	qd := startQdrantStub()
