@@ -1,6 +1,8 @@
 import { useParams } from 'react-router-dom'
 import EmbeddingCodePanel from '../../components/EmbeddingCodePanel'
 import { useChatbotContext } from '../../context/ChatbotContext'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { SaveIndicator } from '../../components/SaveIndicator'
 
 export default function ConnectTab() {
   const { id = '' } = useParams()
@@ -8,13 +10,21 @@ export default function ConnectTab() {
     secureEmbedEnabled, setSecureEmbedEnabled,
     allowedDomains, setAllowedDomains,
     embedSecret, setEmbedSecret,
-    planConfig
+    planConfig,
+    buildConnectPayload,
   } = useChatbotContext()
+
+  const { isSaving, lastSavedAt, error } = useAutoSave({
+    payload: buildConnectPayload(),
+  })
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">Bağlantı & Entegrasyon</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Bağlantı & Entegrasyon</h2>
+          <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
+        </div>
         <p className="text-muted-foreground">
           Botunuzu web sitenize eklemek için gerekli kodları ve güvenlik ayarlarını yönetin.
         </p>

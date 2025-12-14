@@ -174,6 +174,78 @@ export function useChatbotForm() {
     }
   }
 
+  function buildOverviewPayload() {
+    return {
+      name,
+      custom_instruction: customInstruction,
+      model,
+      temperature,
+      max_tokens: maxTokens,
+    }
+  }
+
+  function buildGuardrailsPayload() {
+    return {
+      threshold_config: thresholdConfig,
+      fallback_messages: fallbackMessages,
+      topic_restrictions: topicRestrictions,
+    }
+  }
+
+  function buildHandoffPayload() {
+    return {
+      handoff_enabled: handoffEnabled,
+      handoff_type: handoffType,
+      handoff_config: handoffEnabled ? handoffConfig : null,
+    }
+  }
+
+  function buildSuggestionsPayload() {
+    return {
+      suggestions_enabled: suggestionsEnabled,
+      suggested_questions: suggestedQuestions,
+    }
+  }
+
+  function buildAppearancePayload() {
+    return {
+      bot_display_name: botDisplayName,
+      bot_icon: botIcon,
+      welcome_message: welcomeMessage,
+      position,
+      chat_font_family: chatFontFamily,
+      theme_color: themeColor,
+      chat_background_color: chatBackgroundColor,
+      chat_header_color: chatHeaderColor,
+      chat_header_text_color: chatHeaderTextColor,
+      bot_message_color: botMessageColor,
+      bot_message_text_color: botMessageTextColor,
+      user_message_color: userMessageColor,
+      user_message_text_color: userMessageTextColor,
+      hide_branding: hideBranding,
+      custom_branding: hideBranding ? customBranding : null,
+    }
+  }
+
+  function buildConnectPayload() {
+    return {
+      secure_embed_enabled: secureEmbedEnabled,
+      allowed_domains: secureEmbedEnabled ? allowedDomains : undefined,
+      embed_secret: secureEmbedEnabled ? embedSecret : undefined,
+    }
+  }
+
+  function buildSourceSettingsPayload() {
+    return {
+      discovery_mode: discoveryMode,
+      refresh_policy: refreshPolicy,
+      refresh_frequency: refreshFrequency,
+      include_paths: includePaths,
+      exclude_paths: excludePaths,
+      selector_whitelist: selectorWhitelist,
+    }
+  }
+
   return {
     name, setName,
     description, setDescription,
@@ -209,6 +281,13 @@ export function useChatbotForm() {
     lastRefreshAt,
     hideBranding, setHideBranding,
     customBranding, setCustomBranding,
+    buildOverviewPayload,
+    buildGuardrailsPayload,
+    buildHandoffPayload,
+    buildSuggestionsPayload,
+    buildAppearancePayload,
+    buildConnectPayload,
+    buildSourceSettingsPayload,
     setFromServer,
     validate,
     buildPayload,

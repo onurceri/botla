@@ -25,7 +25,7 @@ function ChatbotDetailContent() {
     buildPayload
   } = useChatbotContext()
 
-  const [isSaving, setIsSaving] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Test Chat State
@@ -42,35 +42,30 @@ function ChatbotDetailContent() {
     } catch {}
   }, [])
 
-  const handleSave = async () => {
+  const handleCreate = async () => {
     if (!validate()) {
       toasts.error('Lütfen bir bot ismi girin.')
       return
     }
 
-    if (isNew && !currentWorkspace) {
+    if (!currentWorkspace) {
       toasts.error('Lütfen önce bir çalışma alanı seçin.')
       return
     }
 
-    setIsSaving(true)
+    setIsCreating(true)
     const payload = buildPayload()
 
     try {
-      if (isNew) {
-        const { data } = await api.post('/api/v1/chatbots', payload)
-        toast('Chatbot başarıyla oluşturuldu.', 'success')
-        navigate(`/dashboard/chatbots/${data.id}`)
-      } else {
-        await api.put(`/api/v1/chatbots/${id}`, payload)
-        toast('Değişiklikler kaydedildi.', 'success')
-      }
+      const { data } = await api.post('/api/v1/chatbots', payload)
+      toast('Chatbot başarıyla oluşturuldu.', 'success')
+      navigate(`/dashboard/chatbots/${data.id}`)
     } catch (error: any) {
       console.error(error)
       const msg = error.response?.data?.error || 'Bir hata oluştu. Lütfen tekrar deneyin.'
       toasts.error(msg)
     } finally {
-      setIsSaving(false)
+      setIsCreating(false)
     }
   }
 
@@ -106,10 +101,10 @@ function ChatbotDetailContent() {
         isNew={isNew}
         name={name}
         isDeleting={isDeleting}
-        isSaving={isSaving}
+        isCreating={isCreating}
         disabled={isOrgLoading}
         onDelete={handleDelete}
-        onSave={handleSave}
+        onCreate={isNew ? handleCreate : undefined}
       />
 
       {isNew ? (

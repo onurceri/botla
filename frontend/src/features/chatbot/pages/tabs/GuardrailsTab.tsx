@@ -1,18 +1,28 @@
 import GuardrailsSettings from '../../components/GuardrailsSettings'
 import { useChatbotContext } from '../../context/ChatbotContext'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { SaveIndicator } from '../../components/SaveIndicator'
 
 export default function GuardrailsTab() {
   const {
     fallbackMessages, setFallbackMessages,
     topicRestrictions, setTopicRestrictions,
     thresholdConfig, setThresholdConfig,
-    planConfig
+    planConfig,
+    buildGuardrailsPayload,
   } = useChatbotContext()
+
+  const { isSaving, lastSavedAt, error } = useAutoSave({
+    payload: buildGuardrailsPayload(),
+  })
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">Güvenlik ve Sınırlar</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Güvenlik ve Sınırlar</h2>
+          <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
+        </div>
         <p className="text-muted-foreground">
           Botunuzun hangi konularda cevap vereceğini ve güven eşiklerini yapılandırın.
         </p>

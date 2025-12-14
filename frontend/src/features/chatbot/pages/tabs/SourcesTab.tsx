@@ -8,6 +8,8 @@ import { useSourceOps } from '../../hooks/useSourceOps'
 import { useChatbotContext } from '../../context/ChatbotContext'
 import { uploadPDFSource, uploadTextSource, uploadURLSource } from '@/api/source'
 import { Inbox, Database, Plus } from 'lucide-react'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { SaveIndicator } from '../../components/SaveIndicator'
 
 export default function SourcesTab() {
   const { id = '' } = useParams()
@@ -27,7 +29,12 @@ export default function SourcesTab() {
     includePaths, setIncludePaths,
     excludePaths, setExcludePaths,
     selectorWhitelist, setSelectorWhitelist,
+    buildSourceSettingsPayload,
   } = useChatbotContext()
+
+  const { isSaving, lastSavedAt, error } = useAutoSave({
+    payload: buildSourceSettingsPayload(),
+  })
 
   const maxFiles = planConfig?.files?.max_files_per_bot || Infinity
   const maxUrls = planConfig?.scraping?.max_urls_per_bot || Infinity
@@ -44,8 +51,11 @@ export default function SourcesTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-       <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">Bilgi Bankası</h2>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Bilgi Bankası</h2>
+          <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
+        </div>
         <p className="text-muted-foreground">
           Botunuzun soruları cevaplarken kullanacağı kaynakları yönetin.
         </p>

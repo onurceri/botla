@@ -29,8 +29,9 @@ describe('IdentitySection', () => {
     const iconInput = screen.getByLabelText('Bot İkon URL') as HTMLInputElement
     fireEvent.change(iconInput, { target: { value: 'https://img.png' } })
     expect(setIcon).toHaveBeenCalledWith('https://img.png')
-    const welcomeInput = screen.getByLabelText('Karşılama Mesajı') as HTMLInputElement
+    const welcomeInput = screen.getByLabelText(/Karşılama Mesajı/) as HTMLTextAreaElement
     fireEvent.change(welcomeInput, { target: { value: 'Hoş Geldiniz' } })
     expect(setWelcome).toHaveBeenCalledWith('Hoş Geldiniz')
+    expect(screen.getByText(/karakter kaldı/i)).toBeInTheDocument()
   })
 })

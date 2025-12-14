@@ -61,7 +61,7 @@ export default function ColorsSection({ isExpanded, onToggle, chatBackgroundColo
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="bot-msg-color" className="text-xs font-medium text-muted-foreground uppercase">Bot Mesaj</label>
+              <label htmlFor="bot-msg-color" className="text-xs font-medium text-muted-foreground uppercase">Bot Mesaj Arka Planı</label>
               <div className="flex gap-2 items-center">
                 <Input id="bot-msg-color" type="color" value={botMessageColor} onChange={(e) => setBotMessageColor(e.target.value)} className="w-8 h-8 p-0 border-0 rounded-full overflow-hidden cursor-pointer" />
                 <Input value={botMessageColor} onChange={(e) => setBotMessageColor(e.target.value)} className="flex-1 bg-background font-mono text-xs" />
@@ -78,7 +78,7 @@ export default function ColorsSection({ isExpanded, onToggle, chatBackgroundColo
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="user-msg-color" className="text-xs font-medium text-muted-foreground uppercase">Kullanıcı Mesaj</label>
+              <label htmlFor="user-msg-color" className="text-xs font-medium text-muted-foreground uppercase">Kullanıcı Mesaj Arka Planı</label>
               <div className="flex gap-2 items-center">
                 <Input id="user-msg-color" type="color" value={userMessageColor} onChange={(e) => setUserMessageColor(e.target.value)} className="w-8 h-8 p-0 border-0 rounded-full overflow-hidden cursor-pointer" />
                 <Input value={userMessageColor} onChange={(e) => setUserMessageColor(e.target.value)} className="flex-1 bg-background font-mono text-xs" />
@@ -97,4 +97,3 @@ export default function ColorsSection({ isExpanded, onToggle, chatBackgroundColo
     </div>
   )
 }
-

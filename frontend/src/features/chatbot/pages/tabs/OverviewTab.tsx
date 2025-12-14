@@ -11,8 +11,10 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import { useChatbotContext } from '../../context/ChatbotContext'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { SaveIndicator } from '../../components/SaveIndicator'
 
 export default function OverviewTab() {
   const {
@@ -21,12 +23,21 @@ export default function OverviewTab() {
     model, setModel,
     temperature, setTemperature,
     maxTokens, setMaxTokens,
+    buildOverviewPayload,
   } = useChatbotContext()
+
+  const { isSaving, lastSavedAt, error } = useAutoSave({
+    payload: buildOverviewPayload(),
+    enabled: !!name.trim(),
+  })
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">Genel Bakış</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Genel Bakış</h2>
+          <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
+        </div>
         <p className="text-muted-foreground">
           Chatbotunuzun kimliğini ve temel yapay zeka davranışlarını yapılandırın.
         </p>

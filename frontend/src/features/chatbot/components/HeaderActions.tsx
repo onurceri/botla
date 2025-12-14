@@ -5,20 +5,20 @@ type HeaderActionsProps = {
   isNew: boolean
   name: string
   isDeleting: boolean
-  isSaving: boolean
+  isCreating?: boolean
   disabled?: boolean
   onDelete: () => void
-  onSave: () => void
+  onCreate?: () => void
 }
 
 export default function HeaderActions({
   isNew,
   name,
   isDeleting,
-  isSaving,
+  isCreating = false,
   disabled,
   onDelete,
-  onSave,
+  onCreate,
 }: HeaderActionsProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
@@ -43,10 +43,18 @@ export default function HeaderActions({
             <Trash2 className="w-4 h-4" />
           </Button>
         )}
-        <Button onClick={onSave} className="gap-2" isLoading={isSaving} disabled={disabled} aria-label={isNew ? 'Oluştur' : 'Değişiklikleri Kaydet'}>
-          <Save className="w-4 h-4" />
-          {isNew ? 'Oluştur' : 'Değişiklikleri Kaydet'}
-        </Button>
+        {isNew && onCreate && (
+          <Button
+            onClick={onCreate}
+            className="gap-2"
+            isLoading={isCreating}
+            disabled={disabled}
+            aria-label="Oluştur"
+          >
+            <Save className="w-4 h-4" />
+            Oluştur
+          </Button>
+        )}
       </div>
     </div>
   )

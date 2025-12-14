@@ -1,5 +1,7 @@
 import HandoffSettings from '../../components/HandoffSettings'
 import { useChatbotContext } from '../../context/ChatbotContext'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { SaveIndicator } from '../../components/SaveIndicator'
 
 export default function HandoffTab() {
   const {
@@ -7,12 +9,20 @@ export default function HandoffTab() {
     handoffType, setHandoffType,
     handoffConfig, setHandoffConfig,
     planConfig,
+    buildHandoffPayload,
   } = useChatbotContext()
+
+  const { isSaving, lastSavedAt, error } = useAutoSave({
+    payload: buildHandoffPayload(),
+  })
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">İnsan Devri</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">İnsan Devri</h2>
+          <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
+        </div>
         <p className="text-muted-foreground">
           Botun cevap veremediği veya kullanıcının talep ettiği durumlarda konuşmayı insana yönlendirin.
         </p>

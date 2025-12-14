@@ -1,5 +1,8 @@
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { ChevronDown, ChevronRight, User } from 'lucide-react'
+
+const WELCOME_MESSAGE_MAX_LENGTH = 200
 
 type Props = {
   isExpanded: boolean
@@ -36,12 +39,28 @@ export default function IdentitySection({ isExpanded, onToggle, botDisplayName, 
             <Input id="bot-icon-url" value={botIcon} onChange={(e) => setBotIcon(e.target.value)} placeholder="https://..." className="bg-background" />
           </div>
           <div className="space-y-2">
-            <label htmlFor="welcome-message" className="text-xs font-medium text-muted-foreground uppercase">Karşılama Mesajı</label>
-            <Input id="welcome-message" value={welcomeMessage} onChange={(e) => setWelcomeMessage(e.target.value)} className="bg-background" />
+            <div className="flex items-center justify-between">
+              <label htmlFor="welcome-message" className="text-xs font-medium text-muted-foreground uppercase">Karşılama Mesajı (İlk Bot Mesajı)</label>
+              <span className="text-[11px] text-muted-foreground">
+                {welcomeMessage.length}/{WELCOME_MESSAGE_MAX_LENGTH}
+              </span>
+            </div>
+            <Textarea
+              id="welcome-message"
+              value={welcomeMessage}
+              onChange={(e) => setWelcomeMessage(e.target.value)}
+              className="bg-background resize-none"
+              maxLength={WELCOME_MESSAGE_MAX_LENGTH}
+              rows={3}
+            />
+            <div className="flex justify-end">
+              <span className="text-[11px] text-muted-foreground">
+                {Math.max(0, WELCOME_MESSAGE_MAX_LENGTH - welcomeMessage.length).toLocaleString('tr-TR')} karakter kaldı
+              </span>
+            </div>
           </div>
         </div>
       )}
     </div>
   )
 }
-

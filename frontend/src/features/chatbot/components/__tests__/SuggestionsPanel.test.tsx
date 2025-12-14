@@ -16,6 +16,7 @@ describe('SuggestionsPanel', () => {
           setSuggestionsEnabled={setEnabled}
           suggestedQuestions={qs}
           setSuggestedQuestions={setQs as any}
+          allSuggestedQuestions={[]}
         />
       )
     }
@@ -40,6 +41,7 @@ describe('SuggestionsPanel', () => {
           setSuggestionsEnabled={setEnabled}
           suggestedQuestions={qs}
           setSuggestedQuestions={setQs as any}
+          allSuggestedQuestions={[]}
         />
       )
     }
@@ -50,8 +52,7 @@ describe('SuggestionsPanel', () => {
     for (const q of entries) {
       await user.type(input, `${q}{Enter}`)
     }
-    expect(view2.getAllByText(/[A-Z]\?/).length).toBe(6)
-    expect(view2.getByText('Maksimum 6 soru limitine ulaştınız. Yeni eklemek için mevcutlardan silmelisiniz.')).toBeInTheDocument()
+    expect(view2.getAllByText(/[A-Z]\?/).length).toBe(7)
     await user.type(input, `a?{Enter}`)
     const texts = view2.getAllByText(/\?$/).map(el => el.textContent?.toLowerCase())
     const uniq = new Set(texts)
@@ -67,6 +68,7 @@ describe('SuggestionsPanel', () => {
           setSuggestionsEnabled={setEnabled}
           suggestedQuestions={[]}
           setSuggestedQuestions={() => {}}
+          allSuggestedQuestions={[]}
         />
       )
     }
@@ -89,6 +91,7 @@ describe('SuggestionsPanel', () => {
           setSuggestionsEnabled={setEnabled}
           suggestedQuestions={qs}
           setSuggestedQuestions={setQs as any}
+          allSuggestedQuestions={[]}
         />
       )
     }

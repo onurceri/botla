@@ -77,7 +77,7 @@ describe('ColorsSection', () => {
     const headerTextInput = headerTextLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
     fireEvent.change(headerTextInput, { target: { value: '#aaaaaa' } })
     expect(setHeaderText).toHaveBeenCalledWith('#aaaaaa')
-    const botMsgLabel = view.getByText('Bot Mesaj')
+    const botMsgLabel = view.getByText('Bot Mesaj Arka Planı')
     const botMsgInput = botMsgLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
     fireEvent.change(botMsgInput, { target: { value: '#bbbbbb' } })
     expect(setBotMsg).toHaveBeenCalledWith('#bbbbbb')
@@ -85,7 +85,7 @@ describe('ColorsSection', () => {
     const botTextInput = botTextLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
     fireEvent.change(botTextInput, { target: { value: '#dddddd' } })
     expect(setBotText).toHaveBeenCalledWith('#dddddd')
-    const userMsgLabel = view.getByText('Kullanıcı Mesaj')
+    const userMsgLabel = view.getByText('Kullanıcı Mesaj Arka Planı')
     const userMsgInput = userMsgLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
     fireEvent.change(userMsgInput, { target: { value: '#eeeeee' } })
     expect(setUserMsg).toHaveBeenCalledWith('#eeeeee')
@@ -115,7 +115,7 @@ describe('ColorsSection', () => {
     )
     const headers = screen.getAllByText('Renkler')
     expect(headers.length).toBeGreaterThan(0)
-    const labels = screen.getAllByText(/(Chat Arka Plan|Header$|Header Yazı|Bot Mesaj|Bot Yazı|Kullanıcı Mesaj|Kullanıcı Yazı)/)
+    const labels = screen.getAllByText(/(Chat Arka Plan|Header$|Header Yazı|Bot Mesaj Arka Planı|Bot Yazı|Kullanıcı Mesaj Arka Planı|Kullanıcı Yazı)/)
     expect(labels.length).toBeGreaterThanOrEqual(7)
     const colorInputs = utils.container.querySelectorAll('input[type="color"]')
     expect(colorInputs.length).toBeGreaterThanOrEqual(6)

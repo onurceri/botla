@@ -9,9 +9,9 @@ describe('SourceList', () => {
     const sources = [
       { id: '1', source_type: 'pdf', original_filename: 'file.pdf', status: 'completed', chunk_count: 3 },
     ] as any
-    render(<SourceList sources={sources} userPlan="pro" onDelete={onDelete} onRefresh={onRefresh} />)
-    expect(screen.getByText('file.pdf')).toBeInTheDocument()
-    const delBtn = screen.getByLabelText('Kaynağı Sil')
+    const { container } = render(<SourceList sources={sources} userPlan="pro" onDelete={onDelete} onRefresh={onRefresh} />)
+    expect(screen.getAllByText('file.pdf').length).toBeGreaterThan(0)
+    const delBtn = container.querySelector('button[aria-label="Kaynağı Sil"]') as HTMLButtonElement
     fireEvent.click(delBtn)
     expect(onDelete).toHaveBeenCalledWith('1')
   })
@@ -27,9 +27,9 @@ describe('SourceList', () => {
     ] as any
     const { container } = render(<SourceList sources={sources} userPlan="pro" onDelete={onDelete} onRefresh={onRefresh} />)
     expect(container.querySelector('span.bg-emerald-100')).toBeTruthy()
-    // Note: there are 2 animate-spin elements due to processing status AND refresh button icon
-    expect(screen.getByText('failed')).toBeInTheDocument()
-    expect(screen.getByText('queued')).toBeInTheDocument()
+    // Note: there may be multiple labels due to mobile + desktop views
+    expect(screen.getAllByText('failed').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('queued').length).toBeGreaterThan(0)
   })
 
   it('shows refresh button only for URL sources', () => {

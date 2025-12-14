@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/api/client'
 import SuggestionsPanel from '../../components/SuggestionsPanel'
 import { useChatbotContext } from '../../context/ChatbotContext'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { SaveIndicator } from '../../components/SaveIndicator'
 
 export default function SuggestionsTab() {
   const { id: chatbotId } = useParams()
@@ -12,9 +14,14 @@ export default function SuggestionsTab() {
     suggestionsEnabled, setSuggestionsEnabled,
     suggestedQuestions, setSuggestedQuestions,
     allSuggestedQuestions, setAllSuggestedQuestions,
+    buildSuggestionsPayload,
   } = useChatbotContext()
 
   const [isRegenerating, setIsRegenerating] = useState(false)
+
+  const { isSaving, lastSavedAt, error } = useAutoSave({
+    payload: buildSuggestionsPayload(),
+  })
 
   const handleRegenerate = async () => {
     if (!chatbotId) return
@@ -42,7 +49,10 @@ export default function SuggestionsTab() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-bold tracking-tight">Konuşma Başlatıcılar</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold tracking-tight">Konuşma Başlatıcılar</h2>
+            <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
+          </div>
           <p className="text-muted-foreground">
             Kullanıcıların sohbeti başlatmasını kolaylaştıracak hazır sorular ekleyin.
           </p>

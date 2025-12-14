@@ -8,6 +8,8 @@ import ColorsSection from '../../components/ColorsSection'
 import BrandingSettings from '../../components/BrandingSettings'
 import PlaygroundPreview from '../../components/PlaygroundPreview'
 import { Smartphone, Palette } from 'lucide-react'
+import { useAutoSave } from '../../hooks/useAutoSave'
+import { SaveIndicator } from '../../components/SaveIndicator'
 
 export default function PlaygroundTab() {
   const { id = '' } = useParams()
@@ -33,13 +35,21 @@ export default function PlaygroundTab() {
     customBranding, setCustomBranding,
     planConfig,
     suggestionsEnabled,
-    suggestedQuestions
+    suggestedQuestions,
+    buildAppearancePayload,
   } = useChatbotContext()
+
+  const { isSaving, lastSavedAt, error } = useAutoSave({
+    payload: buildAppearancePayload(),
+  })
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">Görünüm ve Test</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Görünüm ve Test</h2>
+          <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
+        </div>
         <p className="text-muted-foreground">
           Chatbotunuzun görünümünü özelleştirin ve anlık olarak test edin.
         </p>
