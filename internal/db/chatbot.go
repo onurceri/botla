@@ -345,7 +345,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             chat_font_family=$15, chat_header_color=$16, chat_header_text_color=$17,
             chat_background_color=$18, bot_icon=$19, bot_display_name=$20,
             updated_at=NOW(), allowed_domains=$21, embed_secret=$22, secure_embed_enabled=$23,
-            suggested_questions=$24, suggestions_enabled=$25,
+            suggested_questions=$24, all_suggested_questions=$24, suggestions_enabled=$25,
             include_paths=$26, exclude_paths=$27, selector_whitelist=$28, discovery_mode=$29,
             refresh_policy=$30, refresh_frequency=$31,
             hide_branding=$32, custom_branding=$33,
@@ -375,7 +375,7 @@ func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, id string, sugg
 	if err != nil {
 		return err
 	}
-	_, err = pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, updated_at=NOW() WHERE id=$2`, js, id)
+	_, err = pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, all_suggested_questions=$1, updated_at=NOW() WHERE id=$2`, js, id)
 	return err
 }
 

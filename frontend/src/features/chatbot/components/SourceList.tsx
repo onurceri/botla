@@ -1,10 +1,17 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
-import { CheckCircle2, RefreshCw, AlertCircle, Trash2 } from 'lucide-react'
+import { CheckCircle2, RefreshCw, AlertCircle, Trash2, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
-type Source = { id: string; source_type: string; original_filename?: string; source_url?: string; status: string; chunk_count: number }
+type Source = { id: string; source_type: string; original_filename?: string; source_url?: string; status: string; chunk_count: number; capability_summary?: string }
 
 interface SourceListProps {
   sources: Source[]
@@ -51,6 +58,24 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
                   <span className="font-medium text-foreground">{s.chunk_count}</span>
                   <span>Parça</span>
                </div>
+               {s.capability_summary && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="link" className="p-0 h-auto text-xs text-muted-foreground hover:text-primary mt-1">
+                        <FileText className="w-3 h-3 mr-1" />
+                        Özeti Göster
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Kaynak Özeti</DialogTitle>
+                      </DialogHeader>
+                      <div className="mt-4 text-sm text-foreground whitespace-pre-wrap">
+                        {s.capability_summary}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+               )}
             </CardContent>
             <CardFooter className="pt-2 flex justify-end gap-2 border-t">
               {s.source_type === 'url' && (
@@ -93,6 +118,7 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
               <th className="px-4 py-3">Kaynak Adı</th>
               <th className="px-4 py-3">Durum</th>
               <th className="px-4 py-3">Parçalar</th>
+              <th className="px-4 py-3">Özet</th>
               <th className="px-4 py-3 text-right">İşlem</th>
             </tr>
           </thead>
@@ -119,6 +145,27 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
                   </span>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{s.chunk_count}</td>
+                <td className="px-4 py-3">
+                  {s.capability_summary ? (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" title="Özeti Gör">
+                           <FileText className="w-4 h-4" />
+                         </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                           <DialogTitle>Kaynak Özeti</DialogTitle>
+                        </DialogHeader>
+                        <div className="mt-4 text-sm text-foreground whitespace-pre-wrap">
+                             {s.capability_summary}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <span className="text-muted-foreground/30 text-xs">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right space-x-1">
                   {s.source_type === 'url' && (
                     <TooltipProvider>

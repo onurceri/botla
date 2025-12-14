@@ -117,28 +117,28 @@ func TestInitChatContext_BotName(t *testing.T) {
 	service := &ChatService{}
 
 	tests := []struct {
-		name            string
-		botName         string
-		botDisplayName  *string
-		wantBotName     string
+		name           string
+		botName        string
+		botDisplayName *string
+		wantBotName    string
 	}{
 		{
-			name:        "uses bot name when display name is nil",
-			botName:     "TestBot",
+			name:           "uses bot name when display name is nil",
+			botName:        "TestBot",
 			botDisplayName: nil,
-			wantBotName: "TestBot",
+			wantBotName:    "TestBot",
 		},
 		{
-			name:        "uses bot name when display name is empty",
-			botName:     "TestBot",
+			name:           "uses bot name when display name is empty",
+			botName:        "TestBot",
 			botDisplayName: strPtr(""),
-			wantBotName: "TestBot",
+			wantBotName:    "TestBot",
 		},
 		{
-			name:        "uses display name when set",
-			botName:     "TestBot",
+			name:           "uses display name when set",
+			botName:        "TestBot",
 			botDisplayName: strPtr("Friendly Bot"),
-			wantBotName: "Friendly Bot",
+			wantBotName:    "Friendly Bot",
 		},
 	}
 

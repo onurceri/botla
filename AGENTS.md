@@ -151,6 +151,17 @@ migrate create -ext sql -dir db/migrations -seq <migration_name>
 ### Database Queries
 Database queries are defined manually in `internal/db/`. Use parameterized queries with `pgx` to prevent SQL injection.
 
+### Local Database Access (Docker)
+When checking the database in the local environment, use the PostgreSQL instance running in Docker with the following credentials:
+
+```bash
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=botla_dev
+DB_USER=botla
+DB_PASSWORD=botla
+```
+
 ## Security Considerations
 
 - JWT tokens for authentication (access + refresh tokens)
