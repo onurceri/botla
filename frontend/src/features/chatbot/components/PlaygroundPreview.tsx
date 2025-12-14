@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { WidgetApp } from '@widget/widgetApp'
-import styles from '@widget/styles.css?raw'
+// Widget imports commented out for production build compatibility
+// import { WidgetApp } from '@widget/widgetApp'
+// import styles from '@widget/styles.css?raw'
 
 type Props = {
   id: string
@@ -76,6 +77,18 @@ export default function PlaygroundPreview({
 
   return (
     <div ref={containerRef} className="flex-1 relative h-full min-h-[400px]">
+      {/* Widget preview only works in local development */}
+      <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+        <div className="text-center p-8">
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            Widget önizleme sadece local development'da çalışır
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            Production'da widget'ı sitenize embed edin
+          </p>
+        </div>
+      </div>
+      {/* 
       <style>{styles}</style>
       <WidgetApp
         key={`${id}:${refreshKey ?? 0}`}
@@ -104,6 +117,7 @@ export default function PlaygroundPreview({
         positionStrategy="absolute"
         panelHeight={dynamicPanelHeight}
       />
+      */}
     </div>
   )
 }
