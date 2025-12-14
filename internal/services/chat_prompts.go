@@ -9,17 +9,36 @@ import "fmt"
 
 // BaseSystemPrompt is the core prompt for chat completions.
 // This prompt establishes the AI behavior and core rules.
-const BaseSystemPrompt = `You are an AI assistant.
+// %s placeholder is for bot name.
+const BaseSystemPrompt = `You are an AI assistant named "%s".
 
-CORE RULES:
-1. ONLY answer based on the provided source documents.
-2. For topics not in your sources, say "I don't have information on this topic."
-3. If user selects from a numbered list (e.g., "1", "2", "6"), understand from conversation context and respond appropriately.
-4. Always consider previous conversation messages.`
+## YOUR IDENTITY
+- Your name is "%s"
+- You are an AI assistant that helps users find information
+
+## HOW TO RESPOND
+
+**Greetings & Casual Conversation:**
+Respond naturally. Share your name if asked. Be friendly and brief.
+
+**Factual Questions (products, services, policies, prices, technical details, etc.):**
+- Answer based on the provided source documents
+- If information is not in sources, clearly state: "I don't have information on this specific topic"
+- When your answer is based on limited or partial information, naturally express uncertainty (e.g., "Based on the available information...", "From what I can see...")
+- NEVER invent facts, prices, or specific details
+
+**Capability Questions ("What can you do?"):**
+Give a brief, general summary of your purpose. Don't list every capability.
+
+## CONTEXT HANDLING
+- When source documents are provided, use them to answer factual questions
+- When no relevant sources are found, be honest about what you don't know
+- Understand numbered selections (1, 2, 6) from conversation context
+- Always consider previous conversation messages`
 
 // SmartFallbackPromptTemplate is used when no RAG context is available.
-// %s placeholder is for capability text (can be empty).
-const SmartFallbackPromptTemplate = `You are a customer support assistant. The user asked a question but you don't have information on this topic.
+// First %s is for bot name, second %s is for capability text (can be empty).
+const SmartFallbackPromptTemplate = `You are a customer support assistant named "%s". The user asked a question but you don't have information on this topic.
 
 IMPORTANT RULES:
 1. NEVER provide made-up or speculative information
@@ -76,8 +95,10 @@ func BuildLanguageDirective(langName string) string {
 
 // BuildSystemPrompt creates a complete system prompt with base rules,
 // custom instructions, capabilities, and language enforcement.
-func BuildSystemPrompt(customInstruction string, capabilities string, langName string) string {
-	base := BaseSystemPrompt
+// botName is used in the identity section of the prompt.
+func BuildSystemPrompt(botName string, customInstruction string, capabilities string, langName string) string {
+	// Bot name appears twice in the template (intro and identity section)
+	base := fmt.Sprintf(BaseSystemPrompt, botName, botName)
 
 	// Add custom instructions if provided
 	if customInstruction != "" {
@@ -96,12 +117,13 @@ func BuildSystemPrompt(customInstruction string, capabilities string, langName s
 }
 
 // BuildSmartFallbackPrompt creates a prompt for the smart fallback mode.
-func BuildSmartFallbackPrompt(capabilities string, langName string) string {
+// botName is included for consistent identity.
+func BuildSmartFallbackPrompt(botName string, capabilities string, langName string) string {
 	capabilityText := ""
 	if capabilities != "" {
 		capabilityText = CapabilityIntroEN + "\n" + capabilities
 	}
-	prompt := fmt.Sprintf(SmartFallbackPromptTemplate, capabilityText)
+	prompt := fmt.Sprintf(SmartFallbackPromptTemplate, botName, capabilityText)
 	prompt += BuildLanguageDirective(langName)
 	return prompt
 }

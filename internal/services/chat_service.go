@@ -15,6 +15,10 @@ import (
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
+// =============================================================================
+// CHAT SERVICE - Core chat processing with RAG and tool support
+// =============================================================================
+
 // ChatService handles core chat logic, shared between authenticated and public endpoints
 type ChatService struct {
 	DB       *sql.DB
@@ -25,7 +29,6 @@ type ChatService struct {
 }
 
 // NewChatService creates a new ChatService instance
-// The factory must be provided with config - use rag.NewClientFactory(cfg)
 func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc *rag.QdrantClient, log *logger.Logger) *ChatService {
 	if embedder == nil {
 		if client, err := rag.NewOpenAIClientFromEnv(); err == nil {
@@ -41,290 +44,552 @@ func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.Embeddi
 	}
 }
 
-// ProcessChat handles the complete chat flow with unified tool support
-// This function always uses the agentic loop with tools enabled, performing tiered RAG search
-// and handling fallbacks based on confidence tiers.
+// =============================================================================
+// CHAT CONTEXT - Shared state across pipeline steps
+// =============================================================================
+
+// chatContext holds all state during chat processing pipeline
+type chatContext struct {
+	// Input
+	Request   models.ChatRequest
+	Bot       *models.Chatbot
+	RAGConfig models.RAGConfig
+
+	// Derived config
+	LangConfig   langconfig.LanguageConfig
+	ThresholdCfg *models.ThresholdConfig
+	BotName      string
+
+	// Conversation state
+	Conversation *models.Conversation
+	IsNewConv    bool
+
+	// RAG results
+	SearchResult *rag.TieredSearchResult
+	ChunkMetas   []models.ChunkMetadata
+	Sources      []models.SourceUsed
+
+	// Messages for LLM
+	Messages []rag.ChatMessage
+	Tools    []rag.Tool
+	Actions  []*models.ChatbotAction
+
+	// Response state
+	Response     string
+	TotalTokens  int
+	IsHandoff    bool
+	HandoffReqID string
+
+	// Timing
+	StartTime time.Time
+}
+
+// =============================================================================
+// MAIN ENTRY POINT - ProcessChat orchestrates the pipeline
+// =============================================================================
+
+// ProcessChat handles the complete chat flow with unified tool support.
+// It orchestrates a pipeline of steps: context init → RAG search → LLM call → save response.
 func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, bot *models.Chatbot, ragConfig models.RAGConfig) (*models.ChatResult, error) {
-	startTime := time.Now()
+	// Step 1: Initialize chat context
+	cc := s.initChatContext(req, bot, ragConfig)
 
-	// Ensure embedder is available
-	embedder := s.Embedder
-	var err error
-	if embedder == nil {
-		embedder, err = rag.NewOpenAIClientFromEnv()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Lazy initialization of Qdrant
-	qc := s.QC
-	if qc == nil {
-		qc, _ = rag.NewQdrantClientFromEnv() // Proceed without context if Qdrant is unavailable
-	}
-
-	// Get or create conversation
-	conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, bot.ID, req.SessionID)
-	if err != nil || conv == nil {
+	// Step 2: Get or create conversation
+	if err := s.getOrCreateConversation(ctx, cc); err != nil {
 		return nil, err
 	}
-	isNewConv := conv.MessageCount == 0
 
-	// Save user message
-	um := &models.Message{ConversationID: conv.ID, Role: "user", Content: req.Message, TokensUsed: 0}
-	if _, err = db.CreateMessage(ctx, s.DB, um); err != nil {
+	// Step 3: Save user message
+	if err := s.saveUserMessage(ctx, cc); err != nil {
 		return nil, err
 	}
-	_ = db.IncrementConversationMessageCount(ctx, s.DB, conv.ID)
 
-	// Get language config
+	// Step 4: Perform RAG search
+	s.performRAGSearch(ctx, cc)
+
+	// Step 5: Build messages for LLM
+	s.buildMessages(ctx, cc)
+
+	// Step 6: Execute agentic loop (LLM + tools)
+	if err := s.executeAgenticLoop(ctx, cc); err != nil {
+		return nil, err
+	}
+
+	// Step 7: Apply fallback if needed
+	s.applyFallback(ctx, cc)
+
+	// Step 8: Save assistant message
+	messageID := s.saveAssistantMessage(ctx, cc)
+
+	// Step 9: Track analytics (async)
+	s.trackAnalyticsAsync(cc, messageID)
+
+	// Step 10: Build and return result
+	return s.buildChatResult(cc, messageID), nil
+}
+
+// =============================================================================
+// PIPELINE STEP 1: Initialize Context
+// =============================================================================
+
+func (s *ChatService) initChatContext(req models.ChatRequest, bot *models.Chatbot, ragConfig models.RAGConfig) *chatContext {
+	cc := &chatContext{
+		Request:   req,
+		Bot:       bot,
+		RAGConfig: ragConfig,
+		StartTime: time.Now(),
+	}
+
+	// Language config
 	langCode := normalizeLangCode(bot.LanguageCode)
-	cfg := langconfig.Get(langCode)
+	cc.LangConfig = langconfig.Get(langCode)
 
-	// Get threshold config
-	thresholdCfg := bot.ThresholdConfig
-	if thresholdCfg == nil {
-		thresholdCfg = models.DefaultThresholdConfig()
+	// Threshold config with defaults
+	cc.ThresholdCfg = bot.ThresholdConfig
+	if cc.ThresholdCfg == nil {
+		cc.ThresholdCfg = models.DefaultThresholdConfig()
 	}
 
-	// Create embedding and perform tiered search
-	embedding, embErr := embedder.CreateEmbedding(ctx, req.Message)
-	var searchResult *rag.TieredSearchResult
-	var sources []models.SourceUsed
-	var chunkMetas []models.ChunkMetadata
-
-	if embErr == nil && qc != nil {
-		searchResult, err = rag.SearchContextTiered(embedding, bot.ID, ragConfig.TopK, ragConfig.MaxContextTokens, thresholdCfg)
-		if err != nil && s.Log != nil {
-			s.Log.Warn("tiered_search_error", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
-		}
-		if searchResult != nil {
-			// Only mark as "used" the chunks that were actually included in the prompt context.
-			chunkMetas = searchResult.Chunks
-			for _, m := range searchResult.Chunks {
-				sources = append(sources, models.SourceUsed{ChunkIndex: m.ChunkIndex, SourceType: m.SourceType})
-			}
-		}
+	// Bot display name
+	cc.BotName = bot.Name
+	if bot.BotDisplayName != nil && *bot.BotDisplayName != "" {
+		cc.BotName = *bot.BotDisplayName
 	}
 
-	// Handle nil searchResult
-	if searchResult == nil {
-		searchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
-	}
-	confidenceTier := string(searchResult.Tier)
+	return cc
+}
 
+// =============================================================================
+// PIPELINE STEP 2: Conversation Management
+// =============================================================================
+
+func (s *ChatService) getOrCreateConversation(ctx context.Context, cc *chatContext) error {
+	conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, cc.Bot.ID, cc.Request.SessionID)
+	if err != nil {
+		return err
+	}
+	if conv == nil {
+		return fmt.Errorf("failed to get or create conversation")
+	}
+
+	cc.Conversation = conv
+	cc.IsNewConv = conv.MessageCount == 0
+	return nil
+}
+
+// =============================================================================
+// PIPELINE STEP 3: Save User Message
+// =============================================================================
+
+func (s *ChatService) saveUserMessage(ctx context.Context, cc *chatContext) error {
+	msg := &models.Message{
+		ConversationID: cc.Conversation.ID,
+		Role:           "user",
+		Content:        cc.Request.Message,
+		TokensUsed:     0,
+	}
+
+	if _, err := db.CreateMessage(ctx, s.DB, msg); err != nil {
+		return err
+	}
+
+	_ = db.IncrementConversationMessageCount(ctx, s.DB, cc.Conversation.ID)
+	return nil
+}
+
+// =============================================================================
+// PIPELINE STEP 4: RAG Search
+// =============================================================================
+
+func (s *ChatService) performRAGSearch(ctx context.Context, cc *chatContext) {
+	embedder := s.getEmbedder()
+	qc := s.getQdrantClient()
+
+	if embedder == nil || qc == nil {
+		cc.SearchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
+		return
+	}
+
+	// Create embedding
+	embedding, err := embedder.CreateEmbedding(ctx, cc.Request.Message)
+	if err != nil {
+		cc.SearchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
+		return
+	}
+
+	// Perform tiered search
+	result, err := rag.SearchContextTiered(
+		embedding,
+		cc.Bot.ID,
+		cc.RAGConfig.TopK,
+		cc.RAGConfig.MaxContextTokens,
+		cc.ThresholdCfg,
+	)
+	if err != nil && s.Log != nil {
+		s.Log.Warn("tiered_search_error", map[string]any{"error": err.Error(), "chatbot_id": cc.Bot.ID})
+	}
+
+	if result == nil {
+		cc.SearchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
+		return
+	}
+
+	cc.SearchResult = result
+	cc.ChunkMetas = result.Chunks
+
+	// Build sources list
+	for _, m := range result.Chunks {
+		cc.Sources = append(cc.Sources, models.SourceUsed{
+			ChunkIndex: m.ChunkIndex,
+			SourceType: m.SourceType,
+		})
+	}
+}
+
+// =============================================================================
+// PIPELINE STEP 5: Build Messages
+// =============================================================================
+
+func (s *ChatService) buildMessages(ctx context.Context, cc *chatContext) {
 	// Collect tools
-	tools, actions := s.collectTools(ctx, bot)
+	cc.Tools, cc.Actions = s.collectTools(ctx, cc.Bot)
 
-	// Prepare system prompt with language enforcement (English prompt + language directive)
-	capabilities := s.getCapabilitySummaries(ctx, bot.ID)
-	systemPrompt := BuildSystemPrompt(strings.TrimSpace(bot.CustomInstruction), capabilities, cfg.Name)
+	// Build system prompt
+	capabilities := s.getCapabilitySummaries(ctx, cc.Bot.ID)
+	systemPrompt := BuildSystemPrompt(
+		cc.BotName,
+		strings.TrimSpace(cc.Bot.CustomInstruction),
+		capabilities,
+		cc.LangConfig.Name,
+	)
 
-	// Load conversation history for context
-	historyLimit := calculateHistoryLimit(ragConfig.MaxContextTokens)
-	historyMsgs, _ := db.ListRecentMessages(ctx, s.DB, conv.ID, historyLimit)
-
-	// Build messages array with system prompt first
-	messages := []rag.ChatMessage{
+	// Start with system message
+	cc.Messages = []rag.ChatMessage{
 		{Role: "system", Content: &systemPrompt},
 	}
 
-	// Add conversation history (excluding the current message we just saved)
+	// Add conversation history
+	s.appendConversationHistory(ctx, cc)
+
+	// Add current user message with RAG context
+	s.appendUserMessageWithContext(cc)
+}
+
+func (s *ChatService) appendConversationHistory(ctx context.Context, cc *chatContext) {
+	historyLimit := calculateHistoryLimit(cc.RAGConfig.MaxContextTokens)
+	historyMsgs, _ := db.ListRecentMessages(ctx, s.DB, cc.Conversation.ID, historyLimit)
+
 	for _, m := range historyMsgs {
-		// Skip the current user message (already saved above, will be added with context)
-		if m.Content == req.Message && m.Role == "user" {
+		// Skip the current user message (will be added with context)
+		if m.Content == cc.Request.Message && m.Role == "user" {
 			continue
 		}
 		content := m.Content
-		messages = append(messages, rag.ChatMessage{Role: m.Role, Content: &content})
+		cc.Messages = append(cc.Messages, rag.ChatMessage{Role: m.Role, Content: &content})
+	}
+}
+
+func (s *ChatService) appendUserMessageWithContext(cc *chatContext) {
+	contextText := cc.SearchResult.ContextText
+
+	// Add uncertainty note for medium tier
+	if cc.SearchResult.Tier == rag.TierMedium && cc.ThresholdCfg.ShowConfidenceWarning && strings.TrimSpace(contextText) != "" {
+		contextText = "[Note: The following sources have moderate relevance. Consider expressing appropriate uncertainty in your response.]\n\n" + contextText
 	}
 
-	// Add current user message with RAG context
-	contextText := searchResult.ContextText
-	var userMsgContent string
+	var content string
 	if strings.TrimSpace(contextText) != "" {
-		userMsgContent = RAGContextIntroEN + contextText + "\n\nQuestion:\n" + req.Message
+		content = RAGContextIntroEN + contextText + "\n\nQuestion:\n" + cc.Request.Message
 	} else {
-		userMsgContent = req.Message
-	}
-	messages = append(messages, rag.ChatMessage{Role: "user", Content: &userMsgContent})
-
-	// Get LLM Client with tool support
-	toolsClient, modelName, clientErr := s.getToolsClient(bot.Model)
-	if clientErr != nil {
-		return nil, clientErr
+		content = cc.Request.Message
 	}
 
+	cc.Messages = append(cc.Messages, rag.ChatMessage{Role: "user", Content: &content})
+}
+
+// =============================================================================
+// PIPELINE STEP 6: Agentic Loop (LLM + Tools)
+// =============================================================================
+
+func (s *ChatService) executeAgenticLoop(ctx context.Context, cc *chatContext) error {
+	// Check for static fallback shortcut (skip LLM entirely)
+	if cc.SearchResult.Tier == rag.TierLow && cc.ThresholdCfg.FallbackMode == "static" {
+		cc.Response = s.getStaticFallbackMessage(cc)
+		cc.TotalTokens = 0
+		return nil
+	}
+
+	// Get LLM client
+	toolsClient, modelName, err := s.getToolsClient(cc.Bot.Model)
+	if err != nil {
+		return err
+	}
+
+	// Execute agentic loop
 	executor := &rag.ToolExecutor{DB: s.DB, Log: s.Log}
-	var finalResponse string
-	var totalTokens int
-	var isHandoff bool
-	var handoffRequestID string
+	s.runAgenticLoop(ctx, cc, toolsClient, modelName, executor)
 
-	// Handle Low tier with static fallback mode - skip LLM call entirely
-	if searchResult.Tier == rag.TierLow && thresholdCfg.FallbackMode == "static" {
-		finalResponse = cfg.UserMessages.NoInfoFound
-		if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
-			finalResponse = bot.FallbackMessages.NoInfoFound
+	return nil
+}
+
+func (s *ChatService) runAgenticLoop(
+	ctx context.Context,
+	cc *chatContext,
+	client rag.ToolsLLMClient,
+	modelName string,
+	executor *rag.ToolExecutor,
+) {
+	const maxIterations = 5
+
+	for i := 0; i < maxIterations; i++ {
+		response, err := client.CreateCompletionWithTools(
+			ctx, cc.Messages, cc.Tools, modelName, cc.Bot.Temperature, cc.Bot.MaxTokens,
+		)
+		if err != nil {
+			if s.Log != nil {
+				s.Log.Error("completion_with_tools_error", map[string]any{"error": err.Error()})
+			}
+			cc.Response = s.getErrorMessage(cc)
+			return
 		}
-		totalTokens = 0
-	} else {
-		// Agentic loop for all other cases
-	AgentLoop:
-		for i := 0; i < 5; i++ {
-			response, err := toolsClient.CreateCompletionWithTools(ctx, messages, tools, modelName, bot.Temperature, bot.MaxTokens)
-			if err != nil {
-				if s.Log != nil {
-					s.Log.Error("completion_with_tools_error", map[string]any{"error": err.Error()})
-				}
-				// Fallback to error message
-				finalResponse = cfg.UserMessages.ErrorMessage
-				if bot.FallbackMessages != nil && bot.FallbackMessages.ErrorMessage != "" {
-					finalResponse = bot.FallbackMessages.ErrorMessage
-				}
-				break
+
+		cc.TotalTokens += response.Usage.TotalTokens
+		choice := response.Choices[0]
+
+		// Add assistant message to history
+		cc.Messages = append(cc.Messages, choice.Message)
+
+		// No tool calls = final response
+		if len(choice.Message.ToolCalls) == 0 {
+			if choice.Message.Content != nil {
+				cc.Response = *choice.Message.Content
 			}
+			return
+		}
 
-			totalTokens += response.Usage.TotalTokens
-			choice := response.Choices[0]
-
-			// Add assistant message to history
-			messages = append(messages, choice.Message)
-
-			if len(choice.Message.ToolCalls) == 0 {
-				if choice.Message.Content != nil {
-					finalResponse = *choice.Message.Content
-				}
-				break
-			}
-
-			// Execute tools
-			for _, tc := range choice.Message.ToolCalls {
-				action := findActionByName(actions, tc.Function.Name)
-				// Pass IDs to Executor (needed for handoff)
-				result, err := executor.Execute(ctx, tc, action, bot.ID, conv.ID)
-				content := ""
-				if err != nil {
-					content = fmt.Sprintf(`{"error": "%s"}`, err.Error())
-				} else {
-					content = result.Result
-				}
-
-				// Special handling for handoff tool success
-				if tc.Function.Name == "request_human_handoff" && err == nil {
-					// Parse request_id from tool result
-					if strings.Contains(result.Result, "request_id") {
-						start := strings.Index(result.Result, `"request_id": "`)
-						if start != -1 {
-							start += len(`"request_id": "`)
-							end := strings.Index(result.Result[start:], `"`)
-							if end != -1 {
-								handoffRequestID = result.Result[start : start+end]
-							}
-						}
-					}
-
-					// Use the configured handoff message
-					msg := cfg.UserMessages.HandoffSuggestion
-					if bot.FallbackMessages != nil && bot.FallbackMessages.HandoffMessage != "" {
-						msg = bot.FallbackMessages.HandoffMessage
-					}
-					finalResponse = msg
-					isHandoff = true
-					break AgentLoop
-				}
-
-				messages = append(messages, rag.ChatMessage{
-					Role:       "tool",
-					ToolCallID: tc.ID,
-					Content:    &content,
-				})
-			}
+		// Execute tool calls
+		if s.executeToolCalls(ctx, cc, choice.Message.ToolCalls, executor) {
+			return // Handoff occurred, exit loop
 		}
 	}
+}
 
-	// Apply tier-based post-processing
-	if finalResponse == "" {
-		// No response from LLM - use fallback
-		switch searchResult.Tier {
-		case rag.TierLow:
-			switch thresholdCfg.FallbackMode {
-			case "smart":
-				// Try smart fallback as last resort
-				smartResp, smartTokens, smartErr := s.smartFallback(ctx, bot, req.Message, cfg.Name)
-				if smartErr == nil {
-					finalResponse = smartResp
-					totalTokens += smartTokens
-				} else {
-					finalResponse = cfg.UserMessages.NoInfoFound
-					if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
-						finalResponse = bot.FallbackMessages.NoInfoFound
-					}
-				}
-			case "escalate":
-				finalResponse = cfg.UserMessages.HandoffSuggestion
-			default: // "static"
-				finalResponse = cfg.UserMessages.NoInfoFound
-				if bot.FallbackMessages != nil && bot.FallbackMessages.NoInfoFound != "" {
-					finalResponse = bot.FallbackMessages.NoInfoFound
-				}
-			}
-		default:
-			// For high/medium tiers, use error message
-			finalResponse = cfg.UserMessages.ErrorMessage
-			if bot.FallbackMessages != nil && bot.FallbackMessages.ErrorMessage != "" {
-				finalResponse = bot.FallbackMessages.ErrorMessage
-			}
+func (s *ChatService) executeToolCalls(
+	ctx context.Context,
+	cc *chatContext,
+	toolCalls []rag.ToolCall,
+	executor *rag.ToolExecutor,
+) bool {
+	for _, tc := range toolCalls {
+		action := findActionByName(cc.Actions, tc.Function.Name)
+		result, err := executor.Execute(ctx, tc, action, cc.Bot.ID, cc.Conversation.ID)
+
+		content := ""
+		if err != nil {
+			content = fmt.Sprintf(`{"error": "%s"}`, err.Error())
+		} else {
+			content = result.Result
 		}
-	} else if searchResult.Tier == rag.TierMedium && thresholdCfg.ShowConfidenceWarning && !isHandoff {
-		finalResponse += cfg.UserMessages.ConfidenceWarning
+
+		// Check for handoff
+		if tc.Function.Name == "request_human_handoff" && err == nil {
+			cc.HandoffReqID = parseHandoffRequestID(result.Result)
+			cc.Response = s.getHandoffMessage(cc)
+			cc.IsHandoff = true
+			return true // Signal to exit loop
+		}
+
+		// Add tool result to messages
+		cc.Messages = append(cc.Messages, rag.ChatMessage{
+			Role:       "tool",
+			ToolCallID: tc.ID,
+			Content:    &content,
+		})
 	}
 
-	// Save assistant message
+	return false
+}
+
+// =============================================================================
+// PIPELINE STEP 7: Apply Fallback
+// =============================================================================
+
+func (s *ChatService) applyFallback(ctx context.Context, cc *chatContext) {
+	if cc.Response != "" {
+		return // Already have a response
+	}
+
+	switch cc.SearchResult.Tier {
+	case rag.TierLow:
+		s.applyLowTierFallback(ctx, cc)
+	default:
+		// For high/medium tiers with empty response, use error message
+		cc.Response = s.getErrorMessage(cc)
+	}
+}
+
+func (s *ChatService) applyLowTierFallback(ctx context.Context, cc *chatContext) {
+	switch cc.ThresholdCfg.FallbackMode {
+	case "smart":
+		resp, tokens, err := s.smartFallback(ctx, cc.Bot, cc.Request.Message, cc.LangConfig.Name)
+		if err == nil {
+			cc.Response = resp
+			cc.TotalTokens += tokens
+		} else {
+			cc.Response = s.getStaticFallbackMessage(cc)
+		}
+	case "escalate":
+		cc.Response = cc.LangConfig.UserMessages.HandoffSuggestion
+	default: // "static"
+		cc.Response = s.getStaticFallbackMessage(cc)
+	}
+}
+
+// =============================================================================
+// PIPELINE STEP 8: Save Assistant Message
+// =============================================================================
+
+func (s *ChatService) saveAssistantMessage(ctx context.Context, cc *chatContext) string {
 	msgType := "normal"
-	if isHandoff {
+	if cc.IsHandoff {
 		msgType = "handoff"
 	}
-	am := &models.Message{ConversationID: conv.ID, Role: "assistant", Content: finalResponse, TokensUsed: totalTokens, Type: msgType}
-	var amID string
-	if id, err := db.CreateMessage(ctx, s.DB, am); err == nil {
-		amID = id
-		_ = db.IncrementConversationMessageCount(ctx, s.DB, conv.ID)
 
-		// Save source usage
-		if len(chunkMetas) > 0 {
-			if err := db.SaveMessageSources(ctx, s.DB, amID, chunkMetas); err != nil && s.Log != nil {
-				s.Log.Warn("save_message_sources_error", map[string]any{"message_id": amID, "error": err.Error()})
-			}
+	msg := &models.Message{
+		ConversationID: cc.Conversation.ID,
+		Role:           "assistant",
+		Content:        cc.Response,
+		TokensUsed:     cc.TotalTokens,
+		Type:           msgType,
+	}
+
+	messageID, err := db.CreateMessage(ctx, s.DB, msg)
+	if err != nil {
+		return ""
+	}
+
+	_ = db.IncrementConversationMessageCount(ctx, s.DB, cc.Conversation.ID)
+
+	// Save source usage
+	if len(cc.ChunkMetas) > 0 {
+		if err := db.SaveMessageSources(ctx, s.DB, messageID, cc.ChunkMetas); err != nil && s.Log != nil {
+			s.Log.Warn("save_message_sources_error", map[string]any{"message_id": messageID, "error": err.Error()})
 		}
 	}
 
-	// Update analytics asynchronously
-	isUnanswered := searchResult.Tier == rag.TierLow
+	return messageID
+}
+
+// =============================================================================
+// PIPELINE STEP 9: Analytics (Async)
+// =============================================================================
+
+func (s *ChatService) trackAnalyticsAsync(cc *chatContext, messageID string) {
+	isUnanswered := cc.SearchResult.Tier == rag.TierLow
+	startTime := cc.StartTime
+	botID := cc.Bot.ID
+	isNewConv := cc.IsNewConv
+	totalTokens := cc.TotalTokens
+	isHandoff := cc.IsHandoff
+	userMessage := cc.Request.Message
+
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+
 		responseTime := int(time.Since(startTime).Milliseconds())
-		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, time.Now(), isNewConv, totalTokens, isHandoff, responseTime); err != nil && s.Log != nil {
-			s.Log.Warn("analytics_error", map[string]any{"chatbot_id": bot.ID, "error": err.Error()})
+		if err := db.IncrementAnalytics(bgCtx, s.DB, botID, time.Now(), isNewConv, totalTokens, isHandoff, responseTime); err != nil && s.Log != nil {
+			s.Log.Warn("analytics_error", map[string]any{"chatbot_id": botID, "error": err.Error()})
 		}
 
 		if isUnanswered && !isHandoff {
-			_ = db.TrackUnansweredQuery(bgCtx, s.DB, bot.ID, req.Message)
+			_ = db.TrackUnansweredQuery(bgCtx, s.DB, botID, userMessage)
 		}
 	}()
-
-	return &models.ChatResult{
-		Response:         finalResponse,
-		TokensUsed:       totalTokens,
-		Sources:          sources,
-		ConversationID:   conv.ID,
-		MessageID:        amID,
-		IsNewConv:        isNewConv,
-		ConfidenceTier:   confidenceTier,
-		HandoffRequestID: handoffRequestID,
-	}, nil
 }
+
+// =============================================================================
+// PIPELINE STEP 10: Build Result
+// =============================================================================
+
+func (s *ChatService) buildChatResult(cc *chatContext, messageID string) *models.ChatResult {
+	return &models.ChatResult{
+		Response:         cc.Response,
+		TokensUsed:       cc.TotalTokens,
+		Sources:          cc.Sources,
+		ConversationID:   cc.Conversation.ID,
+		MessageID:        messageID,
+		IsNewConv:        cc.IsNewConv,
+		ConfidenceTier:   string(cc.SearchResult.Tier),
+		HandoffRequestID: cc.HandoffReqID,
+	}
+}
+
+// =============================================================================
+// HELPER FUNCTIONS - Message Templates
+// =============================================================================
+
+func (s *ChatService) getStaticFallbackMessage(cc *chatContext) string {
+	if cc.Bot.FallbackMessages != nil && cc.Bot.FallbackMessages.NoInfoFound != "" {
+		return cc.Bot.FallbackMessages.NoInfoFound
+	}
+	return cc.LangConfig.UserMessages.NoInfoFound
+}
+
+func (s *ChatService) getErrorMessage(cc *chatContext) string {
+	if cc.Bot.FallbackMessages != nil && cc.Bot.FallbackMessages.ErrorMessage != "" {
+		return cc.Bot.FallbackMessages.ErrorMessage
+	}
+	return cc.LangConfig.UserMessages.ErrorMessage
+}
+
+func (s *ChatService) getHandoffMessage(cc *chatContext) string {
+	if cc.Bot.FallbackMessages != nil && cc.Bot.FallbackMessages.HandoffMessage != "" {
+		return cc.Bot.FallbackMessages.HandoffMessage
+	}
+	return cc.LangConfig.UserMessages.HandoffSuggestion
+}
+
+// =============================================================================
+// HELPER FUNCTIONS - Client Initialization
+// =============================================================================
+
+func (s *ChatService) getEmbedder() rag.EmbeddingClient {
+	if s.Embedder != nil {
+		return s.Embedder
+	}
+	client, _ := rag.NewOpenAIClientFromEnv()
+	return client
+}
+
+func (s *ChatService) getQdrantClient() *rag.QdrantClient {
+	if s.QC != nil {
+		return s.QC
+	}
+	client, _ := rag.NewQdrantClientFromEnv()
+	return client
+}
+
+// parseHandoffRequestID extracts request_id from handoff tool result
+func parseHandoffRequestID(result string) string {
+	if !strings.Contains(result, "request_id") {
+		return ""
+	}
+	start := strings.Index(result, `"request_id": "`)
+	if start == -1 {
+		return ""
+	}
+	start += len(`"request_id": "`)
+	end := strings.Index(result[start:], `"`)
+	if end == -1 {
+		return ""
+	}
+	return result[start : start+end]
+}
+
+// =============================================================================
+// EXISTING HELPER FUNCTIONS (unchanged)
+// =============================================================================
 
 // collectTools gathers all available tools for the chat based on bot configuration and plan
 func (s *ChatService) collectTools(ctx context.Context, bot *models.Chatbot) ([]rag.Tool, []*models.ChatbotAction) {
@@ -346,7 +611,7 @@ func (s *ChatService) collectTools(ctx context.Context, bot *models.Chatbot) ([]
 		}
 	}
 
-	// Add built-in tools (always include list_sources, conditionally include handoff)
+	// Add built-in tools
 	builtinOptions := rag.BuiltinToolOptions{
 		IncludeListSources: true,
 		IncludeHandoff:     includeHandoff,
@@ -358,7 +623,6 @@ func (s *ChatService) collectTools(ctx context.Context, bot *models.Chatbot) ([]
 
 // getToolsClient returns a tools-capable LLM client and the model name to use
 func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, string, error) {
-	// Try the bot's configured model first via the factory
 	useOpenAIOnly := !s.Factory.IsProviderConfigured("openrouter")
 	modelString := botModel
 	if useOpenAIOnly && !strings.HasPrefix(modelString, "openai:") {
@@ -367,18 +631,13 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 
 	client, modelName, err := s.Factory.GetClientForModel(modelString)
 	if err != nil {
-		// Fallback: try OpenRouter first (preferred for tool support with any model)
-		orClient, orErr := s.Factory.GetClient("openrouter")
-		if orErr == nil && orClient != nil {
+		// Fallback chain: OpenRouter → OpenAI
+		if orClient, orErr := s.Factory.GetClient("openrouter"); orErr == nil && orClient != nil {
 			client = orClient
-			modelName = config.ModelOpenRouterGPT4oMini // Default model for OpenRouter
-		} else {
-			// Last resort: try OpenAI directly
-			oaiClient, oaiErr := rag.NewOpenAIClientFromEnv()
-			if oaiErr == nil && oaiClient != nil {
-				client = oaiClient
-				modelName = config.ModelGPT4oMini // OpenAI model format (no prefix)
-			}
+			modelName = config.ModelOpenRouterGPT4oMini
+		} else if oaiClient, oaiErr := rag.NewOpenAIClientFromEnv(); oaiErr == nil && oaiClient != nil {
+			client = oaiClient
+			modelName = config.ModelGPT4oMini
 		}
 		if client == nil {
 			return nil, "", fmt.Errorf("no LLM client available: %w", err)
@@ -387,18 +646,16 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 
 	toolsClient, ok := client.(rag.ToolsLLMClient)
 	if !ok {
-		// Client doesn't support tools - try OpenRouter which now supports ToolsLLMClient
-		orClient, orErr := s.Factory.GetClient("openrouter")
-		if orErr == nil {
+		// Try OpenRouter for tool support
+		if orClient, orErr := s.Factory.GetClient("openrouter"); orErr == nil {
 			if tc, tcOk := orClient.(rag.ToolsLLMClient); tcOk {
 				toolsClient = tc
-				// Use original model name if it looks like an OpenRouter model format
 				if !strings.Contains(modelName, "/") {
-					modelName = config.ModelOpenRouterGPT4oMini // Default to a known working model
+					modelName = config.ModelOpenRouterGPT4oMini
 				}
 			}
 		}
-		// Still no tools client? Fall back to OpenAI
+		// Final fallback to OpenAI
 		if toolsClient == nil {
 			c, err := rag.NewOpenAIClientFromEnv()
 			if err != nil {
@@ -439,27 +696,28 @@ func normalizeLangCode(code string) string {
 
 // calculateHistoryLimit returns optimal message history count based on context budget
 func calculateHistoryLimit(maxContextTokens int) int {
-	// Reserve ~40% of context for history, assume ~150 tokens per message
 	historyBudget := int(float64(maxContextTokens) * 0.4)
 	limit := historyBudget / 150
 	if limit < 4 {
-		limit = 4 // minimum
+		limit = 4
 	}
 	if limit > 20 {
-		limit = 20 // maximum
+		limit = 20
 	}
 	return limit
 }
 
 // smartFallback generates a helpful response when no context is available
 func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, userMessage string, langName string) (string, int, error) {
-	// Get capability summaries from sources
 	capabilities := s.getCapabilitySummaries(ctx, bot.ID)
 
-	// Build the smart fallback prompt (English + language directive)
-	systemPrompt := BuildSmartFallbackPrompt(capabilities, langName)
+	botName := bot.Name
+	if bot.BotDisplayName != nil && *bot.BotDisplayName != "" {
+		botName = *bot.BotDisplayName
+	}
 
-	// Get client for the model
+	systemPrompt := BuildSmartFallbackPrompt(botName, capabilities, langName)
+
 	client, modelName, err := s.Factory.GetClientForModel(bot.Model)
 	if err != nil {
 		c, e := rag.NewOpenAIClientFromEnv()
@@ -474,14 +732,13 @@ func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, us
 		return "", 0, fmt.Errorf("model client unavailable")
 	}
 
-	// Use lower temperature for more controlled response
 	params := models.CompletionParams{
 		SystemPrompt: systemPrompt,
 		Context:      "",
 		UserMessage:  userMessage,
 		Model:        modelName,
-		Temperature:  0.3, // Lower temperature for controlled fallback
-		MaxTokens:    200, // Short response for fallback
+		Temperature:  0.3,
+		MaxTokens:    200,
 	}
 
 	res, err := client.CreateCompletion(ctx, params)
@@ -513,7 +770,6 @@ func (s *ChatService) getCapabilitySummaries(ctx context.Context, chatbotID stri
 		return ""
 	}
 
-	// Limit to first 20 to avoid too long prompt
 	if len(summaries) > 20 {
 		summaries = summaries[:20]
 	}
