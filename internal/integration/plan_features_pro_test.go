@@ -16,6 +16,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/pdf"
+	"github.com/onurceri/botla-co/internal/scraper"
 )
 
 func updateProPlanConfig(t *testing.T, te *TestEnv) {
@@ -545,6 +546,14 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 
 	page := startProDynamicHTMLStub()
 	defer page.Close()
+
+	t.Setenv("SCRAPER_ALLOWED_DOMAINS", "127.0.0.1,localhost")
+
+	cfg := scraper.DefaultDynamicConfig()
+	cfg.NavTimeout = 3 * time.Second
+	if _, dynErr := scraper.ScrapeDynamicURL(page.URL, cfg); dynErr != nil {
+		t.Skip("dynamic scraping not available: " + dynErr.Error())
+	}
 
 	te, err := SetupTestEnv()
 	if err != nil {

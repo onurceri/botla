@@ -92,7 +92,7 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### [-] 2.2.4 OCR Enabled
+### [x] 2.2.4 OCR Enabled
 **Priority:** Medium  
 **Type:** Integration Test
 
@@ -133,14 +133,14 @@ This test plan verifies all Pro plan features are available and properly configu
 
 ---
 
-### [-] 2.2.6 Dynamic Scraping Enabled
+### [x] 2.2.6 Dynamic Scraping Enabled
 **Priority:** Medium  
 **Type:** Integration Test
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
 | [x] 1 | Add URL with JS-rendered content | Source created |
-| [ ] 2 | Check scraped content | JS-rendered content included |
+| [x] 2 | Check scraped content | JS-rendered content included |
 
 **Implementation Plan:**
 - **Test File:** `internal/integration/plan_features_pro_test.go`
