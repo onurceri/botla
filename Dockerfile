@@ -7,7 +7,7 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -tags fitz -a -installsuffix cgo -o server cmd/server/main.go
 
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates libmupdf chromium ttf-freefont
+RUN apk --no-cache add ca-certificates mupdf chromium ttf-freefont
 WORKDIR /root/
 COPY --from=builder /app/server .
 COPY --from=builder /app/db/migrations ./migrations
