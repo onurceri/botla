@@ -27,7 +27,7 @@ type Props = {
   customBranding?: { logo_url?: string; text?: string; link?: string } | null
 }
 
-export default function PlaygroundPreview(props: Props) {
+export default function PlaygroundPreview(_props: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   return (
