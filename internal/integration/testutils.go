@@ -142,6 +142,7 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS bot_icon TEXT`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS bot_display_name TEXT`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS suggested_questions JSONB`)
+	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS all_suggested_questions JSONB`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS suggestions_enabled BOOLEAN DEFAULT false`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS hide_branding BOOLEAN DEFAULT false`)
 	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS custom_branding JSONB`)

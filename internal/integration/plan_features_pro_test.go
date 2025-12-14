@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,7 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/pdf"
 )
 
 func updateProPlanConfig(t *testing.T, te *TestEnv) {
@@ -148,7 +151,9 @@ func TestProPlan_ModelSelection(t *testing.T) {
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
-		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
+		body, _ := io.ReadAll(resC.Body)
+		resC.Body.Close()
+		t.Fatalf("chatbot create failed: %d %s", resC.StatusCode, string(body))
 	}
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
@@ -211,7 +216,9 @@ func TestProPlan_MonthlyTokenLimit(t *testing.T) {
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
-		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
+		body, _ := io.ReadAll(resC.Body)
+		resC.Body.Close()
+		t.Fatalf("chatbot create failed: %d %s", resC.StatusCode, string(body))
 	}
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
@@ -280,7 +287,9 @@ func TestProPlan_PDFLimits(t *testing.T) {
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
-		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
+		body, _ := io.ReadAll(resC.Body)
+		resC.Body.Close()
+		t.Fatalf("chatbot create failed: %d %s", resC.StatusCode, string(body))
 	}
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
@@ -387,6 +396,77 @@ func TestProPlan_PDF_OCREnabledFlag(t *testing.T) {
 	}
 	if !cfg.Files.OCREnabled {
 		t.Fatalf("expected pro plan OCR to be enabled")
+	}
+}
+
+func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
+	_, err := pdf.ExtractPDFText("nonexistent.pdf", "en", true)
+	if err != nil && strings.Contains(err.Error(), "pdf support not enabled") {
+		t.Skip("pdf support not enabled; build with -tags fitz to run this test")
+	}
+
+	oai, qd := setupStubs(t)
+	defer oai.Close()
+	defer qd.Close()
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	updateProPlanConfig(t, te)
+
+	email := "ocr_pro@example.com"
+	token := authToken(t, te.Server.URL, email)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'pro') WHERE email = $1`, email)
+	if err != nil {
+		t.Fatalf("failed to update user plan: %v", err)
+	}
+
+	create := map[string]any{"name": "OCR Pro Bot"}
+	cbj, _ := json.Marshal(create)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
+		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
+	}
+	var bot chatbot
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	var body strings.Builder
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("file", "image-only.pdf")
+	fw.Write([]byte("%PDF-1.4\nstub"))
+	mw.WriteField("source_type", "pdf")
+	mw.Close()
+
+	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body.String()))
+	reqS.Header.Set("Authorization", "Bearer "+token)
+	reqS.Header.Set("Content-Type", mw.FormDataContentType())
+	resS, _ := http.DefaultClient.Do(reqS)
+	if resS.StatusCode != http.StatusCreated {
+		t.Fatalf("expected pdf source 201, got %d", resS.StatusCode)
+	}
+	var sid map[string]string
+	json.NewDecoder(resS.Body).Decode(&sid)
+	resS.Body.Close()
+	sourceID := sid["id"]
+
+	waitForProcessingPro(t, te, token, sourceID)
+
+	src, err := db.GetSourceByID(context.Background(), te.DB, sourceID)
+	if err != nil {
+		t.Fatalf("failed to load source: %v", err)
+	}
+	if src == nil {
+		t.Fatalf("expected source to exist")
+	}
+	if src.ChunkCount == 0 {
+		t.Fatalf("expected non-zero chunks for OCR-enabled pro plan")
 	}
 }
 
@@ -516,6 +596,17 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 
 	// Wait for processing
 	waitForProcessingPro(t, te, token, sourceID)
+
+	src, err := db.GetSourceByID(context.Background(), te.DB, sourceID)
+	if err != nil {
+		t.Fatalf("failed to load source: %v", err)
+	}
+	if src == nil {
+		t.Fatalf("expected source to exist")
+	}
+	if src.ChunkCount == 0 {
+		t.Fatalf("expected non-zero chunks for dynamic-enabled pro plan")
+	}
 
 	// Note: We skip content verification because actual dynamic scraping requires a headless browser which might not be present.
 	// We assume that if 201 created and processing completed, the flow is working.
