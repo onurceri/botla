@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 // Widget imports commented out for production build compatibility
 // import { WidgetApp } from '@widget/widgetApp'
 // import styles from '@widget/styles.css?raw'
@@ -27,53 +27,8 @@ type Props = {
   customBranding?: { logo_url?: string; text?: string; link?: string } | null
 }
 
-export default function PlaygroundPreview({
-  id,
-  themeColor,
-  chatHeaderColor,
-  chatHeaderTextColor,
-  botMessageColor,
-  botMessageTextColor,
-  userMessageColor,
-  userMessageTextColor,
-  chatFontFamily,
-  position,
-  botDisplayName,
-  botIcon,
-  chatBackgroundColor,
-  welcomeMessage,
-  previewOpen,
-  sessionId,
-  suggestionsEnabled,
-  suggestedQuestions,
-  refreshKey,
-  hideBranding,
-  customBranding,
-}: Props) {
+export default function PlaygroundPreview(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [dynamicPanelHeight, setDynamicPanelHeight] = useState('600px')
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const updateHeight = () => {
-      const containerHeight = container.clientHeight
-      // Panel yüksekliği: container yüksekliği - bubble alanı (80px) - margin (32px)
-      // Minimum 400px, maximum containerHeight - 100px
-      const calculatedHeight = Math.max(400, Math.min(containerHeight - 100, 700))
-      setDynamicPanelHeight(`${calculatedHeight}px`)
-    }
-
-    // İlk yükleme
-    updateHeight()
-
-    // ResizeObserver ile container boyutunu dinle
-    const resizeObserver = new ResizeObserver(updateHeight)
-    resizeObserver.observe(container)
-
-    return () => resizeObserver.disconnect()
-  }, [])
 
   return (
     <div ref={containerRef} className="flex-1 relative h-full min-h-[400px]">
