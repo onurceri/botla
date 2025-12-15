@@ -16,6 +16,7 @@ type Config struct {
 	DB_USER               string
 	DB_PASSWORD           string
 	DB_SCHEMA             string
+	DB_SSLMODE            string
 	QDRANT_URL            string
 	QDRANT_API_KEY        string
 	OPENAI_API_KEY        string
@@ -90,6 +91,16 @@ func LoadConfig() *Config {
 				return "public"
 			}
 			return v
+		}(),
+		DB_SSLMODE: func() string {
+			v := os.Getenv("DB_SSLMODE")
+			if v != "" {
+				return v
+			}
+			if os.Getenv("GO_ENV") == "production" {
+				return "require"
+			}
+			return "disable"
 		}(),
 		QDRANT_URL:     os.Getenv("QDRANT_URL"),
 		QDRANT_API_KEY: os.Getenv("QDRANT_API_KEY"),

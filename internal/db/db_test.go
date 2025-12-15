@@ -13,6 +13,7 @@ func TestBuildDSN(t *testing.T) {
 		DB_HOST:     "h",
 		DB_PORT:     "5432",
 		DB_NAME:     "n",
+		DB_SSLMODE:  "disable",
 	}
 	dsn := buildDSN(cfg)
 	expected := "postgres://u:p@h:5432/n?sslmode=disable"

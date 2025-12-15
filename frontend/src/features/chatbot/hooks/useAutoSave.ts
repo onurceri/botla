@@ -41,7 +41,7 @@ export function useAutoSave({
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const prevPayloadRef = useRef<string>('')
+  const prevPayloadRef = useRef<string | null>(null)
   const retryCountRef = useRef<number>(0)
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -152,6 +152,13 @@ export function useAutoSave({
     if (!id || id === 'new') return
 
     const payloadStr = JSON.stringify(payload)
+    
+    // Initialize prevPayloadRef on first run to prevent auto-save on mount
+    if (prevPayloadRef.current === null) {
+      prevPayloadRef.current = payloadStr
+      return
+    }
+    
     if (payloadStr === prevPayloadRef.current) return
     prevPayloadRef.current = payloadStr
 
