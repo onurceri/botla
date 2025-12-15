@@ -6,8 +6,8 @@ import (
 )
 
 func TestRateLimit_IPIsolationOnHealth(t *testing.T) {
-	t.Setenv("RATE_LIMIT_REQUESTS", "2")
-	t.Setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+	t.Setenv("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE", "2")
+	t.Setenv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS", "60")
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
