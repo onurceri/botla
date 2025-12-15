@@ -28,10 +28,24 @@ type PlanConfig struct {
 	Security                  SecurityConfig   `json:"security"`
 	Guardrails                GuardrailsConfig `json:"guardrails"`
 	Branding                  BrandingConfig   `json:"branding"`
+	RateLimits                RateLimitsConfig `json:"rate_limits"` // NEW: Plan-based rate limiting
 	MaxChatbots               int              `json:"max_chatbots"`
 	MaxMonthlyIngestions      int              `json:"max_monthly_ingestions"`
 	MaxMonthlyEmbeddingTokens int              `json:"max_monthly_embedding_tokens"`
 	MinReAddCooldownMinutes   int              `json:"min_readd_cooldown_minutes"`
+}
+
+// RateLimitsConfig defines rate limit configuration per plan
+type RateLimitsConfig struct {
+	RequestsPerMinute int                       `json:"requests_per_minute"`
+	WindowSeconds     int                       `json:"window_seconds"`
+	Endpoints         map[string]EndpointLimits `json:"endpoints"`
+}
+
+// EndpointLimits defines rate limits for specific endpoints
+type EndpointLimits struct {
+	RequestsPerMinute int `json:"requests_per_minute"`
+	WindowSeconds     int `json:"window_seconds"`
 }
 
 type SecurityConfig struct {

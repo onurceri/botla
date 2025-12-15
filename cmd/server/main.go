@@ -85,23 +85,27 @@ func main() {
 	}
 
 	// Initialize rate limiter (Redis or in-memory fallback)
+	// Global limiter is used for unauthenticated requests
+	// Plan-based limiters are created dynamically in the middleware
 	rlConfig := ratelimit.NewConfigFromEnv()
-	var globalLimiter, userLimiter ratelimit.Limiter
+	var globalLimiter ratelimit.Limiter
 	if redisClient != nil {
 		globalLimiter = ratelimit.NewRedisLimiter(redisClient, rlConfig.Global)
-		userLimiter = ratelimit.NewRedisLimiter(redisClient, rlConfig.User)
-		log.Info("rate_limiter_initialized", map[string]any{"backend": "redis"})
+		log.Info("rate_limiter_initialized", map[string]any{"backend": "redis", "mode": "plan-based"})
 	} else {
 		globalLimiter = ratelimit.NewMemoryLimiter(rlConfig.Global)
-		userLimiter = ratelimit.NewMemoryLimiter(rlConfig.User)
 		log.Warn("rate_limiter_using_memory", map[string]any{"message": "Redis unavailable, using in-memory rate limiter (not suitable for production)"})
 	}
-	rl := middleware.NewRateLimiter(globalLimiter, userLimiter, rlConfig)
+	rl := middleware.NewRateLimiter(globalLimiter, redisClient, rlConfig)
 
 	mux := buildMux(cfg, pool, log, q, storageService)
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
-	handler := middleware.RecoveryMiddleware(log)(middleware.RequestLogger(log)(middleware.RateLimitMiddleware(rl)(mux)))
+	// Middleware chain: Recovery -> Logger -> PlanLoader -> RateLimit -> Mux
+	// PlanLoader must run after auth (handled by AuthMiddleware in routes)
+	// but we also need it in the global chain for authenticated requests
+	planLoader := middleware.PlanLoaderMiddleware(pool, log)
+	handler := middleware.RecoveryMiddleware(log)(middleware.RequestLogger(log)(planLoader(middleware.RateLimitMiddleware(rl)(mux))))
 	srv := newHTTPServer(cfg.PORT, cors(handler))
 	startServerAsync(srv, log, cfg.PORT)
 	waitForShutdownSignal()
@@ -111,7 +115,7 @@ func main() {
 	refreshScheduler.Stop()
 	// Close rate limiters
 	globalLimiter.Close()
-	userLimiter.Close()
+	// Note: Plan-based limiters are managed internally by RateLimiter
 	if redisClient != nil {
 		redisClient.Close()
 	}
