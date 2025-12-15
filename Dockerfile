@@ -1,15 +1,46 @@
-FROM golang:1.25-alpine AS builder
-RUN apk add --no-cache git ca-certificates
+# Multi-stage Dockerfile with CGO support for go-fitz PDF processing
+# Stage 1: Build with Debian (glibc-based) for go-fitz compatibility
+FROM golang:1.25-bookworm AS builder
+
+# Install build dependencies required for CGO
+RUN apt-get update && apt-get install -y \
+    git \
+    ca-certificates \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
+
+# Copy go modules files and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o server cmd/server/main.go
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+# Copy source code
+COPY . .
+
+# Build the application with CGO enabled and fitz tag
+ENV CGO_ENABLED=1
+RUN go build -tags fitz -ldflags="-s -w" -o server cmd/server/main.go
+
+# Stage 2: Create minimal runtime image with glibc compatibility
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /root/
+
+# Copy the compiled binary from builder stage
 COPY --from=builder /app/server .
+
+# Copy database migrations
 COPY --from=builder /app/db/migrations ./migrations
+
+# Expose application port
 EXPOSE 8080
+
+# Run the server
 CMD ["./server"]
