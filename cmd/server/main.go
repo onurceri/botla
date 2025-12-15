@@ -18,7 +18,9 @@ import (
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -61,10 +63,44 @@ func main() {
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
 	refreshScheduler.Start(schedulerCtx)
 
+	// Initialize Redis client for rate limiting
+	var redisClient *redis.Client
+	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
+		opts, err := redis.ParseURL(redisURL)
+		if err != nil {
+			log.Warn("redis_parse_url_failed", map[string]any{"error": err.Error()})
+		} else {
+			redisClient = redis.NewClient(opts)
+			// Test connection
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			if err := redisClient.Ping(ctx).Err(); err != nil {
+				log.Warn("redis_ping_failed", map[string]any{"error": err.Error()})
+				redisClient.Close()
+				redisClient = nil
+			} else {
+				log.Info("redis_connected", nil)
+			}
+			cancel()
+		}
+	}
+
+	// Initialize rate limiter (Redis or in-memory fallback)
+	rlConfig := ratelimit.NewConfigFromEnv()
+	var globalLimiter, userLimiter ratelimit.Limiter
+	if redisClient != nil {
+		globalLimiter = ratelimit.NewRedisLimiter(redisClient, rlConfig.Global)
+		userLimiter = ratelimit.NewRedisLimiter(redisClient, rlConfig.User)
+		log.Info("rate_limiter_initialized", map[string]any{"backend": "redis"})
+	} else {
+		globalLimiter = ratelimit.NewMemoryLimiter(rlConfig.Global)
+		userLimiter = ratelimit.NewMemoryLimiter(rlConfig.User)
+		log.Warn("rate_limiter_using_memory", map[string]any{"message": "Redis unavailable, using in-memory rate limiter (not suitable for production)"})
+	}
+	rl := middleware.NewRateLimiter(globalLimiter, userLimiter, rlConfig)
+
 	mux := buildMux(cfg, pool, log, q, storageService)
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
-	rl := middleware.NewRateLimiterFromEnv()
 	handler := middleware.RecoveryMiddleware(log)(middleware.RequestLogger(log)(middleware.RateLimitMiddleware(rl)(mux)))
 	srv := newHTTPServer(cfg.PORT, cors(handler))
 	startServerAsync(srv, log, cfg.PORT)
@@ -73,6 +109,10 @@ func main() {
 	// Graceful shutdown
 	schedulerCancel()
 	refreshScheduler.Stop()
+	rateLimiter.Close()
+	if redisClient != nil {
+		redisClient.Close()
+	}
 	shutdownServer(srv, log, pool)
 }
 

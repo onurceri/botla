@@ -8,8 +8,8 @@ import (
 )
 
 func TestRateLimit_PerUserIsolation(t *testing.T) {
-	t.Setenv("RATE_LIMIT_REQUESTS", "1")
-	t.Setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "1")
+	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := startOpenAIStub()
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)

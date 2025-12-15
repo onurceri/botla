@@ -12,13 +12,20 @@ import (
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.Handler {
 	mux := http.NewServeMux()
 	log := logger.New("INFO")
-	rl := middleware.NewRateLimiterFromEnv()
+	
+	// Initialize rate limiter (in-memory for tests)
+	rlConfig := ratelimit.NewConfigFromEnv()
+	globalLimiter := ratelimit.NewMemoryLimiter(rlConfig.Global)
+	userLimiter := ratelimit.NewMemoryLimiter(rlConfig.User)
+	rl := middleware.NewRateLimiter(globalLimiter, userLimiter, rlConfig)
+	
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/health", middleware.RateLimitMiddleware(rl)(http.HandlerFunc(hh.Health)))
 
