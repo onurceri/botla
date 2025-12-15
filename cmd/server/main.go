@@ -109,7 +109,9 @@ func main() {
 	// Graceful shutdown
 	schedulerCancel()
 	refreshScheduler.Stop()
-	rateLimiter.Close()
+	// Close rate limiters
+	globalLimiter.Close()
+	userLimiter.Close()
 	if redisClient != nil {
 		redisClient.Close()
 	}
@@ -142,8 +144,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	// Composite handler under /api/v1/chatbots/
-	// Per-route limiter for sources endpoints
-	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
+	// Note: Sources rate limiting is now handled by tiered rate limiter in middleware
 	// Pending URLs handler
 	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log}
 	// Action handler
@@ -154,7 +155,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	anhSpec := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	// Suggestions handler
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log}
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandlerWithSourcesRL(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, sugh, rlSources))
+	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, sugh))
 
 	mux.Handle("/api/v1/public/chatbots/", middleware.OptionalAuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
@@ -186,13 +187,13 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 
 	// Source status, delete, and refresh
-	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/refresh") {
 			sh.RefreshSource(w, r)
 			return
 		}
 		sh.GetSourceStatusOrDelete(w, r)
-	}))))
+	})))
 
 	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(anh.GetAnalytics))))
@@ -230,7 +231,7 @@ func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processin
 	return mux
 }
 
-func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers, rlSources *middleware.RateLimiter) http.Handler {
+func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {
 	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		// Pending URLs endpoints
@@ -302,16 +303,16 @@ func chatbotsDispatchHandlerWithSourcesRL(secret string, ch *handlers.ChatbotHan
 		}
 		// Sitemap discovery endpoint
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {
-			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.DiscoverSitemap)).ServeHTTP(w, r)
+			sh.DiscoverSitemap(w, r)
 			return
 		}
 		// Bulk sources creation endpoint
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources/bulk") {
-			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.BulkCreateSources)).ServeHTTP(w, r)
+			sh.BulkCreateSources(w, r)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") && !strings.Contains(r.URL.Path, "/analytics/") {
-			middleware.RateLimitMiddleware(rlSources)(http.HandlerFunc(sh.ChatbotSources)).ServeHTTP(w, r)
+			sh.ChatbotSources(w, r)
 			return
 		}
 		ch.ByID(w, r)
