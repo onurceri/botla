@@ -40,11 +40,11 @@ const SidebarItem = ({
         collapsed && "lg:justify-center lg:group-hover/sidebar:justify-start"
       )}>
         <Icon className={cn("w-5 h-5", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} strokeWidth={1.5} />
-        <span className={cn(collapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>{label}</span>
+        <span className={cn(collapsed ? "lg:hidden lg:group-hover/sidebar:inline" : undefined)}>{label}</span>
         {active && (
           <div className={cn(
             "ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(167,139,250,0.8)]",
-            collapsed && "hidden lg:group-hover/sidebar:block"
+            collapsed && "lg:hidden lg:group-hover/sidebar:block"
           )} />
         )}
       </div>
@@ -126,7 +126,7 @@ const DashboardLayout = () => {
         <div className="h-16 flex items-center px-6 border-b border-border">
           <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
             <img src="/logo-128.png" alt="Botla Logo" className="w-8 h-8 rounded-lg shadow-lg shadow-primary/20" />
-            <span className={cn("text-foreground", isCollapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>
+            <span className={cn("text-foreground", isCollapsed ? "lg:hidden lg:group-hover/sidebar:inline" : undefined)}>
               botla.app
             </span>
           </div>
@@ -151,7 +151,7 @@ const DashboardLayout = () => {
 
         {/* Navigation */}
         <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overflow-x-hidden">
-          <div className={cn("px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", isCollapsed ? "hidden lg:group-hover/sidebar:block" : undefined)}>
+          <div className={cn("px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", isCollapsed ? "lg:hidden lg:group-hover/sidebar:block" : undefined)}>
             Platform
           </div>
           {navItems.map((item) => (
@@ -165,7 +165,7 @@ const DashboardLayout = () => {
             />
           ))}
 
-          <div className={cn("px-3 mt-6 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", isCollapsed ? "hidden lg:group-hover/sidebar:block" : undefined)}>
+          <div className={cn("px-3 mt-6 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", isCollapsed ? "lg:hidden lg:group-hover/sidebar:block" : undefined)}>
             Ayarlar
           </div>
           {settingsItems.map((item) => (
@@ -182,7 +182,7 @@ const DashboardLayout = () => {
 
         {/* User Profile / Logout */}
         <div className={cn("border-t border-border", isCollapsed ? "p-2 lg:group-hover/sidebar:p-4" : "p-4")}>
-          <div className={cn("bg-muted/50 rounded-xl p-3 flex items-center gap-3 mb-3", isCollapsed ? "hidden lg:group-hover/sidebar:flex" : undefined)}>
+          <div className={cn("bg-muted/50 rounded-xl p-3 flex items-center gap-3 mb-3", isCollapsed ? "lg:hidden lg:group-hover/sidebar:flex" : undefined)}>
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent" />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate text-foreground">{profileName || profileEmail}</div>
@@ -198,7 +198,7 @@ const DashboardLayout = () => {
             onClick={handleLogout}
           >
             <LogOut className={cn("w-4 h-4", isCollapsed ? "lg:group-hover/sidebar:mr-2" : "mr-2")} />
-            <span className={cn(isCollapsed ? "hidden lg:group-hover/sidebar:inline" : undefined)}>Çıkış Yap</span>
+            <span className={cn(isCollapsed ? "lg:hidden lg:group-hover/sidebar:inline" : undefined)}>Çıkış Yap</span>
           </Button>
         </div>
       </aside>
