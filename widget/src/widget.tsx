@@ -59,13 +59,32 @@ export function mount() {
   const sendButtonColor = params.get('send-button-color') || undefined
   const resetSession = params.get('reset-session') === '1' || params.get('reset-session') === 'true'
   const sessionIdOverride = params.get('session-id') || undefined
+  
+  // Playground preview params
+  const positionStrategyRaw = params.get('position-strategy') || undefined
+  const positionStrategy = positionStrategyRaw === 'absolute' ? 'absolute' : 'fixed'
+  
+  // Parse suggestions from JSON if provided
+  let suggestionsOverride: string[] | undefined
+  const suggestionsRaw = params.get('suggestions')
+  if (suggestionsRaw) {
+    try { suggestionsOverride = JSON.parse(suggestionsRaw) } catch {}
+  }
+  
+  // Parse branding options
+  const hideBrandingOverride = params.get('hide-branding') === '1' ? true : params.get('hide-branding') === '0' ? false : undefined
+  let customBrandingOverride: { logo_url?: string; text?: string; link?: string } | undefined
+  const customBrandingRaw = params.get('custom-branding')
+  if (customBrandingRaw) {
+    try { customBrandingOverride = JSON.parse(customBrandingRaw) } catch {}
+  }
 
   const host = ensureHost()
   const shadow = host.shadowRoot || host.attachShadow({ mode: 'open' })
   injectStyles(shadow)
   const root = document.createElement('div')
   shadow.appendChild(root)
-  render(<WidgetApp chatbotId={chatbotId} apiBase={apiBase} themeColor={themeColor} headerColor={headerColor} headerTextColor={headerTextColor} botMessageColor={botMessageColor} botMessageTextColor={botMessageTextColor} userMessageColor={userMessageColor} userMessageTextColor={userMessageTextColor} fontFamily={fontFamily} position={position} botNameOverride={botName} botIconOverride={botIcon} panelHeight={panelHeight} panelBg={panelBg} inputBg={inputBg} inputText={inputText} chatBg={chatBg} bubbleRadius={bubbleRadius} sendButtonColor={sendButtonColor} useOverrides={useOverrides} welcome={welcome} embedTokenUrl={embedTokenUrl} captchaSiteKey={captchaSiteKey} autoOpen={autoOpen} resetSession={resetSession} sessionIdOverride={sessionIdOverride} />, root)
+  render(<WidgetApp chatbotId={chatbotId} apiBase={apiBase} themeColor={themeColor} headerColor={headerColor} headerTextColor={headerTextColor} botMessageColor={botMessageColor} botMessageTextColor={botMessageTextColor} userMessageColor={userMessageColor} userMessageTextColor={userMessageTextColor} fontFamily={fontFamily} position={position} botNameOverride={botName} botIconOverride={botIcon} panelHeight={panelHeight} panelBg={panelBg} inputBg={inputBg} inputText={inputText} chatBg={chatBg} bubbleRadius={bubbleRadius} sendButtonColor={sendButtonColor} useOverrides={useOverrides} welcome={welcome} embedTokenUrl={embedTokenUrl} captchaSiteKey={captchaSiteKey} autoOpen={autoOpen} resetSession={resetSession} sessionIdOverride={sessionIdOverride} positionStrategy={positionStrategy} suggestions={suggestionsOverride} hideBrandingOverride={hideBrandingOverride} customBrandingOverride={customBrandingOverride} />, root)
 }
 
 export function unmount() {

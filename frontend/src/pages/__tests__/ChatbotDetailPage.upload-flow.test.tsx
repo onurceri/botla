@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
+import { QueryWrapper } from "@/test-utils"
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/toast'
 import ChatbotDetailPage from '../ChatbotDetailPage'
+import SourcesTab from '@/features/chatbot/pages/tabs/SourcesTab'
 import * as sourceApi from '@/api/source'
 
 vi.mock('@/features/chatbot/hooks/useSourceOps', () => {
@@ -29,16 +31,20 @@ describe('ChatbotDetailPage sources upload flow', () => {
       return Promise.resolve({ data: {} } as any)
     })
     const utils = render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="sources" element={<SourcesTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const view = within(utils.container)
-    const sourcesTab = await view.findByRole('tab', { name: /Veri Kaynakları/ })
+    const sourcesTab = await view.findByRole('link', { name: /Veri Kaynakları/ })
     await userEvent.click(sourcesTab)
     const urlBtns = view.getAllByText('Web Sitesi')
     await userEvent.click(urlBtns[urlBtns.length - 1])
@@ -62,24 +68,26 @@ describe('ChatbotDetailPage sources upload flow', () => {
       return Promise.resolve({ data: {} } as any)
     })
     const utils = render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="sources" element={<SourcesTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const view = within(utils.container)
-    const sourcesTab = await view.findByRole('tab', { name: /Veri Kaynakları/ })
+    const sourcesTab = await view.findByRole('link', { name: /Veri Kaynakları/ })
     await userEvent.click(sourcesTab)
     const pdfBtns = view.getAllByText('PDF Yükle')
     await userEvent.click(pdfBtns[pdfBtns.length - 1])
     const fileInput = utils.container.querySelector('#pdf-upload') as HTMLInputElement
     const file = new File(['%PDF-1.4'], 'doc.pdf', { type: 'application/pdf' })
-    Object.defineProperty(fileInput, 'files', { value: [file] })
-    const { fireEvent } = await import('@testing-library/react')
-    fireEvent.change(fileInput)
+    await userEvent.upload(fileInput, file)
     expect(sourceApi.uploadPDFSource).toHaveBeenCalledWith('abc', file)
     expect(await screen.findByText('PDF başarıyla yüklendi. İşleniyor...')).toBeInTheDocument()
   })

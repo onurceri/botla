@@ -6,7 +6,7 @@ import URLAdvancedSettings from '../../components/URLAdvancedSettings'
 import PendingURLsPanel from '../../components/PendingURLsPanel'
 import { useSourceOps } from '../../hooks/useSourceOps'
 import { useChatbotContext } from '../../context/ChatbotContext'
-import { uploadPDFSource, uploadTextSource, uploadURLSource } from '@/api/source'
+import { useUploadSource } from '@/hooks/mutations/useChatbotMutations'
 import { Inbox, Database, Plus } from 'lucide-react'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
@@ -31,6 +31,8 @@ export default function SourcesTab() {
     selectorWhitelist, setSelectorWhitelist,
     buildSourceSettingsPayload,
   } = useChatbotContext()
+
+  const { uploadPDF, uploadURL, uploadText } = useUploadSource(id)
 
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildSourceSettingsPayload(),
@@ -104,9 +106,21 @@ export default function SourcesTab() {
              )}
              <SourceUploader
                disabledModes={disabledModes}
-               onUploadPDF={async (file) => { if(id) { await uploadPDFSource(id, file).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
-               onUploadURL={async (u) => { if(id) { await uploadURLSource(id, u).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
-               onUploadText={async (t) => { if(id) { await uploadTextSource(id, t).then((d) => { refreshSources(); pollStatus(d.id) }) } }}
+               onUploadPDF={async (file) => { 
+                 if(id) { 
+                   await uploadPDF.mutateAsync(file).then((d) => { refreshSources(); pollStatus(d.id) }) 
+                 } 
+               }}
+               onUploadURL={async (u) => { 
+                 if(id) { 
+                   await uploadURL.mutateAsync(u).then((d) => { refreshSources(); pollStatus(d.id) }) 
+                 } 
+               }}
+               onUploadText={async (t) => { 
+                 if(id) { 
+                   await uploadText.mutateAsync(t).then((d) => { refreshSources(); pollStatus(d.id) }) 
+                 } 
+               }}
                maxFileSizeMB={planConfig.files?.max_size_mb}
                maxTextLength={planConfig.files?.max_text_length}
                extraUrlSettings={

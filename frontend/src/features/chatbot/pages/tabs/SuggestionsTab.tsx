@@ -1,48 +1,29 @@
-import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { api } from '@/api/client'
 import SuggestionsPanel from '../../components/SuggestionsPanel'
 import { useChatbotContext } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
+import { useRegenerateSuggestions } from '@/hooks/mutations/useChatbotMutations'
 
 export default function SuggestionsTab() {
   const { id: chatbotId } = useParams()
   const {
     suggestionsEnabled, setSuggestionsEnabled,
     suggestedQuestions, setSuggestedQuestions,
-    allSuggestedQuestions, setAllSuggestedQuestions,
+    allSuggestedQuestions,
     buildSuggestionsPayload,
   } = useChatbotContext()
 
-  const [isRegenerating, setIsRegenerating] = useState(false)
+  const regenerate = useRegenerateSuggestions(chatbotId!)
 
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildSuggestionsPayload(),
   })
 
-  const handleRegenerate = async () => {
-    if (!chatbotId) return
-    setIsRegenerating(true)
-    try {
-      await api.post(`/api/v1/chatbots/${chatbotId}/suggestions/regenerate`)
-      // Refetch chatbot to get updated suggestions after a short delay
-      setTimeout(async () => {
-        const { data } = await api.get(`/api/v1/chatbots/${chatbotId}`)
-        if (data.suggested_questions) {
-          setSuggestedQuestions(() => data.suggested_questions)
-        }
-        if (data.all_suggested_questions) {
-          setAllSuggestedQuestions(() => data.all_suggested_questions)
-        }
-        setIsRegenerating(false)
-      }, 2000) // Wait 2 seconds for background processing
-    } catch (err) {
-      console.error('Failed to regenerate suggestions:', err)
-      setIsRegenerating(false)
-    }
+  const handleRegenerate = () => {
+    regenerate.mutate()
   }
 
   return (
@@ -61,11 +42,11 @@ export default function SuggestionsTab() {
           variant="outline" 
           size="sm"
           onClick={handleRegenerate}
-          disabled={isRegenerating}
+          disabled={regenerate.isPending}
           className="self-start sm:self-auto"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
-          {isRegenerating ? 'Yeniden Üretiliyor...' : 'Yeniden Üret'}
+          <RefreshCw className={`w-4 h-4 mr-2 ${regenerate.isPending ? 'animate-spin' : ''}`} />
+          {regenerate.isPending ? 'Yeniden Üretiliyor...' : 'Yeniden Üret'}
         </Button>
       </div>
 

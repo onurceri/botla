@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, cleanup } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, cleanup } from '@testing-library/react'
 import PlaygroundPreview from '../PlaygroundPreview'
-import * as chatApi from '@/api/chat'
 
-vi.mock('@/api/chat')
+// Mock import.meta.env
+vi.stubEnv('VITE_WIDGET_URL', 'http://localhost:5174')
+vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:8080')
 
 const defaultProps = {
   id: '123',
@@ -36,102 +36,117 @@ describe('PlaygroundPreview', () => {
     cleanup()
   })
 
-  it('renders chat interface with welcome message', () => {
+  it('renders iframe with correct src', () => {
     const { container } = render(<PlaygroundPreview {...defaultProps} />)
     
-    expect(screen.getByText('Destek')).toBeInTheDocument()
-    expect(screen.getByText('Merhaba! Size nasıl yardımcı olabilirim?')).toBeInTheDocument()
-    expect(container.querySelector('.playground-input')).toBeInTheDocument()
+    const iframe = container.querySelector('iframe')
+    expect(iframe).toBeInTheDocument()
+    expect(iframe?.src).toContain('/preview.html')
   })
 
-  it('displays suggested questions when enabled and no user messages', () => {
-    render(
+  it('iframe has correct attributes', () => {
+    const { container } = render(<PlaygroundPreview {...defaultProps} />)
+    
+    const iframe = container.querySelector('iframe')
+    expect(iframe).toHaveAttribute('title', 'Chatbot Preview')
+    expect(iframe).toHaveAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups')
+  })
+
+  it('sends config via postMessage when iframe loads', async () => {
+    const mockPostMessage = vi.fn()
+    
+    const { container } = render(<PlaygroundPreview {...defaultProps} />)
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement
+    
+    // Simulate iframe with contentWindow
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      writable: true,
+    })
+    
+    // Trigger load event
+    iframe.dispatchEvent(new Event('load'))
+    
+    // Wait for setTimeout in handleIframeLoad
+    await new Promise(resolve => setTimeout(resolve, 150))
+    
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WIDGET_CONFIG',
+        config: expect.objectContaining({
+          'chatbot-id': '123',
+          'session-id': 'test-session-id',
+          'auto-open': '1',
+          'color': '#a78bfa',
+          'position': 'bottom-right',
+        }),
+      }),
+      '*'
+    )
+  })
+
+  it('includes suggestions in config when enabled', async () => {
+    const mockPostMessage = vi.fn()
+    const suggestions = ['Nasıl çalışır?', 'Fiyatlar nedir?']
+    
+    const { container } = render(
       <PlaygroundPreview
         {...defaultProps}
         suggestionsEnabled={true}
-        suggestedQuestions={['Nasıl çalışır?', 'Fiyatlar nedir?']}
+        suggestedQuestions={suggestions}
       />
     )
-
-    expect(screen.getByText('Nasıl çalışır?')).toBeInTheDocument()
-    expect(screen.getByText('Fiyatlar nedir?')).toBeInTheDocument()
-  })
-
-  it('does not display suggestions when disabled', () => {
-    render(
-      <PlaygroundPreview
-        {...defaultProps}
-        suggestionsEnabled={false}
-        suggestedQuestions={['Nasıl çalışır?', 'Fiyatlar nedir?']}
-      />
+    
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      writable: true,
+    })
+    
+    iframe.dispatchEvent(new Event('load'))
+    await new Promise(resolve => setTimeout(resolve, 150))
+    
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WIDGET_CONFIG',
+        config: expect.objectContaining({
+          suggestions: JSON.stringify(suggestions),
+        }),
+      }),
+      '*'
     )
-
-    expect(screen.queryByText('Nasıl çalışır?')).not.toBeInTheDocument()
-    expect(screen.queryByText('Fiyatlar nedir?')).not.toBeInTheDocument()
   })
 
-  it('sends message when user types and clicks send', async () => {
-    const mockSendChatMessage = vi.mocked(chatApi.sendChatMessage)
-    mockSendChatMessage.mockResolvedValue({
-      response: 'Test response',
-      tokens_used: 10,
-      sources_used: [],
-    })
-
-    const user = userEvent.setup()
-    const { container } = render(<PlaygroundPreview {...defaultProps} />)
-
-    const textarea = container.querySelector('.playground-input') as HTMLTextAreaElement
-    const sendButton = screen.getByLabelText('Gönder')
-
-    await user.type(textarea, 'Test message')
-    await user.click(sendButton)
-
-    expect(mockSendChatMessage).toHaveBeenCalledWith('123', {
-      message: 'Test message',
-      session_id: 'test-session-id',
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Test message')).toBeInTheDocument()
-      expect(screen.getByText('Test response')).toBeInTheDocument()
-    })
-  })
-
-  it('displays custom branding when enabled', () => {
+  it('includes branding config when provided', async () => {
+    const mockPostMessage = vi.fn()
+    const customBranding = { text: 'Custom Brand', link: 'https://example.com' }
+    
     const { container } = render(
       <PlaygroundPreview
         {...defaultProps}
         hideBranding={true}
-        customBranding={{ text: 'Custom Brand', link: 'https://example.com' }}
+        customBranding={customBranding}
       />
     )
-
-    expect(screen.getByText('Custom Brand')).toBeInTheDocument()
-    // Powered by should not appear with custom branding
-    const brandingDiv = container.querySelector('.playground-branding')
-    expect(brandingDiv?.textContent).toContain('Custom Brand')
-    expect(brandingDiv?.textContent).not.toContain('Botla')
-  })
-
-  it('displays default Botla branding when not hidden', () => {
-    const { container } = render(<PlaygroundPreview {...defaultProps} hideBranding={false} />)
-
-    const brandingDiv = container.querySelector('.playground-branding')
-    expect(brandingDiv?.textContent).toContain('Powered by')
-    expect(screen.getByText('Botla')).toBeInTheDocument()
-  })
-
-  it('enforces character limit', async () => {
-    const user = userEvent.setup()
-    const { container } = render(<PlaygroundPreview {...defaultProps} />)
-
-    const textarea = container.querySelector('.playground-input') as HTMLTextAreaElement
-    const longText = 'a'.repeat(1100)
-
-    await user.type(textarea, longText)
-
-    // Should only accept up to MAX_CHARS (1000)
-    expect(textarea.value.length).toBeLessThanOrEqual(1000)
+    
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      writable: true,
+    })
+    
+    iframe.dispatchEvent(new Event('load'))
+    await new Promise(resolve => setTimeout(resolve, 150))
+    
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WIDGET_CONFIG',
+        config: expect.objectContaining({
+          'hide-branding': '1',
+          'custom-branding': JSON.stringify(customBranding),
+        }),
+      }),
+      '*'
+    )
   })
 })

@@ -1,8 +1,12 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import HeaderActions from '../HeaderActions'
 
 describe('HeaderActions', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it('renders title and create button for new chatbot', () => {
     const onCreate = vi.fn()
     render(

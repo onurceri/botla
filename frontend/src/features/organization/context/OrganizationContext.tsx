@@ -49,7 +49,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
       // Auto-select first org if none selected
       if (!currentOrganization && orgs.length > 0) {
         // Try to recover from local storage
-        const savedOrgId = localStorage.getItem('botla_last_org_id')
+        const storage = typeof window !== 'undefined' ? window.localStorage : null
+        const savedOrgId = storage?.getItem('botla_last_org_id')
         const targetOrg = orgs.find(o => o.id === savedOrgId) || orgs[0]
         await selectOrganization(targetOrg.id, orgs)
       } else if (currentOrganization) {
@@ -70,7 +71,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!org) return
 
     setCurrentOrganization(org)
-    localStorage.setItem('botla_last_org_id', orgId)
+    const storage = typeof window !== 'undefined' ? window.localStorage : null
+    storage?.setItem('botla_last_org_id', orgId)
     
     // Reset workspace when switching orgs
     setCurrentWorkspace(null)
@@ -82,7 +84,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
       setWorkspaces(ws)
       
       // Auto-select first workspace or recover from local storage
-      const savedWsId = localStorage.getItem(`botla_last_ws_id_${orgId}`)
+      const savedWsId = storage?.getItem(`botla_last_ws_id_${orgId}`)
       const targetWs = ws.find(w => w.id === savedWsId) || ws[0]
       if (targetWs) {
         selectWorkspace(targetWs.id, ws, orgId)
@@ -100,7 +102,8 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
       // Use orgId parameter if provided (during org switch), otherwise use currentOrganization
       const targetOrgId = orgId || currentOrganization?.id
       if (targetOrgId) {
-        localStorage.setItem(`botla_last_ws_id_${targetOrgId}`, workspaceId)
+        const storage = typeof window !== 'undefined' ? window.localStorage : null
+        storage?.setItem(`botla_last_ws_id_${targetOrgId}`, workspaceId)
       }
     }
   }

@@ -1,7 +1,74 @@
 import '@testing-library/jest-dom/vitest'
-import { vi } from 'vitest'
+import { beforeEach, vi } from 'vitest'
 import * as React from 'react'
 import { api } from '@/api/client'
+
+const createUnexpectedHttpCallError = (method: string, args: unknown[]) => {
+  const prettyArgs = args.map((a) => {
+    try {
+      return typeof a === 'string' ? a : JSON.stringify(a)
+    } catch {
+      return String(a)
+    }
+  })
+  return new Error(
+    `Unexpected ${method} call in tests: ${prettyArgs.join(' ')}. Mock the call in the test.`
+  )
+}
+
+beforeEach(() => {
+  const client = api as any
+  const methods = ['get', 'post', 'put', 'patch', 'delete', 'request']
+
+  for (const method of methods) {
+    const fn = client?.[method]
+    if (typeof fn !== 'function') continue
+    if (!vi.isMockFunction(fn)) {
+      vi.spyOn(client, method)
+    }
+    vi.mocked(client[method]).mockImplementation((...args: unknown[]) => {
+      throw createUnexpectedHttpCallError(`api.${method}`, args)
+    })
+  }
+})
+
+const localStorageStore: Record<string, string> = {}
+Object.defineProperty(window, 'localStorage', {
+  value: {
+    getItem: vi.fn((key: string) => (key in localStorageStore ? localStorageStore[key] : null)),
+    setItem: vi.fn((key: string, value: string) => {
+      localStorageStore[key] = String(value)
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete localStorageStore[key]
+    }),
+    clear: vi.fn(() => {
+      for (const key of Object.keys(localStorageStore)) {
+        delete localStorageStore[key]
+      }
+    }),
+  },
+  writable: true,
+})
+
+// Mock IntersectionObserver
+class IntersectionObserverMock {
+  disconnect = vi.fn()
+  observe = vi.fn()
+  takeRecords = vi.fn()
+  unobserve = vi.fn()
+}
+
+vi.stubGlobal('IntersectionObserver', IntersectionObserverMock)
+
+// Mock ResizeObserver
+class ResizeObserverMock {
+  disconnect = vi.fn()
+  observe = vi.fn()
+  unobserve = vi.fn()
+}
+
+vi.stubGlobal('ResizeObserver', ResizeObserverMock)
 
 vi.mock('@widget/widgetApp', () => {
   function WidgetApp({ chatbotId }: { chatbotId: string }) {

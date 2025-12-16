@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { QueryWrapper } from "@/test-utils"
 import { render, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -23,7 +24,8 @@ describe('ChatbotDetailPage tab query param', () => {
       return Promise.resolve({ data: {} } as any)
     })
     const utils = render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
@@ -33,6 +35,7 @@ describe('ChatbotDetailPage tab query param', () => {
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const view = within(utils.container)
     const user = userEvent.setup()
@@ -49,7 +52,8 @@ describe('ChatbotDetailPage tab query param', () => {
       return Promise.resolve({ data: {} } as any)
     })
     const utils2 = render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
@@ -59,6 +63,7 @@ describe('ChatbotDetailPage tab query param', () => {
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const view2 = within(utils2.container)
     const user = userEvent.setup()

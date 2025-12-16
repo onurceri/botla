@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { QueryWrapper } from "@/test-utils"
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ChatbotDetailPage from '../ChatbotDetailPage'
@@ -7,13 +8,15 @@ import { ToastProvider } from '@/components/ui/toast'
 describe('ChatbotDetailPage golden (new chatbot)', () => {
   it('renders header and basic form for new chatbot', () => {
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/new"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
 
     expect(screen.getByText('Yeni Chatbot')).toBeInTheDocument()

@@ -112,6 +112,7 @@ const DashboardPage = () => {
     const fetchData = async () => {
       // Wait for org context to be ready (at least tried to load)
       if (isOrgLoading) return
+      if (!currentWorkspace) return
 
       try {
         // Fetch Analytics
@@ -130,13 +131,17 @@ const DashboardPage = () => {
         const totalPos = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.thumbs_up ?? 0), 0)
         const totalNeg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.thumbs_down ?? 0), 0)
 
-        // Fetch Bots for count and recent list
-        const { data } = await api.get('/api/v1/chatbots')
-        
-        // Check again before setting state
+        let bots: any[] = []
+        try {
+          const { data } = await api.get('/api/v1/chatbots')
+          bots = Array.isArray(data) ? data : []
+        } catch (error) {
+          console.error('Failed to fetch chatbots', error)
+          bots = []
+        }
+
         if (!isMounted) return
-        
-        const bots = Array.isArray(data) ? data : []
+
         setRecentBots(bots.slice(0, 3))
         
         setStats({

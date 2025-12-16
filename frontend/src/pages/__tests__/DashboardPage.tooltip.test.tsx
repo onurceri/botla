@@ -11,8 +11,8 @@ describe('Dashboard CustomTooltip', () => {
     ]
     render(<CustomTooltip active={true} payload={payload} label={date} />)
     expect(screen.getByText(/10 Mayıs 2024/)).toBeInTheDocument()
-    expect(screen.getByText('Konuşma:')).toBeInTheDocument()
-    expect(screen.getByText('Mesaj:')).toBeInTheDocument()
+    expect(screen.getByText('Konuşma')).toBeInTheDocument()
+    expect(screen.getByText('Mesaj')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
   })
@@ -22,4 +22,3 @@ describe('Dashboard CustomTooltip', () => {
     expect(container.firstChild).toBeNull()
   })
 })
-

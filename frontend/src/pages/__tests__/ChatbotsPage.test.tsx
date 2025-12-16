@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { QueryWrapper } from '@/test-utils'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -18,6 +19,20 @@ describe('ChatbotsPage', () => {
     })
   })
 
+  // Mock Organization Context
+  vi.mock('@/features/organization/context/OrganizationContext', () => ({
+    useOrganization: () => ({
+      organizations: [],
+      currentOrganization: { id: 'org1', name: 'Test Org' },
+      workspaces: [],
+      currentWorkspace: { id: 'ws1', name: 'Test Workspace' },
+      isLoading: false,
+      selectOrganization: vi.fn(),
+      selectWorkspace: vi.fn(),
+    }),
+    OrganizationProvider: ({ children }: any) => <>{children}</>,
+  }))
+
   it('renders loading then lists bots', async () => {
     const bots = [
       { id: 1, name: 'Destek Botu', description: 'Müşteri desteği', model: 'gpt-4o-mini' },
@@ -26,11 +41,13 @@ describe('ChatbotsPage', () => {
     vi.spyOn(api, 'get').mockResolvedValueOnce({ data: bots } as any)
 
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter>
           <ChatbotsPage />
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
 
     expect(screen.getByText('Yükleniyor...')).toBeInTheDocument()
@@ -49,11 +66,13 @@ describe('ChatbotsPage', () => {
     vi.spyOn(api, 'get').mockResolvedValueOnce({ data: bots } as any)
 
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter>
           <ChatbotsPage />
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
 
     await screen.findByText('Test Bot')
@@ -78,11 +97,13 @@ describe('ChatbotsPage', () => {
     const delSpy = vi.spyOn(api, 'delete').mockResolvedValueOnce({ data: {} } as any)
 
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter>
           <ChatbotsPage />
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
 
     await screen.findByText('Bot A')
@@ -102,11 +123,13 @@ describe('ChatbotsPage', () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.spyOn(api, 'get').mockRejectedValueOnce(new Error('fail'))
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter>
           <ChatbotsPage />
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     await waitFor(() => {
       expect(errSpy).toHaveBeenCalled()
@@ -120,11 +143,13 @@ describe('ChatbotsPage', () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.spyOn(api, 'delete').mockRejectedValueOnce(new Error('fail'))
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter>
           <ChatbotsPage />
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     await screen.findByText('Err Bot')
     const trigger = document.querySelector('[data-menu-trigger="3"]') as HTMLElement
@@ -140,11 +165,13 @@ describe('ChatbotsPage', () => {
     const bots = [{ id: 7, name: 'Ghost Bot', description: '', model: 'gpt' }]
     vi.spyOn(api, 'get').mockResolvedValueOnce({ data: bots } as any)
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter>
           <ChatbotsPage />
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     await screen.findByText('Ghost Bot')
     const trigger = document.querySelector('[data-menu-trigger="7"]') as HTMLElement

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, waitFor, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/toast'
@@ -7,6 +7,12 @@ import LoginPage from '../LoginPage'
 import { api } from '@/api/client'
 
 describe('LoginPage extra tests', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+    window.localStorage.clear()
+  })
+
   it('shows error toast when fields are empty', async () => {
     const user = userEvent.setup()
     render(

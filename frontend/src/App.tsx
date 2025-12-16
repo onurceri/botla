@@ -29,7 +29,7 @@ const isAuthenticated = () => {
   // VITE_E2E is set in Playwright webServer env
   // @ts-ignore
   if (import.meta.env && (import.meta.env as any).VITE_E2E) return true
-  return !!localStorage.getItem('botla_token')
+  return !!(typeof window !== 'undefined' && window.localStorage.getItem('botla_token'))
 }
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
