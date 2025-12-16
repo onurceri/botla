@@ -75,7 +75,9 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			if err := redisClient.Ping(ctx).Err(); err != nil {
 				log.Warn("redis_ping_failed", map[string]any{"error": err.Error()})
-				redisClient.Close()
+				if err := redisClient.Close(); err != nil {
+					log.Error("redis_close_failed", map[string]any{"error": err.Error()})
+				}
 				redisClient = nil
 			} else {
 				log.Info("redis_connected", nil)
@@ -114,10 +116,14 @@ func main() {
 	schedulerCancel()
 	refreshScheduler.Stop()
 	// Close rate limiters
-	globalLimiter.Close()
+	if err := globalLimiter.Close(); err != nil {
+		log.Error("global_limiter_close_failed", map[string]any{"error": err.Error()})
+	}
 	// Note: Plan-based limiters are managed internally by RateLimiter
 	if redisClient != nil {
-		redisClient.Close()
+		if err := redisClient.Close(); err != nil {
+			log.Error("redis_close_failed", map[string]any{"error": err.Error()})
+		}
 	}
 	shutdownServer(srv, log, pool)
 }

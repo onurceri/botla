@@ -16,7 +16,7 @@ import (
 // This test just verifies that the infrastructure is in place
 func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
 	t.Skip("Plan-based rate limiting infrastructure verified through other tests. Skipping to avoid test interference.")
-	
+
 	cfg := config.LoadConfig()
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -28,19 +28,30 @@ func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
 	email := fmt.Sprintf("ratelimit+%d@example.com", time.Now().UnixNano())
 	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "Rate Test"}
 	rb, _ := json.Marshal(regBody)
-	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
-	
+	var resReg *http.Response
+	resReg, err = http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	if err != nil {
+		t.Fatalf("failed to register: %v", err)
+	}
+
 	var tokensResp struct {
 		Token string `json:"token"`
 	}
-	json.NewDecoder(resReg.Body).Decode(&tokensResp)
+	if err = json.NewDecoder(resReg.Body).Decode(&tokensResp); err != nil {
+		resReg.Body.Close()
+		t.Fatalf("failed to decode token response: %v", err)
+	}
 	resReg.Body.Close()
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+tokensResp.Token)
-	res, _ := http.DefaultClient.Do(req)
+	var res *http.Response
+	res, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("failed to make request: %v", err)
+	}
 	defer res.Body.Close()
-	
+
 	// Verify rate limit headers are present
 	if res.Header.Get("X-RateLimit-Limit") == "" {
 		t.Error("Expected X-RateLimit-Limit header")
@@ -51,6 +62,6 @@ func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
 	if res.Header.Get("X-RateLimit-Reset") == "" {
 		t.Error("Expected X-RateLimit-Reset header")
 	}
-	
+
 	_ = cfg
 }
