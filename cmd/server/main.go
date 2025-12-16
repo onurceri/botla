@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
+	"github.com/onurceri/botla-co/internal/api/router"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
@@ -24,31 +24,66 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	cfg := config.LoadConfig()
 	log := logger.New("INFO")
+
+	app, err := newApplication(cfg, log)
+	if err != nil {
+		// Specific errors are logged in newApplication
+		return err
+	}
+
+	app.start()
+	waitForShutdownSignal()
+	app.shutdown()
+
+	return nil
+}
+
+type application struct {
+	cfg              *config.Config
+	log              *logger.Logger
+	db               *sql.DB
+	redisClient      *redis.Client
+	qdrantClient     *rag.QdrantClient
+	storageService   storage.StorageService
+	queue            *processing.SourceQueue
+	refreshScheduler *services.RefreshScheduler
+	rateLimiter      *middleware.RateLimiter
+	globalLimiter    ratelimit.Limiter
+	server           *http.Server
+	schedulerCancel  context.CancelFunc
+}
+
+func newApplication(cfg *config.Config, log *logger.Logger) (*application, error) {
 	pool, err := db.New(cfg)
 	if err != nil {
 		log.Error("db_init_failed", map[string]any{"error": err.Error()})
-		os.Exit(1)
+		return nil, err
 	}
 
 	// Initialize Qdrant
 	qdrantClient, err := rag.NewQdrantClientFromEnv()
 	if err != nil {
 		log.Error("qdrant_init_failed", map[string]any{"error": err.Error()})
-		os.Exit(1)
+		return nil, err
 	}
 
 	// Ensure embeddings collection exists
 	if err := ensureQdrantCollection(qdrantClient, log); err != nil {
-		os.Exit(1)
+		return nil, err
 	}
 	log.Info("qdrant_collection_ready", nil)
 
 	// Initialize storage service
 	var storageService storage.StorageService
 	if cfg.R2_ACCOUNT_ID != "" {
-		var err error
 		storageService, err = storage.NewR2Storage(cfg.R2_ACCOUNT_ID, cfg.R2_ACCESS_KEY_ID, cfg.R2_SECRET_ACCESS_KEY, cfg.R2_BUCKET_NAME)
 		if err != nil {
 			log.Error("storage_init_failed", map[string]any{"error": err.Error()})
@@ -57,11 +92,6 @@ func main() {
 
 	// Start source processing queue
 	q, _ := processing.StartSourceQueue(pool, storageService)
-
-	// Start refresh scheduler
-	refreshScheduler := services.NewRefreshScheduler(pool, q, log)
-	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
-	refreshScheduler.Start(schedulerCtx)
 
 	// Initialize Redis client for rate limiting
 	var redisClient *redis.Client
@@ -87,8 +117,6 @@ func main() {
 	}
 
 	// Initialize rate limiter (Redis or in-memory fallback)
-	// Global limiter is used for unauthenticated requests
-	// Plan-based limiters are created dynamically in the middleware
 	rlConfig := ratelimit.NewConfigFromEnv()
 	var globalLimiter ratelimit.Limiter
 	if redisClient != nil {
@@ -100,233 +128,63 @@ func main() {
 	}
 	rl := middleware.NewRateLimiter(globalLimiter, redisClient, rlConfig)
 
-	mux := buildMux(cfg, pool, log, q, storageService)
-	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
+	// Start refresh scheduler
+	refreshScheduler := services.NewRefreshScheduler(pool, q, log)
+
+	return &application{
+		cfg:              cfg,
+		log:              log,
+		db:               pool,
+		redisClient:      redisClient,
+		qdrantClient:     qdrantClient,
+		storageService:   storageService,
+		queue:            q,
+		refreshScheduler: refreshScheduler,
+		rateLimiter:      rl,
+		globalLimiter:    globalLimiter,
+	}, nil
+}
+
+func (app *application) start() {
+	// Start refresh scheduler
+	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
+	app.schedulerCancel = schedulerCancel
+	app.refreshScheduler.Start(schedulerCtx)
+
+	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService)
+	origins := strings.Split(app.cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	// Middleware chain: Recovery -> Logger -> PlanLoader -> RateLimit -> Mux
-	// PlanLoader must run after auth (handled by AuthMiddleware in routes)
-	// but we also need it in the global chain for authenticated requests
-	planLoader := middleware.PlanLoaderMiddleware(pool, log)
-	handler := middleware.RecoveryMiddleware(log)(middleware.RequestLogger(log)(planLoader(middleware.RateLimitMiddleware(rl)(mux))))
-	srv := newHTTPServer(cfg.PORT, cors(handler))
-	startServerAsync(srv, log, cfg.PORT)
-	waitForShutdownSignal()
+	planLoader := middleware.PlanLoaderMiddleware(app.db, app.log)
+	handler := middleware.RecoveryMiddleware(app.log)(middleware.RequestLogger(app.log)(planLoader(middleware.RateLimitMiddleware(app.rateLimiter)(mux))))
 
+	app.server = newHTTPServer(app.cfg.PORT, cors(handler))
+	startServerAsync(app.server, app.log, app.cfg.PORT)
+}
+
+func (app *application) shutdown() {
 	// Graceful shutdown
-	schedulerCancel()
-	refreshScheduler.Stop()
+	if app.schedulerCancel != nil {
+		app.schedulerCancel()
+	}
+	if app.refreshScheduler != nil {
+		app.refreshScheduler.Stop()
+	}
 	// Close rate limiters
-	if err := globalLimiter.Close(); err != nil {
-		log.Error("global_limiter_close_failed", map[string]any{"error": err.Error()})
+	if app.globalLimiter != nil {
+		if err := app.globalLimiter.Close(); err != nil {
+			app.log.Error("global_limiter_close_failed", map[string]any{"error": err.Error()})
+		}
 	}
 	// Note: Plan-based limiters are managed internally by RateLimiter
-	if redisClient != nil {
-		if err := redisClient.Close(); err != nil {
-			log.Error("redis_close_failed", map[string]any{"error": err.Error()})
+	if app.redisClient != nil {
+		if err := app.redisClient.Close(); err != nil {
+			app.log.Error("redis_close_failed", map[string]any{"error": err.Error()})
 		}
 	}
-	shutdownServer(srv, log, pool)
-}
-
-func buildMux(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService) *http.ServeMux {
-	mux := http.NewServeMux()
-	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
-	mux.HandleFunc("/health", hh.Health)
-	// Organization service (needed by auth for auto-workspace creation)
-	orgSvc := services.NewOrganizationService(pool, log)
-	workspaceSvc := services.NewWorkspaceService(pool, log)
-	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc, WorkspaceService: workspaceSvc}
-	mux.HandleFunc("/api/v1/auth/register", ah.RegisterHandler)
-	mux.HandleFunc("/api/v1/auth/login", ah.LoginHandler)
-	mux.HandleFunc("/api/v1/auth/refresh", ah.RefreshHandler)
-	mux.HandleFunc("/api/v1/auth/logout", ah.LogoutHandler)
-	mux.Handle("/api/v1/protected", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(handlers.ProtectedHandler)))
-	mh := &handlers.MeHandlers{DB: pool}
-	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
-	ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg}
-	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
-	// Sources handler
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
-	// Chat service
-	factory := rag.NewClientFactory(cfg)
-	oaiClient, _ := rag.NewOpenAIClientFromEnv()
-	qdClient, _ := rag.NewQdrantClientFromEnv()
-	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
-	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
-	// Composite handler under /api/v1/chatbots/
-	// Note: Sources rate limiting is now handled by tiered rate limiter in middleware
-	// Pending URLs handler
-	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log}
-	// Action handler
-	acth := &handlers.ActionHandlers{DB: pool}
-	// Handoff handler
-	hoh := &handlers.HandoffHandlers{DB: pool, Log: log}
-	// Analytics handler for chatbot-specific routes
-	anhSpec := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc, WorkspaceService: workspaceSvc}
-	// Suggestions handler
-	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log}
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anhSpec, sugh))
-
-	mux.Handle("/api/v1/public/chatbots/", middleware.OptionalAuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const p = "/api/v1/public/chatbots/"
-		// Public email submission for handoff: /api/v1/public/chatbots/:botId/handoff/:requestId/contact
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff/") && strings.HasSuffix(r.URL.Path, "/contact") {
-			hoh.PublicSubmitEmail(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") {
-			// Public handoff request
-			hoh.PublicRequestHandoff(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			// Public handlers
-			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
-			ph.PublicChat(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/feedback") {
-			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
-			ph.SubmitFeedback(w, r)
-			return
-		}
-		handlers.PublicChatbotConfig(pool)(w, r)
-	})))
-
-	// Feedback (protected)
-	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
-
-	// Source status, delete, and refresh
-	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/refresh") {
-			sh.RefreshSource(w, r)
-			return
-		}
-		sh.GetSourceStatusOrDelete(w, r)
-	})))
-
-	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: services.NewAnalyticsService(pool, log), OrgService: orgSvc, WorkspaceService: workspaceSvc}
-	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(anh.GetAnalytics))))
-
-	// Organization routes
-	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
-	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
-	auth := middleware.AuthMiddleware(cfg.JWT_SECRET)
-
-	// Helper middlewares
-	requireMember := middleware.RequireOrganizationAccess(orgSvc, "member")
-	requireAdmin := middleware.RequireOrganizationAccess(orgSvc, "admin")
-	requireOwner := middleware.RequireOrganizationAccess(orgSvc, "owner")
-
-	// Org List/Create
-	mux.Handle("GET /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
-	mux.Handle("POST /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
-
-	// Org Management
-	mux.Handle("PATCH /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.UpdateOrganization))))
-	mux.Handle("DELETE /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.DeleteOrganization))))
-
-	// Workspaces
-	mux.Handle("GET /api/v1/organizations/{id}/workspaces", auth(requireMember(http.HandlerFunc(wh.Workspaces))))
-	mux.Handle("POST /api/v1/organizations/{id}/workspaces", auth(requireAdmin(http.HandlerFunc(wh.Workspaces))))
-	mux.Handle("PATCH /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(wh.UpdateWorkspace))))
-	mux.Handle("DELETE /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(wh.DeleteWorkspace))))
-
-	// Members
-	mux.Handle("GET /api/v1/organizations/{id}/members", auth(requireMember(http.HandlerFunc(oh.GetMembers))))
-	mux.Handle("POST /api/v1/organizations/{id}/members", auth(requireAdmin(http.HandlerFunc(oh.AddMember))))
-	mux.Handle("DELETE /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.RemoveMember))))
-	mux.Handle("PATCH /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.UpdateMemberRole))))
-
-	return mux
-}
-
-func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {
-	return middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const p = "/api/v1/chatbots/"
-		// Pending URLs endpoints
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/pending-urls") {
-			if strings.HasSuffix(r.URL.Path, "/pending-urls/approve") {
-				puh.ApprovePendingURLs(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/pending-urls/reject") {
-				puh.RejectPendingURLs(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/pending-urls/clear") {
-				puh.ClearPendingURLs(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/pending-urls") {
-				puh.ListPendingURLs(w, r)
-				return
-			}
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			chh.Chat(w, r)
-			return
-		}
-		// Actions endpoint
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/actions") {
-			acth.Dispatch(w, r)
-			return
-		}
-		// Handoff requests endpoint
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff-requests") {
-			// Has request ID if path contains more segments after handoff-requests
-			parts := strings.Split(r.URL.Path, "/")
-			// /api/v1/chatbots/:id/handoff-requests/:requestId -> parts[6] is requestId
-			if len(parts) >= 7 && parts[6] != "" {
-				if r.Method == http.MethodGet {
-					// GET specific request: GET /api/v1/chatbots/:id/handoff-requests/:requestId
-					hoh.GetHandoffRequestDetail(w, r)
-				} else {
-					// Update specific request: PATCH /api/v1/chatbots/:id/handoff-requests/:requestId
-					hoh.UpdateHandoffRequest(w, r)
-				}
-			} else {
-				// List requests: GET /api/v1/chatbots/:id/handoff-requests
-				hoh.ListHandoffRequests(w, r)
-			}
-			return
-		}
-		// Analytics endpoints
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/analytics") {
-			if strings.HasSuffix(r.URL.Path, "/analytics/overview") {
-				anh.GetChatbotAnalyticsOverview(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/analytics/trends") {
-				anh.GetChatbotAnalyticsTrends(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/analytics/sources") {
-				anh.GetSourceUsage(w, r)
-				return
-			}
-		}
-		// Suggestions regenerate endpoint
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/suggestions/regenerate") {
-			sugh.RegenerateSuggestions(w, r)
-			return
-		}
-		// Sitemap discovery endpoint
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sitemap/discover") {
-			sh.DiscoverSitemap(w, r)
-			return
-		}
-		// Bulk sources creation endpoint
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources/bulk") {
-			sh.BulkCreateSources(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") && !strings.Contains(r.URL.Path, "/analytics/") {
-			sh.ChatbotSources(w, r)
-			return
-		}
-		ch.ByID(w, r)
-	}))
+	if app.server != nil {
+		shutdownServer(app.server, app.log, app.db)
+	}
 }
 
 func newHTTPServer(port string, h http.Handler) *http.Server {

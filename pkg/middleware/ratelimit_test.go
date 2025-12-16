@@ -12,13 +12,13 @@ func TestRateLimitMiddleware_HeadersAndThrottle(t *testing.T) {
 		os.Unsetenv("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE")
 		os.Unsetenv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS")
 	}()
-	
+
 	// Import ratelimit package for creating limiter
 	cfg := struct {
 		RequestsPerWindow int
 		WindowSize        int
 	}{2, 1}
-	
+
 	// This test verifies the middleware works with the new rate limiter
 	// For now, we skip detailed testing since integration tests cover this
 	// The main purpose is to ensure backward compatibility
