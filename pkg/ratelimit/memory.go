@@ -24,7 +24,7 @@ type MemoryLimiter struct {
 	mu     sync.RWMutex
 	states map[string]*memoryState
 	config Config
-	
+
 	// Cleanup ticker
 	stopCleanup chan struct{}
 }
@@ -36,10 +36,10 @@ func NewMemoryLimiter(config Config) *MemoryLimiter {
 		config:      config,
 		stopCleanup: make(chan struct{}),
 	}
-	
+
 	// Start background cleanup goroutine
 	go limiter.cleanupLoop()
-	
+
 	return limiter
 }
 
@@ -53,7 +53,7 @@ func (m *MemoryLimiter) Allow(ctx context.Context, key string) (*Result, error) 
 func (m *MemoryLimiter) AllowN(ctx context.Context, key string, n int) (*Result, error) {
 	now := time.Now()
 	windowStart := now.Add(-m.config.WindowSize)
-	
+
 	// Get or create state for this key
 	m.mu.Lock()
 	state, exists := m.states[key]
@@ -64,11 +64,11 @@ func (m *MemoryLimiter) AllowN(ctx context.Context, key string, n int) (*Result,
 		m.states[key] = state
 	}
 	m.mu.Unlock()
-	
+
 	// Lock the state for this specific key
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	
+
 	// Remove entries outside the sliding window
 	validEntries := make([]memoryEntry, 0, len(state.entries))
 	for _, entry := range state.entries {
@@ -77,9 +77,9 @@ func (m *MemoryLimiter) AllowN(ctx context.Context, key string, n int) (*Result,
 		}
 	}
 	state.entries = validEntries
-	
+
 	current := len(state.entries)
-	
+
 	// Check if we can allow N more requests
 	if current+n <= m.config.RequestsPerWindow {
 		// Add N new entries
@@ -88,10 +88,10 @@ func (m *MemoryLimiter) AllowN(ctx context.Context, key string, n int) (*Result,
 				timestamp: now.Add(time.Duration(i) * time.Microsecond),
 			})
 		}
-		
+
 		remaining := m.config.RequestsPerWindow - (current + n)
 		resetAt := now.Add(m.config.WindowSize)
-		
+
 		return &Result{
 			Allowed:    true,
 			Limit:      m.config.RequestsPerWindow,
@@ -100,7 +100,7 @@ func (m *MemoryLimiter) AllowN(ctx context.Context, key string, n int) (*Result,
 			RetryAfter: 0,
 		}, nil
 	}
-	
+
 	// Request denied - calculate reset time
 	resetSeconds := int(m.config.WindowSize.Seconds())
 	if len(state.entries) > 0 {
@@ -112,9 +112,9 @@ func (m *MemoryLimiter) AllowN(ctx context.Context, key string, n int) (*Result,
 			resetSeconds = 1 // Ensure at least 1 second
 		}
 	}
-	
+
 	resetAt := now.Add(time.Duration(resetSeconds) * time.Second)
-	
+
 	return &Result{
 		Allowed:    false,
 		Limit:      m.config.RequestsPerWindow,
@@ -142,7 +142,7 @@ func (m *MemoryLimiter) Close() error {
 func (m *MemoryLimiter) cleanupLoop() {
 	ticker := time.NewTicker(m.config.WindowSize)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -157,10 +157,10 @@ func (m *MemoryLimiter) cleanupLoop() {
 func (m *MemoryLimiter) cleanup() {
 	now := time.Now()
 	windowStart := now.Add(-m.config.WindowSize * 2) // Use 2x window for safety
-	
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	for key, state := range m.states {
 		state.mu.Lock()
 		hasRecent := false
@@ -171,7 +171,7 @@ func (m *MemoryLimiter) cleanup() {
 			}
 		}
 		state.mu.Unlock()
-		
+
 		if !hasRecent {
 			delete(m.states, key)
 		}

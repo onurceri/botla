@@ -19,13 +19,12 @@ import (
 func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.Handler {
 	mux := http.NewServeMux()
 	log := logger.New("INFO")
-	
+
 	// Initialize rate limiter (in-memory for tests)
 	rlConfig := ratelimit.NewConfigFromEnv()
 	globalLimiter := ratelimit.NewMemoryLimiter(rlConfig.Global)
 	rl := middleware.NewRateLimiter(globalLimiter, nil, rlConfig) // nil Redis client for tests
 
-	
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/health", middleware.RateLimitMiddleware(rl)(http.HandlerFunc(hh.Health)))
 

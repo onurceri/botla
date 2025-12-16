@@ -7,11 +7,11 @@ import (
 
 // Result contains the outcome of a rate limit check
 type Result struct {
-	Allowed   bool      // Whether the request is allowed
-	Limit     int       // Maximum requests allowed in the window
-	Remaining int       // Requests remaining in current window
-	ResetAt   time.Time // When the rate limit window resets
-	RetryAfter int      // Seconds to wait before retrying (0 if allowed)
+	Allowed    bool      // Whether the request is allowed
+	Limit      int       // Maximum requests allowed in the window
+	Remaining  int       // Requests remaining in current window
+	ResetAt    time.Time // When the rate limit window resets
+	RetryAfter int       // Seconds to wait before retrying (0 if allowed)
 }
 
 // Limiter defines the interface for rate limiting implementations
@@ -19,13 +19,13 @@ type Limiter interface {
 	// Allow checks if a request should be allowed for the given key
 	// key is typically a user ID, IP address, or combination
 	Allow(ctx context.Context, key string) (*Result, error)
-	
+
 	// AllowN checks if N requests should be allowed for the given key
 	AllowN(ctx context.Context, key string, n int) (*Result, error)
-	
+
 	// Reset clears the rate limit for the given key (useful for testing)
 	Reset(ctx context.Context, key string) error
-	
+
 	// Close releases any resources held by the limiter
 	Close() error
 }

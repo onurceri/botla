@@ -12,9 +12,9 @@ func TestNewConfigFromEnv_Defaults(t *testing.T) {
 	os.Unsetenv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS")
 	os.Unsetenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE")
 	os.Unsetenv("RATE_LIMIT_USER_WINDOW_SECONDS")
-	
+
 	cfg := NewConfigFromEnv()
-	
+
 	// Check defaults
 	if cfg.Global.RequestsPerWindow != 60 {
 		t.Errorf("expected global requests 60, got %d", cfg.Global.RequestsPerWindow)
@@ -41,9 +41,9 @@ func TestNewConfigFromEnv_CustomValues(t *testing.T) {
 		os.Unsetenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE")
 		os.Unsetenv("RATE_LIMIT_USER_WINDOW_SECONDS")
 	}()
-	
+
 	cfg := NewConfigFromEnv()
-	
+
 	if cfg.Global.RequestsPerWindow != 100 {
 		t.Errorf("expected global requests 100, got %d", cfg.Global.RequestsPerWindow)
 	}
@@ -65,9 +65,9 @@ func TestNewConfigFromEnv_EndpointOverrides(t *testing.T) {
 		os.Unsetenv("RATE_LIMIT_ENDPOINT_CHAT")
 		os.Unsetenv("RATE_LIMIT_ENDPOINT_SOURCES")
 	}()
-	
+
 	cfg := NewConfigFromEnv()
-	
+
 	chatCfg, exists := cfg.EndpointOverrides["/api/v1/chat"]
 	if !exists {
 		t.Fatal("chat endpoint override not found")
@@ -75,7 +75,7 @@ func TestNewConfigFromEnv_EndpointOverrides(t *testing.T) {
 	if chatCfg.RequestsPerWindow != 15 {
 		t.Errorf("expected chat requests 15, got %d", chatCfg.RequestsPerWindow)
 	}
-	
+
 	sourcesCfg, exists := cfg.EndpointOverrides["/api/v1/sources"]
 	if !exists {
 		t.Fatal("sources endpoint override not found")
@@ -95,7 +95,7 @@ func TestKey(t *testing.T) {
 		{TierUser, "user-123", "ratelimit:user:user-123"},
 		{TierEndpoint, "/api/v1/chat:user:456", "ratelimit:endpoint:/api/v1/chat:user:456"},
 	}
-	
+
 	for _, tt := range tests {
 		result := Key(tt.tier, tt.identifier)
 		if result != tt.expected {

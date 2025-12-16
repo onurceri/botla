@@ -33,7 +33,7 @@ func (r *RedisLimiter) Allow(ctx context.Context, key string) (*Result, error) {
 func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, error) {
 	now := time.Now()
 	windowStart := now.Add(-r.config.WindowSize)
-	
+
 	// Lua script for atomic sliding window check
 	// This ensures race-free rate limiting across distributed instances
 	script := redis.NewScript(`
@@ -76,7 +76,7 @@ func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, 
 			return {0, 0, reset}
 		end
 	`)
-	
+
 	// Execute the Lua script
 	result, err := script.Run(
 		ctx,
@@ -88,27 +88,27 @@ func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, 
 		int(r.config.WindowSize.Seconds()),
 		n,
 	).Result()
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("redis rate limit check failed: %w", err)
 	}
-	
+
 	// Parse result from Lua script
 	values, ok := result.([]interface{})
 	if !ok || len(values) != 3 {
 		return nil, fmt.Errorf("unexpected redis script result format")
 	}
-	
+
 	allowed := values[0].(int64) == 1
 	remaining := int(values[1].(int64))
 	resetSeconds := int(values[2].(int64))
-	
+
 	resetAt := now.Add(time.Duration(resetSeconds) * time.Second)
 	retryAfter := 0
 	if !allowed {
 		retryAfter = resetSeconds
 	}
-	
+
 	return &Result{
 		Allowed:    allowed,
 		Limit:      r.config.RequestsPerWindow,

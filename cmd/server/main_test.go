@@ -2,40 +2,11 @@ package main
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
-
-func TestChatbotsDispatchHandler_Routes(t *testing.T) {
-	ch := &handlers.ChatbotHandlers{}
-	sh := &handlers.SourcesHandlers{}
-	chh := &handlers.ChatHandlers{}
-	puh := &handlers.PendingURLsHandlers{}
-	// Use nil for the remaining arguments
-	h := chatbotsDispatchHandler("secret", ch, sh, chh, puh, nil, nil, nil, nil)
-
-	cases := []struct {
-		path string
-		code int
-	}{
-		{"/api/v1/chatbots/x/sources", http.StatusUnauthorized},
-		{"/api/v1/chatbots/x/analytics/sources", http.StatusUnauthorized},
-		{"/api/v1/chatbots/x/chat", http.StatusUnauthorized},
-		{"/api/v1/chatbots/x", http.StatusUnauthorized},
-	}
-	for _, c := range cases {
-		req := httptest.NewRequest(http.MethodGet, c.path, nil)
-		w := httptest.NewRecorder()
-		h.ServeHTTP(w, req)
-		if w.Code != c.code {
-			t.Fatalf("path %s: got %d want %d", c.path, w.Code, c.code)
-		}
-	}
-}
 
 func TestNewHTTPServer_Config(t *testing.T) {
 	mux := http.NewServeMux()

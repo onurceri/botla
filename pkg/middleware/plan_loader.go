@@ -14,7 +14,7 @@ func PlanLoaderMiddleware(database *sql.DB, log *logger.Logger) func(http.Handle
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			
+
 			// Only load plan for authenticated requests
 			userID, ok := UserIDFromContext(ctx)
 			if !ok || userID == "" {
@@ -22,7 +22,7 @@ func PlanLoaderMiddleware(database *sql.DB, log *logger.Logger) func(http.Handle
 				next.ServeHTTP(w, r)
 				return
 			}
-			
+
 			// Fetch the user's plan from database
 			plan, err := db.GetPlanByUserID(ctx, database, userID)
 			if err != nil {
@@ -34,7 +34,7 @@ func PlanLoaderMiddleware(database *sql.DB, log *logger.Logger) func(http.Handle
 				next.ServeHTTP(w, r)
 				return
 			}
-			
+
 			if plan == nil {
 				log.Warn("user_has_no_plan", map[string]any{
 					"user_id": userID,
@@ -43,7 +43,7 @@ func PlanLoaderMiddleware(database *sql.DB, log *logger.Logger) func(http.Handle
 				next.ServeHTTP(w, r)
 				return
 			}
-			
+
 			// Store plan in context for use by rate limiter and other middleware
 			ctx = PlanToContext(ctx, plan)
 			next.ServeHTTP(w, r.WithContext(ctx))
