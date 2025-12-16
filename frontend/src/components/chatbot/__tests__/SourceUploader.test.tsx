@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
+import { QueryWrapper } from '@/test-utils'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SourceUploader from '../SourceUploader'
-import { ToastProvider } from '@/components/ui/toast'
 
 describe('SourceUploader', () => {
   it('toggles modes and calls upload handlers', async () => {
@@ -12,9 +12,9 @@ describe('SourceUploader', () => {
     const onUploadText = vi.fn().mockResolvedValue(undefined)
 
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </ToastProvider>
+      </QueryWrapper>
     )
 
     await user.click(screen.getByText('PDF Yükle'))
@@ -32,7 +32,7 @@ describe('SourceUploader', () => {
     await user.click(ekleButtons[ekleButtons.length - 1])
     expect(onUploadURL).toHaveBeenCalledWith('https://example.com')
 
-    const textButtons = screen.getAllByText('Metin Gir')
+    const textButtons = screen.getAllByText('Metin')
     await user.click(textButtons[textButtons.length - 1])
     const textarea = screen.getByPlaceholderText('Metin içeriğini buraya yapıştırın...')
     await user.type(textarea, 'hello')
@@ -47,9 +47,9 @@ describe('SourceUploader', () => {
     const onUploadURL = vi.fn()
     const onUploadText = vi.fn()
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </ToastProvider>
+      </QueryWrapper>
     )
     const urlBtns = screen.getAllByText('Web Sitesi')
     await user.click(urlBtns[urlBtns.length - 1])
@@ -57,7 +57,7 @@ describe('SourceUploader', () => {
     await user.click(ekleBtns[ekleBtns.length - 1])
     expect(onUploadURL).not.toHaveBeenCalled()
 
-    const textBtns = screen.getAllByText('Metin Gir')
+    const textBtns = screen.getAllByText('Metin')
     await user.click(textBtns[textBtns.length - 1])
     const buttons = screen.getAllByRole('button', { name: 'Ekle' })
     await user.click(buttons[buttons.length - 1])
@@ -70,9 +70,9 @@ describe('SourceUploader', () => {
     const onUploadURL = vi.fn()
     const onUploadText = vi.fn()
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </ToastProvider>
+      </QueryWrapper>
     )
     const urlBtns = screen.getAllByText('Web Sitesi')
     await user.click(urlBtns[urlBtns.length - 1])
@@ -91,9 +91,9 @@ describe('SourceUploader', () => {
     const onUploadURL = vi.fn().mockRejectedValue({ response: { data: { message: 'URL erişilemedi' } } })
     const onUploadText = vi.fn()
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </ToastProvider>
+      </QueryWrapper>
     )
     const urlBtns = screen.getAllByText('Web Sitesi')
     await user.click(urlBtns[urlBtns.length - 1])
@@ -110,9 +110,9 @@ describe('SourceUploader', () => {
     const user = userEvent.setup()
     const serverError = { response: { data: { message: 'Sunucu hatası' } } }
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={vi.fn().mockRejectedValueOnce(serverError)} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </ToastProvider>
+      </QueryWrapper>
     )
     const pdfBtns = screen.getAllByText('PDF Yükle')
     await user.click(pdfBtns[pdfBtns.length - 1])
@@ -125,9 +125,9 @@ describe('SourceUploader', () => {
   it('rejects non-PDF file type with error toast', async () => {
     const onUploadPDF = vi.fn()
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </ToastProvider>
+      </QueryWrapper>
     )
     const pdfBtns1 = screen.getAllByText('PDF Yükle')
     await userEvent.click(pdfBtns1[pdfBtns1.length - 1])
@@ -141,9 +141,9 @@ describe('SourceUploader', () => {
   it('rejects PDF larger than 50MB with error toast', async () => {
     const onUploadPDF = vi.fn()
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </ToastProvider>
+      </QueryWrapper>
     )
     const pdfBtns2 = screen.getAllByText('PDF Yükle')
     await userEvent.click(pdfBtns2[pdfBtns2.length - 1])
@@ -158,9 +158,9 @@ describe('SourceUploader', () => {
   it('closes input area when X is clicked', async () => {
     const user = userEvent.setup()
     const utils = render(
-      <ToastProvider>
+      <QueryWrapper>
         <SourceUploader onUploadPDF={vi.fn()} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </ToastProvider>
+      </QueryWrapper>
     )
     const view = within(utils.container)
     const urlBtns = view.getAllByText('Web Sitesi')

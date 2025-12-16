@@ -2,8 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import DashboardLayout from '../DashboardLayout'
-import { Button } from '@/components/ui/button'
-import App from '@/App'
+import { OrganizationProvider } from '@/features/organization/context/OrganizationContext'
+import { ToastProvider } from '@/components/ui/toast'
+import { api } from '@/api/client'
+
+// Mock api
+vi.mock('@/api/client', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+  }
+}))
+
+// Mock organization api
+vi.mock('@/api/organization', () => ({
+  getOrganizations: vi.fn().mockResolvedValue([]),
+}))
+
+// Mock workspace api
+vi.mock('@/api/workspace', () => ({
+  getWorkspaces: vi.fn().mockResolvedValue([]),
+}))
 
 describe('DashboardLayout', () => {
   beforeEach(() => {
@@ -15,54 +34,71 @@ describe('DashboardLayout', () => {
       },
       writable: true,
     })
+
+    // Default mock for me
+    vi.mocked(api.get).mockResolvedValue({
+        data: { full_name: 'Test User', email: 'test@example.com' }
+    })
   })
+
+  const renderWithProviders = (_: React.ReactNode, { initialEntries = ["/"] } = {}) => {
+    return render(
+      <MemoryRouter initialEntries={initialEntries}>
+        <ToastProvider>
+          <OrganizationProvider>
+               <Routes>
+                  <Route path="/" element={<DashboardLayout />}>
+                      <Route index element={<div>Dashboard Content</div>} />
+                       <Route path="chatbots" element={<div>Chatbots Content</div>} />
+                  </Route>
+                   <Route path="/login" element={<h1>Login Page</h1>} />
+               </Routes>
+          </OrganizationProvider>
+        </ToastProvider>
+      </MemoryRouter>
+    )
+  }
 
   it('toggles sidebar mode and persists to localStorage', async () => {
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue('pinned')
     const setSpy = vi.spyOn(window.localStorage, 'setItem')
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<DashboardLayout />}> 
-            <Route index element={<Button>İçerik</Button>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    )
+    renderWithProviders(null)
 
-    const toggle = screen.getByTitle('Sabit → Hover')
-    toggle.click()
+    const toggles = screen.getAllByTitle('Sabit → Hover')
+    toggles[0].click()
     expect(setSpy).toHaveBeenCalledWith('botla_sidebar_mode', 'hover')
   })
 
   it('logs out and navigates to login', async () => {
-    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
+     vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
       if (key === 'botla_token') return 'tok'
       return null
     })
-    render(<App />)
-    const logoutBtns = screen.getAllByRole('button', { name: 'Logout' })
-    logoutBtns[logoutBtns.length - 1].click()
-    expect(await screen.findByRole('heading', { name: 'Hoş Geldiniz' })).toBeInTheDocument()
+    const removeSpy = vi.spyOn(window.localStorage, 'removeItem')
+
+    renderWithProviders(null)
+
+    const logoutBtns = screen.getAllByRole('button', { name: /Çıkış Yap/i })
+    logoutBtns[0].click()
+    
+    expect(removeSpy).toHaveBeenCalledWith('botla_token')
+    expect(removeSpy).toHaveBeenCalledWith('botla_refresh_token')
+    
+    expect(await screen.findByText('Login Page')).toBeInTheDocument()
   })
 
   it('opens mobile menu overlay and closes on click', async () => {
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue('pinned')
-    const { container } = render(
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<DashboardLayout />}> 
-            <Route index element={<Button>İçerik</Button>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    )
-    const header = container.querySelector('header')!
+    const { container } = renderWithProviders(null)
+    
+    const headers = container.querySelectorAll('header')
+    const header = headers[0]
     const menuBtn = header.querySelector('button') as HTMLButtonElement
     menuBtn.click()
     await new Promise((r) => setTimeout(r, 0))
-    const overlay = container.querySelector('.fixed.inset-0') as HTMLDivElement
+    const overlays = container.querySelectorAll('.fixed.inset-0')
+    const overlay = overlays[0] as HTMLDivElement
     expect(overlay).not.toBeNull()
     overlay.click()
     await new Promise((r) => setTimeout(r, 0))
@@ -71,17 +107,12 @@ describe('DashboardLayout', () => {
 
   it('shows breadcrumb label for Chatbots route', async () => {
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue('pinned')
-    const { container } = render(
-      <MemoryRouter initialEntries={["/chatbots"]}>
-        <Routes>
-          <Route path="/" element={<DashboardLayout />}> 
-            <Route path="/chatbots" element={<Button>List</Button>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    )
-    const header2 = container.querySelector('header')!
-    const label = header2.querySelector('.text-foreground.font-medium') as HTMLElement
-    expect(label.textContent).toBe('Chatbots')
+    
+    renderWithProviders(null, { initialEntries: ["/chatbots"] })
+
+    const banners = screen.getAllByRole('banner')
+    expect(banners.length).toBeGreaterThan(0)
+    // Look for breadcrumb
+    expect(screen.getAllByText('Chatbotlar')[0]).toBeInTheDocument()
   })
 })

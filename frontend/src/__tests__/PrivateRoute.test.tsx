@@ -2,11 +2,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import App from '@/App'
 
+vi.mock('@/features/organization/context/OrganizationContext', () => ({
+  useOrganization: () => ({
+    currentWorkspace: { id: 'ws-1' },
+    isLoading: false,
+  }),
+  OrganizationProvider: ({ children }: any) => children,
+}))
+
+vi.mock('@/components/layout/DashboardLayout', async () => {
+  const React = await import('react')
+  const { Outlet } = await import('react-router-dom')
+  return {
+    default: () => React.createElement(React.Fragment, null, React.createElement(Outlet)),
+  }
+})
+
+vi.mock('@/pages/DashboardPage', async () => {
+  const React = await import('react')
+  return { default: () => React.createElement('div', null, 'Dashboard') }
+})
+
 describe('PrivateRoute', () => {
   beforeEach(() => {
-    const w: any = globalThis as any
-    if (!w.window) w.window = {}
-    Object.defineProperty(w.window, 'localStorage', {
+    Object.defineProperty(window, 'localStorage', {
       value: {
         getItem: vi.fn(),
         setItem: vi.fn(),

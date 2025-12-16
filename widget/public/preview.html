@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Botla Widget Preview</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    #chatbot-widget-host {
+      position: absolute;
+      inset: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="chatbot-widget-host"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // Allowed origins for postMessage (production + development)
+      var ALLOWED_ORIGINS = [
+        'https://botla.app',
+        'https://www.botla.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+      ];
+
+      window.__CBW_PARAMS = {};
+
+      function isAllowedOrigin(origin) {
+        // Allow same-origin
+        if (origin === window.location.origin) return true;
+        // Check against whitelist
+        return ALLOWED_ORIGINS.indexOf(origin) !== -1;
+      }
+
+      window.addEventListener('message', function (event) {
+        // Security: Validate origin
+        if (!isAllowedOrigin(event.origin)) {
+          console.warn('Widget preview: Rejected message from unauthorized origin:', event.origin);
+          return;
+        }
+
+        if (!event.data || event.data.type !== 'WIDGET_CONFIG') return;
+
+        var config = event.data.config || {};
+
+        // Force preview-specific settings
+        config['position-strategy'] = 'absolute';
+        config['reset-session'] = '1';
+        config['use-url-overrides'] = '1';
+
+        window.__CBW_PARAMS = config;
+
+        // Mount/remount widget
+        if (window.ChatbotWidget) {
+          try { window.ChatbotWidget.unmount(); } catch (e) { }
+          try { window.ChatbotWidget.mount(); } catch (e) {
+            console.error('Widget mount error:', e);
+          }
+        }
+
+        // Acknowledge to parent (use specific origin, not *)
+        if (event.source) {
+          event.source.postMessage({ type: 'WIDGET_CONFIG_APPLIED' }, event.origin);
+        }
+      });
+    })();
+  </script>
+
+  <script type="module" src="/src/widget.tsx"></script>
+</body>
+
+</html>

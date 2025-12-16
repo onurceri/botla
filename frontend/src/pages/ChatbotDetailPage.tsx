@@ -92,7 +92,9 @@ function ChatbotDetailContent() {
         session_id: 'test-smoke-session' 
       })
       setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }])
-    } catch {}
+    } catch {
+      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Bir hata oluştu.' }])
+    }
   }
 
   return (

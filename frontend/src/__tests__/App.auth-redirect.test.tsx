@@ -12,8 +12,8 @@ describe('App unauth redirect', () => {
       },
       writable: true,
     })
+    window.history.pushState({}, 'Test page', '/dashboard')
     render(<App />)
     expect(screen.getByRole('heading', { name: 'Hoş Geldiniz' })).toBeInTheDocument()
   })
 })
-

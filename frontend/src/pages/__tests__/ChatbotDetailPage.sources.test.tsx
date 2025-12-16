@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
+import { QueryWrapper } from "@/test-utils"
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/toast'
 import ChatbotDetailPage from '../ChatbotDetailPage'
+import SourcesTab from '@/features/chatbot/pages/tabs/SourcesTab'
 import { api } from '@/api/client'
 
 vi.mock('@/api/source', () => ({
@@ -15,6 +17,7 @@ vi.mock('@/api/source', () => ({
   uploadTextSource: vi.fn(),
   uploadURLSource: vi.fn(),
   getSourceStatus: vi.fn(),
+  listPendingURLs: vi.fn().mockResolvedValue([]),
 }))
 
 describe('ChatbotDetailPage sources', () => {
@@ -24,18 +27,23 @@ describe('ChatbotDetailPage sources', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/123"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="sources" element={<SourcesTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
 
-    const srcTabs = screen.getAllByRole('tab', { name: /Veri Kaynakları/i })
+    const srcTabs = screen.getAllByRole('link', { name: /Veri Kaynakları/i })
     await user.click(srcTabs[srcTabs.length - 1])
-    const sourceCell = await screen.findByText('inline.txt')
+    const sourceCells = await screen.findAllByText('inline.txt')
+    const sourceCell = sourceCells.find(el => el.closest('tr'))!
     const row = sourceCell.closest('tr') as HTMLTableRowElement
     const delBtn = within(row).getByRole('button')
     await user.click(delBtn)
@@ -61,18 +69,22 @@ describe('ChatbotDetailPage sources', () => {
     ;(getSourceStatus as any).mockResolvedValue({ status: 'completed' })
 
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/123"]}>
           <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+              <Route path="sources" element={<SourcesTab />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
 
-    const srcTabs2 = screen.getAllByRole('tab', { name: /Veri Kaynakları/i })
+    const srcTabs2 = screen.getAllByRole('link', { name: /Veri Kaynakları/i })
     await user.click(srcTabs2[srcTabs2.length - 1])
-    const textButtons = screen.getAllByText('Metin Gir')
+    const textButtons = screen.getAllByText('Metin')
     await user.click(textButtons[textButtons.length - 1])
     const textarea = screen.getByPlaceholderText('Metin içeriğini buraya yapıştırın...')
     await user.type(textarea, 'hello')

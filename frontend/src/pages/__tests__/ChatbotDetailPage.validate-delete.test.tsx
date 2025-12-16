@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { QueryWrapper } from "@/test-utils"
 import { render, screen, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -14,13 +15,15 @@ describe('ChatbotDetailPage validate & delete branches', () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'post')
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/new"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const createBtn = await screen.findByRole('button', { name: 'Oluştur' })
     await user.click(createBtn)
@@ -39,13 +42,15 @@ describe('ChatbotDetailPage validate & delete branches', () => {
     const delSpy = vi.spyOn(api, 'delete')
     vi.spyOn(window, 'confirm').mockReturnValue(false as any)
     const utils = render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/xyz"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const view = within(utils.container)
     const deleteBtn = await view.findByLabelText('Sil')
@@ -64,13 +69,15 @@ describe('ChatbotDetailPage validate & delete branches', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true as any)
     vi.spyOn(api, 'delete').mockRejectedValueOnce(new Error('fail'))
     const utils2 = render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/xyz"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const view2 = within(utils2.container)
     const deleteBtn = await view2.findByLabelText('Sil')

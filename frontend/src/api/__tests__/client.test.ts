@@ -4,7 +4,7 @@ import { api } from '../client'
 
 describe('axios refresh interceptor', () => {
   beforeEach(() => {
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
     const store: Record<string, string> = {}
     Object.defineProperty(window, 'localStorage', {
       value: {
@@ -32,13 +32,13 @@ describe('axios refresh interceptor', () => {
     const handlers = (api as any).interceptors.response.handlers
     const handler = handlers[handlers.length - 1].rejected
     vi.spyOn(api, 'request').mockResolvedValueOnce({} as any)
-    await handler(error).catch(() => {})
+    await handler(error).catch(() => { })
 
     expect(postSpy).toHaveBeenCalled()
     expect(window.localStorage.setItem).toHaveBeenCalledWith('botla_token', 'newAccess')
     expect(window.localStorage.setItem).toHaveBeenCalledWith('botla_refresh_token', 'newRefresh')
-    expect(localStorage.getItem('botla_token')).toBe('newAccess')
-    expect(localStorage.getItem('botla_refresh_token')).toBe('newRefresh')
+    expect(window.localStorage.getItem('botla_token')).toBe('newAccess')
+    expect(window.localStorage.getItem('botla_refresh_token')).toBe('newRefresh')
   })
 
   it('coalesces concurrent 401 refresh into a single request', async () => {
@@ -59,13 +59,13 @@ describe('axios refresh interceptor', () => {
     const err2: any = { response: { status: 401 }, config: req2 }
 
     vi.spyOn(api, 'request').mockResolvedValue({} as any)
-    const p1 = handler(err1).catch(() => {})
-    const p2 = handler(err2).catch(() => {})
+    const p1 = handler(err1).catch(() => { })
+    const p2 = handler(err2).catch(() => { })
     await Promise.all([p1, p2])
 
     expect(postSpy).toHaveBeenCalledTimes(1)
-    expect(req1.headers.Authorization).toBe(`Bearer ${localStorage.getItem('botla_token')}`)
-    expect(req2.headers.Authorization).toBe(`Bearer ${localStorage.getItem('botla_token')}`)
+    expect(req1.headers.Authorization).toBe(`Bearer ${window.localStorage.getItem('botla_token')}`)
+    expect(req2.headers.Authorization).toBe(`Bearer ${window.localStorage.getItem('botla_token')}`)
   })
 
   it('does not retry if already retried', async () => {
@@ -75,7 +75,7 @@ describe('axios refresh interceptor', () => {
     const handler = handlers[handlers.length - 1].rejected
     const req: any = { url: '/x', headers: {}, method: 'get', _retry: true }
     const err: any = { response: { status: 401 }, config: req }
-    await handler(err).catch(() => {})
+    await handler(err).catch(() => { })
     expect(postSpy).not.toHaveBeenCalled()
   })
 
@@ -89,9 +89,10 @@ describe('axios refresh interceptor', () => {
     const handler = handlers[handlers.length - 1].rejected
     const req: any = { url: '/x', headers: {}, method: 'get', _retry: false }
     const err: any = { response: { status: 401 }, config: req }
-    await handler(err).catch(() => {})
+    await handler(err).catch(() => { })
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_token')
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_refresh_token')
     expect(replaceMock).toHaveBeenCalledWith('/login')
+    getLoc.mockRestore()
   })
 })

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { QueryWrapper } from "@/test-utils"
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -25,7 +26,8 @@ describe('ChatbotDetailPage sections toggle', () => {
     })
     const user = userEvent.setup()
     render(
-      <ToastProvider>
+      <QueryWrapper>
+        <ToastProvider>
         <MemoryRouter initialEntries={["/chatbots/abc?tab=playground"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
@@ -34,6 +36,7 @@ describe('ChatbotDetailPage sections toggle', () => {
           </Routes>
         </MemoryRouter>
       </ToastProvider>
+      </QueryWrapper>
     )
     const playTrigger = await screen.findByRole('link', { name: /Görünüm/ })
     await user.click(playTrigger)

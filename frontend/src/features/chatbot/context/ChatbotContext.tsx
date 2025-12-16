@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
 import { useChatbotForm } from '../hooks/useChatbotForm'
-import { api } from '@/api/client'
+import { useChatbot } from '@/hooks/queries/useChatbot'
+import { useProfile } from '@/hooks/queries/useProfile'
 
 type ChatbotFormReturn = ReturnType<typeof useChatbotForm>
 
@@ -49,41 +50,28 @@ export function ChatbotProvider({
   isNew: boolean 
 }) {
   const form = useChatbotForm()
-  const [userPlan, setUserPlan] = useState('free')
   const [planConfig, setPlanConfig] = useState<ChatbotContextType['planConfig']>({})
 
-  // Fetch user profile and plan config
-  const fetchUserProfile = () => {
-    api.get('/api/v1/me').then(({ data }) => {
-      const plan = data.plan_code || data.subscription_plan || 'free'
-      setUserPlan(plan)
-      if (data.config) {
-        setPlanConfig(data.config)
-      }
-    }).catch(() => {})
-  }
+  // Use React Query for user profile (replaces manual fetchUserProfile)
+  const { data: profileData } = useProfile()
+  const userPlan = profileData?.plan_code || profileData?.subscription_plan || 'free'
 
+  // Use React Query for chatbot data (replaces manual api.get)
+  const { data: chatbotData } = useChatbot(chatbotId, !isNew)
+
+  // Sync form state when chatbot data changes
   useEffect(() => {
-    fetchUserProfile()
-
-    // Refetch when user returns to tab (in case plan was upgraded)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchUserProfile()
-      }
+    if (chatbotData) {
+      form.setFromServer(chatbotData)
     }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }, [chatbotData])
 
-    if (!isNew && chatbotId) {
-      api.get(`/api/v1/chatbots/${chatbotId}`).then(({ data }) => {
-        form.setFromServer(data)
-      }).catch(() => {})
+  // Update plan config when profile data changes
+  useEffect(() => {
+    if (profileData?.config) {
+      setPlanConfig(profileData.config)
     }
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [chatbotId, isNew])
+  }, [profileData])
 
   // Enforce plan restrictions
   useEffect(() => {

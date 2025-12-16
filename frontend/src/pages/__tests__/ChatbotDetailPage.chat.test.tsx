@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
+import { QueryWrapper } from "@/test-utils"
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import { ToastProvider } from '@/components/ui/toast'
 import ChatbotDetailPage from '../ChatbotDetailPage'
 import { api } from '@/api/client'
 
@@ -16,13 +16,13 @@ describe('ChatbotDetailPage chat handler', () => {
     })
     vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { response: 'Selam!' } } as any)
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <MemoryRouter initialEntries={["/chatbots/abc"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
           </Routes>
         </MemoryRouter>
-      </ToastProvider>
+      </QueryWrapper>
     )
     const btns = await screen.findAllByLabelText('Test Chat Send')
     await userEvent.click(btns[0])
@@ -39,13 +39,13 @@ describe('ChatbotDetailPage chat handler', () => {
     })
     vi.spyOn(api, 'post').mockRejectedValueOnce(new Error('fail'))
     render(
-      <ToastProvider>
+      <QueryWrapper>
         <MemoryRouter initialEntries={["/chatbots/xyz"]}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
           </Routes>
         </MemoryRouter>
-      </ToastProvider>
+      </QueryWrapper>
     )
     const btns = await screen.findAllByLabelText('Test Chat Send')
     await userEvent.click(btns[0])

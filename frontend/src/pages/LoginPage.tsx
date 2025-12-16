@@ -24,8 +24,8 @@ const LoginPage = () => {
     setIsLoading(true)
     try {
       const { data } = await api.post('/api/v1/auth/login', { email, password })
-      localStorage.setItem('botla_token', data.token)
-      localStorage.setItem('botla_refresh_token', data.refresh_token)
+      window.localStorage.setItem('botla_token', data.token)
+      window.localStorage.setItem('botla_refresh_token', data.refresh_token)
       toast('Giriş başarılı! Yönlendiriliyorsunuz...', 'success')
       navigate('/dashboard')
     } catch {

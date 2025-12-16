@@ -56,7 +56,10 @@ const DashboardLayout = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [sidebarMode, setSidebarMode] = useState<'pinned' | 'hover'>(() => (localStorage.getItem('botla_sidebar_mode') as 'pinned' | 'hover') || 'hover')
+  const [sidebarMode, setSidebarMode] = useState<'pinned' | 'hover'>(() => {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem('botla_sidebar_mode') : null
+    return (raw as 'pinned' | 'hover') || 'hover'
+  })
   const isCollapsed = sidebarMode === 'hover'
   const [profileName, setProfileName] = useState<string>('')
   const [profileEmail, setProfileEmail] = useState<string>('')
@@ -66,12 +69,12 @@ const DashboardLayout = () => {
   const toggleSidebarMode = () => {
     const next = sidebarMode === 'pinned' ? 'hover' : 'pinned'
     setSidebarMode(next)
-    localStorage.setItem('botla_sidebar_mode', next)
+    window.localStorage.setItem('botla_sidebar_mode', next)
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('botla_token')
-    localStorage.removeItem('botla_refresh_token')
+    window.localStorage.removeItem('botla_token')
+    window.localStorage.removeItem('botla_refresh_token')
     navigate('/login')
   }
 

@@ -8,15 +8,16 @@ export const api = axios.create({
 let refreshPromise: Promise<void> | null = null
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('botla_token')
+  const storage = typeof window !== 'undefined' ? window.localStorage : null
+  const token = storage?.getItem('botla_token')
   if (token) {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
-    
-    const orgId = localStorage.getItem('botla_last_org_id')
+
+    const orgId = storage?.getItem('botla_last_org_id')
     if (orgId) {
       config.headers['X-Organization-ID'] = orgId
-      const wsId = localStorage.getItem(`botla_last_ws_id_${orgId}`)
+      const wsId = storage?.getItem(`botla_last_ws_id_${orgId}`)
       if (wsId) {
         config.headers['X-Workspace-ID'] = wsId
       }
@@ -32,15 +33,16 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       try {
-        const refreshToken = localStorage.getItem('botla_refresh_token')
+        const storage = typeof window !== 'undefined' ? window.localStorage : null
+        const refreshToken = storage?.getItem('botla_refresh_token')
         if (!refreshToken) throw new Error('No refresh token')
 
         if (!refreshPromise) {
           refreshPromise = axios
             .post(`${api.defaults.baseURL}/api/v1/auth/refresh`, { refresh_token: refreshToken })
             .then(({ data }) => {
-              localStorage.setItem('botla_token', data.token)
-              localStorage.setItem('botla_refresh_token', data.refresh_token)
+              storage?.setItem('botla_token', data.token)
+              storage?.setItem('botla_refresh_token', data.refresh_token)
             })
             .finally(() => {
               refreshPromise = null
@@ -48,15 +50,18 @@ api.interceptors.response.use(
         }
 
         await refreshPromise
-        const newToken = localStorage.getItem('botla_token')
+        const newToken = storage?.getItem('botla_token')
         originalRequest.headers = originalRequest.headers || {}
         originalRequest.headers.Authorization = `Bearer ${newToken}`
         return api(originalRequest)
       } catch (refreshErr) {
-        localStorage.removeItem('botla_token')
-        localStorage.removeItem('botla_refresh_token')
+        const storage = typeof window !== 'undefined' ? window.localStorage : null
+        storage?.removeItem('botla_token')
+        storage?.removeItem('botla_refresh_token')
         if (!import.meta.env.VITE_E2E) {
-          window.location.replace('/login')
+          if (typeof window !== 'undefined') {
+            window.location.replace('/login')
+          }
         }
         return Promise.reject(refreshErr)
       }
