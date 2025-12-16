@@ -8,7 +8,6 @@ import (
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestChatbotsDispatchHandler_Routes(t *testing.T) {
@@ -16,7 +15,8 @@ func TestChatbotsDispatchHandler_Routes(t *testing.T) {
 	sh := &handlers.SourcesHandlers{}
 	chh := &handlers.ChatHandlers{}
 	puh := &handlers.PendingURLsHandlers{}
-	h := chatbotsDispatchHandler("secret", ch, sh, chh, puh)
+	// Use nil for the remaining arguments
+	h := chatbotsDispatchHandler("secret", ch, sh, chh, puh, nil, nil, nil, nil)
 
 	cases := []struct {
 		path string
@@ -57,12 +57,3 @@ func TestStartAndShutdownServer(t *testing.T) {
 	defer db.Close()
 	shutdownServer(srv, log, db)
 }
-
-// Backward-compatible dispatcher used by tests
-func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, _ interface{}, sugh *handlers.SuggestionsHandlers) http.Handler {
-	rlSources := middleware.NewRateLimiterFromEnvWithPrefix("SOURCES")
-	// Create handler
-	h := chatbotsDispatchHandlerWithSourcesRL(secret, ch, sh, chh, puh, acth, hoh, nil, sugh, rlSources)
-	return h
-}
-```

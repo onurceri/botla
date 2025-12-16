@@ -15,12 +15,12 @@ import (
 
 // RateLimiter wraps multiple rate limiting implementations for plan-based rate limiting
 type RateLimiter struct {
-	globalLimiter   ratelimit.Limiter                // IP-based for unauthenticated
-	planLimiters    map[string]ratelimit.Limiter     // Plan code -> limiter
-	planLimitersMu  sync.RWMutex                     // Protects planLimiters map
-	redisClient     *redis.Client                    // For creating new limiters
-	tieredConfig    *ratelimit.TieredConfig          // Legacy config
-	useMemory       bool                             // Whether to use memory fallback
+	globalLimiter  ratelimit.Limiter            // IP-based for unauthenticated
+	planLimiters   map[string]ratelimit.Limiter // Plan code -> limiter
+	planLimitersMu sync.RWMutex                 // Protects planLimiters map
+	redisClient    *redis.Client                // For creating new limiters
+	tieredConfig   *ratelimit.TieredConfig      // Legacy config
+	useMemory      bool                         // Whether to use memory fallback
 }
 
 // NewRateLimiter creates a new tiered rate limiter with plan-based support
@@ -43,27 +43,27 @@ func (rl *RateLimiter) getOrCreatePlanLimiter(plan *models.Plan) ratelimit.Limit
 	rl.planLimitersMu.RLock()
 	limiter, exists := rl.planLimiters[plan.Code]
 	rl.planLimitersMu.RUnlock()
-	
+
 	if exists {
 		return limiter
 	}
-	
+
 	// Slow path: create new limiter (write lock)
 	rl.planLimitersMu.Lock()
 	defer rl.planLimitersMu.Unlock()
-	
+
 	// Double-check after acquiring write lock (another goroutine might have created it)
-	if limiter, exists := rl.planLimiters[plan.Code]; exists {
-		return limiter
+	if existingLimiter, exists := rl.planLimiters[plan.Code]; exists {
+		return existingLimiter
 	}
-	
+
 	// Extract rate limit config from plan
 	rateLimitsCfg := plan.Config.RateLimits
-	
+
 	// Validate config - use defaults if invalid
 	requestsPerMinute := rateLimitsCfg.RequestsPerMinute
 	windowSeconds := rateLimitsCfg.WindowSeconds
-	
+
 	if requestsPerMinute <= 0 {
 		// Fallback to legacy user config if plan config is missing
 		requestsPerMinute = rl.tieredConfig.User.RequestsPerWindow
@@ -71,19 +71,19 @@ func (rl *RateLimiter) getOrCreatePlanLimiter(plan *models.Plan) ratelimit.Limit
 	if windowSeconds <= 0 {
 		windowSeconds = int(rl.tieredConfig.User.WindowSize.Seconds())
 	}
-	
+
 	cfg := ratelimit.Config{
 		RequestsPerWindow: requestsPerMinute,
 		WindowSize:        time.Duration(windowSeconds) * time.Second,
 	}
-	
+
 	// Create limiter based on backend
 	if !rl.useMemory {
 		limiter = ratelimit.NewRedisLimiter(rl.redisClient, cfg)
 	} else {
 		limiter = ratelimit.NewMemoryLimiter(cfg)
 	}
-	
+
 	rl.planLimiters[plan.Code] = limiter
 	return limiter
 }
@@ -117,10 +117,10 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			
+
 			var key string
 			var limiter ratelimit.Limiter
-			
+
 			// Check if user is authenticated and has a plan
 			if plan, ok := PlanFromContext(ctx); ok && plan != nil {
 				// Use plan-based limiter
@@ -133,7 +133,7 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 				key = ratelimit.Key(ratelimit.TierGlobal, ip)
 				limiter = rl.globalLimiter
 			}
-			
+
 			// Check rate limit
 			result, err := limiter.Allow(ctx, key)
 			if err != nil {
@@ -142,18 +142,18 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			// Set rate limit headers
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(result.Limit))
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(result.Remaining))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(result.ResetAt.Unix(), 10))
-			
+
 			if !result.Allowed {
 				w.Header().Set("Retry-After", strconv.Itoa(result.RetryAfter))
 				w.WriteHeader(http.StatusTooManyRequests)
 				return
 			}
-			
+
 			next.ServeHTTP(w, r)
 		})
 	}
