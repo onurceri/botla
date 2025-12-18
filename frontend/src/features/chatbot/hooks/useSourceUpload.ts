@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useToast } from '@/components/ui/toast'
+import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
 export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFileSizeMB = 50 }: {
   onUploadPDF: (file: File) => Promise<void>
@@ -40,8 +41,7 @@ export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFil
         toast('PDF başarıyla yüklendi. İşleniyor...', 'success')
         setActiveMode(null)
       } catch (error: any) {
-        const msg = error?.response?.data?.message || 'PDF yüklenirken bir hata oluştu.'
-        toast(msg, 'error')
+        toast(getTurkishErrorMessage(error, 'PDF yüklenirken bir hata oluştu.'), 'error')
       } finally {
         setLoading(false)
         if (fileInputRef.current) fileInputRef.current.value = ''
@@ -68,8 +68,7 @@ export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFil
       setActiveMode(null)
       setInputValue('')
     } catch (error: any) {
-      const msg = error?.response?.data?.message || 'Kaynak eklenirken bir hata oluştu.'
-      toast(msg, 'error')
+      toast(getTurkishErrorMessage(error, 'Kaynak eklenirken bir hata oluştu.'), 'error')
     } finally {
       setLoading(false)
     }
@@ -86,4 +85,3 @@ export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFil
     handleSubmit,
   }
 }
-

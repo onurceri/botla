@@ -3,14 +3,17 @@ import { renderHook } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { useAutoSave } from '../useAutoSave'
 import { api } from '@/api/client'
+import { ToastProvider } from '@/components/ui/toast'
 
 const createWrapper = (id: string) => {
   return ({ children }: { children: React.ReactNode }) => (
-    <MemoryRouter initialEntries={[`/chatbots/${id}`]}>
-      <Routes>
-        <Route path="/chatbots/:id" element={children} />
-      </Routes>
-    </MemoryRouter>
+    <ToastProvider>
+      <MemoryRouter initialEntries={[`/chatbots/${id}`]}>
+        <Routes>
+          <Route path="/chatbots/:id" element={children} />
+        </Routes>
+      </MemoryRouter>
+    </ToastProvider>
   )
 }
 

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '@/api/client'
+import { useToastErrors } from './useToastErrors'
+import { AUTO_SAVE_DEFAULT_FALLBACK, AUTO_SAVE_RETRY_SUFFIX, getTurkishErrorMessage } from '@/lib/errorMessages'
 
 type AutoSaveState = {
   isSaving: boolean
@@ -32,6 +34,7 @@ export function useAutoSave({
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
 }: UseAutoSaveOptions): AutoSaveState {
   const { id } = useParams()
+  const toasts = useToastErrors()
 
   const [state, setState] = useState<AutoSaveState>({
     isSaving: false,
@@ -45,6 +48,7 @@ export function useAutoSave({
   const retryCountRef = useRef<number>(0)
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastToastedErrorRef = useRef<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -96,6 +100,7 @@ export function useAutoSave({
         })
 
         retryCountRef.current = 0
+        lastToastedErrorRef.current = null
         if (successTimeoutRef.current) {
           clearTimeout(successTimeoutRef.current)
           successTimeoutRef.current = null
@@ -119,14 +124,14 @@ export function useAutoSave({
           return
         }
 
-        const errorMsg = e.response?.data?.error || 'Kaydetme başarısız'
+        const errorMsg = getTurkishErrorMessage(e, AUTO_SAVE_DEFAULT_FALLBACK)
 
         if (!isRetry && retryCountRef.current < maxRetries) {
           retryCountRef.current += 1
           setState((s) => ({
             ...s,
             isSaving: false,
-            error: `${errorMsg} - Tekrar deneniyor...`,
+            error: `${errorMsg}${AUTO_SAVE_RETRY_SUFFIX}`,
           }))
 
           retryTimeoutRef.current = setTimeout(() => {
@@ -141,10 +146,14 @@ export function useAutoSave({
           isSaving: false,
           error: errorMsg,
         }))
+        if (lastToastedErrorRef.current !== errorMsg) {
+          toasts.error(errorMsg)
+          lastToastedErrorRef.current = errorMsg
+        }
         onError?.(errorMsg)
       }
     },
-    [id, payload, onSuccess, onError, maxRetries, retryDelayMs]
+    [id, payload, onSuccess, onError, maxRetries, retryDelayMs, toasts]
   )
 
   useEffect(() => {
@@ -152,13 +161,13 @@ export function useAutoSave({
     if (!id || id === 'new') return
 
     const payloadStr = JSON.stringify(payload)
-    
+
     // Initialize prevPayloadRef on first run to prevent auto-save on mount
     if (prevPayloadRef.current === null) {
       prevPayloadRef.current = payloadStr
       return
     }
-    
+
     if (payloadStr === prevPayloadRef.current) return
     prevPayloadRef.current = payloadStr
 

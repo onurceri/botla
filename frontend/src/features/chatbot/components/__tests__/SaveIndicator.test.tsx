@@ -34,7 +34,17 @@ describe('SaveIndicator', () => {
         error="Hata - Tekrar deneniyor..."
       />
     )
-    expect(screen.getByText(/Hata/)).toBeInTheDocument()
+    expect(screen.getByText('Tekrar deneniyor...')).toBeInTheDocument()
+  })
+
+  it('renders error state as generic message for long errors', () => {
+    render(
+      <SaveIndicator
+        isSaving={false}
+        lastSavedAt={null}
+        error="This model is not available on your plan"
+      />
+    )
+    expect(screen.getByText('Kaydedilemedi')).toBeInTheDocument()
   })
 })
-
