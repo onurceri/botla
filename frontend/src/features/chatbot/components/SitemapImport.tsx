@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { discoverSitemap, bulkCreateSources, SitemapURL } from '@/api/source'
 import { cn } from '@/lib/utils'
+import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
 interface SitemapImportProps {
   chatbotId: string
@@ -34,7 +35,7 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
       // Select all by default
       setSelectedUrls(new Set(result.urls.map(u => u.loc)))
     } catch (err: any) {
-      setError(err.response?.data || err.message || 'Sitemap okunamadı')
+      setError(getTurkishErrorMessage(err, 'Sitemap okunamadı'))
     } finally {
       setLoading(false)
     }
@@ -99,7 +100,7 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
       setIsExpanded(false)
       onImportComplete()
     } catch (err: any) {
-      setError(err.response?.data || err.message || 'İçe aktarma başarısız')
+      setError(getTurkishErrorMessage(err, 'İçe aktarma başarısız'))
     } finally {
       setImporting(false)
     }

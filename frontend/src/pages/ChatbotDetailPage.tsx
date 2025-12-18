@@ -8,6 +8,7 @@ import NewChatbotForm from '@/features/chatbot/components/NewChatbotForm'
 import { useOrganization } from '@/features/organization/context/OrganizationContext'
 import { ChatbotProvider, useChatbotContext } from '@/features/chatbot/context/ChatbotContext'
 import { useToastErrors } from '@/features/chatbot/hooks/useToastErrors'
+import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
 function ChatbotDetailContent() {
   const { id = '' } = useParams()
@@ -62,8 +63,7 @@ function ChatbotDetailContent() {
       navigate(`/dashboard/chatbots/${data.id}`)
     } catch (error: any) {
       console.error(error)
-      const msg = error.response?.data?.error || 'Bir hata oluştu. Lütfen tekrar deneyin.'
-      toasts.error(msg)
+      toasts.error(getTurkishErrorMessage(error, 'Bir hata oluştu. Lütfen tekrar deneyin.'))
     } finally {
       setIsCreating(false)
     }
@@ -77,8 +77,8 @@ function ChatbotDetailContent() {
       await api.delete(`/api/v1/chatbots/${id}`)
       toast('Chatbot silindi.', 'success')
       navigate('/dashboard/chatbots')
-    } catch {
-      toasts.error('Silme işlemi başarısız oldu.')
+    } catch (error: any) {
+      toasts.error(getTurkishErrorMessage(error, 'Silme işlemi başarısız oldu.'))
     } finally {
       setIsDeleting(false)
     }

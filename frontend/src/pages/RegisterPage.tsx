@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { api } from '@/api/client'
 import { useToast } from '@/components/ui/toast'
+import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
@@ -30,7 +31,7 @@ const RegisterPage = () => {
       toast('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
       navigate('/login')
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Kayıt başarısız. Lütfen tekrar deneyin.'
+      const errorMessage = getTurkishErrorMessage(err, 'Kayıt başarısız. Lütfen tekrar deneyin.')
       toast(errorMessage, 'error')
       setErrorMsg(errorMessage)
     } finally {

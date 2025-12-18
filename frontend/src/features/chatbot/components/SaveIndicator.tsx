@@ -1,4 +1,5 @@
 import { Check, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { AUTO_SAVE_RETRY_SUFFIX, SAVE_INDICATOR_MESSAGES } from '@/lib/errorMessages'
 
 type Props = {
   isSaving: boolean
@@ -8,7 +9,7 @@ type Props = {
 
 export function SaveIndicator({ isSaving, lastSavedAt, error }: Props) {
   if (error) {
-    const isRetrying = error.includes('Tekrar deneniyor')
+    const isRetrying = error.endsWith(AUTO_SAVE_RETRY_SUFFIX)
     return (
       <span className="flex items-center gap-1.5 text-sm text-destructive animate-in fade-in duration-200">
         {isRetrying ? (
@@ -16,7 +17,7 @@ export function SaveIndicator({ isSaving, lastSavedAt, error }: Props) {
         ) : (
           <AlertCircle className="w-4 h-4" />
         )}
-        <span className="max-w-[200px] truncate">{error}</span>
+        <span>{isRetrying ? SAVE_INDICATOR_MESSAGES.retrying : SAVE_INDICATOR_MESSAGES.failed}</span>
       </span>
     )
   }
@@ -25,7 +26,7 @@ export function SaveIndicator({ isSaving, lastSavedAt, error }: Props) {
     return (
       <span className="flex items-center gap-1.5 text-sm text-muted-foreground animate-pulse">
         <Loader2 className="w-4 h-4 animate-spin" />
-        Kaydediliyor...
+        {SAVE_INDICATOR_MESSAGES.saving}
       </span>
     )
   }
@@ -34,11 +35,10 @@ export function SaveIndicator({ isSaving, lastSavedAt, error }: Props) {
     return (
       <span className="flex items-center gap-1.5 text-sm text-green-600 animate-in fade-in duration-200">
         <Check className="w-4 h-4" />
-        Kaydedildi
+        {SAVE_INDICATOR_MESSAGES.saved}
       </span>
     )
   }
 
   return null
 }
-

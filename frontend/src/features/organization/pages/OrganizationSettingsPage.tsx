@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { User, Shield, ShieldAlert, Crown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
 type CallerRole = 'owner' | 'admin' | 'member'
 
@@ -119,8 +120,7 @@ export const OrganizationSettingsPage: React.FC = () => {
       await refreshOrganizations()
     } catch (error: any) {
       console.error(error)
-      const errorMessage = error.response?.data?.error || 'Organizasyon güncellenemedi'
-      toast(errorMessage, 'error')
+      toast(getTurkishErrorMessage(error, 'Organizasyon güncellenemedi'), 'error')
     }
   }
 
@@ -134,11 +134,7 @@ export const OrganizationSettingsPage: React.FC = () => {
       navigate('/dashboard')
     } catch (error: any) {
       console.error(error)
-      const errorMessage = error.response?.data?.error || 'Organizasyon silinemedi'
-      const translatedError = errorMessage === 'cannot delete the last organization'
-        ? 'Son organizasyon silinemez'
-        : errorMessage
-      toast(translatedError, 'error')
+      toast(getTurkishErrorMessage(error, 'Organizasyon silinemedi'), 'error')
     }
   }
 
@@ -152,8 +148,7 @@ export const OrganizationSettingsPage: React.FC = () => {
       loadMembers()
     } catch (error: any) {
       console.error(error)
-      const errorMessage = error.response?.data?.error || 'Üye eklenemedi'
-      toast(errorMessage, 'error')
+      toast(getTurkishErrorMessage(error, 'Üye eklenemedi'), 'error')
     }
   }
 
@@ -166,12 +161,7 @@ export const OrganizationSettingsPage: React.FC = () => {
       loadMembers()
     } catch (error: any) {
       console.error(error)
-      const errorMessage = error.response?.data?.error || 'Üye çıkarılamadı'
-      // Translate specific errors
-      const translatedError = errorMessage === 'cannot remove the last owner'
-        ? 'Son sahip çıkarılamaz'
-        : errorMessage
-      toast(translatedError, 'error')
+      toast(getTurkishErrorMessage(error, 'Üye çıkarılamadı'), 'error')
     }
   }
 
@@ -183,19 +173,7 @@ export const OrganizationSettingsPage: React.FC = () => {
       loadMembers()
     } catch (error: any) {
       console.error(error)
-      const errorMessage = error.response?.data?.error || 'Rol güncellenemedi'
-      // Translate specific RBAC errors
-      let translatedError = errorMessage
-      if (errorMessage.includes('cannot demote the last owner')) {
-        translatedError = 'Organizasyonun son sahibinin rolü değiştirilemez'
-      } else if (errorMessage.includes('cannot promote yourself')) {
-        translatedError = 'Kendi rolünüzü yükseltemezsiniz'
-      } else if (errorMessage.includes('only owners can assign owner role')) {
-        translatedError = 'Sahip rolünü yalnızca sahipler atayabilir'
-      } else if (errorMessage.includes('invalid role')) {
-        translatedError = 'Geçersiz rol seçildi'
-      }
-      toast(translatedError, 'error')
+      toast(getTurkishErrorMessage(error, 'Rol güncellenemedi'), 'error')
     }
   }
 

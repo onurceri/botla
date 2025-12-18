@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
+import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
 export const WorkspaceSettingsPage: React.FC = () => {
   const { currentOrganization, currentWorkspace, workspaces, refreshWorkspaces } = useOrganization()
@@ -54,12 +55,7 @@ export const WorkspaceSettingsPage: React.FC = () => {
       navigate('/dashboard')
     } catch (error: any) {
       console.error(error)
-      const errorMessage = error.response?.data?.error || 'Çalışma alanı silinemedi'
-      // Translate backend error if possible
-      const translatedError = errorMessage === 'cannot delete the last workspace in the organization'
-        ? 'Organizasyondaki son çalışma alanı silinemez'
-        : errorMessage
-      toast(translatedError, 'error')
+      toast(getTurkishErrorMessage(error, 'Çalışma alanı silinemedi'), 'error')
     }
   }
 

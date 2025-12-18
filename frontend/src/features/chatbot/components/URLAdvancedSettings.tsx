@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { discoverSitemap, bulkCreateSources, SitemapURL } from '@/api/source'
 import { cn } from '@/lib/utils'
+import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
 type DiscoveryMode = 'auto' | 'pending' | 'disabled'
 type RefreshPolicy = 'manual' | 'auto'
@@ -179,7 +180,7 @@ export default function URLAdvancedSettings({
       setDiscoveredUrls(result.urls)
       setSelectedUrls(new Set(result.urls.map(u => u.loc)))
     } catch (err: any) {
-      setSitemapError(err.response?.data || err.message || 'Sitemap okunamadı')
+      setSitemapError(getTurkishErrorMessage(err, 'Sitemap okunamadı'))
     } finally {
       setSitemapLoading(false)
     }
@@ -196,7 +197,7 @@ export default function URLAdvancedSettings({
       setSitemapUrl('')
       onImportComplete()
     } catch (err: any) {
-      setSitemapError(err.response?.data || err.message || 'İçe aktarma başarısız')
+      setSitemapError(getTurkishErrorMessage(err, 'İçe aktarma başarısız'))
     } finally {
       setSitemapImporting(false)
     }
