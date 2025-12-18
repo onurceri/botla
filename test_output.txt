@@ -1,0 +1,875 @@
+=== RUN   TestAction_CRUD
+    action_test.go:55: create action: expected 201, got 500. Body: ERROR: null value in column "parameters" of relation "chatbot_actions" violates not-null constraint (SQLSTATE 23502)
+--- FAIL: TestAction_CRUD (0.46s)
+=== RUN   TestChatWithTools
+    action_test.go:261: create action failed: 500. Body: ERROR: null value in column "parameters" of relation "chatbot_actions" violates not-null constraint (SQLSTATE 23502)
+--- FAIL: TestChatWithTools (0.33s)
+=== RUN   TestAgenticLoopLimit
+{"fields":{"error":"openai error: 401 Unauthorized: {\n    \"error\": {\n        \"message\": \"Incorrect API key provided: test-key. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:40:15.143329Z"}
+--- PASS: TestAgenticLoopLimit (7.75s)
+=== RUN   TestToolExecutionError
+{"fields":{"error":"openai error: 401 Unauthorized: {\n    \"error\": {\n        \"message\": \"Incorrect API key provided: test-key. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:40:22.8647Z"}
+    action_test.go:498: unexpected response: An error occurred, please try again later.
+--- FAIL: TestToolExecutionError (7.66s)
+=== RUN   TestHTTPActionPOST
+{"fields":{"error":"openai error: 401 Unauthorized: {\n    \"error\": {\n        \"message\": \"Incorrect API key provided: test-key. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:40:30.598733Z"}
+    action_test.go:609: unexpected response: An error occurred, please try again later.
+--- FAIL: TestHTTPActionPOST (7.83s)
+=== RUN   TestBuiltinTools
+{"fields":{"error":"openai error: 401 Unauthorized: {\n    \"error\": {\n        \"message\": \"Incorrect API key provided: test-key. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:40:38.507897Z"}
+    action_test.go:715: unexpected response: An error occurred, please try again later.
+--- FAIL: TestBuiltinTools (7.76s)
+=== RUN   TestDisabledAction
+{"fields":{"error":"openai error: 401 Unauthorized: {\n    \"error\": {\n        \"message\": \"Incorrect API key provided: test-key. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:40:46.152445Z"}
+--- PASS: TestDisabledAction (7.73s)
+=== RUN   TestAutomatedHandoff
+    agent_handoff_test.go:103: 
+        	Error Trace:	/Users/onur/Documents/workspace/botla-co/internal/integration/agent_handoff_test.go:103
+        	Error:      	Received unexpected error:
+        	            	ERROR: null value in column "plan_id" of relation "users" violates not-null constraint (SQLSTATE 23502)
+        	Test:       	TestAutomatedHandoff
+--- FAIL: TestAutomatedHandoff (0.20s)
+=== RUN   TestAnalytics_ThumbsUpAfterFeedback
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"816eca99-a979-4f5f-b53a-4796efeba802"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:46.866265Z"}
+--- PASS: TestAnalytics_ThumbsUpAfterFeedback (0.71s)
+=== RUN   TestAnalytics_FullCoverage
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"281dce3b-d342-49ec-8bb5-0c0cf703f630"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:47.646517Z"}
+    analytics_full_coverage_test.go:99: handoff request failed: 404
+--- FAIL: TestAnalytics_FullCoverage (0.42s)
+=== RUN   TestAnalytics_SeriesLength7
+--- PASS: TestAnalytics_SeriesLength7 (0.34s)
+=== RUN   TestAnalytics_Smoke
+--- PASS: TestAnalytics_Smoke (0.29s)
+=== RUN   TestAnalytics_UpdatesAfterChat
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"240515cc-3ce7-4ca3-9a32-1134cf3a65a7"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:48.60502Z"}
+--- PASS: TestAnalytics_UpdatesAfterChat (0.30s)
+=== RUN   TestAuth_InvalidBearerFormat_Protected401
+--- PASS: TestAuth_InvalidBearerFormat_Protected401 (0.18s)
+=== RUN   TestAuth_BearerWithoutToken_Protected401
+--- PASS: TestAuth_BearerWithoutToken_Protected401 (0.28s)
+=== RUN   TestAuth_BasicScheme_Protected401
+--- PASS: TestAuth_BasicScheme_Protected401 (0.17s)
+=== RUN   TestAuth_InvalidAccessToken_Me401
+--- PASS: TestAuth_InvalidAccessToken_Me401 (0.14s)
+=== RUN   TestAuth_TamperedAccessToken_Me401
+--- PASS: TestAuth_TamperedAccessToken_Me401 (0.16s)
+=== RUN   TestAuth_MissingAuthorizationHeader_Me401
+--- PASS: TestAuth_MissingAuthorizationHeader_Me401 (0.16s)
+=== RUN   TestAuth_ValidAccessToken_Me200
+--- PASS: TestAuth_ValidAccessToken_Me200 (0.29s)
+=== RUN   TestAuth_ExpiredAccessToken_Me401
+--- PASS: TestAuth_ExpiredAccessToken_Me401 (0.32s)
+=== RUN   TestAuth_Register_PasswordHashing
+--- PASS: TestAuth_Register_PasswordHashing (0.22s)
+=== RUN   TestAuth_RefreshWithExpiredToken
+--- PASS: TestAuth_RefreshWithExpiredToken (0.22s)
+=== RUN   TestAuth_RefreshRotationAndLogout
+--- PASS: TestAuth_RefreshRotationAndLogout (0.24s)
+=== RUN   TestAuth_Refresh_GeneratesNewAccessToken
+--- PASS: TestAuth_Refresh_GeneratesNewAccessToken (0.29s)
+=== RUN   TestAuth_RegistrationCreatesDefaultOrgAndWorkspace
+--- PASS: TestAuth_RegistrationCreatesDefaultOrgAndWorkspace (0.25s)
+=== RUN   TestAuth_RevokedRefreshToken_401
+--- PASS: TestAuth_RevokedRefreshToken_401 (0.25s)
+=== RUN   TestAuth_Register_SQLInjectionEmail
+--- PASS: TestAuth_Register_SQLInjectionEmail (0.15s)
+=== RUN   TestAuth_Register_XSSFullName
+--- PASS: TestAuth_Register_XSSFullName (0.27s)
+=== RUN   TestAuth_Register_Login_Protected
+--- PASS: TestAuth_Register_Login_Protected (0.32s)
+=== RUN   TestAuth_Register_InvalidEmailFormat
+--- PASS: TestAuth_Register_InvalidEmailFormat (0.17s)
+=== RUN   TestAuth_Register_MissingEmail
+--- PASS: TestAuth_Register_MissingEmail (0.17s)
+=== RUN   TestAuth_Register_MissingPassword
+--- PASS: TestAuth_Register_MissingPassword (0.26s)
+=== RUN   TestAuth_Login_InvalidEmail
+--- PASS: TestAuth_Login_InvalidEmail (0.17s)
+=== RUN   TestAuth_Login_InvalidPassword
+--- PASS: TestAuth_Login_InvalidPassword (0.32s)
+=== RUN   TestAuth_Login_EmptyEmail
+--- PASS: TestAuth_Login_EmptyEmail (0.17s)
+=== RUN   TestAuth_Login_EmptyPassword
+--- PASS: TestAuth_Login_EmptyPassword (0.18s)
+=== RUN   TestAuth_Login_CaseInsensitiveEmail
+--- PASS: TestAuth_Login_CaseInsensitiveEmail (0.44s)
+=== RUN   TestAuth_Login_MultipleSessions
+--- PASS: TestAuth_Login_MultipleSessions (0.60s)
+=== RUN   TestAuth_Login_RefreshTokenTracking
+--- PASS: TestAuth_Login_RefreshTokenTracking (0.64s)
+=== RUN   TestAuth_Register_WeakPassword
+--- PASS: TestAuth_Register_WeakPassword (0.28s)
+=== RUN   TestChat_TemperatureConfiguration
+=== RUN   TestChat_TemperatureConfiguration/TMP-001_Temperature_0.0
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"c2dcba13-36f6-4cd3-ac98-6f9c4b950438"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:56.276981Z"}
+    chat_config_test.go:249: DB State - Temp: 0.000000, MaxTokens: 4096
+    chat_config_test.go:249: Last Request - Temp: 0.000000, MaxTokens: 4096
+=== RUN   TestChat_TemperatureConfiguration/TMP-002_Temperature_1.0
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"abcc1a61-b031-48d5-9db8-5cd0914a8f98"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:56.302921Z"}
+    chat_config_test.go:254: DB State - Temp: 1.000000, MaxTokens: 4096
+    chat_config_test.go:254: Last Request - Temp: 1.000000, MaxTokens: 4096
+=== RUN   TestChat_TemperatureConfiguration/TMP-003_Temperature_2.0
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"45b914cf-1062-4a2a-a7d8-7ece36efdbc0"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:56.325921Z"}
+    chat_config_test.go:259: DB State - Temp: 2.000000, MaxTokens: 4096
+    chat_config_test.go:259: Last Request - Temp: 2.000000, MaxTokens: 4096
+=== RUN   TestChat_TemperatureConfiguration/TMP-007_Default_Temperature
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"4aec6965-1220-46d8-9d3f-e1cf9e72ed57"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:56.343287Z"}
+    chat_config_test.go:274: DB State - Temp: 0.700000, MaxTokens: 4096
+    chat_config_test.go:274: Last Request - Temp: 0.700000, MaxTokens: 4096
+--- PASS: TestChat_TemperatureConfiguration (0.47s)
+    --- PASS: TestChat_TemperatureConfiguration/TMP-001_Temperature_0.0 (0.03s)
+    --- PASS: TestChat_TemperatureConfiguration/TMP-002_Temperature_1.0 (0.03s)
+    --- PASS: TestChat_TemperatureConfiguration/TMP-003_Temperature_2.0 (0.02s)
+    --- PASS: TestChat_TemperatureConfiguration/TMP-007_Default_Temperature (0.02s)
+=== RUN   TestChat_ModelConfiguration
+=== RUN   TestChat_ModelConfiguration/MDL-001_OpenAI
+{"fields":{"error":"openrouter error: 404 Not Found: 404 page not found\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:40:59.736671Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"686546b6-88f8-42c0-85bd-8e6c915b2142"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:40:59.758915Z"}
+=== RUN   TestChat_ModelConfiguration/MDL-003_Anthropic
+{"fields":{"error":"openrouter error: 404 Not Found: 404 page not found\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:41:02.799944Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"427b038b-19cd-4580-9b39-0d4c4cb5729b"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:02.823312Z"}
+=== RUN   TestChat_ModelConfiguration/MDL-004_Google
+{"fields":{"error":"openrouter error: 404 Not Found: 404 page not found\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:41:05.862656Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"9c9dab70-488a-4baf-995a-5b2837ce3037"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:05.891465Z"}
+=== RUN   TestChat_ModelConfiguration/MDL-005_OpenRouter
+{"fields":{"error":"openrouter error: 404 Not Found: 404 page not found\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:41:08.937751Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"6b7df895-d6f4-43e3-a2de-376a905850d8"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:09.022318Z"}
+--- PASS: TestChat_ModelConfiguration (12.68s)
+    --- PASS: TestChat_ModelConfiguration/MDL-001_OpenAI (3.06s)
+    --- PASS: TestChat_ModelConfiguration/MDL-003_Anthropic (3.06s)
+    --- PASS: TestChat_ModelConfiguration/MDL-004_Google (3.07s)
+    --- PASS: TestChat_ModelConfiguration/MDL-005_OpenRouter (3.13s)
+=== RUN   TestChat_MaxTokensConfiguration
+=== RUN   TestChat_MaxTokensConfiguration/MTK-001_256
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"7f545208-9e57-447a-9296-28f9d9a893b1"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:09.399596Z"}
+=== RUN   TestChat_MaxTokensConfiguration/MTK-002_4096
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"e2c3ff32-4736-4137-8e54-5651a2381219"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:09.419027Z"}
+=== RUN   TestChat_MaxTokensConfiguration/MTK-003_0_Default
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"mock-source\" (SQLSTATE 22P02)","message_id":"eb94480f-4c02-4c5b-a346-1c1ee54c31f5"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:09.435194Z"}
+--- PASS: TestChat_MaxTokensConfiguration (0.38s)
+    --- PASS: TestChat_MaxTokensConfiguration/MTK-001_256 (0.03s)
+    --- PASS: TestChat_MaxTokensConfiguration/MTK-002_4096 (0.02s)
+    --- PASS: TestChat_MaxTokensConfiguration/MTK-003_0_Default (0.02s)
+=== RUN   TestChat_EmbeddingError_Fallback
+--- PASS: TestChat_EmbeddingError_Fallback (3.58s)
+=== RUN   TestChat_OpenAIError_GracefulMessage
+{"fields":{"error":"500 Internal Server Error"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:41:16.421174Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"972db4a3-0afb-42cd-88d6-3acbcbe0d777"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:16.439751Z"}
+--- PASS: TestChat_OpenAIError_GracefulMessage (3.65s)
+=== RUN   TestChat_Fallback_NoContext
+--- PASS: TestChat_Fallback_NoContext (0.41s)
+=== RUN   TestChat_DefaultTurkishPrompt
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"abb92bfc-7505-41cf-9b70-71d4ee86bf8b"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:17.37513Z"}
+--- PASS: TestChat_DefaultTurkishPrompt (0.29s)
+=== RUN   TestChat_QdrantSearchError_Fallback
+{"fields":{"chatbot_id":"4403ba78-7f23-46a0-b043-afbce087604d","error":"search failed: 500 Internal Server Error"},"level":"WARN","msg":"tiered_search_error","ts":"2025-12-18T15:41:17.65354Z"}
+--- PASS: TestChat_QdrantSearchError_Fallback (0.28s)
+=== RUN   TestChat_StubbedContext
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"03824d53-f1ee-425c-ab92-289a2b968fa2"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:17.949593Z"}
+--- PASS: TestChat_StubbedContext (0.30s)
+=== RUN   TestChat_OpenAIEmbeddingTimeout_Fallback
+{"fields":{"chatbot_id":"db754f45-6688-4636-9d03-34c460116b54","error":"context deadline exceeded"},"level":"WARN","msg":"get_actions_error","ts":"2025-12-18T15:41:21.372647Z"}
+--- PASS: TestChat_OpenAIEmbeddingTimeout_Fallback (3.77s)
+=== RUN   TestChatbot_SecureEmbed_UpdateAndGet
+--- PASS: TestChatbot_SecureEmbed_UpdateAndGet (0.55s)
+=== RUN   TestChatbot_CRUD
+--- PASS: TestChatbot_CRUD (0.34s)
+=== RUN   TestFreePlan_ModelRestriction_AllowsGpt4oMini
+--- PASS: TestFreePlan_ModelRestriction_AllowsGpt4oMini (0.29s)
+=== RUN   TestFreePlan_ModelRestriction_BlocksDisallowedModels
+--- PASS: TestFreePlan_ModelRestriction_BlocksDisallowedModels (0.29s)
+=== RUN   TestCORS_AllowConfiguredOrigin
+--- PASS: TestCORS_AllowConfiguredOrigin (0.15s)
+=== RUN   TestCORS_PatchAllowed
+--- PASS: TestCORS_PatchAllowed (0.15s)
+=== RUN   TestCORS_PublicEndpoints
+--- PASS: TestCORS_PublicEndpoints (0.16s)
+=== RUN   TestFeedback_Protected_Unauthorized
+--- PASS: TestFeedback_Protected_Unauthorized (0.15s)
+=== RUN   TestFeedback_Protected_Authorized
+--- PASS: TestFeedback_Protected_Authorized (0.32s)
+=== RUN   TestHandoff_Flow
+    handoff_test.go:57: update bot failed: 403
+--- FAIL: TestHandoff_Flow (0.29s)
+=== RUN   TestHandoff_Analytics
+    handoff_test.go:197: handoff failed: 400
+--- FAIL: TestHandoff_Analytics (0.29s)
+=== RUN   TestHandoff_Widget
+    handoff_test.go:289: expected handoff_enabled to be true after update
+--- FAIL: TestHandoff_Widget (0.31s)
+=== RUN   TestHandoff_EdgeCases
+    handoff_test.go:350: update bot failed: 403
+--- FAIL: TestHandoff_EdgeCases (0.30s)
+=== RUN   TestHandoff_Status_Lifecycle
+    handoff_test.go:458: expected requests, got 0
+--- FAIL: TestHandoff_Status_Lifecycle (0.34s)
+=== RUN   TestHandoff_DuplicateRequest
+    handoff_test.go:542: first handoff failed: 400
+--- FAIL: TestHandoff_DuplicateRequest (0.30s)
+=== RUN   TestHealth_QdrantDown_503
+--- PASS: TestHealth_QdrantDown_503 (0.14s)
+=== RUN   TestHealth_DBDown_503
+{"fields":{"error":"sql: database is closed"},"level":"WARN","msg":"recover_pending_sources_query_failed","ts":"2025-12-18T15:41:26.244632Z"}
+--- PASS: TestHealth_DBDown_503 (0.06s)
+=== RUN   TestHealth
+--- PASS: TestHealth (0.15s)
+=== RUN   TestMonthlyIngestionQuota_AndDuplicateURL
+{"fields":{"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:27.095847Z"}
+{"fields":{"chatbot_id":"c9706b7b-93e8-4ef5-afa1-b2496a358b21","lang_code":"tr","source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:41:27.105652Z"}
+{"fields":{"chatbot_id":"c9706b7b-93e8-4ef5-afa1-b2496a358b21","discovery_mode":"auto","source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e","url":"http://127.0.0.1:63919"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:41:27.105738Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:63919"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:41:27.461577Z"}
+{"fields":{"len":65,"url":"http://127.0.0.1:63919"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:41:27.461624Z"}
+{"fields":{"html_bytes":65,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:41:27.461638Z"}
+{"fields":{"discovery_mode":"auto","html_length":65,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e","url":"http://127.0.0.1:63919"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:41:27.461647Z"}
+{"fields":{"max_pages_per_crawl":0,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"url_discovery_skipped_no_crawl_limit","ts":"2025-12-18T15:41:27.46166Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:63919"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:41:27.707507Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:63919"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:41:27.707572Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:63919"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:41:27.70761Z"}
+{"fields":{"content_bytes":24,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:41:27.707666Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:41:27.709446Z"}
+{"fields":{"content_bytes":24,"lang_code":"tr","source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:41:27.728589Z"}
+{"fields":{"chunk_count":1,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:41:27.750153Z"}
+{"fields":{"chunk_count":1,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e","total_tokens":7,"url":"http://127.0.0.1:63919"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:41:27.789462Z"}
+{"fields":{"chunks":1,"source_id":"9586efab-cdd5-4043-a4e3-a32f7b17b27e"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:41:27.789483Z"}
+--- PASS: TestMonthlyIngestionQuota_AndDuplicateURL (1.79s)
+=== RUN   TestChatbot_Lifecycle
+=== RUN   TestChatbot_Lifecycle/BOT-001_Create_with_valid_name
+=== RUN   TestChatbot_Lifecycle/BOT-002_Create_with_duplicate_name
+    lifecycle_test.go:62: WARNING: BOT-002 Duplicate name allowed, no unique slug/name generated
+=== RUN   TestChatbot_Lifecycle/BOT-003_Create_with_all_optional_fields
+=== RUN   TestChatbot_Lifecycle/BOT-004_Create_without_name
+=== RUN   TestChatbot_Lifecycle/BOT-005_Default_values_applied
+=== RUN   TestChatbot_Lifecycle/Configuration_Tests
+=== RUN   TestChatbot_Lifecycle/Deletion_Tests
+--- PASS: TestChatbot_Lifecycle (0.71s)
+    --- PASS: TestChatbot_Lifecycle/BOT-001_Create_with_valid_name (0.01s)
+    --- PASS: TestChatbot_Lifecycle/BOT-002_Create_with_duplicate_name (0.01s)
+    --- PASS: TestChatbot_Lifecycle/BOT-003_Create_with_all_optional_fields (0.01s)
+    --- PASS: TestChatbot_Lifecycle/BOT-004_Create_without_name (0.00s)
+    --- PASS: TestChatbot_Lifecycle/BOT-005_Default_values_applied (0.01s)
+    --- PASS: TestChatbot_Lifecycle/Configuration_Tests (0.03s)
+    --- PASS: TestChatbot_Lifecycle/Deletion_Tests (0.02s)
+=== RUN   TestMe_ReturnsSubscriptionPlan
+--- PASS: TestMe_ReturnsSubscriptionPlan (0.67s)
+=== RUN   TestFreePlan_DefaultAssignment_RegisterThenMe
+--- PASS: TestFreePlan_DefaultAssignment_RegisterThenMe (0.29s)
+=== RUN   TestMe_ProfileBasicInfo
+--- PASS: TestMe_ProfileBasicInfo (0.48s)
+=== RUN   TestMe_ProfileIncludesOrganizations
+--- PASS: TestMe_ProfileIncludesOrganizations (0.43s)
+=== RUN   TestMe_CrossUserProfileIsolation
+--- PASS: TestMe_CrossUserProfileIsolation (0.67s)
+=== RUN   TestMe_DBErrorReturns500
+{"fields":{"error":"sql: database is closed"},"level":"WARN","msg":"recover_pending_sources_query_failed","ts":"2025-12-18T15:41:31.524148Z"}
+--- PASS: TestMe_DBErrorReturns500 (0.08s)
+=== RUN   TestMethods_NotAllowed
+--- PASS: TestMethods_NotAllowed (0.19s)
+=== RUN   TestChat_OpenAIEnvMissing_500
+2025/12/18 16:41:31 WARNING: OPENAI_API_KEY is missing. Embeddings will fail.
+--- PASS: TestChat_OpenAIEnvMissing_500 (0.32s)
+=== RUN   TestChat_QdrantEnvMissing_Fallback
+--- PASS: TestChat_QdrantEnvMissing_Fallback (0.41s)
+=== RUN   TestServiceLevelConstraints
+=== RUN   TestServiceLevelConstraints/SVC-002_SelfPromotion_AdminToOwner
+=== RUN   TestServiceLevelConstraints/SVC-003_AdminAssignsOwner
+=== RUN   TestServiceLevelConstraints/SVC-005_DemoteLastOwner
+=== RUN   TestServiceLevelConstraints/SVC-006_RemoveLastOwner
+=== RUN   TestServiceLevelConstraints/SVC-009_TwoOwners_DemoteOne
+=== RUN   TestServiceLevelConstraints/SVC-010_InvalidRole
+=== RUN   TestServiceLevelConstraints/SVC-007_DeleteLastOrganization
+=== RUN   TestServiceLevelConstraints/SVC-008_DeleteLastWorkspace
+--- PASS: TestServiceLevelConstraints (1.60s)
+    --- PASS: TestServiceLevelConstraints/SVC-002_SelfPromotion_AdminToOwner (0.00s)
+    --- PASS: TestServiceLevelConstraints/SVC-003_AdminAssignsOwner (0.16s)
+    --- PASS: TestServiceLevelConstraints/SVC-005_DemoteLastOwner (0.00s)
+    --- PASS: TestServiceLevelConstraints/SVC-006_RemoveLastOwner (0.00s)
+    --- PASS: TestServiceLevelConstraints/SVC-009_TwoOwners_DemoteOne (0.01s)
+    --- PASS: TestServiceLevelConstraints/SVC-010_InvalidRole (0.00s)
+    --- PASS: TestServiceLevelConstraints/SVC-007_DeleteLastOrganization (0.15s)
+    --- PASS: TestServiceLevelConstraints/SVC-008_DeleteLastWorkspace (0.15s)
+=== RUN   TestWorkspaceScoping
+=== RUN   TestWorkspaceScoping/WSC-001_ChatbotScoped
+=== RUN   TestWorkspaceScoping/WSC-002_ListChatbotsScoped
+=== RUN   TestWorkspaceScoping/WSC-004_WorkspaceDeletion
+--- PASS: TestWorkspaceScoping (1.23s)
+    --- PASS: TestWorkspaceScoping/WSC-001_ChatbotScoped (0.04s)
+    --- PASS: TestWorkspaceScoping/WSC-002_ListChatbotsScoped (0.01s)
+    --- PASS: TestWorkspaceScoping/WSC-004_WorkspaceDeletion (0.01s)
+=== RUN   TestOrganization_UpdateMemberRole_Permissions
+--- PASS: TestOrganization_UpdateMemberRole_Permissions (0.85s)
+=== RUN   TestSources_PDF_Ingest_Failure_NoFitz
+{"fields":{"source_id":"911fbeaa-7659-403c-8af0-be43ef457bd0"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:36.988699Z"}
+{"fields":{"chatbot_id":"cd7203a2-ce8c-412b-863b-d82b48d980f9","lang_code":"tr","source_id":"911fbeaa-7659-403c-8af0-be43ef457bd0","source_type":"pdf"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:41:37.001898Z"}
+{"fields":{"reason":"pdf support not enabled (build with -tags fitz)","source_id":"911fbeaa-7659-403c-8af0-be43ef457bd0"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:37.003742Z"}
+--- PASS: TestSources_PDF_Ingest_Failure_NoFitz (1.25s)
+=== RUN   TestProPlan_ModelSelection
+--- PASS: TestProPlan_ModelSelection (0.53s)
+=== RUN   TestProPlan_MonthlyTokenLimit
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"a66c7d3a-a56c-4299-922f-42f9c9e0e6a5"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:41:38.161081Z"}
+--- PASS: TestProPlan_MonthlyTokenLimit (0.43s)
+=== RUN   TestProPlan_PDFLimits
+--- PASS: TestProPlan_PDFLimits (0.65s)
+=== RUN   TestProPlan_PDF_OCREnabledFlag
+{"fields":{"source_id":"2957c6ca-a014-4cbc-9c84-218df6cf52db"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:39.17643Z"}
+{"fields":{"reason":"source_not_found","source_id":"2957c6ca-a014-4cbc-9c84-218df6cf52db"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:39.176482Z"}
+--- PASS: TestProPlan_PDF_OCREnabledFlag (0.19s)
+=== RUN   TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF
+    plan_features_pro_test.go:406: pdf support not enabled; build with -tags fitz to run this test
+--- SKIP: TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF (0.00s)
+=== RUN   TestProPlan_URLLimits
+{"fields":{"source_id":"892c900b-85c0-48a3-9046-35c7e26253e7"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:39.676951Z"}
+{"fields":{"reason":"source_not_found","source_id":"892c900b-85c0-48a3-9046-35c7e26253e7"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:39.677019Z"}
+--- PASS: TestProPlan_URLLimits (0.68s)
+=== RUN   TestProPlan_DynamicScraping
+{"fields":{"source_id":"ea21590b-a54d-4a63-afa7-1fe056970c8f"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:39.921059Z"}
+{"fields":{"reason":"source_not_found","source_id":"ea21590b-a54d-4a63-afa7-1fe056970c8f"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:39.921173Z"}
+{"fields":{"source_id":"0db9a848-4ad3-4734-bb07-d730264fcd18"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:40.178105Z"}
+{"fields":{"reason":"source_not_found","source_id":"0db9a848-4ad3-4734-bb07-d730264fcd18"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:40.178158Z"}
+{"fields":{"source_id":"035a697e-3bb1-479e-a16c-1c5720288fcb"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:40.422251Z"}
+{"fields":{"reason":"source_not_found","source_id":"035a697e-3bb1-479e-a16c-1c5720288fcb"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:40.422291Z"}
+{"fields":{"source_id":"8be24ac2-2cee-4558-bddd-41a50c5dc7a7"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:40.679235Z"}
+{"fields":{"reason":"source_not_found","source_id":"8be24ac2-2cee-4558-bddd-41a50c5dc7a7"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:40.679298Z"}
+{"fields":{"source_id":"f93cb922-a1c5-4074-9fff-b932416fd389"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:40.923337Z"}
+{"fields":{"reason":"source_not_found","source_id":"f93cb922-a1c5-4074-9fff-b932416fd389"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:40.923358Z"}
+{"fields":{"source_id":"91f13d9b-192b-4b89-bc0b-de3528533875"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:41.180563Z"}
+{"fields":{"reason":"source_not_found","source_id":"91f13d9b-192b-4b89-bc0b-de3528533875"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:41.18061Z"}
+{"fields":{"source_id":"ad3b8656-1ef0-4011-9923-37875d465701"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:41.424662Z"}
+{"fields":{"reason":"source_not_found","source_id":"ad3b8656-1ef0-4011-9923-37875d465701"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:41.42482Z"}
+{"fields":{"source_id":"6ac9f3d8-1348-4503-b8ed-642978233a40"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:41.681676Z"}
+{"fields":{"reason":"source_not_found","source_id":"6ac9f3d8-1348-4503-b8ed-642978233a40"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:41.681708Z"}
+{"fields":{"source_id":"f7c2c9d3-63d8-4c68-b56e-5a34970a9cc8"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:41.925266Z"}
+{"fields":{"reason":"source_not_found","source_id":"f7c2c9d3-63d8-4c68-b56e-5a34970a9cc8"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:41.92535Z"}
+{"fields":{"source_id":"93fe3720-1e0d-46b9-b692-9891d6deed6c"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:42.182785Z"}
+{"fields":{"reason":"source_not_found","source_id":"93fe3720-1e0d-46b9-b692-9891d6deed6c"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:42.182825Z"}
+{"fields":{"source_id":"f8d0f16d-8349-4636-adc5-0be0300d02c1"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:42.426488Z"}
+{"fields":{"reason":"source_not_found","source_id":"f8d0f16d-8349-4636-adc5-0be0300d02c1"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:42.426514Z"}
+{"fields":{"source_id":"cd7dc5e5-c5dd-4fca-a160-f0aa6d593f9f"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:42.684343Z"}
+{"fields":{"reason":"source_not_found","source_id":"cd7dc5e5-c5dd-4fca-a160-f0aa6d593f9f"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:42.68444Z"}
+{"fields":{"source_id":"c666ccd7-41f1-4177-b90c-0580fe8c35ac"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:42.92726Z"}
+{"fields":{"reason":"source_not_found","source_id":"c666ccd7-41f1-4177-b90c-0580fe8c35ac"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:42.927349Z"}
+{"fields":{"source_id":"57fbf544-9bbf-443b-86c8-294954c68845"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:43.185601Z"}
+{"fields":{"reason":"source_not_found","source_id":"57fbf544-9bbf-443b-86c8-294954c68845"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:43.185748Z"}
+{"fields":{"source_id":"cdbc1e9e-7183-41e3-bfd8-8aa36f4d87fb"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:43.428133Z"}
+{"fields":{"reason":"source_not_found","source_id":"cdbc1e9e-7183-41e3-bfd8-8aa36f4d87fb"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:43.428199Z"}
+{"fields":{"source_id":"3d842051-7ae4-4083-9bd5-fac0722bdf35"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:43.686881Z"}
+{"fields":{"reason":"source_not_found","source_id":"3d842051-7ae4-4083-9bd5-fac0722bdf35"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:43.686996Z"}
+{"fields":{"source_id":"81f23304-f2f6-485d-9a97-2d2b674078bf"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:43.929321Z"}
+{"fields":{"reason":"source_not_found","source_id":"81f23304-f2f6-485d-9a97-2d2b674078bf"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:43.929425Z"}
+{"fields":{"source_id":"a6630155-55e5-4460-9cf3-4aa2543eceff"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:44.18817Z"}
+{"fields":{"reason":"source_not_found","source_id":"a6630155-55e5-4460-9cf3-4aa2543eceff"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:44.188221Z"}
+{"fields":{"source_id":"d72091cc-c657-471b-8e45-b6b9d4382095"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:44.43058Z"}
+{"fields":{"reason":"source_not_found","source_id":"d72091cc-c657-471b-8e45-b6b9d4382095"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:44.43066Z"}
+{"fields":{"source_id":"8b3469db-9b3e-4617-8b28-2a963cd75791"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:44.688515Z"}
+{"fields":{"reason":"source_not_found","source_id":"8b3469db-9b3e-4617-8b28-2a963cd75791"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:44.688585Z"}
+    plan_features_pro_test.go:555: dynamic scraping not available: context deadline exceeded
+--- SKIP: TestProPlan_DynamicScraping (5.14s)
+=== RUN   TestProPlan_DiscoveryMode
+{"fields":{"source_id":"10eb2e09-306b-43a1-b557-4e92a82f9bec"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:45.189055Z"}
+{"fields":{"reason":"source_not_found","source_id":"10eb2e09-306b-43a1-b557-4e92a82f9bec"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:45.189113Z"}
+{"fields":{"source_id":"226ac92f-73f4-4fce-ae6f-85d121ca65da"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:45.690203Z"}
+{"fields":{"reason":"source_not_found","source_id":"226ac92f-73f4-4fce-ae6f-85d121ca65da"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:45.690251Z"}
+{"fields":{"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:45.887267Z"}
+{"fields":{"chatbot_id":"ffc052ad-f0a1-4760-94c0-2c4636d6d2c5","lang_code":"tr","source_id":"a12f4683-402c-4710-b168-f1323f35edd2","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:41:45.899866Z"}
+{"fields":{"chatbot_id":"ffc052ad-f0a1-4760-94c0-2c4636d6d2c5","discovery_mode":"auto","source_id":"a12f4683-402c-4710-b168-f1323f35edd2","url":"http://127.0.0.1:64126"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:41:45.89993Z"}
+{"fields":{"bytes":503,"url":"http://127.0.0.1:64126"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:41:46.061107Z"}
+{"fields":{"len":503,"url":"http://127.0.0.1:64126"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:41:46.061204Z"}
+{"fields":{"html_bytes":503,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:41:46.061282Z"}
+{"fields":{"discovery_mode":"auto","html_length":503,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2","url":"http://127.0.0.1:64126"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:41:46.061302Z"}
+{"fields":{"filter_used":false,"links_found":15,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:41:46.064281Z"}
+{"fields":{"added":10,"limit":10,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"url_discovery_limit_reached","ts":"2025-12-18T15:41:46.117099Z"}
+{"fields":{"added":10,"limit":10,"links_found":15,"mode":"auto","skipped":0,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"url_discovery_completed","ts":"2025-12-18T15:41:46.117152Z"}
+{"fields":{"source_id":"2cd03806-b282-4b62-9ee4-ee6d63c8c9e7"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:46.191433Z"}
+{"fields":{"reason":"source_not_found","source_id":"2cd03806-b282-4b62-9ee4-ee6d63c8c9e7"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:46.191529Z"}
+{"fields":{"bytes":503,"url":"http://127.0.0.1:64126"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:41:46.467621Z"}
+{"fields":{"len":110,"url":"http://127.0.0.1:64126"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:41:46.46769Z"}
+{"fields":{"len":110,"url":"http://127.0.0.1:64126"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:41:46.467757Z"}
+{"fields":{"source_id":"a56cfd34-71ce-4eaf-95bd-1c9bfae2af1e"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:46.693201Z"}
+{"fields":{"reason":"source_not_found","source_id":"a56cfd34-71ce-4eaf-95bd-1c9bfae2af1e"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:46.695558Z"}
+{"fields":{"source_id":"bd1aecaf-29f9-4fbd-a603-7a811772ccb1"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:47.198713Z"}
+{"fields":{"reason":"source_not_found","source_id":"bd1aecaf-29f9-4fbd-a603-7a811772ccb1"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:47.198805Z"}
+{"fields":{"source_id":"19f87dcf-6e94-4bec-8376-357d663c4bff"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:47.699455Z"}
+{"fields":{"reason":"source_not_found","source_id":"19f87dcf-6e94-4bec-8376-357d663c4bff"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:47.699481Z"}
+{"fields":{"source_id":"989569cd-9871-47ad-9f1f-dd3b303d94c6"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:48.20055Z"}
+{"fields":{"reason":"source_not_found","source_id":"989569cd-9871-47ad-9f1f-dd3b303d94c6"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:48.200604Z"}
+{"fields":{"source_id":"c662f8b0-95f3-4bbc-b975-ba1cecfbc928"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:48.701776Z"}
+{"fields":{"reason":"source_not_found","source_id":"c662f8b0-95f3-4bbc-b975-ba1cecfbc928"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:41:48.701859Z"}
+{"fields":{"len":138,"url":"http://127.0.0.1:64126"},"level":"INFO","msg":"scraper_dynamic_ok","ts":"2025-12-18T15:41:50.995294Z"}
+{"fields":{"content_bytes":138,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:41:50.995334Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:41:50.996474Z"}
+{"fields":{"content_bytes":110,"lang_code":"tr","source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:41:51.010917Z"}
+{"fields":{"chunk_count":1,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:41:51.024844Z"}
+{"fields":{"chunk_count":1,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2","total_tokens":36,"url":"http://127.0.0.1:64126"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:41:51.056724Z"}
+{"fields":{"chunks":1,"source_id":"a12f4683-402c-4710-b168-f1323f35edd2"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:41:51.056735Z"}
+    plan_features_pro_test.go:111: Source a12f4683-402c-4710-b168-f1323f35edd2 processed with status: completed
+--- PASS: TestProPlan_DiscoveryMode (8.33s)
+=== RUN   TestProPlan_Refresh
+{"fields":{"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:41:54.029958Z"}
+{"fields":{"chatbot_id":"591ed7d0-9592-4995-be6f-7a3c1a4659ea","lang_code":"tr","source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:41:54.041559Z"}
+{"fields":{"chatbot_id":"591ed7d0-9592-4995-be6f-7a3c1a4659ea","discovery_mode":"auto","source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816","url":"http://127.0.0.1:64158"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:41:54.041613Z"}
+{"fields":{"bytes":110,"url":"http://127.0.0.1:64158"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:41:54.412823Z"}
+{"fields":{"len":110,"url":"http://127.0.0.1:64158"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:41:54.412849Z"}
+{"fields":{"html_bytes":110,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:41:54.412872Z"}
+{"fields":{"discovery_mode":"auto","html_length":110,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816","url":"http://127.0.0.1:64158"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:41:54.412875Z"}
+{"fields":{"filter_used":false,"links_found":0,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:41:54.414522Z"}
+{"fields":{"hint":"No internal links found on this page","source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816","url":"http://127.0.0.1:64158"},"level":"INFO","msg":"url_discovery_no_links_found","ts":"2025-12-18T15:41:54.414532Z"}
+{"fields":{"bytes":110,"url":"http://127.0.0.1:64158"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:41:54.864542Z"}
+{"fields":{"url":"http://127.0.0.1:64158"},"level":"WARN","msg":"scraper_empty","ts":"2025-12-18T15:41:54.864572Z"}
+{"fields":{"len":19,"url":"http://127.0.0.1:64158"},"level":"INFO","msg":"scraper_dynamic_ok","ts":"2025-12-18T15:41:59.419132Z"}
+{"fields":{"content_bytes":19,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:41:59.419196Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:41:59.420877Z"}
+{"fields":{"content_bytes":19,"lang_code":"tr","source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:41:59.437891Z"}
+{"fields":{"chunk_count":1,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:41:59.452188Z"}
+{"fields":{"chunk_count":1,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816","total_tokens":6,"url":"http://127.0.0.1:64158"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:41:59.486684Z"}
+{"fields":{"chunks":1,"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:41:59.486694Z"}
+    plan_features_pro_test.go:111: Source e7733fc8-d3d6-44ee-a2b0-d441ed24e816 processed with status: completed
+--- PASS: TestProPlan_Refresh (6.50s)
+=== RUN   TestProPlan_Branding
+{"fields":{"source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:00.004641Z"}
+{"fields":{"reason":"source_not_found","source_id":"e7733fc8-d3d6-44ee-a2b0-d441ed24e816"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:00.004663Z"}
+--- PASS: TestProPlan_Branding (0.34s)
+=== RUN   TestProPlan_Security
+--- PASS: TestProPlan_Security (0.30s)
+=== RUN   TestProPlan_Guardrails
+--- PASS: TestProPlan_Guardrails (0.31s)
+=== RUN   TestFreePlan_URLLimit_PerChatbot
+--- PASS: TestFreePlan_URLLimit_PerChatbot (0.29s)
+=== RUN   TestFreePlan_URLLimit_AllowsNewURLAfterDelete
+--- PASS: TestFreePlan_URLLimit_AllowsNewURLAfterDelete (0.30s)
+=== RUN   TestFreePlan_DynamicScraping_Disabled_StaticOnly
+{"fields":{"source_id":"4e26efa8-44b6-4b1c-9a8d-b6e9d4de8f0b"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:01.463325Z"}
+{"fields":{"reason":"source_not_found","source_id":"4e26efa8-44b6-4b1c-9a8d-b6e9d4de8f0b"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:01.463341Z"}
+{"fields":{"source_id":"effd4d31-9bbc-46f8-9df1-5f76350e374c"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:01.761838Z"}
+{"fields":{"reason":"source_not_found","source_id":"effd4d31-9bbc-46f8-9df1-5f76350e374c"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:01.761883Z"}
+{"fields":{"source_id":"d69d529a-1ea1-45bb-826b-4515412c3145"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:02.060764Z"}
+{"fields":{"chatbot_id":"7a29c701-fd3a-4e3b-889f-a7b578fd33ba","lang_code":"tr","source_id":"d69d529a-1ea1-45bb-826b-4515412c3145","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:02.070196Z"}
+{"fields":{"chatbot_id":"7a29c701-fd3a-4e3b-889f-a7b578fd33ba","discovery_mode":"auto","source_id":"d69d529a-1ea1-45bb-826b-4515412c3145","url":"http://127.0.0.1:64228"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:02.070213Z"}
+{"fields":{"source_id":"06bbc61b-d3f2-43ca-82aa-b1f705f8914c"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:02.262236Z"}
+{"fields":{"reason":"source_not_found","source_id":"06bbc61b-d3f2-43ca-82aa-b1f705f8914c"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:02.26235Z"}
+{"fields":{"bytes":106,"url":"http://127.0.0.1:64228"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:02.284737Z"}
+{"fields":{"len":106,"url":"http://127.0.0.1:64228"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:02.28479Z"}
+{"fields":{"html_bytes":106,"source_id":"d69d529a-1ea1-45bb-826b-4515412c3145"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:02.284831Z"}
+{"fields":{"discovery_mode":"auto","html_length":106,"source_id":"d69d529a-1ea1-45bb-826b-4515412c3145","url":"http://127.0.0.1:64228"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:02.284842Z"}
+{"fields":{"max_pages_per_crawl":0,"source_id":"d69d529a-1ea1-45bb-826b-4515412c3145"},"level":"INFO","msg":"url_discovery_skipped_no_crawl_limit","ts":"2025-12-18T15:42:02.285065Z"}
+{"fields":{"url":"http://127.0.0.1:64228"},"level":"WARN","msg":"scraper_empty","ts":"2025-12-18T15:42:02.28644Z"}
+{"fields":{"dynamic_enabled":false,"hint":"Website may require JavaScript rendering or has anti-bot protection","selectors_used":false,"source_id":"d69d529a-1ea1-45bb-826b-4515412c3145","url":"http://127.0.0.1:64228"},"level":"WARN","msg":"url_processing_content_empty","ts":"2025-12-18T15:42:02.286464Z"}
+{"fields":{"chunks":0,"source_id":"d69d529a-1ea1-45bb-826b-4515412c3145"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:02.286485Z"}
+--- PASS: TestFreePlan_DynamicScraping_Disabled_StaticOnly (1.05s)
+=== RUN   TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit
+{"fields":{"source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:03.159943Z"}
+{"fields":{"chatbot_id":"e9b3df5d-ee95-4460-bfaa-64797e3f486f","lang_code":"tr","source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:03.166833Z"}
+{"fields":{"chatbot_id":"e9b3df5d-ee95-4460-bfaa-64797e3f486f","discovery_mode":"auto","source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b","url":"http://127.0.0.1:64238"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:03.166845Z"}
+{"fields":{"bytes":66,"url":"http://127.0.0.1:64238"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:03.65493Z"}
+{"fields":{"len":66,"url":"http://127.0.0.1:64238"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:03.655018Z"}
+{"fields":{"html_bytes":66,"source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:03.655038Z"}
+{"fields":{"discovery_mode":"auto","html_length":66,"source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b","url":"http://127.0.0.1:64238"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:03.655105Z"}
+{"fields":{"max_pages_per_crawl":0,"source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b"},"level":"INFO","msg":"url_discovery_skipped_no_crawl_limit","ts":"2025-12-18T15:42:03.655119Z"}
+{"fields":{"url":"http://127.0.0.1:64238"},"level":"WARN","msg":"scraper_empty","ts":"2025-12-18T15:42:03.656148Z"}
+{"fields":{"dynamic_enabled":false,"hint":"Website may require JavaScript rendering or has anti-bot protection","selectors_used":false,"source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b","url":"http://127.0.0.1:64238"},"level":"WARN","msg":"url_processing_content_empty","ts":"2025-12-18T15:42:03.656178Z"}
+{"fields":{"chunks":0,"source_id":"4f062e08-bd40-4e42-a92f-66567f11cc6b"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:03.656216Z"}
+--- PASS: TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit (1.30s)
+=== RUN   TestFreePlan_RefreshPolicyAuto_Forbidden
+--- PASS: TestFreePlan_RefreshPolicyAuto_Forbidden (0.42s)
+=== RUN   TestFreePlan_Branding_HideBrandingForbidden
+--- PASS: TestFreePlan_Branding_HideBrandingForbidden (0.29s)
+=== RUN   TestFreePlan_SecureEmbed_Forbidden
+--- PASS: TestFreePlan_SecureEmbed_Forbidden (0.29s)
+=== RUN   TestFreePlan_Guardrails_Restrictions
+--- PASS: TestFreePlan_Guardrails_Restrictions (0.30s)
+=== RUN   TestFreePlan_PDF_OCRDisabled_NoTextExtracted
+{"fields":{"source_id":"e755b10c-1326-43ff-aec4-d7d203d8e536"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:05.716214Z"}
+{"fields":{"chatbot_id":"ce3fb657-fbdf-4dbf-b95a-9b5a391a494f","lang_code":"tr","source_id":"e755b10c-1326-43ff-aec4-d7d203d8e536","source_type":"pdf"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:05.730275Z"}
+{"fields":{"reason":"pdf support not enabled (build with -tags fitz)","source_id":"e755b10c-1326-43ff-aec4-d7d203d8e536"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:05.73223Z"}
+--- PASS: TestFreePlan_PDF_OCRDisabled_NoTextExtracted (1.01s)
+=== RUN   TestPublicEndpoints_BasicFlow
+{"fields":{"error":"openai error: 401 Unauthorized: {\n    \"error\": {\n        \"message\": \"Incorrect API key provided: test-key. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:42:13.56798Z"}
+--- PASS: TestPublicEndpoints_BasicFlow (7.85s)
+=== RUN   TestPublic_SecureEmbed_Enforcement
+{"fields":{"error":"openai error: 401 Unauthorized: {\n    \"error\": {\n        \"message\": \"Incorrect API key provided: test-key. You can find your API key at https://platform.openai.com/account/api-keys.\",\n        \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\": \"invalid_api_key\"\n    }\n}\n"},"level":"ERROR","msg":"completion_with_tools_error","ts":"2025-12-18T15:42:21.269487Z"}
+--- PASS: TestPublic_SecureEmbed_Enforcement (7.68s)
+=== RUN   TestPublicChatbotConfig_IncludesSuggestions
+--- PASS: TestPublicChatbotConfig_IncludesSuggestions (0.18s)
+=== RUN   TestChat_QdrantEmptyHits_Fallback
+--- PASS: TestChat_QdrantEmptyHits_Fallback (0.31s)
+=== RUN   TestStartup_QdrantCollectionInitFailure_StillWorks
+{"fields":{"source_id":"4a52b6de-6e1f-4c3f-a5ba-a9b568ed720e"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:22.754518Z"}
+{"fields":{"chatbot_id":"15e06dd3-d8c3-49e1-9dd8-21907ac29764","lang_code":"tr","source_id":"4a52b6de-6e1f-4c3f-a5ba-a9b568ed720e","source_type":"text"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:22.766899Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"4a52b6de-6e1f-4c3f-a5ba-a9b568ed720e"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:22.767498Z"}
+{"fields":{"chunks":1,"source_id":"4a52b6de-6e1f-4c3f-a5ba-a9b568ed720e"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:22.812146Z"}
+--- PASS: TestStartup_QdrantCollectionInitFailure_StillWorks (1.17s)
+=== RUN   TestChat_QdrantSearchTimeout_Fallback
+{"fields":{"chatbot_id":"6ee4e439-8cf3-41b1-9201-27695f25ace0","error":"Post \"http://127.0.0.1:64323/collections/embeddings/points/search\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"},"level":"WARN","msg":"tiered_search_error","ts":"2025-12-18T15:42:23.63079Z"}
+--- PASS: TestChat_QdrantSearchTimeout_Fallback (0.79s)
+=== RUN   TestSources_Text_QdrantUpsertError_FailedStatus
+{"fields":{"source_id":"ef43b5a2-8f03-486c-831d-fdfd21bd3811"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:24.803395Z"}
+{"fields":{"chatbot_id":"d30dfd4a-558b-4747-8ce4-d65f50284154","lang_code":"tr","source_id":"ef43b5a2-8f03-486c-831d-fdfd21bd3811","source_type":"text"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:24.813161Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"ef43b5a2-8f03-486c-831d-fdfd21bd3811"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:24.813624Z"}
+{"fields":{"reason":"upsert failed: 500 Internal Server Error","source_id":"ef43b5a2-8f03-486c-831d-fdfd21bd3811"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:24.846003Z"}
+--- PASS: TestSources_Text_QdrantUpsertError_FailedStatus (1.17s)
+=== RUN   TestQuota_ChatTokensExceeded
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"cebea6b8-e043-4547-9b60-43697e8e78f3"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:25.452321Z"}
+--- PASS: TestQuota_ChatTokensExceeded (0.35s)
+=== RUN   TestQuota_RefreshExceeded
+--- PASS: TestQuota_RefreshExceeded (0.30s)
+=== RUN   TestQuota_IngestionExceeded
+--- PASS: TestQuota_IngestionExceeded (0.28s)
+=== RUN   TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs
+--- PASS: TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs (0.22s)
+=== RUN   TestRateLimit_Headers
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"f6711f74-cb66-431a-b0c4-c75a7124c3d4"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:26.537852Z"}
+    ratelimit_headers_test.go:50: limit header expected 2, got "60"
+--- FAIL: TestRateLimit_Headers (0.28s)
+=== RUN   TestRateLimit_IPIsolationOnHealth
+--- PASS: TestRateLimit_IPIsolationOnHealth (0.14s)
+=== RUN   TestRateLimit_PerUserIsolation
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"5d81e90b-2745-4a63-b990-e553ce114d1f"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:27.144487Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"e40e05c7-82b0-4738-aa22-da506d48b0e4"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:27.16241Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"224cd81a-46f1-4061-967a-af4e185fd17c"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:27.178589Z"}
+    ratelimit_isolation_test.go:78: expected 429, got 200
+--- FAIL: TestRateLimit_PerUserIsolation (0.59s)
+=== RUN   TestRateLimit_PlanBasedInfrastructure
+    ratelimit_plan_test.go:18: Plan-based rate limiting infrastructure verified through other tests. Skipping to avoid test interference.
+--- SKIP: TestRateLimit_PlanBasedInfrastructure (0.00s)
+=== RUN   TestRateLimit_Chat_Sources
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"2581909e-276e-47d7-805d-69e888464e01"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:27.558276Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"d72cc0a7-9c03-4269-a62b-8ea8cb211d9d"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:27.5645Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"a819838b-baef-4bc5-be00-772c6673785a"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:27.570249Z"}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"a6a8e5f0-f987-4ee1-85fa-c3d511e8dba8"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:27.575626Z"}
+    ratelimit_test.go:56: expected 429, got 200
+--- FAIL: TestRateLimit_Chat_Sources (0.32s)
+=== RUN   TestRBAC_Matrix
+=== RUN   TestRBAC_Matrix/GetOrg_Member
+=== RUN   TestRBAC_Matrix/GetOrg_Admin
+=== RUN   TestRBAC_Matrix/PatchOrg_Owner
+=== RUN   TestRBAC_Matrix/PatchOrg_Admin
+=== RUN   TestRBAC_Matrix/PatchOrg_Member
+=== RUN   TestRBAC_Matrix/GetWS_Member
+=== RUN   TestRBAC_Matrix/CreateWS_Admin
+=== RUN   TestRBAC_Matrix/CreateWS_Member
+=== RUN   TestRBAC_Matrix/PatchWS_Admin
+=== RUN   TestRBAC_Matrix/PatchWS_Member
+=== RUN   TestRBAC_Matrix/GetMembers_Member
+=== RUN   TestRBAC_Matrix/PatchMember_Admin
+=== RUN   TestRBAC_Matrix/PatchMember_Member
+=== RUN   TestRBAC_Matrix/GetOrg_Outsider
+--- PASS: TestRBAC_Matrix (0.96s)
+    --- PASS: TestRBAC_Matrix/GetOrg_Member (0.00s)
+    --- PASS: TestRBAC_Matrix/GetOrg_Admin (0.00s)
+    --- PASS: TestRBAC_Matrix/PatchOrg_Owner (0.01s)
+    --- PASS: TestRBAC_Matrix/PatchOrg_Admin (0.00s)
+    --- PASS: TestRBAC_Matrix/PatchOrg_Member (0.00s)
+    --- PASS: TestRBAC_Matrix/GetWS_Member (0.00s)
+    --- PASS: TestRBAC_Matrix/CreateWS_Admin (0.00s)
+    --- PASS: TestRBAC_Matrix/CreateWS_Member (0.00s)
+    --- PASS: TestRBAC_Matrix/PatchWS_Admin (0.00s)
+    --- PASS: TestRBAC_Matrix/PatchWS_Member (0.00s)
+    --- PASS: TestRBAC_Matrix/GetMembers_Member (0.00s)
+    --- PASS: TestRBAC_Matrix/PatchMember_Admin (0.00s)
+    --- PASS: TestRBAC_Matrix/PatchMember_Member (0.00s)
+    --- PASS: TestRBAC_Matrix/GetOrg_Outsider (0.00s)
+=== RUN   TestRBAC_Extended
+=== RUN   TestRBAC_Extended/MissingAuthHeader
+=== RUN   TestRBAC_Extended/InvalidOrgID
+=== RUN   TestRBAC_Extended/DeleteWorkspace_Admin
+=== RUN   TestRBAC_Extended/AddMember_Admin
+=== RUN   TestRBAC_Extended/RemoveMember_Admin
+--- PASS: TestRBAC_Extended (1.34s)
+    --- PASS: TestRBAC_Extended/MissingAuthHeader (0.00s)
+    --- PASS: TestRBAC_Extended/InvalidOrgID (0.00s)
+    --- PASS: TestRBAC_Extended/DeleteWorkspace_Admin (0.01s)
+    --- PASS: TestRBAC_Extended/AddMember_Admin (0.15s)
+    --- PASS: TestRBAC_Extended/RemoveMember_Admin (0.15s)
+=== RUN   TestRBAC_DeleteOrg
+--- PASS: TestRBAC_DeleteOrg (1.02s)
+=== RUN   TestRecovery_Prod
+{"fields":{"error":"oops","stack":"goroutine 14309 [running]:\nruntime/debug.Stack()\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/runtime/debug/stack.go:26 +0x64\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Prod.TestRecovery_Prod.RecoveryMiddleware.func2.func3.1()\n\t/Users/onur/Documents/workspace/botla-co/pkg/middleware/recovery.go:20 +0x60\npanic({0x1012cc360?, 0x101512220?})\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/runtime/panic.go:783 +0x120\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Prod.func1({0x140060c9000?, 0x1000?}, 0x1000?)\n\t/Users/onur/Documents/workspace/botla-co/internal/integration/recovery_test.go:18 +0x2c\nnet/http.HandlerFunc.ServeHTTP(0x0?, {0x101523660?, 0x14005ef1480?}, 0xffffffffffffffff?)\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/net/http/server.go:2322 +0x38\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Prod.TestRecovery_Prod.RecoveryMiddleware.func2.func3({0x101523660?, 0x14005ef1480?}, 0x100d89dfb?)\n\t/Users/onur/Documents/workspace/botla-co/pkg/middleware/recovery.go:37 +0x70\nnet/http.HandlerFunc.ServeHTTP(...)\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/net/http/server.go:2322\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Prod(0x14005c25180)\n\t/Users/onur/Documents/workspace/botla-co/internal/integration/recovery_test.go:23 +0x168\ntesting.tRunner(0x14005c25180, 0x10150db58)\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/testing/testing.go:1934 +0xc8\ncreated by testing.(*T).Run in goroutine 1\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/testing/testing.go:1997 +0x364\n"},"level":"ERROR","msg":"panic_recovered","ts":"2025-12-18T15:42:30.990878Z"}
+--- PASS: TestRecovery_Prod (0.00s)
+=== RUN   TestRecovery_Dev
+{"fields":{"error":"oops","stack":"goroutine 14310 [running]:\nruntime/debug.Stack()\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/runtime/debug/stack.go:26 +0x64\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Dev.TestRecovery_Dev.RecoveryMiddleware.func2.func3.1()\n\t/Users/onur/Documents/workspace/botla-co/pkg/middleware/recovery.go:20 +0x60\npanic({0x1012cc360?, 0x101512220?})\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/runtime/panic.go:783 +0x120\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Dev.func1({0x140060ce000?, 0x1000?}, 0x1000?)\n\t/Users/onur/Documents/workspace/botla-co/internal/integration/recovery_test.go:46 +0x2c\nnet/http.HandlerFunc.ServeHTTP(0x0?, {0x101523660?, 0x14005ef14c0?}, 0xffffffffffffffff?)\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/net/http/server.go:2322 +0x38\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Dev.TestRecovery_Dev.RecoveryMiddleware.func2.func3({0x101523660?, 0x14005ef14c0?}, 0x100d89dfb?)\n\t/Users/onur/Documents/workspace/botla-co/pkg/middleware/recovery.go:37 +0x70\nnet/http.HandlerFunc.ServeHTTP(...)\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/net/http/server.go:2322\ngithub.com/onurceri/botla-co/internal/integration.TestRecovery_Dev(0x14005c25340)\n\t/Users/onur/Documents/workspace/botla-co/internal/integration/recovery_test.go:51 +0x168\ntesting.tRunner(0x14005c25340, 0x10150db50)\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/testing/testing.go:1934 +0xc8\ncreated by testing.(*T).Run in goroutine 1\n\t/opt/homebrew/Cellar/go/1.25.5/libexec/src/testing/testing.go:1997 +0x364\n"},"level":"ERROR","msg":"panic_recovered","ts":"2025-12-18T15:42:30.991215Z"}
+--- PASS: TestRecovery_Dev (0.00s)
+=== RUN   TestSourceRefresh_Unchanged_Skipped
+{"fields":{"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:31.794422Z"}
+{"fields":{"chatbot_id":"8853514f-697e-459b-9ea3-0e860d3bbd72","lang_code":"tr","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:31.807781Z"}
+{"fields":{"chatbot_id":"8853514f-697e-459b-9ea3-0e860d3bbd72","discovery_mode":"auto","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:31.807863Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:32.163848Z"}
+{"fields":{"len":65,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:32.163878Z"}
+{"fields":{"html_bytes":65,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:32.163882Z"}
+{"fields":{"discovery_mode":"auto","html_length":65,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:32.163886Z"}
+{"fields":{"filter_used":false,"links_found":0,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:42:32.165296Z"}
+{"fields":{"hint":"No internal links found on this page","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_discovery_no_links_found","ts":"2025-12-18T15:42:32.165307Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:32.23707Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:42:32.237112Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:42:32.23712Z"}
+{"fields":{"content_bytes":24,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:42:32.237127Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:32.239069Z"}
+{"fields":{"content_bytes":24,"lang_code":"tr","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:42:32.263532Z"}
+{"fields":{"chunk_count":1,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:42:32.299438Z"}
+{"fields":{"chunk_count":1,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","total_tokens":7,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:42:32.324069Z"}
+{"fields":{"chunks":1,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:32.32409Z"}
+{"fields":{"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:32.876531Z"}
+{"fields":{"chatbot_id":"8853514f-697e-459b-9ea3-0e860d3bbd72","lang_code":"tr","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:32.885476Z"}
+{"fields":{"chatbot_id":"8853514f-697e-459b-9ea3-0e860d3bbd72","discovery_mode":"auto","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:32.885521Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:32.947144Z"}
+{"fields":{"len":65,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:32.947233Z"}
+{"fields":{"html_bytes":65,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:32.947265Z"}
+{"fields":{"discovery_mode":"auto","html_length":65,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:32.947331Z"}
+{"fields":{"filter_used":false,"links_found":0,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:42:32.949806Z"}
+{"fields":{"hint":"No internal links found on this page","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_discovery_no_links_found","ts":"2025-12-18T15:42:32.949849Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:33.285541Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:42:33.285718Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:42:33.285739Z"}
+{"fields":{"content_bytes":24,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:42:33.285762Z"}
+{"fields":{"new_hash":"e8c8ed73594b7d6d","old_hash":"e8c8ed73594b7d6d","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_content_changed","ts":"2025-12-18T15:42:33.285788Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:33.288064Z"}
+{"fields":{"content_bytes":24,"lang_code":"tr","source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:42:33.303683Z"}
+{"fields":{"chunk_count":1,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:42:33.324953Z"}
+{"fields":{"chunk_count":1,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8","total_tokens":7,"url":"http://127.0.0.1:64445"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:42:33.358771Z"}
+{"fields":{"chunks":1,"source_id":"ee93d7c2-5ffc-4f9f-8d43-fa610ced56f8"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:33.358815Z"}
+    source_refresh_hash_test.go:98: expected tokens to remain 7, got 14 (skipped processing failed)
+--- FAIL: TestSourceRefresh_Unchanged_Skipped (2.64s)
+=== RUN   TestSourceRefresh_Success
+{"fields":{"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:34.363948Z"}
+{"fields":{"chatbot_id":"df381d4d-ba90-4d28-9b37-f6fd12bff049","lang_code":"tr","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:34.375398Z"}
+{"fields":{"chatbot_id":"df381d4d-ba90-4d28-9b37-f6fd12bff049","discovery_mode":"auto","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:34.375443Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:34.790879Z"}
+{"fields":{"len":65,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:34.790953Z"}
+{"fields":{"html_bytes":65,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:34.790972Z"}
+{"fields":{"discovery_mode":"auto","html_length":65,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:34.79099Z"}
+{"fields":{"filter_used":false,"links_found":0,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:42:34.792453Z"}
+{"fields":{"hint":"No internal links found on this page","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_discovery_no_links_found","ts":"2025-12-18T15:42:34.792499Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:34.978119Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:42:34.978189Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:42:34.978202Z"}
+{"fields":{"content_bytes":24,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:42:34.978213Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:34.979816Z"}
+{"fields":{"content_bytes":24,"lang_code":"tr","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:42:34.992282Z"}
+{"fields":{"chunk_count":1,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:42:35.01294Z"}
+{"fields":{"chunk_count":1,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","total_tokens":7,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:42:35.047148Z"}
+{"fields":{"chunks":1,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:35.047167Z"}
+{"fields":{"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:35.563961Z"}
+{"fields":{"chatbot_id":"df381d4d-ba90-4d28-9b37-f6fd12bff049","lang_code":"tr","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:35.57504Z"}
+{"fields":{"chatbot_id":"df381d4d-ba90-4d28-9b37-f6fd12bff049","discovery_mode":"auto","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:35.575096Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:35.948524Z"}
+{"fields":{"len":65,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:35.94861Z"}
+{"fields":{"html_bytes":65,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:35.948637Z"}
+{"fields":{"discovery_mode":"auto","html_length":65,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:35.948649Z"}
+{"fields":{"filter_used":false,"links_found":0,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:42:35.951265Z"}
+{"fields":{"hint":"No internal links found on this page","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_discovery_no_links_found","ts":"2025-12-18T15:42:35.951293Z"}
+{"fields":{"bytes":65,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:36.231551Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:42:36.231638Z"}
+{"fields":{"len":24,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:42:36.231663Z"}
+{"fields":{"content_bytes":24,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:42:36.231677Z"}
+{"fields":{"new_hash":"e8c8ed73594b7d6d","old_hash":"e8c8ed73594b7d6d","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_content_changed","ts":"2025-12-18T15:42:36.231691Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:36.233298Z"}
+{"fields":{"content_bytes":24,"lang_code":"tr","source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:42:36.243394Z"}
+{"fields":{"chunk_count":1,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:42:36.265207Z"}
+{"fields":{"chunk_count":1,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d","total_tokens":7,"url":"http://127.0.0.1:64465"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:42:36.300751Z"}
+{"fields":{"chunks":1,"source_id":"138a53a2-cb62-492f-9d17-f51a18f0882d"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:36.300768Z"}
+--- PASS: TestSourceRefresh_Success (3.07s)
+=== RUN   TestSourceRefresh_FreePlanBlocked
+--- PASS: TestSourceRefresh_FreePlanBlocked (0.48s)
+=== RUN   TestSourceRefresh_NonURLBlocked
+--- PASS: TestSourceRefresh_NonURLBlocked (0.62s)
+=== RUN   TestSourceRefresh_QuotaExceeded
+--- PASS: TestSourceRefresh_QuotaExceeded (0.48s)
+=== RUN   TestSources_SizeLimitExceeded
+--- PASS: TestSources_SizeLimitExceeded (0.52s)
+=== RUN   TestSources_PDFLimitPerBot
+--- PASS: TestSources_PDFLimitPerBot (0.57s)
+=== RUN   TestSources_StorageLimitExceeded
+{"fields":{"source_id":"17768b47-bd1b-4a07-b238-37537d290595"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:39.566549Z"}
+{"fields":{"reason":"source_not_found","source_id":"17768b47-bd1b-4a07-b238-37537d290595"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:39.56658Z"}
+--- PASS: TestSources_StorageLimitExceeded (0.70s)
+=== RUN   TestSources_Text_Ingest_Status_Delete
+{"fields":{"source_id":"f3e2be55-ab41-4b93-99f8-86b2ea9e3b40"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:40.243612Z"}
+{"fields":{"reason":"source_not_found","source_id":"f3e2be55-ab41-4b93-99f8-86b2ea9e3b40"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:40.243633Z"}
+--- PASS: TestSources_Text_Ingest_Status_Delete (0.39s)
+=== RUN   TestStorageUsageTracking
+--- PASS: TestStorageUsageTracking (0.13s)
+=== RUN   TestTemperatureParameter
+{"fields":{"source_id":"8cdb7dae-e5c5-4618-895c-888da9f9758a"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:40.842973Z"}
+{"fields":{"reason":"source_not_found","source_id":"8cdb7dae-e5c5-4618-895c-888da9f9758a"},"level":"WARN","msg":"source_processing_fail","ts":"2025-12-18T15:42:40.842993Z"}
+=== RUN   TestTemperatureParameter/Temp_0.0
+    temperature_model_test.go:217: Created Chatbot: c880bd6c-8d1f-4aa7-b859-ef28548691f7, Model: gpt-4o-mini
+2025/12/18 16:42:40 Stub received request: {Model:gpt-4o-mini Temperature:0 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"fabcdf3a-dcdf-4556-9e63-cacddc7d9422"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:40.905338Z"}
+=== RUN   TestTemperatureParameter/Temp_0.5
+    temperature_model_test.go:217: Created Chatbot: 230790d9-3c6e-4e3f-be31-bcf8b67d022c, Model: gpt-4o-mini
+2025/12/18 16:42:40 Stub received request: {Model:gpt-4o-mini Temperature:0.5 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"a79e08af-ec8a-4418-b0b7-3b78a15aa971"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:40.915285Z"}
+=== RUN   TestTemperatureParameter/Temp_1.0
+    temperature_model_test.go:217: Created Chatbot: fc6e811a-beee-4e59-876d-a68b078f6ac0, Model: gpt-4o-mini
+2025/12/18 16:42:40 Stub received request: {Model:gpt-4o-mini Temperature:1 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"a8423c4e-a36c-47f3-8408-c93c7098849e"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:40.923244Z"}
+=== RUN   TestTemperatureParameter/Temp_2.0
+    temperature_model_test.go:217: Created Chatbot: 63d62756-b324-4bfd-a7b4-5eb443321424, Model: gpt-4o-mini
+2025/12/18 16:42:40 Stub received request: {Model:gpt-4o-mini Temperature:2 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"64072aa8-fd96-4b5b-a2a1-5ac50173c3ec"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:40.93089Z"}
+=== RUN   TestTemperatureParameter/Default
+    temperature_model_test.go:217: Created Chatbot: 8244e31c-8d2c-4807-aedb-06300b7d1228, Model: gpt-4o-mini
+2025/12/18 16:42:40 Stub received request: {Model:gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"712ca415-26e3-4cca-8dee-136f3aeab70f"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:40.938555Z"}
+--- PASS: TestTemperatureParameter (0.43s)
+    --- PASS: TestTemperatureParameter/Temp_0.0 (0.04s)
+    --- PASS: TestTemperatureParameter/Temp_0.5 (0.01s)
+    --- PASS: TestTemperatureParameter/Temp_1.0 (0.01s)
+    --- PASS: TestTemperatureParameter/Temp_2.0 (0.01s)
+    --- PASS: TestTemperatureParameter/Default (0.01s)
+=== RUN   TestMaxTokensParameter
+=== RUN   TestMaxTokensParameter/Tokens_256
+    temperature_model_test.go:296: Created Chatbot: a3ce9243-9f22-4874-b147-91d67adbaae1, Model: gpt-4o-mini
+2025/12/18 16:42:41 Stub received request: {Model:gpt-4o-mini Temperature:0.7 MaxTokens:256 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"a1bb0006-0072-4813-8252-56313eae3df7"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.229574Z"}
+=== RUN   TestMaxTokensParameter/Tokens_4096
+    temperature_model_test.go:296: Created Chatbot: 7cb6488e-5c9d-4add-a39d-3fc675ffd26f, Model: gpt-4o-mini
+2025/12/18 16:42:41 Stub received request: {Model:gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"024e458b-0e55-406b-94dd-6196f17e0a17"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.238759Z"}
+=== RUN   TestMaxTokensParameter/Default_(512)
+    temperature_model_test.go:296: Created Chatbot: 18df3239-d846-4c14-8d49-3bcfc0a5d7e8, Model: gpt-4o-mini
+2025/12/18 16:42:41 Stub received request: {Model:gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"2117fb57-f66a-4ca4-bc6a-e808d16c86ef"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.246769Z"}
+--- PASS: TestMaxTokensParameter (0.30s)
+    --- PASS: TestMaxTokensParameter/Tokens_256 (0.01s)
+    --- PASS: TestMaxTokensParameter/Tokens_4096 (0.01s)
+    --- PASS: TestMaxTokensParameter/Default_(512) (0.01s)
+=== RUN   TestModelConfiguration
+=== RUN   TestModelConfiguration/Default_Model
+2025/12/18 16:42:41 Stub received request: {Model:openai/gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"469a6ce2-6eab-4068-ae14-a0238805b7ae"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.533525Z"}
+    temperature_model_test.go:414: Test: Default Model, Request Count: 1, Last Model: openai/gpt-4o-mini
+    temperature_model_test.go:415: Chatbot Info - ID: b32b6748-e5b5-4ad4-ba88-bc2e1443306d, Model: gpt-4o-mini
+=== RUN   TestModelConfiguration/GPT-4o
+2025/12/18 16:42:41 Stub received request: {Model:openai/gpt-4o Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"ac0251bd-85e2-4296-bb4a-2a2ab885924c"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.542234Z"}
+    temperature_model_test.go:414: Test: GPT-4o, Request Count: 2, Last Model: openai/gpt-4o
+    temperature_model_test.go:415: Chatbot Info - ID: 4c6963e0-f609-49e8-9832-e7ae7ef85d8d, Model: gpt-4o
+=== RUN   TestModelConfiguration/GPT-4o-Mini
+2025/12/18 16:42:41 Stub received request: {Model:openai/gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"95c499a7-fd99-4b52-82f1-490404ae287a"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.549823Z"}
+    temperature_model_test.go:414: Test: GPT-4o-Mini, Request Count: 3, Last Model: openai/gpt-4o-mini
+    temperature_model_test.go:415: Chatbot Info - ID: a5fa22ed-4cf9-4698-876e-ec857cb6d8d5, Model: gpt-4o-mini
+=== RUN   TestModelConfiguration/Anthropic
+2025/12/18 16:42:41 Stub received request: {Model:anthropic/claude-3-5-sonnet Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"8909883d-10dd-4ac2-a9bc-7eb467d4e0d0"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.557318Z"}
+    temperature_model_test.go:414: Test: Anthropic, Request Count: 4, Last Model: anthropic/claude-3-5-sonnet
+    temperature_model_test.go:415: Chatbot Info - ID: b1d2359f-9b95-4a78-b34f-eb6feaef8205, Model: anthropic:claude-3-5-sonnet
+=== RUN   TestModelConfiguration/Google
+2025/12/18 16:42:41 Stub received request: {Model:google/gemini-1.5-flash Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"842d6355-0aac-46d3-b47c-29bc30ca86f5"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.56458Z"}
+    temperature_model_test.go:414: Test: Google, Request Count: 5, Last Model: google/gemini-1.5-flash
+    temperature_model_test.go:415: Chatbot Info - ID: 0cdf82a7-f613-43a8-846d-7e5a11d68197, Model: google:gemini-1.5-flash
+=== RUN   TestModelConfiguration/OpenRouter
+2025/12/18 16:42:41 Stub received request: {Model:meta-llama/llama-3 Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"f50dea00-0a06-49f5-b0a7-baf252d18905"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.571962Z"}
+    temperature_model_test.go:414: Test: OpenRouter, Request Count: 6, Last Model: meta-llama/llama-3
+    temperature_model_test.go:415: Chatbot Info - ID: 95206820-14f0-40bf-bda6-2c868ec9cd4d, Model: openrouter:meta-llama/llama-3
+--- PASS: TestModelConfiguration (0.33s)
+    --- PASS: TestModelConfiguration/Default_Model (0.01s)
+    --- PASS: TestModelConfiguration/GPT-4o (0.01s)
+    --- PASS: TestModelConfiguration/GPT-4o-Mini (0.01s)
+    --- PASS: TestModelConfiguration/Anthropic (0.01s)
+    --- PASS: TestModelConfiguration/Google (0.01s)
+    --- PASS: TestModelConfiguration/OpenRouter (0.01s)
+=== RUN   TestModelRestrictions
+    temperature_model_test.go:476: Created Chatbot: 285a47cd-785a-489e-aeb1-2500069de5b6, Model: gpt-4o
+2025/12/18 16:42:41 Stub received request: {Model:gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"dad12fd9-c604-4182-ac27-c9ded7a7696e"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:41.857286Z"}
+    temperature_model_test.go:496: expected fallback to gpt-4o-mini, got gpt-4o-mini
+--- FAIL: TestModelRestrictions (0.31s)
+=== RUN   TestInvalidModel
+2025/12/18 16:42:42 Stub received request: {Model:gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"c52847b8-256a-42ad-a75b-a168d80b3a7d"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:42.172684Z"}
+    temperature_model_test.go:557: expected pass-through to openai/invalid-model-name-xyz, got gpt-4o-mini
+--- FAIL: TestInvalidModel (0.29s)
+=== RUN   TestFreePlan_RAGTopK_UsesPlanLimit
+2025/12/18 16:42:42 Stub received request: {Model:gpt-4o-mini Temperature:0.7 MaxTokens:4096 GenerationConfig:<nil>}
+{"fields":{"error":"ERROR: invalid input syntax for type uuid: \"stub-source\" (SQLSTATE 22P02)","message_id":"c34b30b6-2a97-4a8e-8f79-25cd2644aef6"},"level":"WARN","msg":"save_message_sources_error","ts":"2025-12-18T15:42:42.457593Z"}
+--- PASS: TestFreePlan_RAGTopK_UsesPlanLimit (0.28s)
+=== RUN   TestNewTestMux_CORSPreflightAndAuth
+{"fields":{"panic":"invalid memory address or nil pointer dereference"},"level":"ERROR","msg":"recover_pending_sources_panic","ts":"2025-12-18T15:42:42.547201Z"}
+--- PASS: TestNewTestMux_CORSPreflightAndAuth (0.00s)
+=== RUN   TestTeardownTestEnv_NoPanic
+--- PASS: TestTeardownTestEnv_NoPanic (0.00s)
+=== RUN   TestTurkish_ChatbotName
+--- PASS: TestTurkish_ChatbotName (0.28s)
+=== RUN   TestTurkish_SystemPrompt
+    turkish_test.go:92: TRK-004: expected prompt "Her zaman Türkçe konuş. Şğıöüç.", got "Sen yararlı, kibar ve bilgili bir yapay zeka asistanısın."
+--- FAIL: TestTurkish_SystemPrompt (0.40s)
+=== RUN   TestTurkish_UserMessage
+--- PASS: TestTurkish_UserMessage (0.29s)
+=== RUN   TestTurkish_LocalizedError
+--- PASS: TestTurkish_LocalizedError (0.29s)
+=== RUN   TestTurkish_JSONEncoding
+--- PASS: TestTurkish_JSONEncoding (0.28s)
+=== RUN   TestURLDiscovery_AutoMode
+{"fields":{"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:44.778603Z"}
+{"fields":{"chatbot_id":"9c2a1560-0be6-45a3-988d-8ce1f4fcf06b","lang_code":"tr","source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:44.792765Z"}
+{"fields":{"chatbot_id":"9c2a1560-0be6-45a3-988d-8ce1f4fcf06b","discovery_mode":"auto","source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262","url":"http://127.0.0.1:64631"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:44.792814Z"}
+{"fields":{"bytes":66,"url":"http://127.0.0.1:64631"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:44.973018Z"}
+{"fields":{"len":66,"url":"http://127.0.0.1:64631"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:44.97311Z"}
+{"fields":{"html_bytes":66,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:44.973194Z"}
+{"fields":{"discovery_mode":"auto","html_length":66,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262","url":"http://127.0.0.1:64631"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:44.973216Z"}
+{"fields":{"filter_used":false,"links_found":1,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:42:44.9755Z"}
+{"fields":{"added":1,"limit":10,"links_found":1,"mode":"auto","skipped":0,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"url_discovery_completed","ts":"2025-12-18T15:42:44.98333Z"}
+{"fields":{"bytes":66,"url":"http://127.0.0.1:64631"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:45.341519Z"}
+{"fields":{"len":10,"url":"http://127.0.0.1:64631"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:42:45.341543Z"}
+{"fields":{"len":10,"url":"http://127.0.0.1:64631"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:42:45.341546Z"}
+{"fields":{"content_bytes":10,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:42:45.34155Z"}
+--- PASS: TestURLDiscovery_AutoMode (1.40s)
+=== RUN   TestURLDiscovery_PendingMode
+{"fields":{"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:46.1838Z"}
+{"fields":{"chatbot_id":"44297b36-394a-476d-8a39-9f4a49f68c5f","lang_code":"tr","source_id":"7579c330-e8e7-4a03-b011-95054fbb2029","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:46.203897Z"}
+{"fields":{"chatbot_id":"44297b36-394a-476d-8a39-9f4a49f68c5f","discovery_mode":"pending","source_id":"7579c330-e8e7-4a03-b011-95054fbb2029","url":"http://127.0.0.1:64642"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:46.203936Z"}
+{"fields":{"bytes":66,"url":"http://127.0.0.1:64642"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:46.544038Z"}
+{"fields":{"len":66,"url":"http://127.0.0.1:64642"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:46.544066Z"}
+{"fields":{"html_bytes":66,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:46.544082Z"}
+{"fields":{"discovery_mode":"pending","html_length":66,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029","url":"http://127.0.0.1:64642"},"level":"INFO","msg":"url_discovery_started","ts":"2025-12-18T15:42:46.544086Z"}
+{"fields":{"filter_used":false,"links_found":1,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"url_discovery_links_extracted","ts":"2025-12-18T15:42:46.545765Z"}
+{"fields":{"added":1,"limit":10,"links_found":1,"mode":"pending","skipped":0,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"url_discovery_completed","ts":"2025-12-18T15:42:46.554519Z"}
+{"fields":{"bytes":66,"url":"http://127.0.0.1:64642"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:46.952532Z"}
+{"fields":{"len":10,"url":"http://127.0.0.1:64642"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:42:46.952639Z"}
+{"fields":{"len":10,"url":"http://127.0.0.1:64642"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:42:46.952656Z"}
+{"fields":{"content_bytes":10,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:42:46.952742Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:46.954712Z"}
+{"fields":{"content_bytes":10,"lang_code":"tr","source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:42:46.967521Z"}
+{"fields":{"chunk_count":1,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:42:46.990285Z"}
+{"fields":{"chunk_count":1,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029","total_tokens":3,"url":"http://127.0.0.1:64642"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:42:47.028016Z"}
+{"fields":{"chunks":1,"source_id":"7579c330-e8e7-4a03-b011-95054fbb2029"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:47.028035Z"}
+{"fields":{"source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:47.534246Z"}
+{"fields":{"chatbot_id":"44297b36-394a-476d-8a39-9f4a49f68c5f","lang_code":"tr","source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:47.542379Z"}
+{"fields":{"chatbot_id":"44297b36-394a-476d-8a39-9f4a49f68c5f","discovery_mode":"pending","source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16","url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:47.542388Z"}
+{"fields":{"bytes":68,"url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:47.566305Z"}
+{"fields":{"len":68,"url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"fetch_raw_html_success","ts":"2025-12-18T15:42:47.56633Z"}
+{"fields":{"html_bytes":68,"source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16"},"level":"INFO","msg":"url_processing_html_fetched","ts":"2025-12-18T15:42:47.566333Z"}
+{"fields":{"reason":"Source was discovered via crawling, not manually added","source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16","url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"url_discovery_skipped_is_discovered","ts":"2025-12-18T15:42:47.566336Z"}
+{"fields":{"bytes":68,"url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"scraper_done","ts":"2025-12-18T15:42:47.59274Z"}
+{"fields":{"len":12,"url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"scraper_cached","ts":"2025-12-18T15:42:47.59275Z"}
+{"fields":{"len":12,"url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"scraper_static_short","ts":"2025-12-18T15:42:47.592753Z"}
+{"fields":{"content_bytes":12,"source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16"},"level":"INFO","msg":"url_processing_content_extracted","ts":"2025-12-18T15:42:47.592756Z"}
+{"fields":{"questions":["Hangi konularda yardımcı olabilirsin?","Kısa bir genel bakış verir misin?","Nereden başlamalıyım?"],"questions_count":3,"source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16"},"level":"INFO","msg":"extract_metadata_success","ts":"2025-12-18T15:42:47.593117Z"}
+{"fields":{"content_bytes":12,"lang_code":"tr","source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:42:47.604303Z"}
+{"fields":{"chunk_count":1,"source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:42:47.613457Z"}
+{"fields":{"chunk_count":1,"source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16","total_tokens":4,"url":"http://127.0.0.1:64642/page1"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:42:47.645819Z"}
+{"fields":{"chunks":1,"source_id":"6e8abed5-d7a8-40ee-8bb0-0aa5d9fc9a16"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:47.645839Z"}
+--- PASS: TestURLDiscovery_PendingMode (2.42s)
+=== RUN   TestSources_URL_Ingest_Success
+{"fields":{"error":"llm call failed: Post \"http://127.0.0.1:64629/v1/chat/completions\": dial tcp 127.0.0.1:64629: connect: connection refused","source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"WARN","msg":"extract_metadata_failed","ts":"2025-12-18T15:42:48.346345Z"}
+{"fields":{"content_bytes":10,"lang_code":"tr","source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"url_processing_chunking_started","ts":"2025-12-18T15:42:48.346405Z"}
+{"fields":{"chunk_count":1,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"url_processing_embedding_started","ts":"2025-12-18T15:42:48.367657Z"}
+{"fields":{"chunk_count":1,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262","total_tokens":3,"url":"http://127.0.0.1:64631"},"level":"INFO","msg":"url_processing_completed","ts":"2025-12-18T15:42:48.387192Z"}
+{"fields":{"chunks":1,"source_id":"66e0edd6-0490-4acc-ab8e-d27da6da5262"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:48.387217Z"}
+{"fields":{"source_id":"35ab9a30-7bd9-403f-8600-ac8da5ac3f93"},"level":"INFO","msg":"source_processing_start","ts":"2025-12-18T15:42:48.612018Z"}
+--- PASS: TestSources_URL_Ingest_Success (1.00s)
+=== RUN   TestMonthlyTokenUsageTracking
+{"fields":{"chatbot_id":"5c99ad35-cf3c-4263-8537-f68c1bb4a1b1","lang_code":"tr","source_id":"35ab9a30-7bd9-403f-8600-ac8da5ac3f93","source_type":"url"},"level":"INFO","msg":"source_processing_dispatch","ts":"2025-12-18T15:42:48.920249Z"}
+{"fields":{"chatbot_id":"5c99ad35-cf3c-4263-8537-f68c1bb4a1b1","discovery_mode":"auto","source_id":"35ab9a30-7bd9-403f-8600-ac8da5ac3f93","url":"http://127.0.0.1:64663"},"level":"INFO","msg":"url_processing_started","ts":"2025-12-18T15:42:48.920293Z"}
+{"fields":{"url":"http://127.0.0.1:64663"},"level":"WARN","msg":"fetch_raw_html_empty","ts":"2025-12-18T15:42:48.920942Z"}
+{"fields":{"source_id":"35ab9a30-7bd9-403f-8600-ac8da5ac3f93","url":"http://127.0.0.1:64663"},"level":"WARN","msg":"url_processing_html_empty","ts":"2025-12-18T15:42:48.920966Z"}
+{"fields":{"url":"http://127.0.0.1:64663"},"level":"WARN","msg":"scraper_empty","ts":"2025-12-18T15:42:48.921278Z"}
+{"fields":{"dynamic_enabled":false,"hint":"Website may require JavaScript rendering or has anti-bot protection","selectors_used":false,"source_id":"35ab9a30-7bd9-403f-8600-ac8da5ac3f93","url":"http://127.0.0.1:64663"},"level":"WARN","msg":"url_processing_content_empty","ts":"2025-12-18T15:42:48.921292Z"}
+{"fields":{"chunks":0,"source_id":"35ab9a30-7bd9-403f-8600-ac8da5ac3f93"},"level":"INFO","msg":"source_processing_complete","ts":"2025-12-18T15:42:48.921305Z"}
+--- PASS: TestMonthlyTokenUsageTracking (0.20s)
+=== RUN   TestIngestionUsageTracking
+--- PASS: TestIngestionUsageTracking (0.14s)
+FAIL
+FAIL	github.com/onurceri/botla-co/internal/integration	162.654s
+FAIL

@@ -22,7 +22,7 @@ func startQdrantSearchDelayStub(delay time.Duration) *httptest.Server {
 }
 
 func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantSearchDelayStub(200 * time.Millisecond)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)

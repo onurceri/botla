@@ -10,7 +10,7 @@ import (
 )
 
 func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)

@@ -259,7 +259,12 @@ func (q *SourceQueue) markProcessing(id string) {
 	if q.log != nil {
 		q.log.Info("source_processing_start", map[string]any{"source_id": id})
 	}
-	_ = db.UpdateSourceProcessing(context.Background(), q.db, id, "processing", nil, 0, nil)
+	ctx := context.Background()
+	chunkCount := 0
+	if err := q.db.QueryRowContext(ctx, `SELECT chunk_count FROM data_sources WHERE id=$1`, id).Scan(&chunkCount); err != nil {
+		chunkCount = 0
+	}
+	_ = db.UpdateSourceProcessing(ctx, q.db, id, "processing", nil, chunkCount, nil)
 }
 
 // fail marks a source as failed

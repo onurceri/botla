@@ -47,6 +47,12 @@ func TestTurkish_ChatbotName(t *testing.T) {
 
 // TRK-004: Turkish chars in system prompt
 func TestTurkish_SystemPrompt(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -70,7 +76,7 @@ func TestTurkish_SystemPrompt(t *testing.T) {
 
 	// Update prompt
 	prompt := "Her zaman Türkçe konuş. Şğıöüç."
-	update := map[string]any{"system_prompt": prompt}
+	update := map[string]any{"custom_instruction": prompt}
 	upj, _ := json.Marshal(update)
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(upj))
 	reqU.Header.Set("Authorization", "Bearer "+token)
@@ -84,7 +90,7 @@ func TestTurkish_SystemPrompt(t *testing.T) {
 
 	// Verify in DB
 	var storedPrompt string
-	err = te.DB.QueryRow("SELECT system_prompt FROM chatbots WHERE id=$1", bot.ID).Scan(&storedPrompt)
+	err = te.DB.QueryRow("SELECT custom_instruction FROM chatbots WHERE id=$1", bot.ID).Scan(&storedPrompt)
 	if err != nil {
 		t.Fatalf("failed to query prompt: %v", err)
 	}
@@ -96,9 +102,11 @@ func TestTurkish_SystemPrompt(t *testing.T) {
 // TRK-001: Turkish special chars in user message
 func TestTurkish_UserMessage(t *testing.T) {
 	// Setup with mock OpenAI to verify prompt sent to LLM
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	defer oai.Close()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
 
 	te, err := SetupTestEnv()
 	if err != nil {

@@ -558,7 +558,10 @@ func (s *ChatService) getEmbedder() rag.EmbeddingClient {
 	if s.Embedder != nil {
 		return s.Embedder
 	}
-	client, _ := rag.NewOpenAIClientFromEnv()
+	client, err := rag.NewOpenAIClientFromEnv()
+	if err != nil {
+		return nil
+	}
 	return client
 }
 

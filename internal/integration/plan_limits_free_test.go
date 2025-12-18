@@ -30,7 +30,7 @@ func startDynamicHTMLStub() *httptest.Server {
 }
 
 func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
 
@@ -123,7 +123,7 @@ func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
 }
 
 func TestFreePlan_URLLimit_AllowsNewURLAfterDelete(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
 
@@ -220,7 +220,7 @@ func TestFreePlan_URLLimit_AllowsNewURLAfterDelete(t *testing.T) {
 }
 
 func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startDynamicHTMLStub()
 
@@ -308,7 +308,7 @@ func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
 }
 
 func TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 
@@ -653,10 +653,11 @@ func TestFreePlan_Guardrails_Restrictions(t *testing.T) {
 }
 
 func TestFreePlan_PDF_OCRDisabled_NoTextExtracted(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENAI_API_KEY", "sk-test")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()

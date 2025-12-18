@@ -15,81 +15,52 @@ import (
 
 type MockToolsLLMClient struct{}
 
-func (m *MockToolsLLMClient) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
-	return &models.CompletionResult{Content: "Mock response", UsageTokens: 10}, nil
-}
-
-func (m *MockToolsLLMClient) GetModelInfo() models.ModelInfo {
-	return models.ModelInfo{Name: "mock-model", Provider: "openai"}
-}
-
-func (m *MockToolsLLMClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	return []float32{0.1, 0.2}, nil
-}
-
-func (m *MockToolsLLMClient) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float32, error) {
-	return [][]float32{{0.1}}, nil
-}
-
-func (m *MockToolsLLMClient) CreateCompletionWithTools(ctx context.Context, messages []rag.ChatMessage, tools []rag.Tool, model string, temperature float32, maxTokens int) (*rag.ChatResponseWithTools, error) {
-	// Check if this is the initial call or the second call (after tool execution)
-	// For simplicity, we assume the first call triggers the tool.
-	// If the last message is from user, trigger tool.
-	// If the last message is tool result, return final response?
-	// Actually, the loop handles it.
-
-	lastMsg := messages[len(messages)-1]
-
-	if lastMsg.Role == "user" {
-		// Return tool call
-		return &rag.ChatResponseWithTools{
-			Choices: []struct {
-				Message      rag.ChatMessage `json:"message"`
-				FinishReason string          `json:"finish_reason"`
-			}{
-				{
-					Message: rag.ChatMessage{
-						Role: "assistant",
-						ToolCalls: []rag.ToolCall{
-							{
-								ID:   "call_123",
-								Type: "function",
-								Function: struct {
-									Name      string `json:"name"`
-									Arguments string `json:"arguments"`
-								}{
-									Name:      "request_human_handoff",
-									Arguments: "{}",
-								},
-							},
-						},
-					},
-					FinishReason: "tool_calls",
-				},
-			},
-			Usage: struct {
-				TotalTokens int `json:"total_tokens"`
-			}{TotalTokens: 20},
-		}, nil
-	}
-
-	// If getting tool result, return something (though code breaks loop on handoff success)
-	return &rag.ChatResponseWithTools{
-		Choices: []struct {
-			Message      rag.ChatMessage `json:"message"`
-			FinishReason string          `json:"finish_reason"`
-		}{
-			{
-				Message: rag.ChatMessage{
-					Role:    "assistant",
-					Content: ptrString(""),
-				},
-			},
-		},
-	}, nil
-}
+// MockToolsLLMClient removed - using NewLLMMock instead
 
 func TestAutomatedHandoff(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	// Configure Mock to return request_human_handoff tool call
+	oai.SetChatResponse(func(req MockRequest) (map[string]any, int) {
+		messages := req.Body["messages"].([]any)
+		lastMsg := messages[len(messages)-1].(map[string]any)
+
+		if lastMsg["role"] == "user" {
+			// Return tool call
+			return map[string]any{
+				"choices": []map[string]any{{
+					"message": map[string]any{
+						"role": "assistant",
+						"tool_calls": []map[string]any{{
+							"id":   "call_123",
+							"type": "function",
+							"function": map[string]any{
+								"name":      "request_human_handoff",
+								"arguments": "{}",
+							},
+						}},
+					},
+					"finish_reason": "tool_calls",
+				}},
+			}, 200
+		}
+		// Fallback
+		return map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": "ok",
+				},
+				"finish_reason": "stop",
+			}},
+		}, 200
+	})
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	require.NoError(t, err)
 	defer TeardownTestEnv(te)
@@ -97,19 +68,20 @@ func TestAutomatedHandoff(t *testing.T) {
 	ctx := context.Background()
 	log := logger.New("DEBUG")
 
-	// Create User
-	var userID string
-	err = te.DB.QueryRowContext(ctx, `INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id`, "test@example.com", "hash", "Test User").Scan(&userID)
+	// Update pro plan to allow handoff (escalate fallback)
+	updateProPlanConfig(t, te)
+	var proPlanID string
+	err = te.DB.QueryRowContext(ctx, "SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
 	require.NoError(t, err)
-	// 1. Setup Mock Factory
-	factory := rag.NewClientFactory(te.Cfg)
-	mockClient := &MockToolsLLMClient{}
-	factory.RegisterClient("openrouter", mockClient) // Primary provider
-	factory.RegisterClient("openai", mockClient)     // Fallback provider
 
-	// 2. Setup Chat Service with mock factory
-	// We need embedder too. MockClient implements it.
-	chatSvc := services.NewChatService(te.DB, factory, mockClient, nil, log)
+	// Create User with Pro Plan
+	var userID string
+	err = te.DB.QueryRowContext(ctx, `INSERT INTO users (email, password_hash, full_name, plan_id) VALUES ($1, $2, $3, $4) RETURNING id`, "test@example.com", "hash", "Test User", proPlanID).Scan(&userID)
+	require.NoError(t, err)
+
+	// 1. Setup Chat Service with REAL factory (using mock server via env)
+	factory := rag.NewClientFactory(te.Cfg)
+	chatSvc := services.NewChatService(te.DB, factory, nil, nil, log)
 
 	// 3. Create Chatbot with HandoffEnabled
 	bot := &models.Chatbot{

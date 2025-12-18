@@ -10,9 +10,10 @@ import (
 func TestRateLimit_Chat_Sources(t *testing.T) {
 	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "3")
 	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -21,6 +22,12 @@ func TestRateLimit_Chat_Sources(t *testing.T) {
 	defer TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
+
+	// Update plan config in DB to match test expectations
+	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 4, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
+	if err != nil {
+		t.Fatalf("failed to update rate limits: %v", err)
+	}
 	token := authToken(t, te.Server.URL, "rl@example.com")
 
 	// create bot

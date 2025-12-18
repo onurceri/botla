@@ -49,30 +49,39 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	// Organization routes
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
+
 	auth := middleware.AuthMiddleware(cfg.JWT_SECRET)
+	planLoader := middleware.PlanLoaderMiddleware(pool, log)
+	rateLimit := middleware.RateLimitMiddleware(rl)
+
+	// Protected middleware chain
+	protected := func(h http.Handler) http.Handler {
+		return auth(planLoader(rateLimit(h)))
+	}
+
 	requireMember := middleware.RequireOrganizationAccess(orgSvc, "member")
 	requireAdmin := middleware.RequireOrganizationAccess(orgSvc, "admin")
 	requireOwner := middleware.RequireOrganizationAccess(orgSvc, "owner")
 
-	mux.Handle("GET /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
-	mux.Handle("POST /api/v1/organizations", auth(http.HandlerFunc(oh.ListOrCreate)))
-	mux.Handle("GET /api/v1/organizations/{id}", auth(requireMember(http.HandlerFunc(oh.GetOrganization))))
-	mux.Handle("PATCH /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.UpdateOrganization))))
-	mux.Handle("DELETE /api/v1/organizations/{id}", auth(requireOwner(http.HandlerFunc(oh.DeleteOrganization))))
+	mux.Handle("GET /api/v1/organizations", protected(http.HandlerFunc(oh.ListOrCreate)))
+	mux.Handle("POST /api/v1/organizations", protected(http.HandlerFunc(oh.ListOrCreate)))
+	mux.Handle("GET /api/v1/organizations/{id}", protected(requireMember(http.HandlerFunc(oh.GetOrganization))))
+	mux.Handle("PATCH /api/v1/organizations/{id}", protected(requireOwner(http.HandlerFunc(oh.UpdateOrganization))))
+	mux.Handle("DELETE /api/v1/organizations/{id}", protected(requireOwner(http.HandlerFunc(oh.DeleteOrganization))))
 
-	mux.Handle("GET /api/v1/organizations/{id}/workspaces", auth(requireMember(http.HandlerFunc(wh.Workspaces))))
-	mux.Handle("POST /api/v1/organizations/{id}/workspaces", auth(requireAdmin(http.HandlerFunc(wh.Workspaces))))
-	mux.Handle("PATCH /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(wh.UpdateWorkspace))))
-	mux.Handle("DELETE /api/v1/organizations/{id}/workspaces/{wsID}", auth(requireAdmin(http.HandlerFunc(wh.DeleteWorkspace))))
+	mux.Handle("GET /api/v1/organizations/{id}/workspaces", protected(requireMember(http.HandlerFunc(wh.Workspaces))))
+	mux.Handle("POST /api/v1/organizations/{id}/workspaces", protected(requireAdmin(http.HandlerFunc(wh.Workspaces))))
+	mux.Handle("PATCH /api/v1/organizations/{id}/workspaces/{wsID}", protected(requireAdmin(http.HandlerFunc(wh.UpdateWorkspace))))
+	mux.Handle("DELETE /api/v1/organizations/{id}/workspaces/{wsID}", protected(requireAdmin(http.HandlerFunc(wh.DeleteWorkspace))))
 
-	mux.Handle("GET /api/v1/organizations/{id}/members", auth(requireMember(http.HandlerFunc(oh.GetMembers))))
-	mux.Handle("POST /api/v1/organizations/{id}/members", auth(requireAdmin(http.HandlerFunc(oh.AddMember))))
-	mux.Handle("PATCH /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.UpdateMemberRole))))
-	mux.Handle("DELETE /api/v1/organizations/{id}/members/{userID}", auth(requireAdmin(http.HandlerFunc(oh.RemoveMember))))
+	mux.Handle("GET /api/v1/organizations/{id}/members", protected(requireMember(http.HandlerFunc(oh.GetMembers))))
+	mux.Handle("POST /api/v1/organizations/{id}/members", protected(requireAdmin(http.HandlerFunc(oh.AddMember))))
+	mux.Handle("PATCH /api/v1/organizations/{id}/members/{userID}", protected(requireAdmin(http.HandlerFunc(oh.UpdateMemberRole))))
+	mux.Handle("DELETE /api/v1/organizations/{id}/members/{userID}", protected(requireAdmin(http.HandlerFunc(oh.RemoveMember))))
 
 	ch := &handlers.ChatbotHandlers{DB: pool, VectorStore: vs}
 	// Add ExtractTenantContext to support X-Workspace-ID header
-	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
+	mux.Handle("/api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
 	memStore := storage.NewMemoryStorage()
 	q, _ := processing.StartSourceQueue(pool, memStore)
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore}
@@ -83,7 +92,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	handh := &handlers.HandoffHandlers{DB: pool, Log: log}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q}
 
-	mux.Handle("/api/v1/chatbots/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/api/v1/chatbots/", protected(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/pending-urls") {
 			if strings.HasSuffix(r.URL.Path, "/pending-urls/approve") {
@@ -104,7 +113,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 			}
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			middleware.RateLimitMiddleware(rl)(http.HandlerFunc(chh.Chat)).ServeHTTP(w, r)
+			chh.Chat(w, r)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/actions") {

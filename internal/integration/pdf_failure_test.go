@@ -11,7 +11,7 @@ import (
 )
 
 func TestSources_PDF_Ingest_Failure_NoFitz(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)

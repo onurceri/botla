@@ -32,7 +32,7 @@ func startLinkedHTMLStub() *httptest.Server {
 }
 
 func TestURLDiscovery_AutoMode(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
@@ -119,7 +119,7 @@ func TestURLDiscovery_AutoMode(t *testing.T) {
 }
 
 func TestURLDiscovery_PendingMode(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)

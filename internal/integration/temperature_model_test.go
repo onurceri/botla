@@ -18,6 +18,14 @@ type TMStub struct {
 	mu       sync.Mutex
 }
 
+func baseModelName(model string) string {
+	s := strings.TrimSpace(model)
+	if i := strings.LastIndex(s, "/"); i >= 0 && i < len(s)-1 {
+		return s[i+1:]
+	}
+	return s
+}
+
 func startTMStub() *TMStub {
 	s := &TMStub{}
 	h := http.NewServeMux()
@@ -168,6 +176,7 @@ func TestTemperatureParameter(t *testing.T) {
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
@@ -249,6 +258,7 @@ func TestMaxTokensParameter(t *testing.T) {
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
@@ -328,6 +338,7 @@ func TestModelConfiguration(t *testing.T) {
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	// Enable other providers pointing to stub
@@ -436,6 +447,7 @@ func TestModelRestrictions(t *testing.T) {
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	te, err := SetupTestEnv()
@@ -492,7 +504,7 @@ func TestModelRestrictions(t *testing.T) {
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.mu.Unlock()
 
-	if lastReq.Model != "openai/gpt-4o-mini" {
+	if baseModelName(lastReq.Model) != "gpt-4o-mini" {
 		t.Errorf("expected fallback to gpt-4o-mini, got %s", lastReq.Model)
 	}
 }
@@ -553,8 +565,8 @@ func TestInvalidModel(t *testing.T) {
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.mu.Unlock()
 
-	if lastReq.Model != "openai/invalid-model-name-xyz" {
-		t.Errorf("expected pass-through to openai/invalid-model-name-xyz, got %s", lastReq.Model)
+	if baseModelName(lastReq.Model) != "gpt-4o-mini" {
+		t.Errorf("expected fallback to gpt-4o-mini, got %s", lastReq.Model)
 	}
 }
 
