@@ -20,7 +20,7 @@ func startQdrantEmptyHitsStub() *httptest.Server {
 }
 
 func TestChat_QdrantEmptyHits_Fallback(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantEmptyHitsStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)

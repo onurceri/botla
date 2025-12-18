@@ -8,7 +8,7 @@ import (
 )
 
 func TestChat_OpenAIEnvMissing_500(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
@@ -50,7 +50,7 @@ func TestChat_OpenAIEnvMissing_500(t *testing.T) {
 
 func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
 	// Missing QDRANT_URL should result in contextless chat fallback
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", "")
 	te, err := SetupTestEnv()

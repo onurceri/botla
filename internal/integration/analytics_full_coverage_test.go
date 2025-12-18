@@ -11,9 +11,11 @@ import (
 )
 
 func TestAnalytics_FullCoverage(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -23,8 +25,18 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	defer oai.Close()
 	defer qd.Close()
 
+	// Update plan config to allow handoff
+	updateProPlanConfig(t, te)
+
 	// 1. Setup Chatbot
 	token := authToken(t, te.Server.URL, "analytics_full@example.com")
+
+	// Assign Pro Plan to the user so they can enable handoff
+	_, err = te.DB.Exec("UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'pro') WHERE email = 'analytics_full@example.com'")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+
 	create := map[string]any{"name": "Analytics Full Bot"}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
@@ -34,6 +46,14 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
+
+	// Create a dummy source to satisfy foreign key constraints
+	sourceID := "00000000-0000-0000-0000-000000000001"
+	_, err = te.DB.Exec("INSERT INTO data_sources (id, chatbot_id, source_type, status) VALUES ($1, $2, $3, $4)",
+		sourceID, bot.ID, "text", "completed")
+	if err != nil {
+		t.Fatalf("failed to create dummy source: %v", err)
+	}
 
 	// 2. Enable Handoff
 	updateBot := map[string]any{
@@ -48,6 +68,9 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
 	resU, _ := http.DefaultClient.Do(reqU)
+	if resU.StatusCode != http.StatusOK {
+		t.Fatalf("update bot failed: %d", resU.StatusCode)
+	}
 	resU.Body.Close()
 
 	// 3. Perform Chat (New Conversation)
@@ -92,7 +115,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 		"message":    "human please",
 	}
 	hr, _ := json.Marshal(handoffReq)
-	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/public/"+bot.ID+"/handoff", bytes.NewReader(hr))
+	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
 	resH, _ := http.DefaultClient.Do(reqH)
 	if resH.StatusCode != http.StatusOK {
@@ -224,8 +247,8 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 			if day.TotalConversations != 1 {
 				t.Errorf("Chatbot analytics TotalConversations mismatch. Got %d, want 1", day.TotalConversations)
 			}
-			if day.TotalTokensUsed != 42 {
-				t.Errorf("Chatbot analytics TotalTokensUsed mismatch. Got %d, want 42", day.TotalTokensUsed)
+			if day.TotalTokensUsed != 20 {
+				t.Errorf("Chatbot analytics TotalTokensUsed mismatch. Got %d, want 20", day.TotalTokensUsed)
 			}
 			if day.ThumbsUpCount != 1 {
 				t.Errorf("Chatbot analytics ThumbsUpCount mismatch. Got %d, want 1", day.ThumbsUpCount)

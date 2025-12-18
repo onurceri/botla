@@ -42,6 +42,7 @@ func TestAction_CRUD(t *testing.T) {
 		"description": "A test action",
 		"action_type": "http",
 		"config":      map[string]string{"url": "https://example.com"},
+		"parameters":  map[string]any{},
 		"enabled":     true,
 	}
 	ca, _ := json.Marshal(createAction)
@@ -134,12 +135,6 @@ func TestAction_CRUD(t *testing.T) {
 }
 
 func TestChatWithTools(t *testing.T) {
-	te, err := SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer TeardownTestEnv(te)
-
 	// 1. Setup Mock Server
 	var serverURL string
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -217,6 +212,12 @@ func TestChatWithTools(t *testing.T) {
 	// Ensure we have a key
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
 	// 2. Create User & Bot
 	token := authTokenForAction(t, te.Server.URL, "tool_user@example.com")
 
@@ -248,7 +249,8 @@ func TestChatWithTools(t *testing.T) {
 			"url":    serverURL + "/weather",
 			"method": "GET",
 		},
-		"enabled": true,
+		"parameters": map[string]any{},
+		"enabled":    true,
 	}
 	ca, _ := json.Marshal(createAction)
 	reqA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
@@ -295,12 +297,6 @@ func TestChatWithTools(t *testing.T) {
 }
 
 func TestAgenticLoopLimit(t *testing.T) {
-	te, err := SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer TeardownTestEnv(te)
-
 	// 1. Setup Mock Server for Infinite Loop
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
@@ -334,7 +330,14 @@ func TestAgenticLoopLimit(t *testing.T) {
 	defer mockServer.Close()
 
 	t.Setenv("OPENAI_API_BASE", mockServer.URL)
+	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "loop_user@example.com")
 
@@ -356,6 +359,7 @@ func TestAgenticLoopLimit(t *testing.T) {
 		"name":        "infinite_tool",
 		"action_type": "http",
 		"config":      map[string]any{"url": mockServer.URL + "/loop", "method": "GET"},
+		"parameters":  map[string]any{},
 		"enabled":     true,
 	}
 	ca, _ := json.Marshal(createAction)
@@ -392,12 +396,6 @@ func TestAgenticLoopLimit(t *testing.T) {
 }
 
 func TestToolExecutionError(t *testing.T) {
-	te, err := SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer TeardownTestEnv(te)
-
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
 			var req map[string]any
@@ -453,6 +451,12 @@ func TestToolExecutionError(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
 	token := authTokenForAction(t, te.Server.URL, "err_user@example.com")
 
 	createBot := map[string]any{"name": "Error Bot", "language": "en-US"}
@@ -471,6 +475,7 @@ func TestToolExecutionError(t *testing.T) {
 		"name":        "error_tool",
 		"action_type": "http",
 		"config":      map[string]any{"url": mockServer.URL + "/error", "method": "GET"},
+		"parameters":  map[string]any{},
 		"enabled":     true,
 	}
 	ca, _ := json.Marshal(createAction)
@@ -500,12 +505,6 @@ func TestToolExecutionError(t *testing.T) {
 }
 
 func TestHTTPActionPOST(t *testing.T) {
-	te, err := SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer TeardownTestEnv(te)
-
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
 			var req map[string]any
@@ -562,7 +561,14 @@ func TestHTTPActionPOST(t *testing.T) {
 	}))
 	defer mockServer.Close()
 	t.Setenv("OPENAI_API_BASE", mockServer.URL)
+	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "post_user@example.com")
 
@@ -582,6 +588,7 @@ func TestHTTPActionPOST(t *testing.T) {
 		"name":        "post_tool",
 		"action_type": "http",
 		"config":      map[string]any{"url": mockServer.URL + "/post", "method": "POST"},
+		"parameters":  map[string]any{},
 		"enabled":     true,
 	}
 	ca, _ := json.Marshal(createAction)
@@ -611,12 +618,6 @@ func TestHTTPActionPOST(t *testing.T) {
 }
 
 func TestBuiltinTools(t *testing.T) {
-	te, err := SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer TeardownTestEnv(te)
-
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
 			var req map[string]any
@@ -666,8 +667,16 @@ func TestBuiltinTools(t *testing.T) {
 		}
 	}))
 	defer mockServer.Close()
+
 	t.Setenv("OPENAI_API_BASE", mockServer.URL)
+	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "builtin_user@example.com")
 
@@ -717,12 +726,6 @@ func TestBuiltinTools(t *testing.T) {
 }
 
 func TestDisabledAction(t *testing.T) {
-	te, err := SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer TeardownTestEnv(te)
-
 	// 1. Setup Mock Server
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
@@ -756,7 +759,14 @@ func TestDisabledAction(t *testing.T) {
 	}))
 	defer mockServer.Close()
 	t.Setenv("OPENAI_API_BASE", mockServer.URL)
+	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "disabled_user@example.com")
 

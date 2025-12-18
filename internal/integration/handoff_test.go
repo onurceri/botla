@@ -11,14 +11,28 @@ import (
 )
 
 func TestHandoff_Flow(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer TeardownTestEnv(te)
 
+	// Update plan config to allow handoff
+	updateProPlanConfig(t, te)
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+
 	// 1. Setup User & Chatbot
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_user@example.com")
+	// Update user to pro plan
+	te.DB.Exec("UPDATE users SET plan_id=$1 WHERE email=$2", proPlanID, "handoff_user@example.com")
 
 	// Create Chatbot
 	createBot := map[string]any{
@@ -149,6 +163,13 @@ func TestHandoff_Flow(t *testing.T) {
 }
 
 func TestHandoff_Analytics(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -156,6 +177,17 @@ func TestHandoff_Analytics(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_analytics@example.com")
+
+	// Assign pro plan to user
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_analytics@example.com")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+
+	// Update plan config to allow handoff
+	updateProPlanConfig(t, te)
 
 	// Create Bot
 	createBot := map[string]any{"name": "Handoff Analytics Bot", "language": "en-US"}
@@ -231,6 +263,13 @@ func TestHandoff_Analytics(t *testing.T) {
 }
 
 func TestHandoff_Widget(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -238,6 +277,17 @@ func TestHandoff_Widget(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_widget@example.com")
+
+	// Assign pro plan to user
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_widget@example.com")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+
+	// Update plan config to allow handoff
+	updateProPlanConfig(t, te)
 
 	// Create Bot (Handoff disabled by default)
 	createBot := map[string]any{"name": "Widget Bot", "language": "en-US"}
@@ -291,6 +341,13 @@ func TestHandoff_Widget(t *testing.T) {
 }
 
 func TestHandoff_EdgeCases(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -298,6 +355,17 @@ func TestHandoff_EdgeCases(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_edge@example.com")
+
+	// Assign pro plan to user
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_edge@example.com")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+
+	// Update plan config to allow handoff
+	updateProPlanConfig(t, te)
 
 	// 1. Create Bot (Handoff disabled by default)
 	createBot := map[string]any{"name": "Edge Bot", "language": "en-US"}
@@ -393,6 +461,13 @@ func authTokenForHandoff(t *testing.T, base string, email string) string {
 }
 
 func TestHandoff_Status_Lifecycle(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -400,6 +475,17 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_status@example.com")
+
+	// Assign pro plan to user
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_status@example.com")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+
+	// Update plan config to allow handoff
+	updateProPlanConfig(t, te)
 
 	// 1. Create Bot & Enable Handoff
 	createBot := map[string]any{"name": "Status Bot", "language": "en-US"}
@@ -495,6 +581,13 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 }
 
 func TestHandoff_DuplicateRequest(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -502,6 +595,17 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_dup@example.com")
+
+	// Assign pro plan to user
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_dup@example.com")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+
+	// Update plan config to allow handoff
+	updateProPlanConfig(t, te)
 
 	// 1. Create Bot & Enable Handoff
 	createBot := map[string]any{"name": "Dup Bot", "language": "en-US"}

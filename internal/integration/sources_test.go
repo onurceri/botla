@@ -11,27 +11,6 @@ import (
 	"testing"
 )
 
-func startOpenAIStub() *httptest.Server {
-	h := http.NewServeMux()
-	h.HandleFunc("/v1/embeddings", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		data := make([]float64, 1536)
-		for i := range data {
-			data[i] = 0.01
-		}
-		resp := map[string]any{"data": []map[string]any{{"embedding": data}}, "usage": map[string]int{"prompt_tokens": 10, "total_tokens": 10}}
-		json.NewEncoder(w).Encode(resp)
-	})
-	h.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		resp := map[string]any{"choices": []map[string]any{{"message": map[string]string{"content": "Stubbed answer"}}}, "usage": map[string]int{"total_tokens": 42}}
-		json.NewEncoder(w).Encode(resp)
-	})
-	return httptest.NewServer(h)
-}
-
 func startQdrantStub() *httptest.Server {
 	h := http.NewServeMux()
 	h.HandleFunc("/collections/embeddings", func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +55,7 @@ func startQdrantStub() *httptest.Server {
 				"score": 0.9,
 				"payload": map[string]any{
 					"chatbot_id":    "stub-bot",
-					"source_id":     "stub-source",
+					"source_id":     "00000000-0000-0000-0000-000000000001",
 					"chunk_index":   0,
 					"original_text": "stub text chunk",
 					"source_type":   "text",
@@ -139,7 +118,7 @@ func startQdrantTopKStub() *QdrantTopKStub {
 }
 
 func TestSources_Text_Ingest_Status_Delete(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)

@@ -120,8 +120,8 @@ func waitForProcessingPro(t *testing.T, te *TestEnv, token, sourceID string) {
 	t.Fatalf("timeout waiting for source processing")
 }
 
-func setupStubs(t *testing.T) (*httptest.Server, *httptest.Server) {
-	oai := startOpenAIStub()
+func setupStubs(t *testing.T) (*LLMMock, *httptest.Server) {
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
@@ -186,7 +186,7 @@ func TestProPlan_ModelSelection(t *testing.T) {
 }
 
 func TestProPlan_MonthlyTokenLimit(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	defer oai.Close()
 	defer qd.Close()

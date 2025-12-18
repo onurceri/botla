@@ -53,6 +53,12 @@ func SetupTestEnv() (*TestEnv, error) {
 	if os.Getenv("DB_SCHEMA") == "" {
 		_ = os.Setenv("DB_SCHEMA", "test")
 	}
+	if os.Getenv("DB_NAME") != "botla_test" {
+		return nil, fmt.Errorf("tests must use botla_test database, got %s", os.Getenv("DB_NAME"))
+	}
+	if os.Getenv("DB_SCHEMA") != "test" {
+		return nil, fmt.Errorf("tests must use test schema, got %s", os.Getenv("DB_SCHEMA"))
+	}
 	if os.Getenv("QDRANT_URL") == "" {
 		_ = os.Setenv("QDRANT_URL", "http://localhost:6333")
 	}
@@ -79,6 +85,13 @@ func SetupTestEnv() (*TestEnv, error) {
 		}
 	}
 	_, _ = db.Exec("SET search_path TO " + cfg.DB_SCHEMA)
+	var currentSchema string
+	if err := db.QueryRow("SELECT current_schema()").Scan(&currentSchema); err != nil {
+		return nil, err
+	}
+	if currentSchema != "test" {
+		return nil, fmt.Errorf("expected current_schema() to be test, got %s", currentSchema)
+	}
 	// ensure extensions and canonical tables for plans/languages exist in test schema
 	_, _ = db.Exec(`CREATE EXTENSION IF NOT EXISTS pgcrypto`)
 	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS languages (

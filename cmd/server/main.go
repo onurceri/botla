@@ -76,7 +76,8 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	}
 
 	// Ensure embeddings collection exists
-	if err := ensureQdrantCollection(qdrantClient, log); err != nil {
+	err = ensureQdrantCollection(qdrantClient, log)
+	if err != nil {
 		return nil, err
 	}
 	log.Info("qdrant_collection_ready", nil)

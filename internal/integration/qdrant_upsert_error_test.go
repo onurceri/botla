@@ -42,7 +42,7 @@ func startQdrantUpsertErrorStub() *httptest.Server {
 }
 
 func TestSources_Text_QdrantUpsertError_FailedStatus(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantUpsertErrorStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)

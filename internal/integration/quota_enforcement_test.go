@@ -26,7 +26,7 @@ func getUserIdFromToken(t *testing.T, pool *sql.DB, email string) string {
 // QTA-001: Chat when monthly tokens exceeded
 func TestQuota_ChatTokensExceeded(t *testing.T) {
 	// Setup with mock OpenAI to avoid real calls
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	defer oai.Close()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	qd := startQdrantStub()

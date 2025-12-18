@@ -37,7 +37,7 @@ func startQdrantInitFailStub() *httptest.Server {
 }
 
 func TestStartup_QdrantCollectionInitFailure_StillWorks(t *testing.T) {
-	oai := startOpenAIStub()
+	oai := NewLLMMock(t)
 	qd := startQdrantInitFailStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
