@@ -28,9 +28,7 @@ func createTestUser(t *testing.T, db *sql.DB) string {
 	var planID string
 	err := db.QueryRow(`SELECT id FROM plans LIMIT 1`).Scan(&planID)
 	if err != nil {
-		// Create a dummy plan if none exists
-		planID = "basic"
-		_, _ = db.Exec(`INSERT INTO plans (id, name, monthly_price, yearly_price, currency, features) VALUES ($1, 'Basic', 0, 0, 'USD', '{}') ON CONFLICT DO NOTHING`, planID)
+		t.Fatalf("no plans found in database (migrations might not have run): %v", err)
 	}
 
 	if err := db.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "hash", planID).Scan(&uid); err != nil {

@@ -8,19 +8,21 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // PlanResponse represents the /me/plan endpoint response
 type PlanResponse struct {
-	ID          string               `json:"id"`
-	Code        string               `json:"code"`
-	Name        *string              `json:"name,omitempty"`
-	Description *string              `json:"description,omitempty"`
-	Price       float64              `json:"price"`
-	Currency    string               `json:"currency"`
-	Limits      PlanLimitsResponse   `json:"limits"`
-	Features    PlanFeaturesResponse `json:"features"`
+	ID              string               `json:"id"`
+	Code            string               `json:"code"`
+	Name            *string              `json:"name,omitempty"`
+	Description     *string              `json:"description,omitempty"`
+	Price           float64              `json:"price"`
+	Currency        string               `json:"currency"`
+	Limits          PlanLimitsResponse   `json:"limits"`
+	Features        PlanFeaturesResponse `json:"features"`
+	AvailableModels []models.ModelInfo   `json:"available_models"`
 }
 
 // PlanLimitsResponse holds top-level plan limits
@@ -83,6 +85,15 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Initialize model service
+	modelService := services.NewModelService(h.DB)
+	availableModels, err := modelService.GetAvailableModels(r.Context(), plan.Config.Chat.AllowedModels)
+	if err != nil {
+		// Log error but continue with empty/default models to avoid blocking plan info
+		// In production, you might want to log this properly
+		availableModels = []models.ModelInfo{}
+	}
+
 	res := PlanResponse{
 		ID:          plan.ID,
 		Code:        plan.Code,
@@ -106,6 +117,7 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 			Branding:   plan.Config.Branding,
 			RateLimits: plan.Config.RateLimits,
 		},
+		AvailableModels: availableModels,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

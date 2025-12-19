@@ -18,8 +18,9 @@ type CompletionResult struct {
 
 // ModelInfo defines metadata about an LLM model
 type ModelInfo struct {
-	Name              string
-	Provider          string
-	MaxTokens         int
-	SupportedFeatures []string
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	Provider          string   `json:"provider"`
+	MaxTokens         int      `json:"max_tokens"`
+	SupportedFeatures []string `json:"supported_features"`
 }

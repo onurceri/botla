@@ -5,6 +5,14 @@ import { usePlan } from '@/hooks/queries/useProfile'
 
 type ChatbotFormReturn = ReturnType<typeof useChatbotForm>
 
+export interface ModelInfo {
+  id: string
+  name: string
+  provider: string
+  max_tokens: number
+  supported_features: string[]
+}
+
 interface ChatbotContextType extends ChatbotFormReturn {
   planConfig: {
     branding?: { can_hide_branding?: boolean; can_custom_branding?: boolean }
@@ -36,6 +44,7 @@ interface ChatbotContextType extends ChatbotFormReturn {
     }
   }
   userPlan: string
+  availableModels: ModelInfo[]
 }
 
 export const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined)
@@ -51,6 +60,7 @@ export function ChatbotProvider({
 }) {
   const form = useChatbotForm()
   const [planConfig, setPlanConfig] = useState<ChatbotContextType['planConfig']>({})
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
 
   // Use React Query for plan data
   const { data: planData } = usePlan()
@@ -68,8 +78,13 @@ export function ChatbotProvider({
 
   // Update plan config when plan data changes
   useEffect(() => {
-    if (planData?.features) {
-      setPlanConfig(planData.features)
+    if (planData) {
+      if (planData.features) {
+        setPlanConfig(planData.features)
+      }
+      if (planData.available_models) {
+        setAvailableModels(planData.available_models)
+      }
     }
   }, [planData])
 
@@ -81,7 +96,7 @@ export function ChatbotProvider({
   }, [planConfig, form.handoffEnabled, form.setHandoffEnabled])
 
   return (
-    <ChatbotContext.Provider value={{ ...form, planConfig, userPlan }}>
+    <ChatbotContext.Provider value={{ ...form, planConfig, userPlan, availableModels }}>
       {children}
     </ChatbotContext.Provider>
   )
