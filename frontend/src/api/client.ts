@@ -7,11 +7,41 @@ export const api = axios.create({
 })
 
 let refreshPromise: Promise<void> | null = null
+let isRedirecting = false // Prevent multiple redirects from parallel failed requests
+
+// Helper to check if a stored value is valid (not undefined, null, or "undefined" string)
+const isValidToken = (token: string | null | undefined): token is string => {
+  return token !== null && token !== undefined && token !== 'undefined' && token !== 'null' && token.length > 0
+}
+
+// Clear tokens and redirect to login (only once)
+const handleSessionExpired = () => {
+  if (isRedirecting) return
+  isRedirecting = true
+  
+  const storage = typeof window !== 'undefined' ? window.localStorage : null
+  storage?.removeItem('botla_token')
+  storage?.removeItem('botla_refresh_token')
+  
+  // Dispatch event for app-level handling (e.g., showing toast)
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('session-expired'))
+  }
+  
+  if (!import.meta.env.VITE_E2E) {
+    if (typeof window !== 'undefined') {
+      // Small delay to allow toast to show before redirect
+      setTimeout(() => {
+        window.location.replace('/login')
+      }, 100)
+    }
+  }
+}
 
 api.interceptors.request.use((config) => {
   const storage = typeof window !== 'undefined' ? window.localStorage : null
   const token = storage?.getItem('botla_token')
-  if (token) {
+  if (isValidToken(token)) {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
 
@@ -40,19 +70,33 @@ api.interceptors.response.use(
       rateLimitStore.updateFromHeaders(err.response.headers)
     }
 
+    // If already redirecting, just reject without further processing
+    if (isRedirecting) {
+      return Promise.reject(err)
+    }
+
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       try {
         const storage = typeof window !== 'undefined' ? window.localStorage : null
         const refreshToken = storage?.getItem('botla_refresh_token')
-        if (!refreshToken) throw new Error('No refresh token')
+        
+        // Check for valid refresh token
+        if (!isValidToken(refreshToken)) {
+          throw new Error('No refresh token')
+        }
 
         if (!refreshPromise) {
           refreshPromise = axios
             .post(`${api.defaults.baseURL}/api/v1/auth/refresh`, { refresh_token: refreshToken })
             .then(({ data }) => {
-              storage?.setItem('botla_token', data.token)
-              storage?.setItem('botla_refresh_token', data.refresh_token)
+              // Validate tokens before storing
+              if (isValidToken(data.token) && isValidToken(data.refresh_token)) {
+                storage?.setItem('botla_token', data.token)
+                storage?.setItem('botla_refresh_token', data.refresh_token)
+              } else {
+                throw new Error('Invalid tokens received from refresh')
+              }
             })
             .finally(() => {
               refreshPromise = null
@@ -61,21 +105,19 @@ api.interceptors.response.use(
 
         await refreshPromise
         const newToken = storage?.getItem('botla_token')
+        if (!isValidToken(newToken)) {
+          throw new Error('Token refresh failed')
+        }
         originalRequest.headers = originalRequest.headers || {}
         originalRequest.headers.Authorization = `Bearer ${newToken}`
         return api(originalRequest)
-      } catch (refreshErr) {
-        const storage = typeof window !== 'undefined' ? window.localStorage : null
-        storage?.removeItem('botla_token')
-        storage?.removeItem('botla_refresh_token')
-        if (!import.meta.env.VITE_E2E) {
-          if (typeof window !== 'undefined') {
-            window.location.replace('/login')
-          }
-        }
-        return Promise.reject(refreshErr)
+      } catch {
+        handleSessionExpired()
+        return Promise.reject(err)
       }
     }
     return Promise.reject(err)
   },
 )
+
+

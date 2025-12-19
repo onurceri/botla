@@ -243,7 +243,7 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Request, userID string, status int) {
-	accessToken, err := auth.GenerateToken(h.Secret, userID, "access", 15*time.Minute)
+	accessToken, err := auth.GenerateToken(h.Secret, userID, "access", 1*time.Hour)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
