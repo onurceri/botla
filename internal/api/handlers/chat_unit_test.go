@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -35,7 +37,12 @@ func TestChat_NoInfoFound(t *testing.T) {
 		t.Fatalf("user: %v", err)
 	}
 	h := &ChatbotHandlers{DB: dbx}
-	chatSvc := services.NewChatService(dbx, nil, nil, nil, nil) // nil clients -> lazy init
+
+	// Create a dummy config and factory to avoid panic
+	cfg := &config.Config{OPENAI_API_KEY: "k", OPENAI_API_BASE: oai.URL}
+	factory := rag.NewClientFactory(cfg)
+
+	chatSvc := services.NewChatService(dbx, factory, nil, nil, nil) // factory provided
 	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))

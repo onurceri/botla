@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -72,6 +74,49 @@ func SetupTestEnv() (*TestEnv, error) {
 		_ = os.Setenv("OPENAI_API_KEY", "test-key")
 	}
 
+	// Run migrations
+	// We use the migrate CLI tool to ensure the test database is in a clean state.
+	// This replaces manual SQL setup and ensures we test against the latest schema.
+	wd, _ := os.Getwd()
+	// Find the project root by looking for go.mod
+	projectRoot := wd
+	for {
+		if _, err := os.Stat(filepath.Join(projectRoot, "go.mod")); err == nil {
+			break
+		}
+		parent := filepath.Dir(projectRoot)
+		if parent == projectRoot {
+			// Could not find go.mod, fallback to relative path assumption
+			projectRoot = filepath.Join(wd, "../..")
+			break
+		}
+		projectRoot = parent
+	}
+	migrationsPath := filepath.Join(projectRoot, "db/migrations")
+
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s",
+		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"), os.Getenv("DB_SCHEMA"))
+
+	// Migrate Down (Reset)
+	// We use -all to ensure we revert all migrations
+	cmdDown := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "down", "-all")
+	// If down fails (e.g. inconsistent state), we try to drop -f
+	if output, err := cmdDown.CombinedOutput(); err != nil {
+		// Try drop -f as fallback
+		cmdDrop := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "drop", "-f")
+		if outDrop, errDrop := cmdDrop.CombinedOutput(); errDrop != nil {
+			return nil, fmt.Errorf("migration reset failed: down output: %s, drop output: %s, err: %v", output, outDrop, errDrop)
+		}
+	}
+
+	// Migrate Up
+	cmdUp := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
+	if output, err := cmdUp.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("migration up failed: %s, %v", output, err)
+	}
+
 	cfg := config.LoadConfig()
 	db, err := dbpkg.New(cfg)
 	if err != nil {
@@ -92,145 +137,9 @@ func SetupTestEnv() (*TestEnv, error) {
 	if currentSchema != "test" {
 		return nil, fmt.Errorf("expected current_schema() to be test, got %s", currentSchema)
 	}
-	// ensure extensions and canonical tables for plans/languages exist in test schema
-	_, _ = db.Exec(`CREATE EXTENSION IF NOT EXISTS pgcrypto`)
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS languages (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        code TEXT UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        rtl BOOLEAN DEFAULT false,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ
-    )`)
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS plans (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        code TEXT UNIQUE NOT NULL,
-        status TEXT NOT NULL DEFAULT 'active',
-        billing_cycle TEXT NOT NULL DEFAULT 'monthly',
-        price NUMERIC(10,2) NOT NULL DEFAULT 0,
-        currency VARCHAR(3) NOT NULL DEFAULT 'TRY',
-        trial_days INTEGER NOT NULL DEFAULT 0,
-        config JSONB,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ
-    )`)
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS plan_translations (
-        plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-        language_id UUID NOT NULL REFERENCES languages(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        description TEXT,
-        UNIQUE (plan_id, language_id)
-    )`)
-	_, _ = db.Exec(`INSERT INTO languages (code, name, rtl) VALUES
-        ('tr-TR','Turkish (Türkiye)',false),
-        ('en-US','English (United States)',false)
-        ON CONFLICT (code) DO NOTHING`)
-	_, _ = db.Exec(`INSERT INTO plans (code, status, billing_cycle, price, currency, trial_days, config) VALUES
-        ('free','active','lifetime',0,'TRY',0,'{"scraping":{"max_pages_per_crawl":10,"max_urls_per_bot":100},"chat":{"allowed_models":["gpt-4o-mini"],"max_monthly_tokens":100000,"rag":{"top_k":3,"max_context_tokens":2000}}}'::jsonb),
-        ('pro','active','monthly',199,'TRY',7,'{"scraping":{"max_pages_per_crawl":100,"max_urls_per_bot":1000},"chat":{"allowed_models":["gpt-4o"],"max_monthly_tokens":1000000}}'::jsonb)
-        ON CONFLICT (code) DO UPDATE SET config = EXCLUDED.config`)
-	// ensure users has plan_id column for tests
-	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_id UUID`)
-	// ensure chatbots has language_id column for tests
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS language_id UUID REFERENCES languages(id)`)
-	// ensure analytics has total_tokens_used
-	_, _ = db.Exec(`ALTER TABLE analytics ADD COLUMN IF NOT EXISTS total_tokens_used INTEGER DEFAULT 0`)
-	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language_id UUID`)
-	// ensure columns exist for tests
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS allowed_domains TEXT`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS embed_secret VARCHAR(255)`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS secure_embed_enabled BOOLEAN DEFAULT false`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS custom_instruction TEXT`)
-	// Add missing columns for tests
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS include_paths JSONB`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS exclude_paths JSONB`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS selector_whitelist JSONB`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS discovery_mode TEXT DEFAULT 'auto'`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS refresh_policy TEXT DEFAULT 'manual'`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS refresh_frequency TEXT`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS next_refresh_at TIMESTAMPTZ`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS last_refresh_at TIMESTAMPTZ`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS bot_icon TEXT`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS bot_display_name TEXT`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS suggested_questions JSONB`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS all_suggested_questions JSONB`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS suggestions_enabled BOOLEAN DEFAULT false`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS hide_branding BOOLEAN DEFAULT false`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS custom_branding JSONB`)
 
-	// Add missing columns for guardrails and handoff
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS confidence_threshold FLOAT DEFAULT 0.7`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS threshold_config JSONB DEFAULT '{}'`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS fallback_messages JSONB DEFAULT '{}'`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS topic_restrictions JSONB DEFAULT '{}'`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_enabled BOOLEAN DEFAULT false`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_type TEXT DEFAULT 'email'`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_type TEXT DEFAULT 'email'`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD COLUMN IF NOT EXISTS handoff_config JSONB DEFAULT '{}'`)
-
-	// ensure messages has type column
-	_, _ = db.Exec(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'normal'`)
-
-	// ensure new source columns exist for tests
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS hash VARCHAR(128)`)
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`)
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS size_bytes BIGINT DEFAULT 0`)
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS is_discovered BOOLEAN DEFAULT false`)
-	// create usage_ingestions table for tests
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
-		user_id VARCHAR(64) NOT NULL,
-		period_month DATE NOT NULL,
-		sources_count INT NOT NULL DEFAULT 0,
-		embedding_tokens INT NOT NULL DEFAULT 0,
-		refresh_count INT NOT NULL DEFAULT 0,
-		updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		PRIMARY KEY (user_id, period_month)
-	)`)
-	// Create pending_discovered_urls table for tests
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS pending_discovered_urls (
-		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-		chatbot_id UUID NOT NULL REFERENCES chatbots(id) ON DELETE CASCADE,
-		source_id UUID REFERENCES data_sources(id) ON DELETE SET NULL,
-		url TEXT NOT NULL,
-		status TEXT NOT NULL DEFAULT 'pending',
-		discovered_at TIMESTAMPTZ DEFAULT NOW(),
-		UNIQUE (chatbot_id, url)
-	)`)
-	// Add refresh tracking columns
-	_, _ = db.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
-	_, _ = db.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)
-	// Create chatbot_actions table
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS chatbot_actions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        chatbot_id UUID NOT NULL REFERENCES chatbots(id) ON DELETE CASCADE,
-        name TEXT NOT NULL,
-        description TEXT,
-        action_type TEXT NOT NULL,
-        config JSONB,
-        parameters JSONB,
-        enabled BOOLEAN DEFAULT false,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ,
-        deleted_at TIMESTAMPTZ
-    )`)
-	// Create handoff_requests table for tests
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS handoff_requests (
-		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-		chatbot_id UUID NOT NULL REFERENCES chatbots(id) ON DELETE CASCADE,
-		conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-		status TEXT DEFAULT 'pending',
-		assigned_to TEXT,
-		notes TEXT,
-		created_at TIMESTAMP DEFAULT NOW(),
-		resolved_at TIMESTAMP
-	)`)
-	// ensure cascade deletes are set up for tests
-	_, _ = db.Exec(`ALTER TABLE chatbots DROP CONSTRAINT IF EXISTS chatbots_workspace_id_fkey`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD CONSTRAINT chatbots_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE`)
-	_, _ = db.Exec(`ALTER TABLE chatbots DROP CONSTRAINT IF EXISTS chatbots_organization_id_fkey`)
-	_, _ = db.Exec(`ALTER TABLE chatbots ADD CONSTRAINT chatbots_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE`)
+	// Relax rate limits for free plan in test environment to prevent 429 errors during tests
+	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits,requests_per_minute}', '1000'::jsonb) WHERE code = 'free'`)
 
 	vs := &MockVectorStore{}
 	mux := NewTestMux(cfg, db, vs)
@@ -241,9 +150,6 @@ func SetupTestEnv() (*TestEnv, error) {
 func TeardownTestEnv(te *TestEnv) {
 	if te == nil {
 		return
-	}
-	if te.DB != nil {
-		_, _ = te.DB.Exec("TRUNCATE TABLE plans, refresh_tokens, messages, conversations, analytics, payments, data_sources, chatbots, users, organizations, memberships, workspaces RESTART IDENTITY CASCADE")
 	}
 	if te.Server != nil {
 		te.Server.Close()

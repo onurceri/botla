@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useChatbotContext } from '../../context/ChatbotContext'
+import { useChatbotContext, ModelInfo } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
 
@@ -24,12 +24,22 @@ export default function OverviewTab() {
     temperature, setTemperature,
     maxTokens, setMaxTokens,
     buildOverviewPayload,
+    availableModels,
   } = useChatbotContext()
 
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildOverviewPayload(),
     enabled: !!name.trim(),
   })
+
+  // Group models by provider
+  const groupedModels = (availableModels || []).reduce((acc, model) => {
+    if (!acc[model.provider]) {
+      acc[model.provider] = []
+    }
+    acc[model.provider].push(model)
+    return acc
+  }, {} as Record<string, ModelInfo[]>)
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -106,22 +116,23 @@ export default function OverviewTab() {
                   <SelectValue placeholder="Model seçin" />
                 </SelectTrigger>
                 <SelectContent>
+                {Object.keys(groupedModels).length > 0 ? (
+                  Object.entries(groupedModels).map(([provider, models]) => (
+                    <SelectGroup key={provider}>
+                      <SelectLabel>{provider}</SelectLabel>
+                      {models.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))
+                ) : (
                   <SelectGroup>
-                    <SelectLabel>OpenAI</SelectLabel>
-                    <SelectItem value="openai:gpt-4o">GPT-4o (Önerilen)</SelectItem>
-                    <SelectItem value="openai:gpt-4o-mini">GPT-4o Mini (Hızlı)</SelectItem>
+                    <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
                   </SelectGroup>
-                  <SelectGroup>
-                    <SelectLabel>Anthropic</SelectLabel>
-                    <SelectItem value="anthropic:claude-3-5-sonnet-latest">Claude 3.5 Sonnet</SelectItem>
-                    <SelectItem value="anthropic:claude-3-5-haiku-latest">Claude 3.5 Haiku</SelectItem>
-                  </SelectGroup>
-                  <SelectGroup>
-                    <SelectLabel>Google</SelectLabel>
-                    <SelectItem value="google:gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-                    <SelectItem value="google:gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
+                )}
+              </SelectContent>
               </Select>
             </div>
 
