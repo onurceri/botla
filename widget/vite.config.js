@@ -9,7 +9,7 @@ function previewHtmlPlugin() {
     name: 'preview-html-transform',
     closeBundle() {
       // After build, modify preview.html and index.html in dist folder
-      const files = ['preview.html', 'index.html']
+      const files = ['preview.html']  // index.html no longer loads widget
       
       files.forEach(file => {
         const filePath = resolve(__dirname, `dist/${file}`)
