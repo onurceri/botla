@@ -1,6 +1,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -74,13 +75,7 @@ const PlanPage = () => {
   const usage = usageData as Usage | null
   const loading = planLoading || usageLoading
 
-  const getPlanBadgeColor = (plan: string) => {
-    switch (plan.toLowerCase()) {
-      case 'ultra': return 'default' // Primary color
-      case 'pro': return 'secondary'
-      default: return 'outline'
-    }
-  }
+
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency }).format(amount)
@@ -129,7 +124,7 @@ const PlanPage = () => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                  <h2 className="text-2xl font-bold capitalize">{userPlan} Plan</h2>
-                 <Badge variant={getPlanBadgeColor(userPlan) as any} className="uppercase">{userPlan}</Badge>
+                 <PlanBadge plan={userPlan as PlanTier} size="md" />
               </div>
               <p className="text-muted-foreground">
                 {planPrice > 0 

@@ -122,10 +122,14 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       if (captchaSiteKey && (window as any).getCaptchaToken) {
         try { captchaToken = await (window as any).getCaptchaToken(captchaSiteKey) } catch {}
       }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) {
+        headers['X-Embed-Token'] = token
+      }
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, session_id: ensureSession(chatbotId, sid, setSid), embed_token: token, captcha_token: captchaToken }),
+        headers,
+        body: JSON.stringify({ message: text, session_id: ensureSession(chatbotId, sid, setSid), captcha_token: captchaToken }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()

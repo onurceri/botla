@@ -77,6 +77,9 @@ be-run-test:
 fe-run:
 	 cd frontend && npm run dev
 
+widget-deploy:
+	cd widget && npm install && npm run build && npx wrangler pages deploy dist --project-name botla-widget
+
 test-all:
 	 CGO_ENABLED=1 go test -tags fitz -race -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
 

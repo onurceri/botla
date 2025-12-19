@@ -1,7 +1,7 @@
 import { usePlan, useProfile } from '@/hooks/queries/useProfile'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 
 const ProfilePage = () => {
   const { data: profile, isLoading: profileLoading } = useProfile()
@@ -37,7 +37,7 @@ const ProfilePage = () => {
             <div className="space-y-1">
               <h3 className="font-medium text-lg">{fullName || 'İsimsiz Kullanıcı'}</h3>
               <p className="text-sm text-muted-foreground">{email}</p>
-              <Badge variant="outline" className="mt-2 capitalize">{userPlan} Plan</Badge>
+              <PlanBadge plan={userPlan as PlanTier} size="md" className="mt-2" />
             </div>
           </div>
 

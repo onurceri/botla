@@ -10,6 +10,8 @@ type CustomBranding = {
   link?: string
 }
 
+const MARKETING_URL = import.meta.env.VITE_MARKETING_URL || 'https://botla.app'
+
 export function ChatDrawer(
   { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, onFeedback, onSubmitEmail }:
   { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; onFeedback?: (id: string, isPositive: boolean) => void; onSubmitEmail?: (requestId: string, email: string) => Promise<void> }
@@ -136,7 +138,7 @@ export function ChatDrawer(
               )}
             </div>
           ) : !hideBranding ? (
-            <div className="cbw-brand">Powered by <a href="https://botla.app" target="_blank" rel="noreferrer">Botla</a></div>
+            <div className="cbw-brand">Powered by <a href={MARKETING_URL} target="_blank" rel="noreferrer">Botla</a></div>
           ) : (
             <div></div>
           )}

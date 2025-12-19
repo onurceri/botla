@@ -11,12 +11,17 @@ import { api } from '@/api/client'
 describe('ChatbotDetailPage connect tab domain/secret updates', () => {
   it('updates allowedDomains and embedSecret inputs', async () => {
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
-      if (url.includes('/api/v1/me')) return Promise.resolve({ 
+      if (url.includes('/api/v1/me/plan')) return Promise.resolve({ 
         data: { 
-          subscription_plan: 'pro',
-          config: {
+          code: 'pro',
+          features: {
             security: { secure_embed_enabled: true }
           }
+        } 
+      } as any)
+      if (url.includes('/api/v1/me')) return Promise.resolve({ 
+        data: { 
+          subscription_plan: 'pro'
         } 
       } as any)
       if (url.includes('/api/v1/chatbots/abc')) return Promise.resolve({ data: { id: 'abc', name: 'Bot' } } as any)
@@ -41,13 +46,11 @@ describe('ChatbotDetailPage connect tab domain/secret updates', () => {
     await userEvent.click(connectTriggers[0])
     const toggle = await view.findByLabelText('Güvenli Embed')
     await userEvent.click(toggle)
-    const domainsInput = await view.findByPlaceholderText('example.com, another.com')
+    const domainsInput = await view.findByPlaceholderText('ornek.com, digersite.com')
     await userEvent.clear(domainsInput)
     await userEvent.type(domainsInput, 'a.com, b.com')
     expect((domainsInput as HTMLInputElement).value).toBe('a.com, b.com')
-    const secretInput = await view.findByPlaceholderText('Gizli anahtar')
-    await userEvent.clear(secretInput)
-    await userEvent.type(secretInput, 'secret-2')
-    expect((secretInput as HTMLInputElement).value).toBe('secret-2')
+    // Note: the secret input is read-only now and inside a collapsible section
+    // We need to open the advanced section to test the refresh button
   })
 })
