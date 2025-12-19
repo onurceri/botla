@@ -3,6 +3,25 @@ import { beforeEach, vi } from 'vitest'
 import * as React from 'react'
 import { api } from '@/api/client'
 
+// Mock PostHog to prevent analytics calls in tests
+vi.mock('posthog-js', () => ({
+  default: {
+    init: vi.fn(),
+    capture: vi.fn(),
+    identify: vi.fn(),
+    reset: vi.fn(),
+    __loaded: false,
+  },
+}))
+
+vi.mock('posthog-js/react', () => ({
+  PostHogProvider: ({ children }: { children: React.ReactNode }) => children,
+  usePostHog: () => ({
+    capture: vi.fn(),
+    identify: vi.fn(),
+  }),
+}))
+
 const createUnexpectedHttpCallError = (method: string, args: unknown[]) => {
   const prettyArgs = args.map((a) => {
     try {

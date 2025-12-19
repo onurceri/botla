@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import DashboardPage from '@/pages/DashboardPage'
@@ -7,7 +8,7 @@ import ProfilePage from '@/pages/ProfilePage'
 import PlanPage from '@/pages/PlanPage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
-import { ToastProvider } from '@/components/ui/toast'
+import { ToastProvider, useToast } from '@/components/ui/toast'
 import { OrganizationProvider } from '@/features/organization/context/OrganizationContext'
 import { OrganizationSettingsPage } from '@/features/organization/pages/OrganizationSettingsPage'
 import { WorkspaceSettingsPage } from '@/features/organization/pages/WorkspaceSettingsPage'
@@ -24,21 +25,44 @@ import ConnectTab from '@/features/chatbot/pages/tabs/ConnectTab'
 import AnalyticsTab from '@/features/chatbot/pages/tabs/AnalyticsTab'
 import HandoffRequestsTab from '@/features/chatbot/pages/tabs/HandoffRequestsTab'
 
+// Helper to validate stored tokens
+const isValidToken = (token: string | null): boolean => {
+  return token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
+}
+
 const isAuthenticated = () => {
   // In E2E mode, bypass auth gating for visual tests
   // VITE_E2E is set in Playwright webServer env
   // @ts-ignore
   if (import.meta.env && (import.meta.env as any).VITE_E2E) return true
-  return !!(typeof window !== 'undefined' && window.localStorage.getItem('botla_token'))
+  const token = typeof window !== 'undefined' ? window.localStorage.getItem('botla_token') : null
+  return isValidToken(token)
 }
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   return isAuthenticated() ? <>{children}</> : <Navigate to="/login" />
 }
 
+// Component to handle session expiry notifications
+function SessionExpiryHandler() {
+  const { toast } = useToast()
+  
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      toast('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.', 'error')
+    }
+    
+    window.addEventListener('session-expired', handleSessionExpired)
+    return () => window.removeEventListener('session-expired', handleSessionExpired)
+  }, [toast])
+  
+  return null
+}
+
 function App() {
   return (
     <ToastProvider>
+      <SessionExpiryHandler />
       <Router>
         <Routes>
           {/* Public Routes */}
