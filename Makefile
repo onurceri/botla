@@ -25,13 +25,13 @@ redis-ping:
 	 redis-cli -h 127.0.0.1 -p 6379 ping
 
 migrate-up:
-	 migrate -path=$(MIGRATIONS_DIR) -database=$(DATABASE_URL) up
+	 migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" up
 
 migrate-down:
-	 migrate -path=$(MIGRATIONS_DIR) -database=$(DATABASE_URL) down
+	 migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" down
 
 migrate-version:
-	 -migrate -path=$(MIGRATIONS_DIR) -database=$(DATABASE_URL) version
+	 -migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" version
 
 migrate-up-test:
 	 migrate -path=$(MIGRATIONS_DIR) -database="$(TEST_DATABASE_URL)" up
@@ -61,7 +61,7 @@ migrate-version-test-docker:
 	 -docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_TEST_DATABASE_URL)" version
 
 migrate-force-docker:
-	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) force $(v)
+	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_DATABASE_URL)" force $(v)
 
 
 

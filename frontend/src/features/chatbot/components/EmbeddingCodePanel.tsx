@@ -56,13 +56,13 @@ export default function EmbeddingCodePanel({
         )}
         <div className="relative group">
           <pre className="bg-muted p-4 rounded-xl text-xs font-mono text-foreground overflow-x-auto border border-border shadow-sm">
-            {`<script src="https://cdn.botla.app/widget.js" data-bot="${id}"></script>`}
+            {`<script src="https://widget.botla.app/widget.js" data-bot="${id}"></script>`}
           </pre>
           <Button 
             size="sm" 
             variant="secondary" 
             className="absolute top-2 right-2 shadow-sm"
-            onClick={() => navigator.clipboard.writeText(`<script src="https://cdn.botla.app/widget.js" data-bot="${id}"></script>`)}
+            onClick={() => navigator.clipboard.writeText(`<script src="https://widget.botla.app/widget.js" data-bot="${id}"></script>`)}
           >
             Kopyala
           </Button>
