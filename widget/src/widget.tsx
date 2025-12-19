@@ -37,7 +37,9 @@ function injectStyles(shadow: ShadowRoot) {
 export function mount() {
   const params = currentParams()
   const chatbotId = params.get('chatbot-id') || 'demo'
-  const apiBase = params.get('api-base') || undefined
+  // Use VITE_API_BASE_URL env var as default if available, otherwise undefined (which defaults to relative)
+  const defaultApiBase = import.meta.env.VITE_API_BASE_URL || undefined
+  const apiBase = params.get('api-base') || defaultApiBase
   const themeColor = params.get('color') || undefined
   const welcome = params.get('welcome') || undefined
   const embedTokenUrl = params.get('embed-token-url') || undefined
