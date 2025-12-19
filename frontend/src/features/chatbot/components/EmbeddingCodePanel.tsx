@@ -15,7 +15,8 @@ import {
   ChevronUp,
   Info,
   RefreshCw,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react'
 
 type Props = {
@@ -28,6 +29,7 @@ type Props = {
   onDomainsChange: (v: string) => void
   onSecretChange: (v: string) => void
   onSecretRefresh: () => void
+  onSecretClear: () => void
 }
 
 export default function EmbeddingCodePanel({
@@ -40,6 +42,7 @@ export default function EmbeddingCodePanel({
   onDomainsChange,
   onSecretChange,
   onSecretRefresh,
+  onSecretClear,
 }: Props) {
   const [copied, setCopied] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -199,26 +202,48 @@ export default function EmbeddingCodePanel({
                       </p>
                     </div>
                     
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <label className="text-sm font-medium">Embed Secret</label>
+                      <Input 
+                        value={embedSecret} 
+                        onChange={(e) => onSecretChange(e.target.value)} 
+                        placeholder="Gizli anahtar henüz oluşturulmadı"
+                        className="bg-background font-mono text-sm"
+                        readOnly
+                      />
                       <div className="flex gap-2">
-                        <Input 
-                          value={embedSecret} 
-                          onChange={(e) => onSecretChange(e.target.value)} 
-                          placeholder="Gizli anahtar henüz oluşturulmadı"
-                          className="bg-background font-mono text-sm"
-                          readOnly
-                        />
                         <Button 
-                          size="default" 
+                          size="sm" 
                           variant="outline"
                           onClick={onSecretRefresh}
-                          className="gap-2 shrink-0"
+                          className="gap-2"
                         >
-                          <RefreshCw className="h-4 w-4" />
+                          <RefreshCw className="h-3.5 w-3.5" />
                           Yenile
                         </Button>
+                        {embedSecret && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={onSecretClear}
+                            className="gap-2 text-destructive border-destructive/30 hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Temizle
+                          </Button>
+                        )}
                       </div>
+                      {embedSecret && (
+                        <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border">
+                          <p className="text-sm text-muted-foreground flex items-start gap-2">
+                            <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-foreground" />
+                            <span>
+                              <strong className="text-foreground">Token doğrulaması aktif.</strong><br />
+                              Sadece alan adı kısıtlaması kullanmak istiyorsanız, yukarıdaki "Temizle" butonuna tıklayın.
+                            </span>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

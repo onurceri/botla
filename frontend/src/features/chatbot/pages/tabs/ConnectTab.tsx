@@ -40,6 +40,7 @@ export default function ConnectTab() {
         onDomainsChange={setAllowedDomains}
         onSecretChange={setEmbedSecret}
         onSecretRefresh={() => setEmbedSecret(Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2))}
+        onSecretClear={() => setEmbedSecret('')}
       />
     </div>
   )
