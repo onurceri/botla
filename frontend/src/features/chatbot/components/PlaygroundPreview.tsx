@@ -136,10 +136,15 @@ export default function PlaygroundPreview(props: Props) {
   }, [sendConfig])
 
   // Send config updates when props change (after initial load)
+  // Debounce to avoid excessive updates during typing
   useEffect(() => {
-    if (configSentRef.current) {
+    if (!configSentRef.current) return
+    
+    const timeoutId = setTimeout(() => {
       sendConfig()
-    }
+    }, 300) // 300ms debounce for live preview updates
+    
+    return () => clearTimeout(timeoutId)
   }, [sendConfig, refreshKey])
 
   // Listen for messages from iframe (optional - for debugging)
