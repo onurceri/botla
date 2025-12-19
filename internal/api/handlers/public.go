@@ -171,12 +171,11 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 
 	// Secure Embed Enforcement
 	if cbot.SecureEmbedEnabled {
-		// 1. Origin Check
+		// 1. Origin/Domain Check (independent of token)
 		if cbot.AllowedDomains != nil && *cbot.AllowedDomains != "" {
 			origin := r.Header.Get("Origin")
-			// If no origin provided, block if restriction is enabled?
-			// Usually browsers send Origin. If called from non-browser, it might be empty.
-			// Let's require it if domains are restricted.
+			// If no origin provided, block if restriction is enabled
+			// Browsers always send Origin. If called from non-browser (e.g. curl), it might be empty.
 			if origin == "" {
 				w.WriteHeader(http.StatusForbidden)
 				return
@@ -201,39 +200,38 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// 2. Token Check
-		tokenStr := r.Header.Get("X-Embed-Token")
-		if tokenStr == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		secret := ""
-		if cbot.EmbedSecret != nil {
-			secret = *cbot.EmbedSecret
-		}
-
-		token, errParse := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(secret), nil
-		})
-
-		if errParse != nil || !token.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			// Check chatbot_id matches
-			if cid, ok := claims["chatbot_id"].(string); !ok || cid != cbot.ID {
+		// 2. Token Check (only if embed_secret is configured)
+		if cbot.EmbedSecret != nil && *cbot.EmbedSecret != "" {
+			tokenStr := r.Header.Get("X-Embed-Token")
+			if tokenStr == "" {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-		} else {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+
+			secret := *cbot.EmbedSecret
+
+			token, errParse := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return []byte(secret), nil
+			})
+
+			if errParse != nil || !token.Valid {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if claims, ok := token.Claims.(jwt.MapClaims); ok {
+				// Check chatbot_id matches
+				if cid, ok := claims["chatbot_id"].(string); !ok || cid != cbot.ID {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+			} else {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 		}
 	}
 

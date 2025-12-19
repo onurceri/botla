@@ -43,6 +43,6 @@ describe('ChatbotDetailPage initial tab selection', () => {
       </ToastProvider>
       </QueryWrapper>
     )
-    expect(await screen.findByText('Web Sitenize Ekleyin')).toBeInTheDocument()
+    expect(await screen.findByText('Kodu Web Sitenize Ekleyin')).toBeInTheDocument()
   })
 })
