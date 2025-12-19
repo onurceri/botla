@@ -1,7 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
 import { useChatbotForm } from '../hooks/useChatbotForm'
 import { useChatbot } from '@/hooks/queries/useChatbot'
-import { useProfile } from '@/hooks/queries/useProfile'
+import { usePlan } from '@/hooks/queries/useProfile'
 
 type ChatbotFormReturn = ReturnType<typeof useChatbotForm>
 
@@ -52,9 +52,9 @@ export function ChatbotProvider({
   const form = useChatbotForm()
   const [planConfig, setPlanConfig] = useState<ChatbotContextType['planConfig']>({})
 
-  // Use React Query for user profile (replaces manual fetchUserProfile)
-  const { data: profileData } = useProfile()
-  const userPlan = profileData?.plan_code || profileData?.subscription_plan || 'free'
+  // Use React Query for plan data
+  const { data: planData } = usePlan()
+  const userPlan = planData?.code || 'free'
 
   // Use React Query for chatbot data (replaces manual api.get)
   const { data: chatbotData } = useChatbot(chatbotId, !isNew)
@@ -66,12 +66,12 @@ export function ChatbotProvider({
     }
   }, [chatbotData])
 
-  // Update plan config when profile data changes
+  // Update plan config when plan data changes
   useEffect(() => {
-    if (profileData?.config) {
-      setPlanConfig(profileData.config)
+    if (planData?.features) {
+      setPlanConfig(planData.features)
     }
-  }, [profileData])
+  }, [planData])
 
   // Enforce plan restrictions
   useEffect(() => {

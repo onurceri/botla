@@ -1,13 +1,21 @@
-import { useEffect, useState } from 'react'
+
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { HardDrive, Globe, Cpu, Zap, Shield, Check, X, LayoutDashboard } from 'lucide-react'
-import { api } from '@/api/client'
+import { usePlan, useUsage } from '@/hooks/queries/useProfile'
+import { useRateLimit } from '@/hooks/useRateLimit'
 
-interface PlanConfig {
+interface PlanLimits {
+  max_chatbots: number
+  max_monthly_ingestions: number
+  max_monthly_embedding_tokens: number
+  min_readd_cooldown_minutes: number
+}
+
+interface PlanFeatures {
   branding?: {
     can_hide_branding: boolean
     can_custom_branding: boolean
@@ -15,8 +23,6 @@ interface PlanConfig {
   security?: {
     secure_embed_enabled: boolean
   }
-  max_monthly_ingestions: number
-  max_monthly_embedding_tokens: number
   scraping: {
     dynamic_enabled: boolean
     max_urls_per_bot: number
@@ -56,41 +62,17 @@ interface Usage {
 }
 
 const PlanPage = () => {
-  const [userPlan, setUserPlan] = useState<string>('free')
-  const [planPrice, setPlanPrice] = useState<number>(0)
-  const [planCurrency, setPlanCurrency] = useState<string>('TRY')
-  const [planConfig, setPlanConfig] = useState<PlanConfig | null>(null)
-  const [usage, setUsage] = useState<Usage | null>(null)
-  const [rateLimit, setRateLimit] = useState<{ limit: number | null; remaining: number | null }>({ limit: null, remaining: null })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/api/v1/me')
-      .then((res) => {
-        const plan = res.data?.plan_code ?? 'free'
-        setUserPlan(plan)
-        setPlanPrice(res.data?.plan_price ?? 0)
-        setPlanCurrency(res.data?.plan_currency ?? 'TRY')
-        if (res.data?.config) {
-          setPlanConfig(res.data.config)
-        }
-        if (res.data?.usage) {
-          setUsage(res.data.usage)
-        }
-        const limit = parseInt(res.headers['x-ratelimit-limit'] || '', 10)
-        const remaining = parseInt(res.headers['x-ratelimit-remaining'] || '', 10)
-        setRateLimit({
-          limit: Number.isFinite(limit) ? limit : null,
-          remaining: Number.isFinite(remaining) ? remaining : null,
-        })
-      })
-      .catch(() => {
-        setUserPlan('free')
-        setPlanConfig(null)
-        setRateLimit({ limit: null, remaining: null })
-      })
-      .finally(() => setLoading(false))
-  }, [])
+  const { data: planData, isLoading: planLoading } = usePlan()
+  const { data: usageData, isLoading: usageLoading } = useUsage()
+  const rateLimit = useRateLimit()
+  
+  const userPlan = planData?.code || 'free'
+  const planPrice = planData?.price || 0
+  const planCurrency = planData?.currency || 'TRY'
+  const planLimits = planData?.limits as PlanLimits | null
+  const planFeatures = planData?.features as PlanFeatures | null
+  const usage = usageData as Usage | null
+  const loading = planLoading || usageLoading
 
   const getPlanBadgeColor = (plan: string) => {
     switch (plan.toLowerCase()) {
@@ -168,9 +150,9 @@ const PlanPage = () => {
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs font-medium">
                           <span>{usage?.storage_used_mb ?? 0} MB</span>
-                          <span className="text-muted-foreground">/ {planConfig?.files.total_storage_mb ?? 0} MB</span>
+                          <span className="text-muted-foreground">/ {planFeatures?.files.total_storage_mb ?? 0} MB</span>
                         </div>
-                        <Progress value={calculatePercentage(usage?.storage_used_mb ?? 0, planConfig?.files.total_storage_mb ?? 0)} className="h-1.5" />
+                        <Progress value={calculatePercentage(usage?.storage_used_mb ?? 0, planFeatures?.files.total_storage_mb ?? 0)} className="h-1.5" />
                       </div>
                    </div>
                 </div>
@@ -192,9 +174,9 @@ const PlanPage = () => {
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs font-medium">
                           <span>{(usage?.tokens_used ?? 0).toLocaleString()}</span>
-                          <span className="text-muted-foreground">/ {(planConfig?.chat.max_monthly_tokens || 0).toLocaleString()}</span>
+                          <span className="text-muted-foreground">/ {(planFeatures?.chat.max_monthly_tokens || 0).toLocaleString()}</span>
                         </div>
-                        <Progress value={calculatePercentage(usage?.tokens_used ?? 0, planConfig?.chat.max_monthly_tokens || 0)} className="h-1.5" />
+                        <Progress value={calculatePercentage(usage?.tokens_used ?? 0, planFeatures?.chat.max_monthly_tokens || 0)} className="h-1.5" />
                       </div>
                    </div>
                 </div>
@@ -204,7 +186,7 @@ const PlanPage = () => {
                    </div>
                    <div>
                       <p className="text-xs text-muted-foreground">Güvenli Embed</p>
-                      <div className="mt-1">{planConfig?.security?.secure_embed_enabled ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> : <InactiveBadge />}</div>
+                      <div className="mt-1">{planFeatures?.security?.secure_embed_enabled ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> : <InactiveBadge />}</div>
                    </div>
                 </div>
              </div>
@@ -225,31 +207,31 @@ const PlanPage = () => {
                <div className="space-y-2 py-2 border-b last:border-0">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Toplam Depolama Kullanımı</span>
-                    <span className="font-medium">{usage?.storage_used_mb ?? 0} / {planConfig?.files.total_storage_mb ?? 0} MB</span>
+                    <span className="font-medium">{usage?.storage_used_mb ?? 0} / {planFeatures?.files.total_storage_mb ?? 0} MB</span>
                   </div>
-                  <Progress value={calculatePercentage(usage?.storage_used_mb ?? 0, planConfig?.files.total_storage_mb ?? 0)} className="h-2" />
+                  <Progress value={calculatePercentage(usage?.storage_used_mb ?? 0, planFeatures?.files.total_storage_mb ?? 0)} className="h-2" />
                </div>
                <div className="space-y-2 py-2 border-b last:border-0">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Toplam Yüklenen Dosya</span>
-                    <span className="font-medium">{usage?.files_count ?? 0} / {planConfig?.files.max_files_total ?? 0} adet</span>
+                    <span className="font-medium">{usage?.files_count ?? 0} / {planFeatures?.files.max_files_total ?? 0} adet</span>
                   </div>
-                  <Progress value={calculatePercentage(usage?.files_count ?? 0, planConfig?.files.max_files_total ?? 0)} className="h-2" />
+                  <Progress value={calculatePercentage(usage?.files_count ?? 0, planFeatures?.files.max_files_total ?? 0)} className="h-2" />
                </div>
                <div className="flex justify-between items-center py-2 border-b last:border-0">
                   <span className="text-sm">Maks. Dosya Boyutu</span>
-                  <span className="font-medium">{planConfig?.files.max_size_mb} MB</span>
+                  <span className="font-medium">{planFeatures?.files.max_size_mb} MB</span>
                </div>
                <div className="space-y-2 py-2 border-b last:border-0">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Bot Başına Dosya</span>
-                    <span className="font-medium">{usage?.max_files_count_in_one_bot ?? 0} / {planConfig?.files.max_files_per_bot} adet</span>
+                    <span className="font-medium">{usage?.max_files_count_in_one_bot ?? 0} / {planFeatures?.files.max_files_per_bot} adet</span>
                   </div>
-                  <Progress value={calculatePercentage(usage?.max_files_count_in_one_bot ?? 0, planConfig?.files.max_files_per_bot ?? 0)} className="h-2" />
+                  <Progress value={calculatePercentage(usage?.max_files_count_in_one_bot ?? 0, planFeatures?.files.max_files_per_bot ?? 0)} className="h-2" />
                </div>
                <div className="flex justify-between items-center py-2 border-b last:border-0">
                   <span className="text-sm">OCR (Görsel Tarama)</span>
-                  {planConfig?.files.ocr_enabled 
+                  {planFeatures?.files.ocr_enabled 
                     ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> 
                     : <InactiveBadge />}
                </div>
@@ -272,33 +254,33 @@ const PlanPage = () => {
                <div className="space-y-2 py-2 border-b last:border-0">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Bot Başına URL</span>
-                    <span className="font-medium">{usage?.max_urls_count_in_one_bot ?? 0} / {planConfig?.scraping.max_urls_per_bot} adet</span>
+                    <span className="font-medium">{usage?.max_urls_count_in_one_bot ?? 0} / {planFeatures?.scraping.max_urls_per_bot} adet</span>
                   </div>
-                  <Progress value={calculatePercentage(usage?.max_urls_count_in_one_bot ?? 0, planConfig?.scraping.max_urls_per_bot ?? 0)} className="h-2" />
+                  <Progress value={calculatePercentage(usage?.max_urls_count_in_one_bot ?? 0, planFeatures?.scraping.max_urls_per_bot ?? 0)} className="h-2" />
                </div>
                <div className="flex justify-between items-center py-2 border-b last:border-0">
                   <span className="text-sm">Alt Sayfa Tarama (Crawler)</span>
-                  <span className="font-medium">{planConfig?.scraping.max_pages_per_crawl} sayfa</span>
+                  <span className="font-medium">{planFeatures?.scraping.max_pages_per_crawl} sayfa</span>
                </div>
                <div className="flex justify-between items-center py-2 border-b last:border-0">
                   <span className="text-sm">Dinamik (JS) Tarama</span>
-                  {planConfig?.scraping.dynamic_enabled 
+                  {planFeatures?.scraping.dynamic_enabled 
                     ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> 
                     : <InactiveBadge />}
                </div>
                <div className="flex justify-between items-center py-2 border-b last:border-0">
                   <span className="text-sm">Kaynak Yenileme</span>
-                  {planConfig?.refresh?.enabled 
+                  {planFeatures?.refresh?.enabled 
                     ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> 
                     : <InactiveBadge />}
                </div>
-               {planConfig?.refresh?.enabled && (
+               {planFeatures?.refresh?.enabled && (
                  <div className="space-y-2 py-2 border-b last:border-0">
                    <div className="flex justify-between items-center">
                      <span className="text-sm">Aylık Yenileme Hakkı</span>
-                     <span className="font-medium">{usage?.refresh_count ?? 0} / {planConfig?.refresh?.max_monthly ?? 0} kullanıldı</span>
+                     <span className="font-medium">{usage?.refresh_count ?? 0} / {planFeatures?.refresh?.max_monthly ?? 0} kullanıldı</span>
                    </div>
-                   <Progress value={calculatePercentage(usage?.refresh_count ?? 0, planConfig?.refresh?.max_monthly ?? 0)} className="h-2" />
+                   <Progress value={calculatePercentage(usage?.refresh_count ?? 0, planFeatures?.refresh?.max_monthly ?? 0)} className="h-2" />
                  </div>
                )}
             </CardContent>
@@ -316,21 +298,21 @@ const PlanPage = () => {
                <div className="space-y-2 py-2 border-b last:border-0">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Aylık Token Kullanımı</span>
-                    <span className="font-medium">{(usage?.tokens_used ?? 0).toLocaleString()} / {(planConfig?.chat.max_monthly_tokens || 0).toLocaleString()}</span>
+                    <span className="font-medium">{(usage?.tokens_used ?? 0).toLocaleString()} / {(planFeatures?.chat.max_monthly_tokens || 0).toLocaleString()}</span>
                   </div>
-                  <Progress value={calculatePercentage(usage?.tokens_used ?? 0, planConfig?.chat.max_monthly_tokens || 0)} className="h-2" />
+                  <Progress value={calculatePercentage(usage?.tokens_used ?? 0, planFeatures?.chat.max_monthly_tokens || 0)} className="h-2" />
                </div>
                <div className="flex justify-between items-start py-2 border-b last:border-0">
                   <span className="text-sm mt-1">Erişilebilir Modeller</span>
                   <div className="flex flex-wrap gap-1 justify-end max-w-[180px]">
-                     {planConfig?.chat.allowed_models.map(m => (
+                     {planFeatures?.chat.allowed_models.map(m => (
                        <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
                      ))}
                   </div>
                </div>
                <div className="flex justify-between items-center py-2 border-b last:border-0">
                   <span className="text-sm">RAG Bağlamı (Context)</span>
-                  <span className="font-medium">{planConfig?.chat.rag.max_context_tokens} token</span>
+                  <span className="font-medium">{planFeatures?.chat.rag.max_context_tokens} token</span>
                </div>
             </CardContent>
           </Card>
@@ -345,13 +327,13 @@ const PlanPage = () => {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b last:border-0">
                 <span className="text-sm">‘Powered by Botla’ kaldırma</span>
-                {planConfig?.branding?.can_hide_branding
+                {planFeatures?.branding?.can_hide_branding
                   ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge>
                   : <InactiveBadge />}
               </div>
               <div className="flex justify-between items-center py-2 border-b last:border-0">
                 <span className="text-sm">Özel Branding (Logo/Bağlantı)</span>
-                {planConfig?.branding?.can_custom_branding
+                {planFeatures?.branding?.can_custom_branding
                   ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge>
                   : <InactiveBadge />}
               </div>
@@ -371,19 +353,19 @@ const PlanPage = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Aylık Kaynak Ekleme</span>
                     <span className="text-muted-foreground">
-                      {usage?.ingestions_used ?? 0} / {planConfig?.max_monthly_ingestions ?? 0} kullanıldı
+                      {usage?.ingestions_used ?? 0} / {planLimits?.max_monthly_ingestions ?? 0} kullanıldı
                     </span>
                   </div>
-                  <Progress value={calculatePercentage(usage?.ingestions_used ?? 0, planConfig?.max_monthly_ingestions ?? 0)} className="h-2" />
+                  <Progress value={calculatePercentage(usage?.ingestions_used ?? 0, planLimits?.max_monthly_ingestions ?? 0)} className="h-2" />
                </div>
                <div className="space-y-2 py-2 border-b last:border-0">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Aylık Embedding Token Kullanımı</span>
                     <span className="text-muted-foreground">
-                      {(usage?.ingestion_embedding_tokens ?? 0).toLocaleString()} / {(planConfig?.max_monthly_embedding_tokens ?? 0).toLocaleString()}
+                      {(usage?.ingestion_embedding_tokens ?? 0).toLocaleString()} / {(planLimits?.max_monthly_embedding_tokens ?? 0).toLocaleString()}
                     </span>
                   </div>
-                  <Progress value={calculatePercentage(usage?.ingestion_embedding_tokens ?? 0, planConfig?.max_monthly_embedding_tokens ?? 0)} className="h-2" />
+                  <Progress value={calculatePercentage(usage?.ingestion_embedding_tokens ?? 0, planLimits?.max_monthly_embedding_tokens ?? 0)} className="h-2" />
                </div>
                <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -399,6 +381,7 @@ const PlanPage = () => {
                </div>
             </CardContent>
           </Card>
+
         </div>
       </div>
     </div>
