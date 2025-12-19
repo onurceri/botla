@@ -77,7 +77,11 @@ func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string
 	} else {
 		// Default to openrouter if no prefix (model passed directly)
 		provider = "openrouter"
-		modelName = "openai/" + modelString // OpenRouter format: provider/model
+		if strings.Contains(modelString, "/") {
+			modelName = modelString
+		} else {
+			modelName = "openai/" + modelString // OpenRouter format: provider/model
+		}
 	}
 
 	client, err := f.GetClient(provider)
