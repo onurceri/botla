@@ -100,9 +100,8 @@ func TestAuth_ValidAccessToken_Me200(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resMe.StatusCode)
 	}
 	var me struct {
-		ID       string `json:"id"`
-		Email    string `json:"email"`
-		PlanCode string `json:"plan_code"`
+		ID    string `json:"id"`
+		Email string `json:"email"`
 	}
 	if err = json.NewDecoder(resMe.Body).Decode(&me); err != nil {
 		t.Fatalf("decode me response failed: %v", err)
@@ -113,8 +112,5 @@ func TestAuth_ValidAccessToken_Me200(t *testing.T) {
 	}
 	if me.Email != email {
 		t.Fatalf("expected email %s, got %s", email, me.Email)
-	}
-	if me.PlanCode == "" {
-		t.Fatalf("expected plan code to be set")
 	}
 }

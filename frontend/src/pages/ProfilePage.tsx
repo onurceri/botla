@@ -1,29 +1,17 @@
-import { useEffect, useState } from 'react'
+import { usePlan, useProfile } from '@/hooks/queries/useProfile'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { api } from '@/api/client'
 
 const ProfilePage = () => {
-  const [fullName, setFullName] = useState<string>('')
-  const [email, setEmail] = useState<string>('')
-  const [userPlan, setUserPlan] = useState<string>('free')
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/api/v1/me')
-      .then((res) => {
-        setFullName(res.data?.full_name ?? '')
-        setEmail(res.data?.email ?? '')
-        setUserPlan(res.data?.plan_code ?? 'free')
-      })
-      .catch(() => {
-        setFullName('')
-        setEmail('')
-        setUserPlan('free')
-      })
-      .finally(() => setLoading(false))
-  }, [])
+  const { data: profile, isLoading: profileLoading } = useProfile()
+  const { data: plan, isLoading: planLoading } = usePlan()
+  
+  const loading = profileLoading || planLoading
+  
+  const fullName = profile?.full_name || ''
+  const email = profile?.email || ''
+  const userPlan = plan?.code || 'free'
 
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>

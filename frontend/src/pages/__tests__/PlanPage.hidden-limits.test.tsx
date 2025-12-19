@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PlanPage from '../PlanPage'
 import { api } from '@/api/client'
+import { QueryWrapper } from '@/test-utils'
 
 describe('PlanPage hidden limits', () => {
   beforeEach(() => {
@@ -17,38 +18,52 @@ describe('PlanPage hidden limits', () => {
   })
 
   it('renders monthly ingestions and embedding token usage from /me', async () => {
-    vi.spyOn(api, 'get').mockResolvedValueOnce({
-      data: {
-        plan_code: 'pro',
-        plan_price: 199,
-        plan_currency: 'TRY',
-        config: {
-          max_monthly_ingestions: 50,
-          max_monthly_embedding_tokens: 250000,
-          files: { ocr_enabled: true, max_size_mb: 20, max_files_per_bot: 20, max_files_total: 100, total_storage_mb: 500 },
-          scraping: { dynamic_enabled: true, max_urls_per_bot: 10, max_pages_per_crawl: 10 },
-          chat: { allowed_models: ['gpt-4o'], max_monthly_tokens: 1000000, rag: { top_k: 5, max_context_tokens: 4000 } },
-          refresh: { enabled: true, max_monthly: 5 },
-        },
-        usage: {
-          files_count: 0,
-          max_files_count_in_one_bot: 0,
-          storage_used_mb: 0,
-          urls_count: 0,
-          max_urls_count_in_one_bot: 0,
-          tokens_used: 0,
-          ingestions_used: 7,
-          ingestion_embedding_tokens: 12345,
-          refresh_count: 0,
-        },
-      },
-      headers: { 'x-ratelimit-limit': '100', 'x-ratelimit-remaining': '80' },
-    } as any)
+    vi.spyOn(api, 'get').mockImplementation((url) => {
+      if (url.includes('/api/v1/me/plan')) {
+        return Promise.resolve({
+          data: {
+            code: 'pro',
+            price: 199,
+            currency: 'TRY',
+            limits: {
+              max_monthly_ingestions: 50,
+              max_monthly_embedding_tokens: 250000,
+              max_chatbots: 10,
+              min_readd_cooldown_minutes: 60,
+            },
+            features: {
+              files: { ocr_enabled: true, max_size_mb: 20, max_files_per_bot: 20, max_files_total: 100, total_storage_mb: 500 },
+              scraping: { dynamic_enabled: true, max_urls_per_bot: 10, max_pages_per_crawl: 10 },
+              chat: { allowed_models: ['gpt-4o'], max_monthly_tokens: 1000000, rag: { top_k: 5, max_context_tokens: 4000 } },
+              refresh: { enabled: true, max_monthly: 5 },
+            },
+          }
+        })
+      }
+      if (url.includes('/api/v1/me/usage')) {
+        return Promise.resolve({
+          data: {
+            files_count: 0,
+            max_files_count_in_one_bot: 0,
+            storage_used_mb: 0,
+            urls_count: 0,
+            max_urls_count_in_one_bot: 0,
+            tokens_used: 0,
+            ingestions_used: 7,
+            ingestion_embedding_tokens: 12345,
+            refresh_count: 0,
+          }
+        })
+      }
+      return Promise.resolve({ data: {} })
+    })
 
     render(
-      <MemoryRouter>
-        <PlanPage />
-      </MemoryRouter>
+      <QueryWrapper>
+        <MemoryRouter>
+          <PlanPage />
+        </MemoryRouter>
+      </QueryWrapper>
     )
 
     await waitFor(() => {

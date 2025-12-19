@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { 
   LayoutDashboard, 
@@ -14,8 +14,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { api } from '@/api/client'
 import { OrganizationSwitcher } from '@/features/organization/components/OrganizationSwitcher'
+import { usePlan, useProfile } from '@/hooks/queries/useProfile'
 
 const SidebarItem = ({ 
   icon: Icon, 
@@ -61,10 +61,13 @@ const DashboardLayout = () => {
     return (raw as 'pinned' | 'hover') || 'hover'
   })
   const isCollapsed = sidebarMode === 'hover'
-  const [profileName, setProfileName] = useState<string>('')
-  const [profileEmail, setProfileEmail] = useState<string>('')
-  const [planName, setPlanName] = useState<string>('')
-  const [planCode, setPlanCode] = useState<string>('free')
+  const { data: profile } = useProfile()
+  const { data: plan } = usePlan()
+
+  const profileName = profile?.full_name || ''
+  const profileEmail = profile?.email || ''
+  const planName = plan?.name || ''
+  const planCode = plan?.code || 'free'
 
   const toggleSidebarMode = () => {
     const next = sidebarMode === 'pinned' ? 'hover' : 'pinned'
@@ -77,23 +80,6 @@ const DashboardLayout = () => {
     window.localStorage.removeItem('botla_refresh_token')
     navigate('/login')
   }
-
-  useEffect(() => {
-    api.get('/api/v1/me')
-      .then((res) => {
-        setProfileName(res.data?.full_name ?? '')
-        setProfileEmail(res.data?.email ?? '')
-        const code = res.data?.subscription_plan ?? res.data?.plan_code ?? 'free'
-        setPlanCode(code)
-        setPlanName(res.data?.plan_name ?? '')
-      })
-      .catch(() => {
-        setProfileName('')
-        setProfileEmail('')
-        setPlanCode('free')
-        setPlanName('')
-      })
-  }, [])
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Panel', to: '/dashboard' },

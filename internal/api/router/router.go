@@ -32,6 +32,8 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	mh := &handlers.MeHandlers{DB: pool}
+	plh := &handlers.PlanHandlers{DB: pool}
+	uh := &handlers.UsageHandlers{DB: pool}
 	ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg}
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
@@ -52,6 +54,8 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 
 	// User
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
+	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(plh.GetPlan)))
+	mux.Handle("/api/v1/me/usage", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uh.GetUsage)))
 
 	// Chatbots (List/Create)
 	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { rateLimitStore } from '@/lib/rateLimit'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
@@ -27,9 +28,18 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    rateLimitStore.updateFromHeaders(res.headers)
+    return res
+  },
   async (err) => {
     const originalRequest = err.config
+    
+    // Capture rate limits from error responses too
+    if (err.response?.headers) {
+      rateLimitStore.updateFromHeaders(err.response.headers)
+    }
+
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       try {
