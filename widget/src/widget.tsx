@@ -7,9 +7,14 @@ const defaultHostId = 'chatbot-widget-host'
 function currentParams() {
   const p = (window as any).__CBW_PARAMS
   if (p && typeof p === 'object') return new URLSearchParams(p)
-  const src = (document.currentScript as HTMLScriptElement | null)?.src || window.location.href
+  const script = document.currentScript as HTMLScriptElement | null
+  const src = script?.src || window.location.href
   const u = new URL(src)
-  return u.searchParams
+  const params = u.searchParams
+  if (script && script.dataset.bot) {
+    params.set('chatbot-id', script.dataset.bot)
+  }
+  return params
 }
 
 function ensureHost(): HTMLElement {

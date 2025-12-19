@@ -8,16 +8,23 @@ function previewHtmlPlugin() {
   return {
     name: 'preview-html-transform',
     closeBundle() {
-      // After build, modify preview.html in dist folder
-      const previewPath = resolve(__dirname, 'dist/preview.html')
-      try {
-        let content = readFileSync(previewPath, 'utf-8')
-        content = content.replace('/src/widget.tsx', './widget.js')
-        writeFileSync(previewPath, content)
-        console.log('✓ Fixed preview.html widget path for production')
-      } catch (e) {
-        console.warn('Could not transform preview.html:', e.message)
-      }
+      // After build, modify preview.html and index.html in dist folder
+      const files = ['preview.html', 'index.html']
+      
+      files.forEach(file => {
+        const filePath = resolve(__dirname, `dist/${file}`)
+        try {
+          let content = readFileSync(filePath, 'utf-8')
+          content = content.replace('/src/widget.tsx', './widget.js')
+          writeFileSync(filePath, content)
+          console.log(`✓ Fixed ${file} widget path for production`)
+        } catch (e) {
+          // It's okay if file doesn't exist (e.g. clean build might not have copied it yet if something went wrong, but usually it should be there)
+          // Actually public dir is copied before closeBundle?
+          // Vite copies public dir assets.
+          console.warn(`Could not transform ${file}:`, e.message)
+        }
+      })
     }
   }
 }

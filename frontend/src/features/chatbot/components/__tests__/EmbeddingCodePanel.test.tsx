@@ -47,7 +47,7 @@ describe('EmbeddingCodePanel', () => {
     const copyBtns = screen.getAllByRole('button', { name: /Kopyala/i })
     const copyBtn = copyBtns[copyBtns.length - 1]
     fireEvent.click(copyBtn)
-    expect(writeText).toHaveBeenCalledWith('<script src="https://cdn.botla.app/widget.js" data-bot="abc"></script>')
+    expect(writeText).toHaveBeenCalledWith('<script src="https://widget.botla.app/widget.js" data-bot="abc"></script>')
   })
 
   it('updates domains and secret and refreshes', async () => {
