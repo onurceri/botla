@@ -7,7 +7,17 @@ const defaultHostId = 'chatbot-widget-host'
 function currentParams() {
   const p = (window as any).__CBW_PARAMS
   if (p && typeof p === 'object') return new URLSearchParams(p)
-  const script = document.currentScript as HTMLScriptElement | null
+  
+  // document.currentScript is null for ES modules, so find script by src or data-bot
+  let script = document.currentScript as HTMLScriptElement | null
+  if (!script) {
+    // Find widget script by looking for data-bot attribute or widget.js/widget.tsx in src
+    script = document.querySelector('script[data-bot]') as HTMLScriptElement | null
+    if (!script) {
+      script = document.querySelector('script[src*="widget.js"], script[src*="widget.tsx"]') as HTMLScriptElement | null
+    }
+  }
+  
   const src = script?.src || window.location.href
   const u = new URL(src)
   const params = u.searchParams

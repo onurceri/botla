@@ -689,6 +689,36 @@ export default function LandingPage() {
     return () => window.clearTimeout(t)
   }, [])
 
+  // Dynamically load chatbot widget for landing page demo
+  useEffect(() => {
+    const chatbotId = import.meta.env.VITE_LANDING_CHATBOT_ID
+    const widgetUrl = import.meta.env.VITE_WIDGET_SCRIPT_URL
+
+    if (!chatbotId || !widgetUrl) return // Skip if not configured
+
+    // Check if script already exists
+    const existingScript = document.querySelector(`script[data-bot="${chatbotId}"]`)
+    if (existingScript) return
+
+    const script = document.createElement('script')
+    // Add reset-session=1 to URL for fresh demo experience each visit
+    const widgetUrlWithReset = new URL(widgetUrl)
+    widgetUrlWithReset.searchParams.set('reset-session', '1')
+    script.src = widgetUrlWithReset.toString()
+    script.type = 'module'
+    script.setAttribute('data-bot', chatbotId)
+    script.async = true
+    document.body.appendChild(script)
+
+    return () => {
+      // Cleanup on unmount
+      script.remove()
+      // Also remove widget container if present
+      const widgetContainer = document.getElementById('chatbot-widget-container')
+      if (widgetContainer) widgetContainer.remove()
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-primary/20 text-foreground">
       <Navbar />
