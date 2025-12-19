@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { useChatbotContext } from '../../context/ChatbotContext'
 import { usePreview } from '../../hooks/usePreview'
@@ -36,11 +36,35 @@ export default function PlaygroundTab() {
     planConfig,
     suggestionsEnabled,
     suggestedQuestions,
-    buildAppearancePayload,
   } = useChatbotContext()
 
+  // Memoize the payload to prevent unnecessary API calls on every keystroke
+  // The debounce in useAutoSave still works, but this prevents extra re-renders
+  const appearancePayload = useMemo(() => ({
+    bot_display_name: botDisplayName,
+    bot_icon: botIcon,
+    welcome_message: welcomeMessage,
+    position,
+    chat_font_family: chatFontFamily,
+    theme_color: themeColor,
+    chat_background_color: chatBackgroundColor,
+    chat_header_color: chatHeaderColor,
+    chat_header_text_color: chatHeaderTextColor,
+    bot_message_color: botMessageColor,
+    bot_message_text_color: botMessageTextColor,
+    user_message_color: userMessageColor,
+    user_message_text_color: userMessageTextColor,
+    hide_branding: hideBranding,
+    custom_branding: hideBranding ? customBranding : null,
+  }), [
+    botDisplayName, botIcon, welcomeMessage, position, chatFontFamily,
+    themeColor, chatBackgroundColor, chatHeaderColor, chatHeaderTextColor,
+    botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor,
+    hideBranding, customBranding,
+  ])
+
   const { isSaving, lastSavedAt, error } = useAutoSave({
-    payload: buildAppearancePayload(),
+    payload: appearancePayload,
   })
 
   return (

@@ -149,4 +149,55 @@ describe('PlaygroundPreview', () => {
       '*'
     )
   })
+
+  it('debounces config updates on prop changes', async () => {
+    vi.useFakeTimers()
+    const mockPostMessage = vi.fn()
+    
+    const { container, rerender } = render(<PlaygroundPreview {...defaultProps} />)
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement
+    
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      writable: true,
+    })
+    
+    // Trigger initial load
+    iframe.dispatchEvent(new Event('load'))
+    vi.advanceTimersByTime(150)
+    
+    // Store initial call count (should be 1 from load)
+    const initialCallCount = mockPostMessage.mock.calls.length
+    
+    // Simulate rapid prop changes (like typing)
+    rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="H" />)
+    vi.advanceTimersByTime(50)
+    
+    rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="He" />)
+    vi.advanceTimersByTime(50)
+    
+    rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="Hel" />)
+    vi.advanceTimersByTime(50)
+    
+    rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="Hell" />)
+    vi.advanceTimersByTime(50)
+    
+    rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="Hello" />)
+    
+    // Should not have sent any new messages yet (debounce in progress)
+    expect(mockPostMessage.mock.calls.length).toBe(initialCallCount)
+    
+    // Wait for debounce to complete (300ms)
+    vi.advanceTimersByTime(350)
+    
+    // Now should have sent exactly one update (not 5)
+    expect(mockPostMessage.mock.calls.length).toBe(initialCallCount + 1)
+    
+    // Verify the final message contains the last value
+    const lastCall = mockPostMessage.mock.calls[mockPostMessage.mock.calls.length - 1]
+    expect(lastCall[0].config['welcome']).toBe('Hello')
+    
+    vi.useRealTimers()
+  })
 })
+

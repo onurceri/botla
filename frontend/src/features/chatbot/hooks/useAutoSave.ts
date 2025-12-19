@@ -45,10 +45,16 @@ export function useAutoSave({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const prevPayloadRef = useRef<string | null>(null)
+  const payloadRef = useRef(payload) // Store latest payload in ref
   const retryCountRef = useRef<number>(0)
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastToastedErrorRef = useRef<string | null>(null)
+
+  // Keep payloadRef in sync with latest payload
+  useEffect(() => {
+    payloadRef.current = payload
+  }, [payload])
 
   useEffect(() => {
     return () => {
@@ -95,7 +101,7 @@ export function useAutoSave({
       setState((s) => ({ ...s, isSaving: true, error: null }))
 
       try {
-        await api.put(`/api/v1/chatbots/${id}`, payload, {
+        await api.put(`/api/v1/chatbots/${id}`, payloadRef.current, {
           signal: abortRef.current.signal,
         })
 
@@ -153,8 +159,14 @@ export function useAutoSave({
         onError?.(errorMsg)
       }
     },
-    [id, payload, onSuccess, onError, maxRetries, retryDelayMs, toasts]
+    [id, onSuccess, onError, maxRetries, retryDelayMs, toasts]
   )
+
+  // Store save function in ref to avoid stale closures and prevent effect re-runs
+  const saveRef = useRef(save)
+  useEffect(() => {
+    saveRef.current = save
+  }, [save])
 
   useEffect(() => {
     if (!enabled) return
@@ -177,9 +189,9 @@ export function useAutoSave({
 
     timeoutRef.current = setTimeout(() => {
       timeoutRef.current = null
-      save()
+      saveRef.current()
     }, debounceMs)
-  }, [payload, enabled, debounceMs, save, id])
+  }, [payload, enabled, debounceMs, id])
 
   return state
 }
