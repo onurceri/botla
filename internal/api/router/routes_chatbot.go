@@ -43,6 +43,7 @@ func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *ha
 	// Sources
 	mux.HandleFunc("POST /api/v1/chatbots/{id}/sources/bulk", sh.BulkCreateSources)
 	mux.HandleFunc("GET /api/v1/chatbots/{id}/sources", sh.ChatbotSources)
+	mux.HandleFunc("POST /api/v1/chatbots/{id}/sources", sh.ChatbotSources)
 
 	// Chatbot management (Fallback)
 	mux.HandleFunc("/api/v1/chatbots/{id}", ch.ByID)
