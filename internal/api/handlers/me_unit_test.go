@@ -14,7 +14,6 @@ import (
 
 func TestMe_Success(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 	var uid string
 	var proPlanID string
 	if err := db.QueryRow(`SELECT id FROM plans WHERE code='pro'`).Scan(&proPlanID); err != nil {

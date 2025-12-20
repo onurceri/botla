@@ -16,8 +16,7 @@ import (
 )
 
 func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
-	pool, cleanup := mustInitDB(t)
-	defer cleanup()
+	pool := mustInitDB(t)
 	var uid string
 	var freePlanID string
 	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
@@ -83,8 +82,7 @@ func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
 
 func jsonArr(in []string) []byte { b, _ := json.Marshal(in); return b }
 
-func mustInitDB(t *testing.T) (*sql.DB, func()) {
+func mustInitDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db := testdb.OpenTestDB(t)
-	return db, func() { db.Close() }
+	return testdb.OpenTestDB(t)
 }

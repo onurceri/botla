@@ -11,13 +11,13 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
 	pool := testdb.OpenTestDB(t)
-	defer pool.Close()
 
 	var freePlanID string
 	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
@@ -43,7 +43,10 @@ func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
 		t.Fatalf("create chatbot: %v", err)
 	}
 
-	h := &ChatbotHandlers{DB: pool}
+	h := &ChatbotHandlers{
+		DB:             pool,
+		ChatbotService: services.NewChatbotService(pool, nil),
+	}
 	body := []byte(`{"refresh_policy":"auto","refresh_frequency":"weekly"}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -59,7 +62,6 @@ func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
 
 func TestUpdateChatbot_SecureEmbedForbidden_ForFreePlan(t *testing.T) {
 	pool := testdb.OpenTestDB(t)
-	defer pool.Close()
 
 	var freePlanID string
 	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
@@ -85,7 +87,10 @@ func TestUpdateChatbot_SecureEmbedForbidden_ForFreePlan(t *testing.T) {
 		t.Fatalf("create chatbot: %v", err)
 	}
 
-	h := &ChatbotHandlers{DB: pool}
+	h := &ChatbotHandlers{
+		DB:             pool,
+		ChatbotService: services.NewChatbotService(pool, nil),
+	}
 	body := []byte(`{"secure_embed_enabled": true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

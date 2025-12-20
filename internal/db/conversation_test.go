@@ -13,7 +13,6 @@ import (
 
 func TestConversation_Messages_DB(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 	uid := createUser(t, db)
 	// create bot
 	b := &models.Chatbot{UserID: uid, Name: "Conv Bot", SystemPrompt: "p", LanguageCode: "en-US", Model: "gpt-3.5-turbo", Temperature: 0.1, MaxTokens: 64, ThemeColor: "#000000", WelcomeMessage: "hi", Position: "bottom-right", BotMessageColor: "#000000", UserMessageColor: "#ffffff", BotMessageTextColor: "#ffffff", UserMessageTextColor: "#000000", ChatFontFamily: "Inter", ChatHeaderColor: "#000000", ChatHeaderTextColor: "#ffffff", ChatBackgroundColor: "#ffffff"}

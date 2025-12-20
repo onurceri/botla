@@ -59,7 +59,7 @@ coverage.html
 rag.out
 
 # Test artifacts
-internal/testdb/
+# internal/testdb/
 docs/test.pdf
 
 # Go test binaries

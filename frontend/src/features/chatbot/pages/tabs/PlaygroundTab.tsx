@@ -10,6 +10,7 @@ import PlaygroundPreview from '../../components/PlaygroundPreview'
 import { Smartphone, Palette } from 'lucide-react'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
+import { useUpdateAppearance } from '@/hooks/mutations/useChatbotMutations'
 
 export default function PlaygroundTab() {
   const { id = '' } = useParams()
@@ -63,8 +64,11 @@ export default function PlaygroundTab() {
     hideBranding, customBranding,
   ])
 
+  const { mutateAsync: updateAppearance } = useUpdateAppearance(id)
+
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: appearancePayload,
+    saveFn: (id, payload) => updateAppearance(payload),
   })
 
   return (

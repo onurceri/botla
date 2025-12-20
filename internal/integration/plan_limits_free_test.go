@@ -445,8 +445,8 @@ func TestFreePlan_RefreshPolicyAuto_Forbidden(t *testing.T) {
 	json.NewDecoder(resU.Body).Decode(&errResp)
 	resU.Body.Close()
 
-	if code, ok := errResp["code"].(string); !ok || code != "ERR_PLAN_REFRESH_UNAVAILABLE" {
-		t.Fatalf("expected error code ERR_PLAN_REFRESH_UNAVAILABLE, got %v", errResp)
+	if feature, ok := errResp["feature"].(string); !ok || feature != "auto_refresh" {
+		t.Fatalf("expected feature auto_refresh, got %v", errResp)
 	}
 }
 

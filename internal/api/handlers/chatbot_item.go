@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
-	pkgconfig "github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/internal/validation"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -76,189 +76,22 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if req.Model != nil {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil {
-			w.WriteHeader(http.StatusForbidden)
+	// If ChatbotService is available, use it for validation and update
+	if h.ChatbotService != nil {
+		serviceReq := h.convertToServiceRequest(req)
+		updated, featureErr := h.ChatbotService.Update(r.Context(), c, serviceReq)
+		if featureErr != nil {
+			h.writeFeatureError(w, featureErr)
 			return
 		}
-		if len(plan.Config.Chat.AllowedModels) > 0 {
-			if !pkgconfig.IsModelAllowed(*req.Model, plan.Config.Chat.AllowedModels) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusForbidden)
-				_ = json.NewEncoder(w).Encode(map[string]interface{}{
-					"error":            "This model is not available on your plan",
-					"upgrade_required": true,
-					"feature":          "model_selection",
-				})
-				return
-			}
-		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(updated)
+		return
 	}
 
-	// Validate hex color if provided
-	if req.ChatBackgroundColor != nil {
-		s := strings.TrimSpace(*req.ChatBackgroundColor)
-		if s != "" && !isValidHexColor(s) {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-	}
-
-	// Validate branding permissions based on user's plan
-	if req.HideBranding != nil && *req.HideBranding {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil || !plan.Config.Branding.CanHideBranding {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Your plan does not allow hiding branding",
-				"upgrade_required": true,
-				"feature":          "hide_branding",
-			})
-			return
-		}
-	}
-
-	if req.CustomBranding != nil {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil || !plan.Config.Branding.CanCustomBranding {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Custom branding requires Enterprise plan",
-				"upgrade_required": true,
-				"feature":          "custom_branding",
-			})
-			return
-		}
-	}
-
-	if req.RefreshPolicy != nil && *req.RefreshPolicy == "auto" {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil || !plan.Config.Refresh.Enabled {
-			base := api.BaseLang(c.LanguageCode)
-			cfg := api.ConfigFromBase(base)
-			api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPlanRefreshUnavailable, cfg)
-			return
-		}
-	}
-
-	if req.DiscoveryMode != nil && *req.DiscoveryMode != "disabled" {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil || plan.Config.Scraping.MaxPagesPerCrawl <= 0 {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Discovery mode is not available on your plan",
-				"upgrade_required": true,
-			})
-			return
-		}
-	}
-
-	if req.SecureEmbedEnabled != nil && *req.SecureEmbedEnabled {
-		plan, err := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if err != nil || plan == nil || !plan.Config.Security.SecureEmbedEnabled {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Secure embed is not available on your plan",
-				"upgrade_required": true,
-				"feature":          "secure_embed",
-			})
-			return
-		}
-	}
-
-	if req.AllowedDomains != nil {
-		planSecurity, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if planErr != nil || planSecurity == nil || !planSecurity.Config.Security.SecureEmbedEnabled {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Secure embed is not available on your plan",
-				"upgrade_required": true,
-				"feature":          "secure_embed",
-			})
-			return
-		}
-	}
-
-	if req.ThresholdConfig != nil {
-		planGuardrails, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if planErr != nil || planGuardrails == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if (req.ThresholdConfig.HighThreshold != 0 || req.ThresholdConfig.MediumThreshold != 0 || req.ThresholdConfig.ShowConfidenceWarning) && !planGuardrails.Config.Guardrails.CanCustomizeThresholds {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Threshold customization is not available on your plan",
-				"upgrade_required": true,
-				"feature":          "thresholds",
-			})
-			return
-		}
-
-		if req.ThresholdConfig.FallbackMode == "smart" && !planGuardrails.Config.Guardrails.CanUseSmartFallback {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Smart fallback is not available on your plan",
-				"upgrade_required": true,
-				"feature":          "smart_fallback",
-			})
-			return
-		}
-
-		if req.ThresholdConfig.FallbackMode == "escalate" && !planGuardrails.Config.Guardrails.CanUseEscalateFallback {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Escalate fallback is not available on your plan",
-				"upgrade_required": true,
-				"feature":          "escalate_fallback",
-			})
-			return
-		}
-	}
-
-	if req.HandoffEnabled != nil && *req.HandoffEnabled {
-		planGuardrails, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if planErr != nil || planGuardrails == nil || !planGuardrails.Config.Guardrails.CanUseEscalateFallback {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Human handoff is not available on your plan",
-				"upgrade_required": true,
-				"feature":          "escalate_fallback",
-			})
-			return
-		}
-	}
-
-	if req.TopicRestrictions != nil {
-		planTopics, planErr := db.GetPlanByUserID(r.Context(), h.DB, c.UserID)
-		if planErr != nil || planTopics == nil || !planTopics.Config.Guardrails.CanManageTopics {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":            "Topic restrictions are not available on your plan",
-				"upgrade_required": true,
-				"feature":          "topic_restrictions",
-			})
-			return
-		}
-	}
-
-	// Apply updates
-	// If branding is explicitly turned off, clear any custom branding
-	if req.HideBranding != nil && !*req.HideBranding {
-		req.CustomBranding = nil
-	}
+	// Fallback: Direct update without service (for backward compatibility)
+	// Note: This path should not be used in production
 	applyChatbotUpdates(c, req)
 
 	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
@@ -267,7 +100,6 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// Re-read for updated_at change
 	c2, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil || c2 == nil {
 		log.Printf("[ERROR] GetChatbotByID after update failed: err=%v, c2=%v", err, c2)
@@ -277,9 +109,91 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(c2); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	_ = json.NewEncoder(w).Encode(c2)
+}
+
+// convertToServiceRequest converts handler request to service request
+func (h *ChatbotHandlers) convertToServiceRequest(req createChatbotRequest) services.ChatbotUpdateRequest {
+	result := services.ChatbotUpdateRequest{
+		Name:                req.Name,
+		Description:         req.Description,
+		CustomInstruction:   req.CustomInstruction,
+		Language:            req.Language,
+		Model:               req.Model,
+		ThemeColor:          req.ThemeColor,
+		WelcomeMessage:      req.WelcomeMessage,
+		Position:            req.Position,
+		BotMessageColor:     req.BotMessageColor,
+		UserMessageColor:    req.UserMessageColor,
+		BotMessageTextColor: req.BotMessageTextColor,
+		UserMessageTextColor: req.UserMessageTextColor,
+		ChatFontFamily:      req.ChatFontFamily,
+		ChatHeaderColor:     req.ChatHeaderColor,
+		ChatHeaderTextColor: req.ChatHeaderTextColor,
+		ChatBackgroundColor: req.ChatBackgroundColor,
+		BotIcon:             req.BotIcon,
+		BotDisplayName:      req.BotDisplayName,
+		SecureEmbedEnabled:  req.SecureEmbedEnabled,
+		EmbedSecret:         req.EmbedSecret,
+		SuggestedQuestions:  req.SuggestedQuestions,
+		SuggestionsEnabled:  req.SuggestionsEnabled,
+		IncludePaths:        req.IncludePaths,
+		ExcludePaths:        req.ExcludePaths,
+		SelectorWhitelist:   req.SelectorWhitelist,
+		DiscoveryMode:       req.DiscoveryMode,
+		RefreshPolicy:       req.RefreshPolicy,
+		RefreshFrequency:    req.RefreshFrequency,
+		HideBranding:        req.HideBranding,
+		CustomBranding:      req.CustomBranding,
+		ConfidenceThreshold: req.ConfidenceThreshold,
+		FallbackMessages:    req.FallbackMessages,
+		ThresholdConfig:     req.ThresholdConfig,
+		HandoffEnabled:      req.HandoffEnabled,
+		HandoffType:         req.HandoffType,
+		HandoffConfig:       req.HandoffConfig,
 	}
+
+	// Handle temperature conversion (float32 -> float64)
+	if req.Temperature != nil {
+		temp := float64(*req.Temperature)
+		result.Temperature = &temp
+	}
+
+	// Handle max_tokens
+	if req.MaxTokens != nil {
+		result.MaxTokens = req.MaxTokens
+	}
+
+	// Handle allowed_domains (string -> []string)
+	if req.AllowedDomains != nil && *req.AllowedDomains != "" {
+		domains := strings.Split(*req.AllowedDomains, ",")
+		var cleaned []string
+		for _, d := range domains {
+			d = strings.TrimSpace(d)
+			if d != "" {
+				cleaned = append(cleaned, d)
+			}
+		}
+		result.AllowedDomains = cleaned
+	}
+
+	// Handle topic_restrictions - no conversion needed as types match
+	if req.TopicRestrictions != nil {
+		result.TopicRestrictions = req.TopicRestrictions
+	}
+
+	return result
+}
+
+// writeFeatureError writes a feature error response
+func (h *ChatbotHandlers) writeFeatureError(w http.ResponseWriter, err *validation.FeatureError) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"error":            err.Message,
+		"upgrade_required": err.UpgradeRequired,
+		"feature":          err.Feature,
+	})
 }
 
 // deleteChatbot handles DELETE request

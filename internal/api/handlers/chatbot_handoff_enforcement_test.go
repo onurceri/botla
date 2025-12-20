@@ -12,19 +12,21 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
 	pool := testdb.OpenTestDB(t)
-	defer pool.Close()
 
 	// Ensure pro plan exists and has correct config
 	var proPlanID string
-	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='pro'`).Scan(&proPlanID); err != nil {
+	var configJSON []byte
+	if err := pool.QueryRow(`SELECT id, config FROM plans WHERE code='pro'`).Scan(&proPlanID, &configJSON); err != nil {
 		t.Fatalf("pro plan not found: %v", err)
 	}
+	t.Logf("Pro plan config: %s", string(configJSON))
 
 	// Create user with PRO plan
 	var userID string
@@ -46,7 +48,10 @@ func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
 	}
 
 	// Attempt to enable Handoff
-	h := &ChatbotHandlers{DB: pool}
+	h := &ChatbotHandlers{
+		DB:             pool,
+		ChatbotService: services.NewChatbotService(pool, nil),
+	}
 	body := []byte(`{"handoff_enabled":true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

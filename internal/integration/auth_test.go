@@ -115,8 +115,8 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 	if ttl <= 0 {
 		t.Fatalf("expected access token expiry in the future, got %v", claims.ExpiresAt.Time)
 	}
-	if ttl < 10*time.Minute || ttl > 20*time.Minute {
-		t.Fatalf("expected access token TTL around 15m, got %v", ttl)
+	if ttl < 55*time.Minute || ttl > 65*time.Minute {
+		t.Fatalf("expected access token TTL around 60m, got %v", ttl)
 	}
 
 	res4, err := http.Get(te.Server.URL + "/api/v1/protected")

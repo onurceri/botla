@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
@@ -15,9 +16,10 @@ type VectorStore interface {
 
 // ChatbotHandlers handles chatbot-related HTTP endpoints
 type ChatbotHandlers struct {
-	DB          *sql.DB
-	Cfg         *config.Config
-	VectorStore VectorStore
+	DB              *sql.DB
+	Cfg             *config.Config
+	VectorStore     VectorStore
+	ChatbotService  *services.ChatbotService
 }
 
 type createChatbotRequest struct {

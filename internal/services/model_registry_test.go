@@ -10,7 +10,6 @@ import (
 
 func TestModelService_GetAvailableModels(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 
 	// Ensure seed data is present (testdb should have migrations applied)
 	// We no longer manually insert data here to respect migration-driven testing.

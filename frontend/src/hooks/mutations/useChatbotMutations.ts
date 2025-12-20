@@ -1,6 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { uploadPDFSource, uploadURLSource, uploadTextSource, deleteSource, refreshSource } from '@/api/source'
-import { api } from '@/api/client'
+import { 
+  api, 
+  updateBasicInfo, 
+  updateAppearance, 
+  updateModelSettings, 
+  updateSecuritySettings, 
+  updateGuardrails, 
+  updateHandoff, 
+  updateRefresh, 
+  updateScrapingConfig 
+} from '@/api/chatbot'
 import { CHATBOT_QUERY_KEY } from '../queries/useChatbot'
 import { SOURCES_QUERY_KEY } from '../queries/useSources'
 
@@ -80,5 +90,69 @@ export function useUpdateChatbot(chatbotId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) })
     },
+  })
+}
+
+export function useUpdateBasicInfo(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateBasicInfo(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useUpdateAppearance(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateAppearance(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useUpdateModelSettings(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateModelSettings(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useUpdateSecuritySettings(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateSecuritySettings(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useUpdateGuardrails(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateGuardrails(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useUpdateHandoff(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateHandoff(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useUpdateRefresh(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateRefresh(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useUpdateScrapingConfig(chatbotId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => updateScrapingConfig(chatbotId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
   })
 }

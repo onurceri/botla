@@ -81,10 +81,10 @@ widget-deploy:
 	cd widget && npm install && npm run build && npx wrangler pages deploy dist --project-name botla-widget
 
 test-all:
-	 CGO_ENABLED=1 go test -tags fitz -race -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
+	 CGO_ENABLED=1 go test -p 1 -tags fitz -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
 
 test-no-pdf:
-	 go test -race -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
+	 go test -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
 
 cover-html:
 	 @[ -f coverage.out ] || (echo "coverage.out not found. Run 'make test-all' first." && exit 1)

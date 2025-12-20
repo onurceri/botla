@@ -377,6 +377,7 @@ func TestChat_MaxTokensConfiguration(t *testing.T) {
 	defer stub.Close()
 
 	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
+	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", stub.Server.URL)
 
 	te, err := SetupTestEnv()

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -152,7 +153,7 @@ func TestInitChatContext_BotName(t *testing.T) {
 			req := models.ChatRequest{Message: "test", SessionID: "s1"}
 			ragConfig := models.RAGConfig{TopK: 5, MaxContextTokens: 4000}
 
-			cc := service.initChatContext(req, bot, ragConfig)
+			cc := service.initChatContext(context.Background(), req, bot, ragConfig, nil)
 
 			if cc.BotName != tc.wantBotName {
 				t.Errorf("BotName = %q, want %q", cc.BotName, tc.wantBotName)
@@ -178,7 +179,7 @@ func TestInitChatContext_ThresholdConfig(t *testing.T) {
 		req := models.ChatRequest{Message: "test"}
 		ragConfig := models.RAGConfig{}
 
-		cc := service.initChatContext(req, bot, ragConfig)
+		cc := service.initChatContext(context.Background(), req, bot, ragConfig, nil)
 
 		if cc.ThresholdCfg != customConfig {
 			t.Error("should use custom threshold config")
@@ -197,7 +198,7 @@ func TestInitChatContext_ThresholdConfig(t *testing.T) {
 		req := models.ChatRequest{Message: "test"}
 		ragConfig := models.RAGConfig{}
 
-		cc := service.initChatContext(req, bot, ragConfig)
+		cc := service.initChatContext(context.Background(), req, bot, ragConfig, nil)
 
 		if cc.ThresholdCfg == nil {
 			t.Fatal("ThresholdCfg should not be nil")

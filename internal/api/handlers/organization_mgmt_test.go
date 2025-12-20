@@ -53,7 +53,6 @@ func createTestOrg(t *testing.T, db *sql.DB, ownerID string) (string, *services.
 
 func TestOrganizationManagement(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
 
 	ownerID := createTestUser(t, db)
 	orgID, svc := createTestOrg(t, db, ownerID)

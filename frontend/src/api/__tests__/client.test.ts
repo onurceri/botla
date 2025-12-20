@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios from 'axios'
-import { api } from '../client'
+import { api, _resetRedirecting } from '../client'
 
 describe('axios refresh interceptor', () => {
   beforeEach(() => {
@@ -18,6 +18,7 @@ describe('axios refresh interceptor', () => {
       },
       writable: true,
     })
+    _resetRedirecting()
   })
 
   it('refreshes token on 401 and retries original request', async () => {
@@ -80,6 +81,8 @@ describe('axios refresh interceptor', () => {
   })
 
   it('redirects to login on refresh failure and clears tokens', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('VITE_E2E', '')
     window.localStorage.setItem('botla_refresh_token', 'rtok')
     vi.spyOn(axios, 'post').mockRejectedValueOnce(new Error('nope'))
     const getLoc = vi.spyOn(window, 'location', 'get')
@@ -89,10 +92,21 @@ describe('axios refresh interceptor', () => {
     const handler = handlers[handlers.length - 1].rejected
     const req: any = { url: '/x', headers: {}, method: 'get', _retry: false }
     const err: any = { response: { status: 401 }, config: req }
-    await handler(err).catch(() => { })
+    
+    const p = handler(err).catch(() => { })
+    
+    // Fast-forward time for the 100ms delay in handleSessionExpired
+    vi.advanceTimersByTime(200)
+    await p
+
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_token')
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_refresh_token')
-    expect(replaceMock).toHaveBeenCalledWith('/login')
+    
+    await vi.waitFor(() => {
+        expect(replaceMock).toHaveBeenCalledWith('/login')
+    })
     getLoc.mockRestore()
+    vi.useRealTimers()
+    vi.unstubAllEnvs()
   })
 })

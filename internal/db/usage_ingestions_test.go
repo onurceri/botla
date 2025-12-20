@@ -10,7 +10,6 @@ import (
 
 func TestUsageIngestions_CRUD(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
         user_id VARCHAR(64) NOT NULL,
         period_month DATE NOT NULL,

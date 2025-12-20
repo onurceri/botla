@@ -5,6 +5,7 @@ import DashboardLayout from '../DashboardLayout'
 import { OrganizationProvider } from '@/features/organization/context/OrganizationContext'
 import { ToastProvider } from '@/components/ui/toast'
 import { api } from '@/api/client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // Mock api
 vi.mock('@/api/client', () => ({
@@ -22,6 +23,15 @@ vi.mock('@/api/organization', () => ({
 // Mock workspace api
 vi.mock('@/api/workspace', () => ({
   getWorkspaces: vi.fn().mockResolvedValue([]),
+}))
+
+// Mock plan api
+vi.mock('@/api/plan', () => ({
+  getPlan: vi.fn().mockResolvedValue({
+    limits: { max_chatbots: 5, max_messages: 1000 },
+    features: { secure_embed: true },
+    available_models: ['gpt-4o-mini']
+  }),
 }))
 
 describe('DashboardLayout', () => {
@@ -42,20 +52,25 @@ describe('DashboardLayout', () => {
   })
 
   const renderWithProviders = (_: React.ReactNode, { initialEntries = ["/"] } = {}) => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } }
+    })
     return render(
-      <MemoryRouter initialEntries={initialEntries}>
-        <ToastProvider>
-          <OrganizationProvider>
-               <Routes>
-                  <Route path="/" element={<DashboardLayout />}>
-                      <Route index element={<div>Dashboard Content</div>} />
-                       <Route path="chatbots" element={<div>Chatbots Content</div>} />
-                  </Route>
-                   <Route path="/login" element={<h1>Login Page</h1>} />
-               </Routes>
-          </OrganizationProvider>
-        </ToastProvider>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={initialEntries}>
+          <ToastProvider>
+            <OrganizationProvider>
+                 <Routes>
+                    <Route path="/" element={<DashboardLayout />}>
+                        <Route index element={<div>Dashboard Content</div>} />
+                         <Route path="chatbots" element={<div>Chatbots Content</div>} />
+                    </Route>
+                     <Route path="/login" element={<h1>Login Page</h1>} />
+                 </Routes>
+            </OrganizationProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
     )
   }
 

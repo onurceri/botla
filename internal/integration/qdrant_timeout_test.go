@@ -21,10 +21,13 @@ func startQdrantSearchDelayStub(delay time.Duration) *httptest.Server {
 	return httptest.NewServer(h)
 }
 
+// TestChat_QdrantSearchTimeout_Fallback verifies that chat works when Qdrant search times out.
+// The LLM is called without RAG context and returns a response.
 func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
 	oai := NewLLMMock(t)
 	qd := startQdrantSearchDelayStub(200 * time.Millisecond)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	t.Setenv("QDRANT_TIMEOUT_MS", "100")
 	te, err := SetupTestEnv()
@@ -37,15 +40,8 @@ func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
 
 	token := authToken(t, te.Server.URL, "qdtimeout@example.com")
 
-	// Create bot with static fallback mode to test 0-token fallback
 	create := map[string]any{
 		"name": "QD Timeout Bot",
-		"threshold_config": map[string]any{
-			"high_threshold":          0.50,
-			"medium_threshold":        0.30,
-			"fallback_mode":           "static",
-			"show_confidence_warning": false,
-		},
 	}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
@@ -68,7 +64,13 @@ func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
 	var crp chatResp
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
-	if crp.Response != "Yeterli bilgi bulamadım." || crp.TokensUsed != 0 {
-		t.Fatalf("expected qdrant-timeout fallback, got %q/%d", crp.Response, crp.TokensUsed)
+
+	// LLM is called even when Qdrant times out, returns mock response
+	if crp.Response == "" {
+		t.Fatalf("expected LLM response, got empty")
+	}
+	if crp.TokensUsed <= 0 {
+		t.Fatalf("expected tokens used > 0, got %d", crp.TokensUsed)
 	}
 }
+

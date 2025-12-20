@@ -15,6 +15,8 @@ import {
 import { useChatbotContext, ModelInfo } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
+import { useUpdateBasicInfo, useUpdateModelSettings } from '@/hooks/mutations/useChatbotMutations'
+import { useParams } from 'react-router-dom'
 
 export default function OverviewTab() {
   const {
@@ -27,10 +29,27 @@ export default function OverviewTab() {
     availableModels,
   } = useChatbotContext()
 
-  const { isSaving, lastSavedAt, error } = useAutoSave({
-    payload: buildOverviewPayload(),
+  const { id } = useParams()
+  const { mutateAsync: updateBasicInfo } = useUpdateBasicInfo(id || '')
+  const { mutateAsync: updateModelSettings } = useUpdateModelSettings(id || '')
+
+  const { isSaving: isBasicInfoSaving, lastSavedAt: basicInfoSavedAt, error: basicInfoError } = useAutoSave({
+    payload: { name, description: null, custom_instruction: customInstruction, language: 'tr-TR' }, 
+    saveFn: (id, payload) => updateBasicInfo(payload),
     enabled: !!name.trim(),
   })
+
+  const { isSaving: isModelSaving, lastSavedAt: modelSavedAt, error: modelError } = useAutoSave({
+    payload: { model, temperature, max_tokens: maxTokens },
+    saveFn: (id, payload) => updateModelSettings(payload),
+    enabled: !!model,
+  })
+
+  const isSaving = isBasicInfoSaving || isModelSaving
+  const lastSavedAt = basicInfoSavedAt && modelSavedAt 
+    ? (basicInfoSavedAt > modelSavedAt ? basicInfoSavedAt : modelSavedAt) 
+    : (basicInfoSavedAt || modelSavedAt)
+  const error = basicInfoError || modelError
 
   // Group models by provider
   const groupedModels = (availableModels || []).reduce((acc, model) => {

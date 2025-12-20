@@ -26,7 +26,6 @@ func TestChat_NoInfoFound(t *testing.T) {
 	defer qd.Close()
 	t.Setenv("QDRANT_URL", qd.URL)
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 	var uid string
 	var freePlanID string
 	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
@@ -43,6 +42,7 @@ func TestChat_NoInfoFound(t *testing.T) {
 	factory := rag.NewClientFactory(cfg)
 
 	chatSvc := services.NewChatService(dbx, factory, nil, nil, nil) // factory provided
+	chatSvc.SyncAnalytics = true                                     // Run analytics synchronously in tests
 	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))

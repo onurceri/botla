@@ -3,6 +3,7 @@ import EmbeddingCodePanel from '../../components/EmbeddingCodePanel'
 import { useChatbotContext } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
+import { useUpdateSecuritySettings } from '@/hooks/mutations/useChatbotMutations'
 
 export default function ConnectTab() {
   const { id = '' } = useParams()
@@ -14,8 +15,11 @@ export default function ConnectTab() {
     buildConnectPayload,
   } = useChatbotContext()
 
+  const { mutateAsync: updateSecurity } = useUpdateSecuritySettings(id)
+
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildConnectPayload(),
+    saveFn: (_, payload) => updateSecurity(payload),
   })
 
   return (

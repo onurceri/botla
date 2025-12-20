@@ -2,6 +2,8 @@ import GuardrailsSettings from '../../components/GuardrailsSettings'
 import { useChatbotContext } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
+import { useUpdateGuardrails } from '@/hooks/mutations/useChatbotMutations'
+import { useParams } from 'react-router-dom'
 
 export default function GuardrailsTab() {
   const {
@@ -12,8 +14,12 @@ export default function GuardrailsTab() {
     buildGuardrailsPayload,
   } = useChatbotContext()
 
+  const { id } = useParams()
+  const { mutateAsync: updateGuardrails } = useUpdateGuardrails(id || '')
+
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildGuardrailsPayload(),
+    saveFn: (id, payload) => updateGuardrails(payload),
   })
 
   return (

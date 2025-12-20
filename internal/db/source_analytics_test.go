@@ -11,7 +11,6 @@ import (
 
 func TestGetSourceUsageStats(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 
 	// Ensure message_sources table exists (in case migration didn't run on test schema)
 	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS message_sources (

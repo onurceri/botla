@@ -22,6 +22,7 @@ func TestChat_StubbedContext(t *testing.T) {
 	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {

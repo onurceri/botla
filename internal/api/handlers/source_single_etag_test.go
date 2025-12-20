@@ -17,7 +17,6 @@ import (
 
 func TestSources_ETag_Status(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 	var uid string
 	var freePlanID string
 	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {

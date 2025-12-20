@@ -11,6 +11,7 @@ func TestChat_OpenAIEnvMissing_500(t *testing.T) {
 	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	// Ensure OPENAI_API_KEY is missing, but satisfy LoadConfig with another key
@@ -48,10 +49,12 @@ func TestChat_OpenAIEnvMissing_500(t *testing.T) {
 	resCh.Body.Close()
 }
 
+// TestChat_QdrantEnvMissing_Fallback verifies that chat works when QDRANT_URL is missing.
+// The LLM is called without RAG context and returns a response.
 func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
-	// Missing QDRANT_URL should result in contextless chat fallback
 	oai := NewLLMMock(t)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", "")
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -61,15 +64,8 @@ func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
 	defer oai.Close()
 
 	token := authToken(t, te.Server.URL, "qdenv@example.com")
-	// Create bot with static fallback mode to test 0-token fallback
 	create := map[string]any{
 		"name": "QD Env Bot",
-		"threshold_config": map[string]any{
-			"high_threshold":          0.50,
-			"medium_threshold":        0.30,
-			"fallback_mode":           "static",
-			"show_confidence_warning": false,
-		},
 	}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
@@ -92,7 +88,12 @@ func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
 	var crp chatResp
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
-	if crp.Response != "Yeterli bilgi bulamadım." || crp.TokensUsed != 0 {
-		t.Fatalf("expected qdrant-env fallback, got %q/%d", crp.Response, crp.TokensUsed)
+
+	// LLM is called even when QDRANT_URL is empty, returns mock response
+	if crp.Response == "" {
+		t.Fatalf("expected LLM response, got empty")
+	}
+	if crp.TokensUsed <= 0 {
+		t.Fatalf("expected tokens used > 0, got %d", crp.TokensUsed)
 	}
 }

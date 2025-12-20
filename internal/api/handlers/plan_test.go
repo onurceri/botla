@@ -15,7 +15,6 @@ import (
 
 func TestGetPlan_Success(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 
 	var proPlanID string
 	// Try to find 'pro' plan from seeded data

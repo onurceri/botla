@@ -161,8 +161,8 @@ func TestTurkish_LocalizedError(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	// Update free plan to have very low token limit (ensure chat config exists)
-	_, _ = te.DB.Exec(`UPDATE plans SET config = COALESCE(config, '{}'::jsonb) || '{"chat": {"max_monthly_tokens": 100, "allowed_models": ["gpt-4o-mini"]}}'::jsonb WHERE code='free'`)
+	// Update free plan to have very low token limit
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code='free'`)
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "error-loc@example.com")
 
 	token := authToken(t, te.Server.URL, "error-loc@example.com")

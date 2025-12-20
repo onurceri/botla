@@ -81,7 +81,11 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	mux.Handle("PATCH /api/v1/organizations/{id}/members/{userID}", protected(requireAdmin(http.HandlerFunc(oh.UpdateMemberRole))))
 	mux.Handle("DELETE /api/v1/organizations/{id}/members/{userID}", protected(requireAdmin(http.HandlerFunc(oh.RemoveMember))))
 
-	ch := &handlers.ChatbotHandlers{DB: pool, VectorStore: vs}
+	ch := &handlers.ChatbotHandlers{
+		DB:             pool,
+		VectorStore:    vs,
+		ChatbotService: services.NewChatbotService(pool, log),
+	}
 	// Add ExtractTenantContext to support X-Workspace-ID header
 	mux.Handle("/api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
 	memStore := storage.NewMemoryStorage()
@@ -142,6 +146,38 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/analytics/sources") {
 			anh.GetSourceUsage(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/basic-info") && r.Method == http.MethodPut {
+			ch.UpdateBasicInfo(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/appearance") && r.Method == http.MethodPut {
+			ch.UpdateAppearance(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/model") && r.Method == http.MethodPut {
+			ch.UpdateModelSettings(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/security") && r.Method == http.MethodPut {
+			ch.UpdateSecuritySettings(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/guardrails") && r.Method == http.MethodPut {
+			ch.UpdateGuardrails(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") && r.Method == http.MethodPut {
+			ch.UpdateHandoff(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/refresh") && r.Method == http.MethodPut {
+			ch.UpdateRefresh(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/scraping") && r.Method == http.MethodPut {
+			ch.UpdateScrapingConfig(w, r)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") && !strings.Contains(r.URL.Path, "/analytics/") {

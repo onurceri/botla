@@ -14,6 +14,9 @@ func parseBotIDFromPath(path string) (string, bool) {
 		return "", false
 	}
 	botID := strings.TrimPrefix(path, prefix)
+	if idx := strings.Index(botID, "/"); idx != -1 {
+		botID = botID[:idx]
+	}
 	if botID == "" {
 		return "", false
 	}
