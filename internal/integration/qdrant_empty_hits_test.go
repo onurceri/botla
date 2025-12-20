@@ -70,4 +70,3 @@ func TestChat_QdrantEmptyHits_Fallback(t *testing.T) {
 		t.Fatalf("expected tokens used > 0, got %d", crp.TokensUsed)
 	}
 }
-

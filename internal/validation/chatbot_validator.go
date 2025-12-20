@@ -37,16 +37,16 @@ func (e *FeatureError) Error() string {
 // ChatbotUpdateRequest represents fields that can be updated on a chatbot.
 // This is a subset focused on fields that require plan validation.
 type ChatbotUpdateRequest struct {
-	Model              *string                  `json:"model,omitempty"`
-	HideBranding       *bool                    `json:"hide_branding,omitempty"`
-	CustomBranding     *models.CustomBranding   `json:"custom_branding,omitempty"`
-	RefreshPolicy      *string                  `json:"refresh_policy,omitempty"`
-	DiscoveryMode      *string                  `json:"discovery_mode,omitempty"`
-	SecureEmbedEnabled *bool                    `json:"secure_embed_enabled,omitempty"`
-	AllowedDomains     []string                 `json:"allowed_domains,omitempty"`
-	ThresholdConfig    *models.ThresholdConfig  `json:"threshold_config,omitempty"`
-	HandoffEnabled     *bool                    `json:"handoff_enabled,omitempty"`
-	TopicRestrictions  *models.TopicConfig      `json:"topic_restrictions,omitempty"`
+	Model               *string                 `json:"model,omitempty"`
+	HideBranding        *bool                   `json:"hide_branding,omitempty"`
+	CustomBranding      *models.CustomBranding  `json:"custom_branding,omitempty"`
+	RefreshPolicy       *string                 `json:"refresh_policy,omitempty"`
+	DiscoveryMode       *string                 `json:"discovery_mode,omitempty"`
+	SecureEmbedEnabled  *bool                   `json:"secure_embed_enabled,omitempty"`
+	AllowedDomains      []string                `json:"allowed_domains,omitempty"`
+	ThresholdConfig     *models.ThresholdConfig `json:"threshold_config,omitempty"`
+	HandoffEnabled      *bool                   `json:"handoff_enabled,omitempty"`
+	TopicRestrictions   *models.TopicConfig     `json:"topic_restrictions,omitempty"`
 	ChatBackgroundColor *string                 `json:"chat_background_color,omitempty"`
 }
 
@@ -170,7 +170,7 @@ func (v *ChatbotValidator) validateSecureEmbed(req ChatbotUpdateRequest, plan *m
 			UpgradeRequired: true,
 		}
 	}
-	if req.AllowedDomains != nil && len(req.AllowedDomains) > 0 && !plan.Config.Security.SecureEmbedEnabled {
+	if len(req.AllowedDomains) > 0 && !plan.Config.Security.SecureEmbedEnabled {
 		return &FeatureError{
 			Feature:         "secure_embed",
 			Message:         "Domain restrictions require secure embed feature",
@@ -261,7 +261,7 @@ func isValidHexColor(s string) bool {
 	}
 	for i := 1; i < 7; i++ {
 		c := s[i]
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
 			return false
 		}
 	}

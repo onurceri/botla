@@ -57,7 +57,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 		}
 
 		// Validate that botID is a valid UUID
-		if _, err := uuid.Parse(botID); err != nil {
+		if _, err = uuid.Parse(botID); err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}

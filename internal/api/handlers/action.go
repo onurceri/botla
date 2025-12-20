@@ -199,7 +199,8 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 			newDesc = *action.Description
 		}
 
-		toolName, err := h.ToolNameGenerator.Generate(r.Context(), newName, newDesc)
+		var toolName string
+		toolName, err = h.ToolNameGenerator.Generate(r.Context(), newName, newDesc)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("failed to generate tool name: %v", err), http.StatusInternalServerError)
 			return

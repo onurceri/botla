@@ -82,4 +82,3 @@ func TestChat_OpenAIEmbeddingTimeout_Fallback(t *testing.T) {
 		t.Fatalf("expected some response, got empty")
 	}
 }
-

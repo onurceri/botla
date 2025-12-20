@@ -42,7 +42,7 @@ func TestChat_NoInfoFound(t *testing.T) {
 	factory := rag.NewClientFactory(cfg)
 
 	chatSvc := services.NewChatService(dbx, factory, nil, nil, nil) // factory provided
-	chatSvc.SyncAnalytics = true                                     // Run analytics synchronously in tests
+	chatSvc.SyncAnalytics = true                                    // Run analytics synchronously in tests
 	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))

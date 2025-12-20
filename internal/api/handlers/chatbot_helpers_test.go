@@ -2,25 +2,6 @@ package handlers
 
 import "testing"
 
-func TestIsValidHexColor(t *testing.T) {
-	cases := []struct {
-		in string
-		ok bool
-	}{
-		{"#fff", true},
-		{"#ffffff", true},
-		{"#FFF", true},
-		{"#GGG", false},
-		{"fff", false},
-		{"#12345", false},
-	}
-	for _, c := range cases {
-		if isValidHexColor(c.in) != c.ok {
-			t.Fatalf("color %q expected %v", c.in, c.ok)
-		}
-	}
-}
-
 func TestNormalizeSuggestions(t *testing.T) {
 	in := []string{"  Merhaba  ", "merhaba", "", "çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun çok uzun"}
 	out := normalizeSuggestions(in)

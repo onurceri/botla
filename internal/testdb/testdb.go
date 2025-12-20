@@ -38,7 +38,7 @@ func cleanupStaleSchemas() {
 		fmt.Fprintf(os.Stderr, "warning: failed to open db for stale schema cleanup: %v\n", err)
 		return
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Find all schemas starting with 'test_'
 	rows, err := db.Query(`
@@ -51,7 +51,7 @@ func cleanupStaleSchemas() {
 		fmt.Fprintf(os.Stderr, "warning: failed to list stale schemas: %v\n", err)
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var schemas []string
 	for rows.Next() {
@@ -67,7 +67,7 @@ func cleanupStaleSchemas() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to drop stale schema %s: %v\n", schema, err)
 		} else {
-			fmt.Fprintf(os.Stdout, "cleaned up stale test schema: %s\n", schema)
+			_, _ = fmt.Fprintf(os.Stdout, "cleaned up stale test schema: %s\n", schema)
 		}
 	}
 }
@@ -201,7 +201,7 @@ func createSchemaAndConnect(t *testing.T, schema string) *sql.DB {
 	}
 
 	// Create the schema
-	if _, err := baseDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema)); err != nil {
+	if _, err = baseDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema)); err != nil {
 		_ = baseDB.Close()
 		t.Fatalf("create schema %s: %v", schema, err)
 	}
@@ -248,7 +248,7 @@ func dropSchema(t *testing.T, db *sql.DB, schema string) {
 		t.Logf("warning: failed to open base db for schema cleanup: %v", err)
 		return
 	}
-	defer baseDB.Close()
+	defer func() { _ = baseDB.Close() }()
 
 	// Force disconnect any remaining connections
 	_, _ = baseDB.Exec(fmt.Sprintf(`
@@ -285,6 +285,7 @@ func runMigrations(t *testing.T, schema string) {
 
 	dbURL := getTestDSN(schema)
 
+	//nolint:gosec // this is a test helper using dynamic path
 	cmd := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		// Log migration errors for debugging, but don't fail

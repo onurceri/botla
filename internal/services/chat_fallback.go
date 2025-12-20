@@ -86,52 +86,6 @@ func (s *ChatService) getHandoffMessage(cc *chatContext) string {
 // SMART FALLBACK - AI-generated redirection when no context found
 // =============================================================================
 
-// smartFallback generates a helpful response when no context is available.
-// This is the original version used for general smart fallback.
-func (s *ChatService) smartFallback(ctx context.Context, bot *models.Chatbot, userMessage string, langName string) (string, int, error) {
-	capabilities := s.getCapabilitySummaries(ctx, bot.ID)
-
-	botName := bot.Name
-	if bot.BotDisplayName != nil && *bot.BotDisplayName != "" {
-		botName = *bot.BotDisplayName
-	}
-
-	systemPrompt := BuildSmartFallbackPrompt(botName, capabilities, langName)
-
-	client, modelName, err := s.Factory.GetClientForModel(bot.Model)
-	if err != nil {
-		c, e := rag.NewOpenAIClientFromEnv()
-		if e != nil || c == nil {
-			return "", 0, fmt.Errorf("openai client not configured: %w", e)
-		}
-		client = c
-		modelName = config.ModelGPT4oMini
-	}
-
-	if client == nil {
-		return "", 0, fmt.Errorf("model client unavailable")
-	}
-
-	params := models.CompletionParams{
-		SystemPrompt: systemPrompt,
-		Context:      "",
-		UserMessage:  userMessage,
-		Model:        modelName,
-		Temperature:  0.3,
-		MaxTokens:    200,
-	}
-
-	res, err := client.CreateCompletion(ctx, params)
-	if err != nil {
-		if s.Log != nil {
-			s.Log.Error("smart_fallback_error", map[string]any{"error": err.Error(), "model": bot.Model})
-		}
-		return "", 0, err
-	}
-
-	return res.Content, res.UsageTokens, nil
-}
-
 // restrictedSmartFallback generates a controlled response when no RAG context is available.
 // This version uses a stricter prompt and lower token limit to prevent
 // the bot from answering factual questions with general LLM knowledge.

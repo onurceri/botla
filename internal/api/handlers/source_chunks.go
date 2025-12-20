@@ -71,5 +71,7 @@ func (h *SourcesHandlers) GetSourceChunks(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		h.Log.Error("json_encode_error", map[string]any{"error": err.Error()})
+	}
 }

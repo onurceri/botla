@@ -59,7 +59,7 @@ func normalizeToolParameters(raw *json.RawMessage) json.RawMessage {
 	if _, ok := m["properties"]; !ok {
 		m["properties"] = map[string]any{}
 	}
-	
+
 	if b, err := json.Marshal(m); err == nil {
 		return b
 	}
