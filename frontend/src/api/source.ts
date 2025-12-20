@@ -157,3 +157,25 @@ export const clearPendingURLs = async (chatbotId: string): Promise<ClearResponse
   const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/pending-urls/clear`)
   return data as ClearResponse
 }
+
+export interface Chunk {
+  id: string
+  score: number
+  payload: {
+    source_id: string
+    original_text: string
+    chunk_index: number
+    created_at: string
+  }
+}
+
+export interface GetChunksResponse {
+  chunks: Chunk[]
+  next_cursor: string | null
+}
+
+export const getSourceChunks = async (sourceId: string, limit = 20, offset?: string): Promise<GetChunksResponse> => {
+  const q = offset ? `?offset=${offset}&limit=${limit}` : `?limit=${limit}`
+  const { data } = await api.get(`/api/v1/sources/${sourceId}/chunks${q}`)
+  return data as GetChunksResponse
+}

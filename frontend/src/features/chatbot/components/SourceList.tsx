@@ -11,7 +11,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-type Source = { id: string; source_type: string; original_filename?: string; source_url?: string; status: string; chunk_count: number; capability_summary?: string }
+type Source = { 
+  id: string; 
+  source_type: string; 
+  original_filename?: string; 
+  source_url?: string; 
+  status: string; 
+  chunk_count: number; 
+  capability_summary?: string;
+  error_message?: string;
+}
 
 interface SourceListProps {
   sources: Source[]
@@ -19,6 +28,39 @@ interface SourceListProps {
   onDelete: (id: string) => void
   onRefresh: (id: string) => void
   refreshingId?: string
+}
+
+const StatusBadge = ({ status, errorMessage }: { status: string, errorMessage?: string }) => {
+  const content = (
+     <span className={cn(
+        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium shrink-0',
+        status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+        status === 'processing' ? 'bg-blue-100 text-blue-700' :
+        status === 'failed' ? 'bg-red-100 text-red-700' :
+        'bg-yellow-100 text-yellow-700',
+        status === 'failed' && errorMessage && 'cursor-help'
+      )}>
+        {status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
+        {status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
+        {status === 'failed' && <AlertCircle className="w-3 h-3" />}
+        {status === 'pending' && <RefreshCw className="w-3 h-3 animate-pulse" />}
+        {status}
+      </span>
+  )
+
+  if (status === 'failed' && errorMessage) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="max-w-xs break-words">{errorMessage}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+  return content
 }
 
 export default function SourceList({ sources, userPlan, onDelete, onRefresh, refreshingId }: SourceListProps) {
@@ -38,19 +80,7 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
                     {s.original_filename || s.source_url}
                   </CardTitle>
                 </div>
-                <span className={cn(
-                  'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium shrink-0',
-                  s.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                  s.status === 'processing' ? 'bg-blue-100 text-blue-700' :
-                  s.status === 'failed' ? 'bg-red-100 text-red-700' :
-                  'bg-yellow-100 text-yellow-700'
-                )}>
-                  {s.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
-                  {s.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                  {s.status === 'failed' && <AlertCircle className="w-3 h-3" />}
-                  {s.status === 'pending' && <RefreshCw className="w-3 h-3 animate-pulse" />}
-                  {s.status}
-                </span>
+                <StatusBadge status={s.status} errorMessage={s.error_message} />
               </div>
             </CardHeader>
             <CardContent className="pb-2 text-sm text-muted-foreground">
@@ -130,19 +160,7 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
                   {s.original_filename || s.source_url}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={cn(
-                    'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium',
-                    s.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                    s.status === 'processing' ? 'bg-blue-100 text-blue-700' :
-                    s.status === 'failed' ? 'bg-red-100 text-red-700' :
-                    'bg-yellow-100 text-yellow-700'
-                  )}>
-                    {s.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
-                    {s.status === 'processing' && <RefreshCw className="w-3 h-3 animate-spin" />}
-                    {s.status === 'failed' && <AlertCircle className="w-3 h-3" />}
-                    {s.status === 'pending' && <RefreshCw className="w-3 h-3 animate-pulse" />}
-                    {s.status}
-                  </span>
+                  <StatusBadge status={s.status} errorMessage={s.error_message} />
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{s.chunk_count}</td>
                 <td className="px-4 py-3">
