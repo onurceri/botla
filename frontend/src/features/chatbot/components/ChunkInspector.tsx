@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
@@ -14,6 +14,12 @@ interface ChunkInspectorProps {
 
 export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkInspectorProps) {
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      setSearch('')
+    }
+  }, [open])
 
   const {
     data,
@@ -36,6 +42,18 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
   const filteredChunks = chunks.filter(c => 
     !search || c.payload.original_text.toLowerCase().includes(search.toLowerCase())
   )
+
+  const highlightText = (text: string, highlight: string) => {
+    if (!highlight.trim()) return text
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'))
+    return parts.map((part, i) => 
+      part.toLowerCase() === highlight.toLowerCase() ? (
+        <span key={i} className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground font-semibold px-0.5 rounded">{part}</span>
+      ) : (
+        part
+      )
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,11 +102,10 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
                     #{chunk.payload.chunk_index}
                   </div>
                   <p className="whitespace-pre-wrap leading-relaxed text-foreground/90 font-mono text-xs">
-                    {chunk.payload.original_text}
+                    {highlightText(chunk.payload.original_text, search)}
                   </p>
                   <div className="mt-3 pt-3 border-t border-border/50 flex justify-between items-center text-xs text-muted-foreground">
                     <span>ID: {chunk.id.slice(0, 8)}...</span>
-                    <span>Score: {chunk.score.toFixed(4)}</span>
                   </div>
                 </div>
               ))}
