@@ -1,12 +1,11 @@
 # Specification: Knowledge Base 2.0 - Transparency & Control
 
 ## 1. Overview
-The goal of this track is to elevate the "Knowledge Base" (Source Management) experience from "functional" to "transparent and controllable." Users currently ingest data but lack visibility into *what* was actually indexed or *why* a source failed. This track implements a "Chunk Inspector," detailed error reporting, and manual control over synchronization.
+The goal of this track is to elevate the "Knowledge Base" (Source Management) experience from "functional" to "transparent." Users currently ingest data but lack visibility into *what* was actually indexed or *why* a source failed. This track implements a "Chunk Inspector" and detailed error reporting.
 
 ## 2. User Stories
 - **As a User**, I want to see the specific text chunks extracted from my PDF or URL so that I can verify the AI is reading my content correctly.
 - **As a User**, I want to see detailed error messages (e.g., "403 Forbidden", "PDF Encrypted") if a source fails to sync, so I can fix the issue.
-- **As a User**, I want to manually trigger a re-sync of a URL source to ensure the bot has the latest content without waiting for an auto-refresh.
 - **As a User**, I want to search within my indexed chunks to find specific information.
 
 ## 3. Functional Requirements
@@ -22,19 +21,14 @@ The goal of this track is to elevate the "Knowledge Base" (Source Management) ex
     - Create a modal or slide-over panel that lists the chunks.
     - Include a search bar in this panel to filter chunks by text content.
 
-### 3.3. Manual Re-Sync
-- **Backend:** Create a new API endpoint `POST /api/v1/sources/{source_id}/refresh` that triggers the ingestion job immediately.
-- **Frontend:** Add a "Sync Now" button to URL/Sitemap sources. Handle the "loading" state while the request is queued.
-
 ## 4. Technical Constraints
 - **Performance:** Chunk retrieval must be paginated (e.g., 20 chunks per page) to avoid overloading the browser or API.
 - **Security:** Ensure users can only inspect chunks for sources belonging to their own chatbots/organization.
 - **Database:** Reuse existing `chatbot_source_chunks` or Qdrant scrolling API.
 
 ## 5. UI/UX Design
-- **Source List:** Enhance the table row to include "Status", "Last Synced", "Chunk Count", and "Actions" (View Chunks, Sync Now, Delete).
+- **Source List:** Enhance the table row to include "Status", "Last Synced", "Chunk Count", and "Actions" (View Chunks, Delete).
 - **Chunk Inspector Modal:** A clean, scrollable list. Each chunk should show the raw text and its associated "Score" (if applicable from a search context) or just the indexed text.
 
 ## 6. Metrics & Analytics
 - Track how often users open the Chunk Inspector (engagement).
-- Track success/failure rates of Manual Re-syncs.

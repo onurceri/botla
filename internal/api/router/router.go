@@ -27,6 +27,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	oaiClient, _ := rag.NewOpenAIClientFromEnv()
 	qdClient, _ := rag.NewQdrantClientFromEnv()
 	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
+	toolNameGenerator := rag.NewToolNameGenerator(oaiClient)
 
 	// Handlers
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
@@ -38,7 +39,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log}
-	acth := &handlers.ActionHandlers{DB: pool}
+	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: toolNameGenerator}
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log}
 	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log}

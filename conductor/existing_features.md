@@ -26,6 +26,10 @@ This document serves as a comprehensive inventory of the features currently impl
 - **Processing:** Text chunking, embedding generation (Qdrant), and metadata tracking.
 - **Search:** Semantic search for relevant context during chat.
 - **Suggestions:** Automated generation of "Suggested Questions" from ingested content using LLMs.
+- **Management:**
+    - **Manual Refresh:** Ability to manually trigger a re-sync for URL sources.
+    - **Bulk Ingestion:** Bulk creation of sources via URL lists.
+    - **Pending URLs:** Approval workflow for discovered URLs.
 
 ## 4. Chat Interface & Widget
 - **Embeddable Widget:** A standalone, customizable chat widget for external websites.

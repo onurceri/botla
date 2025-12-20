@@ -1,6 +1,6 @@
 # Plan: Knowledge Base 2.0 - Transparency & Control
 
-## Phase 1: Backend - Chunk Inspection & Re-Sync
+## Phase 1: Backend - Chunk Inspection & Detailed Errors
 
 - [ ] Task: Create `GetSourceChunks` API Handler
     - **Goal:** Expose the internal chunks for a specific source to the frontend.
@@ -11,38 +11,29 @@
         - Ensure strict ownership checks (User -> Org -> Chatbot -> Source).
     - **Test:** Unit test the handler with mocked DB/Qdrant.
 
-- [ ] Task: Create `RefreshSource` API Handler
-    - **Goal:** Allow manual triggering of the ingestion process.
-    - **Implementation:**
-        - Create `RefreshSource` in `internal/api/handlers/source.go`.
-        - Reuse the existing `processing.ProcessSource` logic but trigger it on demand.
-        - Update the source status to `pending` immediately.
-    - **Test:** Unit test to verify the job is enqueued/started.
-
 - [ ] Task: Enhance Error Reporting in Ingestion
     - **Goal:** Capture specific errors during scraping/PDF processing.
     - **Implementation:**
         - Modify `internal/scraper` and `internal/pdf` to return typed/detailed errors.
         - Update `internal/processing/processor.go` to save the specific error message to the `sources` table (add `last_error` column if missing, or use a status details JSON field).
 
-- [ ] Task: Conductor - User Manual Verification 'Backend - Chunk Inspection & Re-Sync' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Backend - Chunk Inspection & Detailed Errors' (Protocol in workflow.md)
 
-## Phase 2: Frontend - Source List & Status
+## Phase 2: Frontend - Source List & Error Status
 
 - [ ] Task: Update `useSources` Query & Types
     - **Goal:** Fetch the new error details and handle the new API endpoints.
     - **Implementation:**
-        - Update `frontend/src/api/sources.ts` (or equivalent) to add `getChunks(sourceId)` and `refreshSource(sourceId)`.
+        - Update `frontend/src/api/sources.ts` (or equivalent) to add `getChunks(sourceId)`.
         - Update the `Source` interface to include `last_error` or detailed status fields.
 
 - [ ] Task: Enhance Source List UI
-    - **Goal:** Display detailed status and add action buttons.
+    - **Goal:** Display detailed status.
     - **Implementation:**
         - Modify `frontend/src/features/chatbot/pages/tabs/SourcesTab.tsx`.
         - Update the status badge to show a tooltip with `last_error` if the status is "failed".
-        - Add a "Sync Now" button for URL sources (disabled if status is "pending").
 
-- [ ] Task: Conductor - User Manual Verification 'Frontend - Source List & Status' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Frontend - Source List & Error Status' (Protocol in workflow.md)
 
 ## Phase 3: Frontend - Chunk Inspector
 
@@ -64,9 +55,9 @@
 
 ## Phase 4: Polish & Integration
 
-- [ ] Task: E2E Testing of Ingestion Flow
-    - **Goal:** Verify the full loop: Add Source -> Manual Sync -> View Chunks.
+- [ ] Task: E2E Testing of Inspection Flow
+    - **Goal:** Verify the full loop: Add Source -> View Chunks.
     - **Implementation:**
-        - Write a Playwright test that adds a test URL, clicks "Sync Now", waits for success, and then opens the Chunk Inspector to verify content exists.
+        - Write a Playwright test that adds a test URL/Text, waits for processing, and then opens the Chunk Inspector to verify content exists.
 
 - [ ] Task: Conductor - User Manual Verification 'Polish & Integration' (Protocol in workflow.md)

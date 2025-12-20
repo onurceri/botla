@@ -223,7 +223,7 @@ func (s *ChatService) executeToolCalls(
 	executor *rag.ToolExecutor,
 ) bool {
 	for _, tc := range toolCalls {
-		action := findActionByName(cc.Actions, tc.Function.Name)
+		action := executor.FindActionByToolName(cc.Actions, tc.Function.Name)
 		result, err := executor.Execute(ctx, tc, action, cc.Bot.ID, cc.Conversation.ID)
 
 		content := ""

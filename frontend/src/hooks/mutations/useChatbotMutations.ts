@@ -1,29 +1,29 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { uploadPDFSource, uploadURLSource, uploadTextSource, deleteSource, refreshSource } from '@/api/source'
-import { 
-  api, 
-  updateBasicInfo, 
-  updateAppearance, 
-  updateModelSettings, 
-  updateSecuritySettings, 
-  updateGuardrails, 
-  updateHandoff, 
-  updateRefresh, 
-  updateScrapingConfig 
+import { api } from '@/api/client'
+import {
+  updateBasicInfo,
+  updateAppearance,
+  updateModelSettings,
+  updateSecuritySettings,
+  updateGuardrails,
+  updateHandoff,
+  updateRefresh,
+  updateScrapingConfig
 } from '@/api/chatbot'
 import { CHATBOT_QUERY_KEY } from '../queries/useChatbot'
 import { SOURCES_QUERY_KEY } from '../queries/useSources'
 
 export function useUploadSource(chatbotId: string) {
   const queryClient = useQueryClient()
-  
+
   const invalidateQueries = () => {
     // Invalidate sources list
     queryClient.invalidateQueries({ queryKey: SOURCES_QUERY_KEY(chatbotId) })
     // Invalidate chatbot (this refreshes suggestions!)
     queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) })
   }
-  
+
   return {
     uploadPDF: useMutation({
       mutationFn: (file: File) => uploadPDFSource(chatbotId, file),
@@ -42,7 +42,7 @@ export function useUploadSource(chatbotId: string) {
 
 export function useDeleteSource(chatbotId: string) {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: (sourceId: string) => deleteSource(sourceId),
     onSuccess: () => {
@@ -54,7 +54,7 @@ export function useDeleteSource(chatbotId: string) {
 
 export function useRefreshSource(chatbotId: string) {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: (sourceId: string) => refreshSource(sourceId),
     onSuccess: () => {
@@ -65,7 +65,7 @@ export function useRefreshSource(chatbotId: string) {
 
 export function useRegenerateSuggestions(chatbotId: string) {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async () => {
       await api.post(`/api/v1/chatbots/${chatbotId}/suggestions/regenerate`)
@@ -81,7 +81,7 @@ export function useRegenerateSuggestions(chatbotId: string) {
 
 export function useUpdateChatbot(chatbotId: string) {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (payload: any) => {
       const { data } = await api.put(`/api/v1/chatbots/${chatbotId}`, payload)

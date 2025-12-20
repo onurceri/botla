@@ -30,7 +30,6 @@ export default function SourcesTab() {
     includePaths, setIncludePaths,
     excludePaths, setExcludePaths,
     selectorWhitelist, setSelectorWhitelist,
-    buildSourceSettingsPayload,
   } = useChatbotContext()
 
   const { uploadPDF, uploadURL, uploadText } = useUploadSource(id)
@@ -44,7 +43,7 @@ export default function SourcesTab() {
       selector_whitelist: selectorWhitelist,
       discovery_mode: discoveryMode 
     },
-    saveFn: (id, payload) => updateScraping(payload)
+    saveFn: (_, payload) => updateScraping(payload)
   })
 
   const { isSaving: isRefreshSaving, lastSavedAt: refreshSaved, error: refreshError } = useAutoSave({
@@ -52,7 +51,7 @@ export default function SourcesTab() {
       refresh_policy: refreshPolicy,
       refresh_frequency: refreshFrequency
     },
-    saveFn: (id, payload) => updateRefresh(payload)
+    saveFn: (_, payload) => updateRefresh(payload)
   })
 
   const isSaving = isScrapingSaving || isRefreshSaving

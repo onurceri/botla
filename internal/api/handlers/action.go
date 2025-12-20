@@ -10,11 +10,13 @@ import (
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type ActionHandlers struct {
-	DB *sql.DB
+	DB                *sql.DB
+	ToolNameGenerator *rag.ToolNameGenerator
 }
 
 type createActionRequest struct {
@@ -132,6 +134,13 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID st
 		return
 	}
 
+	// Generate tool_name using LLM
+	toolName, err := h.ToolNameGenerator.Generate(r.Context(), req.Name, req.Description)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to generate tool name: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	var config *json.RawMessage
 	if len(req.Config) > 0 {
 		config = &req.Config
@@ -152,6 +161,7 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID st
 		ActionType:  models.ActionType(req.ActionType),
 		Config:      config,
 		Parameters:  params,
+		ToolName:    &toolName,
 		Enabled:     req.Enabled,
 	}
 
@@ -195,6 +205,31 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request, botID, a
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Check if name or description changed - OR if tool_name is currently empty (migration case)
+	nameChanged := req.Name != "" && req.Name != action.Name
+	descChanged := req.Description != "" && (action.Description == nil || req.Description != *action.Description)
+	toolNameMissing := action.ToolName == nil || *action.ToolName == ""
+
+	if nameChanged || descChanged || toolNameMissing {
+		newName := action.Name
+		if req.Name != "" {
+			newName = req.Name
+		}
+		newDesc := ""
+		if req.Description != "" {
+			newDesc = req.Description
+		} else if action.Description != nil {
+			newDesc = *action.Description
+		}
+
+		toolName, err := h.ToolNameGenerator.Generate(r.Context(), newName, newDesc)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to generate tool name: %v", err), http.StatusInternalServerError)
+			return
+		}
+		action.ToolName = &toolName
 	}
 
 	if req.Name != "" {

@@ -21,6 +21,7 @@ type ChatbotAction struct {
 	ActionType  ActionType       `json:"action_type"`
 	Config      *json.RawMessage `json:"config"`
 	Parameters  *json.RawMessage `json:"parameters"` // JSON Schema
+	ToolName    *string          `json:"tool_name"`  // LLM-generated API-compatible identifier
 	Enabled     bool             `json:"enabled"`
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   *time.Time       `json:"updated_at"`

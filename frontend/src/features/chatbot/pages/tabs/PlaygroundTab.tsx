@@ -68,7 +68,7 @@ export default function PlaygroundTab() {
 
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: appearancePayload,
-    saveFn: (id, payload) => updateAppearance(payload),
+    saveFn: (_, payload) => updateAppearance(payload),
   })
 
   return (
