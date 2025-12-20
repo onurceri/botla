@@ -16,6 +16,7 @@ This document serves as a comprehensive inventory of the features currently impl
 - **Guardrails:** Configuration to prevent specific topics or behaviors.
 - **Actions:** Definition of "tools" or actions the chatbot can take.
     - **Smart Naming:** LLM-powered automatic generation of API-compatible tool names from user-friendly descriptions.
+    - **Execution Logs:** Detailed history of action executions including request/response payloads, status, and duration for debugging.
 - **Localization:** Backend and frontend support for multiple languages (English, Turkish).
 
 ## 3. RAG (Retrieval-Augmented Generation) & Ingestion

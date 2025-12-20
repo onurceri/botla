@@ -217,6 +217,27 @@ This test plan covers the execution of actions during chat conversations.
 
 ---
 
+### 6.2.11 Action Execution Logs
+**Priority:** High
+**Type:** Integration Test
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Execute any action | Action runs |
+| 2 | Check logs | Log entry created |
+| 3 | Verify payload | Request/Response stored |
+
+**Implementation Plan:**
+- **Test File:** `internal/integration/action_logs_test.go`
+- **Setup:**
+  - Bot with an action.
+- **Steps:**
+  1. Trigger action via chat.
+  2. Query `action_execution_logs` table for the bot.
+  3. Assert log exists with correct status and payloads.
+
+---
+
 ## How to Run Tests
 
 ```bash

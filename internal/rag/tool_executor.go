@@ -38,28 +38,100 @@ func (e *ToolExecutor) FindActionByToolName(actions []*models.ChatbotAction, too
 
 // Execute executes a tool call and returns the result
 func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *models.ChatbotAction, chatbotID, conversationID string) (*ToolResult, error) {
+	start := time.Now()
+	var result *ToolResult
+	var err error
+
+	defer func() {
+		// Only log if we have a valid action (skip builtin tools that are not in DB)
+		if action == nil || e.DB == nil {
+			return
+		}
+
+		duration := int(time.Since(start).Milliseconds())
+		status := "success"
+		var errorMsg *string
+		var responsePayload json.RawMessage
+
+		if err != nil {
+			status = "failure"
+			msg := err.Error()
+			errorMsg = &msg
+			// Safely marshal the error message into JSON
+			errorJSON, _ := json.Marshal(map[string]string{"error": msg})
+			responsePayload = json.RawMessage(errorJSON)
+		} else if result != nil {
+			// Try to parse result.Result as JSON, otherwise wrap it
+			if json.Valid([]byte(result.Result)) {
+				responsePayload = json.RawMessage(result.Result)
+			} else {
+				// Wrap in JSON string if not valid JSON
+				b, _ := json.Marshal(result.Result)
+				responsePayload = b
+			}
+		}
+
+		var requestPayload json.RawMessage
+		if toolCall.Function.Arguments != "" {
+			requestPayload = json.RawMessage(toolCall.Function.Arguments)
+		} else {
+			requestPayload = json.RawMessage("{}")
+		}
+
+		var convID *string
+		if conversationID != "" {
+			convID = &conversationID
+		}
+
+		logEntry := &models.ActionExecutionLog{
+			ChatbotID:       chatbotID,
+			ActionID:        action.ID,
+			ConversationID:  convID,
+			Status:          status,
+			RequestPayload:  &requestPayload,
+			ResponsePayload: &responsePayload,
+			ErrorMessage:    errorMsg,
+			DurationMs:      duration,
+		}
+
+		// Use a detached context for logging
+		go func() {
+			logCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if logErr := db.CreateActionLog(logCtx, e.DB, logEntry); logErr != nil {
+				if e.Log != nil {
+					e.Log.Error("failed to create action log", map[string]any{"error": logErr.Error()})
+				} else {
+					fmt.Printf("failed to create action log: %v\n", logErr)
+				}
+			}
+		}()
+	}()
+
 	if action == nil {
 		// Built-in tools
 		switch toolCall.Function.Name {
 		case "list_sources":
-			return e.executeBuiltin(ctx, toolCall, chatbotID)
+			result, err = e.executeBuiltin(ctx, toolCall, chatbotID)
 		case "request_human_handoff":
-			return e.executeHandoff(ctx, toolCall, chatbotID, conversationID)
+			result, err = e.executeHandoff(ctx, toolCall, chatbotID, conversationID)
 		default:
-			return nil, fmt.Errorf("unknown action: %s", toolCall.Function.Name)
+			err = fmt.Errorf("unknown action: %s", toolCall.Function.Name)
 		}
+		return result, err
 	}
 
 	switch action.ActionType {
 	case models.ActionTypeBuiltin:
-		return e.executeBuiltin(ctx, toolCall, chatbotID)
+		result, err = e.executeBuiltin(ctx, toolCall, chatbotID)
 	case models.ActionTypeHTTP:
-		return e.executeHTTP(ctx, toolCall, action)
+		result, err = e.executeHTTP(ctx, toolCall, action)
 	case models.ActionTypeZapier:
-		return e.executeZapier(ctx, toolCall, action)
+		result, err = e.executeZapier(ctx, toolCall, action)
 	default:
-		return nil, fmt.Errorf("unknown action type: %s", action.ActionType)
+		err = fmt.Errorf("unknown action type: %s", action.ActionType)
 	}
+	return result, err
 }
 
 func (e *ToolExecutor) executeBuiltin(ctx context.Context, toolCall ToolCall, chatbotID string) (*ToolResult, error) {

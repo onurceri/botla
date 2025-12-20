@@ -46,7 +46,11 @@ function injectStyles(shadow: ShadowRoot) {
 
 export function mount() {
   const params = currentParams()
-  const chatbotId = params.get('chatbot-id') || 'demo'
+  const chatbotId = params.get('chatbot-id')
+  if (!chatbotId) {
+    console.error('ChatbotWidget: chatbot-id is required')
+    return
+  }
   // Use VITE_API_BASE_URL env var as default if available, otherwise undefined (which defaults to relative)
   const defaultApiBase = import.meta.env.VITE_API_BASE_URL || undefined
   const apiBase = params.get('api-base') || defaultApiBase

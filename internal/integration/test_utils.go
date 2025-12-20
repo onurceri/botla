@@ -19,6 +19,7 @@ func (m *mockToolsClient) GetModelInfo() models.ModelInfo {
 	return models.ModelInfo{Name: "mock-model"}
 }
 
+func (m *mockToolsClient) CreateCompletionWithTools(ctx context.Context, messages []rag.ChatMessage, tools []rag.Tool, model string, temperature float32, maxTokens int) (*rag.ChatResponseWithTools, error) {
 	// Generate unique name to avoid DB unique constraint violations
 	content := fmt.Sprintf("mock_tool_%d", time.Now().UnixNano())
 	return &rag.ChatResponseWithTools{
