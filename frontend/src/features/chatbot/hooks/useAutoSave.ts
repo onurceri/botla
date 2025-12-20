@@ -18,6 +18,7 @@ type UseAutoSaveOptions = {
   onError?: (error: string) => void
   maxRetries?: number
   retryDelayMs?: number
+  saveFn?: (id: string, payload: any) => Promise<any>
 }
 
 const DEFAULT_MAX_RETRIES = 2
@@ -32,6 +33,7 @@ export function useAutoSave({
   onError,
   maxRetries = DEFAULT_MAX_RETRIES,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
+  saveFn,
 }: UseAutoSaveOptions): AutoSaveState {
   const { id } = useParams()
   const toasts = useToastErrors()
@@ -101,9 +103,13 @@ export function useAutoSave({
       setState((s) => ({ ...s, isSaving: true, error: null }))
 
       try {
-        await api.put(`/api/v1/chatbots/${id}`, payloadRef.current, {
-          signal: abortRef.current.signal,
-        })
+        if (saveFn) {
+           await saveFn(id, payloadRef.current)
+        } else {
+           await api.put(`/api/v1/chatbots/${id}`, payloadRef.current, {
+             signal: abortRef.current.signal,
+           })
+        }
 
         retryCountRef.current = 0
         lastToastedErrorRef.current = null
@@ -159,7 +165,7 @@ export function useAutoSave({
         onError?.(errorMsg)
       }
     },
-    [id, onSuccess, onError, maxRetries, retryDelayMs, toasts]
+    [id, onSuccess, onError, maxRetries, retryDelayMs, toasts, saveFn]
   )
 
   // Store save function in ref to avoid stale closures and prevent effect re-runs

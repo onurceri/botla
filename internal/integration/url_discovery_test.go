@@ -36,6 +36,7 @@ func TestURLDiscovery_AutoMode(t *testing.T) {
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -129,6 +130,7 @@ func TestURLDiscovery_PendingMode(t *testing.T) {
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {

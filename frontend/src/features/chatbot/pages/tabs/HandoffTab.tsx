@@ -2,6 +2,8 @@ import HandoffSettings from '../../components/HandoffSettings'
 import { useChatbotContext } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
+import { useParams } from 'react-router-dom'
+import { useUpdateHandoff } from '@/hooks/mutations/useChatbotMutations'
 
 export default function HandoffTab() {
   const {
@@ -12,8 +14,12 @@ export default function HandoffTab() {
     buildHandoffPayload,
   } = useChatbotContext()
 
+  const { id } = useParams()
+  const { mutateAsync: updateHandoff } = useUpdateHandoff(id || '')
+
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildHandoffPayload(),
+    saveFn: (id, payload) => updateHandoff(payload),
   })
 
   return (

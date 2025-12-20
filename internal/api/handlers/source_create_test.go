@@ -19,7 +19,6 @@ import (
 // TestSources_TextCreation tests text source creation end-to-end
 func TestSources_TextCreation(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 
 	var uid string
 	var freePlanID string
@@ -44,6 +43,9 @@ func TestSources_TextCreation(t *testing.T) {
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots", bytes.NewReader(jb))
 	rr1 := httptest.NewRecorder()
 	ch.ListOrCreate(rr1, ctx(r1))
+	if rr1.Code != http.StatusCreated {
+		t.Fatalf("create chatbot: %d, body: %s", rr1.Code, rr1.Body.String())
+	}
 	var created map[string]any
 	_ = json.Unmarshal(rr1.Body.Bytes(), &created)
 	botID := created["id"].(string)
@@ -74,7 +76,6 @@ func TestSources_TextCreation(t *testing.T) {
 // TestSources_URLCreation tests URL source creation end-to-end
 func TestSources_URLCreation(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 
 	var uid string
 	var freePlanID string
@@ -129,7 +130,6 @@ func TestSources_URLCreation(t *testing.T) {
 // TestSources_EmptyText_BadRequest tests empty text rejection
 func TestSources_EmptyText_BadRequest(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 
 	var uid string
 	var freePlanID string
@@ -178,7 +178,6 @@ func TestSources_EmptyText_BadRequest(t *testing.T) {
 // TestSources_EmptyURL_BadRequest tests empty URL rejection
 func TestSources_EmptyURL_BadRequest(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 
 	var uid string
 	var freePlanID string
@@ -227,7 +226,6 @@ func TestSources_EmptyURL_BadRequest(t *testing.T) {
 // TestSources_DuplicateURL_Conflict tests duplicate URL rejection
 func TestSources_DuplicateURL_Conflict(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 
 	var uid string
 	var freePlanID string
@@ -294,7 +292,6 @@ func TestSources_DuplicateURL_Conflict(t *testing.T) {
 // TestSources_InvalidSourceType_BadRequest tests invalid source type
 func TestSources_InvalidSourceType_BadRequest(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 
 	var uid string
 	var freePlanID string

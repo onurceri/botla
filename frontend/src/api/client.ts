@@ -7,7 +7,8 @@ export const api = axios.create({
 })
 
 let refreshPromise: Promise<void> | null = null
-let isRedirecting = false // Prevent multiple redirects from parallel failed requests
+let isRedirecting = false
+export const _resetRedirecting = () => { isRedirecting = false }
 
 // Helper to check if a stored value is valid (not undefined, null, or "undefined" string)
 const isValidToken = (token: string | null | undefined): token is string => {

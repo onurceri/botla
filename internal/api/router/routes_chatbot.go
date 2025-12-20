@@ -45,6 +45,16 @@ func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *ha
 	mux.HandleFunc("GET /api/v1/chatbots/{id}/sources", sh.ChatbotSources)
 	mux.HandleFunc("POST /api/v1/chatbots/{id}/sources", sh.ChatbotSources)
 
+	// Domain-specific updates
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/basic-info", ch.UpdateBasicInfo)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/appearance", ch.UpdateAppearance)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/model", ch.UpdateModelSettings)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/security", ch.UpdateSecuritySettings)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/guardrails", ch.UpdateGuardrails)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/handoff", ch.UpdateHandoff)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/refresh", ch.UpdateRefresh)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/scraping", ch.UpdateScrapingConfig)
+
 	// Chatbot management (Fallback)
 	mux.HandleFunc("/api/v1/chatbots/{id}", ch.ByID)
 

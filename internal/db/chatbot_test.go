@@ -27,7 +27,6 @@ func createUser(t *testing.T, db *sql.DB) string {
 
 func TestChatbot_CRUD_DB(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 	uid := createUser(t, db)
 	t.Cleanup(func() {
 		_, _ = db.Exec(`DELETE FROM users WHERE id = $1`, uid)

@@ -10,6 +10,7 @@ import { useUploadSource } from '@/hooks/mutations/useChatbotMutations'
 import { Inbox, Database, Plus } from 'lucide-react'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
+import { useUpdateScrapingConfig, useUpdateRefresh } from '@/hooks/mutations/useChatbotMutations'
 
 export default function SourcesTab() {
   const { id = '' } = useParams()
@@ -33,10 +34,32 @@ export default function SourcesTab() {
   } = useChatbotContext()
 
   const { uploadPDF, uploadURL, uploadText } = useUploadSource(id)
+  const { mutateAsync: updateScraping } = useUpdateScrapingConfig(id)
+  const { mutateAsync: updateRefresh } = useUpdateRefresh(id)
 
-  const { isSaving, lastSavedAt, error } = useAutoSave({
-    payload: buildSourceSettingsPayload(),
+  const { isSaving: isScrapingSaving, lastSavedAt: scrapingSaved, error: scrapingError } = useAutoSave({
+    payload: { 
+      include_paths: includePaths,
+      exclude_paths: excludePaths,
+      selector_whitelist: selectorWhitelist,
+      discovery_mode: discoveryMode 
+    },
+    saveFn: (id, payload) => updateScraping(payload)
   })
+
+  const { isSaving: isRefreshSaving, lastSavedAt: refreshSaved, error: refreshError } = useAutoSave({
+    payload: {
+      refresh_policy: refreshPolicy,
+      refresh_frequency: refreshFrequency
+    },
+    saveFn: (id, payload) => updateRefresh(payload)
+  })
+
+  const isSaving = isScrapingSaving || isRefreshSaving
+  const lastSavedAt = scrapingSaved && refreshSaved
+    ? (scrapingSaved > refreshSaved ? scrapingSaved : refreshSaved)
+    : (scrapingSaved || refreshSaved)
+  const error = scrapingError || refreshError
 
   const maxFiles = planConfig?.files?.max_files_per_bot || Infinity
   const maxUrls = planConfig?.scraping?.max_urls_per_bot || Infinity

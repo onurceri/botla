@@ -82,6 +82,7 @@ func TestAutomatedHandoff(t *testing.T) {
 	// 1. Setup Chat Service with REAL factory (using mock server via env)
 	factory := rag.NewClientFactory(te.Cfg)
 	chatSvc := services.NewChatService(te.DB, factory, nil, nil, log)
+	chatSvc.SyncAnalytics = true // Run analytics synchronously in tests
 
 	// 3. Create Chatbot with HandoffEnabled
 	bot := &models.Chatbot{

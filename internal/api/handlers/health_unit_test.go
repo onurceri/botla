@@ -13,7 +13,6 @@ func TestHealth_OK(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 	defer srv.Close()
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 	h := &HealthHandlers{DB: db, Cfg: &config.Config{QDRANT_URL: srv.URL}}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -27,7 +26,6 @@ func TestHealth_Degraded(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) }))
 	defer srv.Close()
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 	h := &HealthHandlers{DB: db, Cfg: &config.Config{QDRANT_URL: srv.URL}}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)

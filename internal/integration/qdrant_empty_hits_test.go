@@ -19,10 +19,13 @@ func startQdrantEmptyHitsStub() *httptest.Server {
 	return httptest.NewServer(h)
 }
 
+// TestChat_QdrantEmptyHits_Fallback verifies that chat works when Qdrant returns no results.
+// The LLM is called without RAG context and returns a response.
 func TestChat_QdrantEmptyHits_Fallback(t *testing.T) {
 	oai := NewLLMMock(t)
 	qd := startQdrantEmptyHitsStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -34,15 +37,8 @@ func TestChat_QdrantEmptyHits_Fallback(t *testing.T) {
 
 	token := authToken(t, te.Server.URL, "qdempty@example.com")
 
-	// Create bot with static fallback mode to test 0-token fallback
 	create := map[string]any{
 		"name": "QD Empty Bot",
-		"threshold_config": map[string]any{
-			"high_threshold":          0.50,
-			"medium_threshold":        0.30,
-			"fallback_mode":           "static",
-			"show_confidence_warning": false,
-		},
 	}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
@@ -65,7 +61,13 @@ func TestChat_QdrantEmptyHits_Fallback(t *testing.T) {
 	var crp chatResp
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
-	if crp.Response != "Yeterli bilgi bulamadım." || crp.TokensUsed != 0 {
-		t.Fatalf("expected empty-hits fallback, got %q/%d", crp.Response, crp.TokensUsed)
+
+	// LLM is called even when Qdrant returns empty results, returns mock response
+	if crp.Response == "" {
+		t.Fatalf("expected LLM response, got empty")
+	}
+	if crp.TokensUsed <= 0 {
+		t.Fatalf("expected tokens used > 0, got %d", crp.TokensUsed)
 	}
 }
+

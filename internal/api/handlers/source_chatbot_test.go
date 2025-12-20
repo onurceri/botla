@@ -54,7 +54,6 @@ func TestChatbotSources_InvalidPath(t *testing.T) {
 // TestChatbotSources_MethodNotAllowed tests unsupported HTTP methods
 func TestChatbotSources_MethodNotAllowed(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
-	defer dbx.Close()
 
 	// Create test user and chatbot
 	var uid string

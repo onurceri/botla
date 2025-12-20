@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	defer db.Close()
 
 	var freePlanID string
 	if err := db.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
@@ -32,7 +32,10 @@ func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 		t.Fatalf("user: %v", err)
 	}
 
-	h := &ChatbotHandlers{DB: db}
+	h := &ChatbotHandlers{
+		DB:             db,
+		ChatbotService: services.NewChatbotService(db, nil),
+	}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}

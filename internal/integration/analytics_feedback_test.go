@@ -13,6 +13,7 @@ func TestAnalytics_ThumbsUpAfterFeedback(t *testing.T) {
 	oai := NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {
@@ -44,7 +45,9 @@ func TestAnalytics_ThumbsUpAfterFeedback(t *testing.T) {
 	reqCh.Header.Set("Content-Type", "application/json")
 	resCh, _ := http.DefaultClient.Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resCh.StatusCode)
+		var errB bytes.Buffer
+		errB.ReadFrom(resCh.Body)
+		t.Fatalf("expected 200, got %d. Body: %s", resCh.StatusCode, errB.String())
 	}
 	resCh.Body.Close()
 

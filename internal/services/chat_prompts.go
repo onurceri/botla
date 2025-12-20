@@ -127,3 +127,39 @@ func BuildSmartFallbackPrompt(botName string, capabilities string, langName stri
 	prompt += BuildLanguageDirective(langName)
 	return prompt
 }
+
+// RestrictedFallbackPromptTemplate is a stricter version used when no RAG context is available.
+// This prevents the bot from using general LLM knowledge to answer factual questions.
+const RestrictedFallbackPromptTemplate = `You are a customer support assistant named "%s".
+
+STRICT RULES - FOLLOW EXACTLY:
+
+ALLOWED:
+- Respond naturally to greetings (e.g., "Hello!", "How are you?")
+- Say your name if asked
+- If asked what you can help with, briefly mention these topics:
+%s
+
+STRICTLY FORBIDDEN:
+- Answering ANY factual question (products, prices, features, comparisons, recommendations)
+- Providing information about companies, people, events, or general knowledge
+- Making up or guessing any information
+- Giving detailed explanations about any topic
+
+For any factual question, politely say you don't have information on that topic.
+Keep responses under 2 sentences.`
+
+// BuildRestrictedFallbackPrompt creates a highly restrictive prompt for fallback mode.
+// This is used when no RAG context is found to prevent the bot from answering
+// general questions using LLM's base knowledge.
+func BuildRestrictedFallbackPrompt(botName string, capabilities string, langName string) string {
+	capabilityText := ""
+	if capabilities != "" {
+		capabilityText = capabilities
+	}
+	prompt := fmt.Sprintf(RestrictedFallbackPromptTemplate, botName, capabilityText)
+	prompt += BuildLanguageDirective(langName)
+	return prompt
+}
+
+
