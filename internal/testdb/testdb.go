@@ -25,6 +25,53 @@ const (
 // schemaCreationLock protects concurrent schema creation during parallel tests
 var schemaCreationLock sync.Mutex
 
+// cleanupOnce ensures stale schema cleanup only happens once per test run
+var cleanupOnce sync.Once
+
+// cleanupStaleSchemas removes any leftover test schemas from previous runs
+func cleanupStaleSchemas() {
+	// Connect to default DB to perform cleanup
+	baseDSN := getTestDSN("")
+	db, err := sql.Open("pgx", baseDSN)
+	if err != nil {
+		// Just log to stderr since we can't use t.Log here easily and don't want to panic
+		fmt.Fprintf(os.Stderr, "warning: failed to open db for stale schema cleanup: %v\n", err)
+		return
+	}
+	defer db.Close()
+
+	// Find all schemas starting with 'test_'
+	rows, err := db.Query(`
+		SELECT nspname 
+		FROM pg_namespace 
+		WHERE nspname LIKE 'test_%' 
+		AND nspname != 'test' 
+	`)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to list stale schemas: %v\n", err)
+		return
+	}
+	defer rows.Close()
+
+	var schemas []string
+	for rows.Next() {
+		var schema string
+		if err := rows.Scan(&schema); err == nil {
+			schemas = append(schemas, schema)
+		}
+	}
+
+	for _, schema := range schemas {
+		// Drop each stale schema
+		_, err := db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to drop stale schema %s: %v\n", schema, err)
+		} else {
+			fmt.Fprintf(os.Stdout, "cleaned up stale test schema: %s\n", schema)
+		}
+	}
+}
+
 // getTestDSN returns the test database connection string.
 func getTestDSN(schema string) string {
 	host := os.Getenv("DB_HOST")
@@ -112,6 +159,9 @@ func OpenTestDBWithSchema(t *testing.T, schema string) *sql.DB {
 //	}
 func OpenParallelTestDB(t *testing.T) *sql.DB {
 	t.Helper()
+
+	// Run global cleanup once per test suite execution
+	cleanupOnce.Do(cleanupStaleSchemas)
 
 	// Generate unique schema name
 	schema := generateUniqueSchema(t)
