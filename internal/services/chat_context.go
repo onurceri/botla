@@ -23,11 +23,11 @@ type chatContext struct {
 	RAGConfig models.RAGConfig
 
 	// Derived config - computed during initialization
-	LangConfig     langconfig.LanguageConfig
-	ThresholdCfg   *models.ThresholdConfig
-	GuardrailsCfg  *models.GuardrailsConfig // Plan-based guardrails permissions
-	BotName        string
-	Capabilities   string // Cached capability summaries for fallback
+	LangConfig    langconfig.LanguageConfig
+	ThresholdCfg  *models.ThresholdConfig
+	GuardrailsCfg *models.GuardrailsConfig // Plan-based guardrails permissions
+	BotName       string
+	Capabilities  string // Cached capability summaries for fallback
 
 	// Conversation state - set after conversation lookup
 	Conversation *models.Conversation

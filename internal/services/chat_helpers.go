@@ -129,16 +129,6 @@ func (s *ChatService) collectTools(ctx context.Context, bot *models.Chatbot) ([]
 	return tools, actions
 }
 
-// findActionByName finds an action by its name.
-func findActionByName(actions []*models.ChatbotAction, name string) *models.ChatbotAction {
-	for _, a := range actions {
-		if a.Name == name {
-			return a
-		}
-	}
-	return nil
-}
-
 // parseHandoffRequestID extracts request_id from handoff tool result.
 func parseHandoffRequestID(result string) string {
 	if !strings.Contains(result, "request_id") {

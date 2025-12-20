@@ -36,16 +36,16 @@ func TestWithTx_RollbackVerification(t *testing.T) {
 
 	// Insert inside WithTx - should be rolled back
 	WithTx(t, db, func(ctx context.Context, tx *sql.Tx) {
-		_, err := tx.ExecContext(ctx, `INSERT INTO _test_rollback_check (value) VALUES ('should_not_persist')`)
-		if err != nil {
-			t.Fatalf("insert in tx failed: %v", err)
+		_, txErr := tx.ExecContext(ctx, `INSERT INTO _test_rollback_check (value) VALUES ('should_not_persist')`)
+		if txErr != nil {
+			t.Fatalf("insert in tx failed: %v", txErr)
 		}
 
 		// Verify row exists within transaction
 		var count int
-		err = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM _test_rollback_check`).Scan(&count)
-		if err != nil {
-			t.Fatalf("count in tx failed: %v", err)
+		txErr = tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM _test_rollback_check`).Scan(&count)
+		if txErr != nil {
+			t.Fatalf("count in tx failed: %v", txErr)
 		}
 		if count != 1 {
 			t.Fatalf("expected 1 row in tx, got %d", count)

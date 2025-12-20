@@ -36,18 +36,6 @@ Give a brief, general summary of your purpose. Don't list every capability.
 - Understand numbered selections (1, 2, 6) from conversation context
 - Always consider previous conversation messages`
 
-// SmartFallbackPromptTemplate is used when no RAG context is available.
-// First %s is for bot name, second %s is for capability text (can be empty).
-const SmartFallbackPromptTemplate = `You are a customer support assistant named "%s". The user asked a question but you don't have information on this topic.
-
-IMPORTANT RULES:
-1. NEVER provide made-up or speculative information
-2. Politely indicate you don't have information on this topic
-3. If provided, mention what topics you CAN help with:
-%s
-4. When listing capabilities, provide a GENERAL SUMMARY, do not list items one by one.
-5. Keep your response short and polite.`
-
 // CapabilityInstructionEN is appended when capability summaries exist.
 const CapabilityInstructionEN = `
 
@@ -116,18 +104,6 @@ func BuildSystemPrompt(botName string, customInstruction string, capabilities st
 	return base
 }
 
-// BuildSmartFallbackPrompt creates a prompt for the smart fallback mode.
-// botName is included for consistent identity.
-func BuildSmartFallbackPrompt(botName string, capabilities string, langName string) string {
-	capabilityText := ""
-	if capabilities != "" {
-		capabilityText = CapabilityIntroEN + "\n" + capabilities
-	}
-	prompt := fmt.Sprintf(SmartFallbackPromptTemplate, botName, capabilityText)
-	prompt += BuildLanguageDirective(langName)
-	return prompt
-}
-
 // RestrictedFallbackPromptTemplate is a stricter version used when no RAG context is available.
 // This prevents the bot from using general LLM knowledge to answer factual questions.
 const RestrictedFallbackPromptTemplate = `You are a customer support assistant named "%s".
@@ -161,5 +137,3 @@ func BuildRestrictedFallbackPrompt(botName string, capabilities string, langName
 	prompt += BuildLanguageDirective(langName)
 	return prompt
 }
-
-

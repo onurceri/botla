@@ -73,4 +73,3 @@ func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
 		t.Fatalf("expected tokens used > 0, got %d", crp.TokensUsed)
 	}
 }
-

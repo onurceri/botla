@@ -45,7 +45,7 @@ describe('ChatbotDetailPage sources', () => {
     const sourceCells = await screen.findAllByText('inline.txt')
     const sourceCell = sourceCells.find(el => el.closest('tr'))!
     const row = sourceCell.closest('tr') as HTMLTableRowElement
-    const delBtn = within(row).getByRole('button')
+    const delBtn = within(row).getByRole('button', { name: /Kaynağı Sil/i })
     await user.click(delBtn)
     const { deleteSource } = await import('@/api/source')
     expect(deleteSource).toHaveBeenCalledWith('src1')

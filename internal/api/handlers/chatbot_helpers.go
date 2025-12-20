@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"regexp"
 	"strings"
 )
 
@@ -50,10 +49,6 @@ func normalizeSuggestions(in []string) []string {
 	}
 	return out
 }
-
-var hexColorRe = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
-
-func isValidHexColor(s string) bool { return hexColorRe.MatchString(s) }
 
 func defaultString(p *string, d string) string {
 	if p != nil {

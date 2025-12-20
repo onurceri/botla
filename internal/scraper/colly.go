@@ -18,6 +18,7 @@ type CollectorConfig struct {
 	UserAgents      []string
 	Timeout         time.Duration
 	RateLimitPerSec int
+	IgnoreRobotsTxt bool
 }
 
 type CollectorBundle struct {
@@ -87,7 +88,7 @@ func NewCollector(cfg CollectorConfig) (*CollectorBundle, error) {
 
 	c.WithTransport(&http.Transport{Proxy: http.ProxyFromEnvironment})
 
-	c.IgnoreRobotsTxt = false
+	c.IgnoreRobotsTxt = cfg.IgnoreRobotsTxt
 
 	q, err := queue.New(1, &queue.InMemoryQueueStorage{MaxSize: 100})
 	if err != nil {

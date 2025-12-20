@@ -100,31 +100,32 @@ func SetupTestEnv() (*TestEnv, error) {
 		os.Getenv("DB_NAME"), os.Getenv("DB_SCHEMA"))
 
 	// Migrate Up
+	//nolint:gosec // this is a test helper using dynamic path
 	cmdUp := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
 	if output, err := cmdUp.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("migration up failed: %s, %v", output, err)
 	}
-	
+
 	// Clean up only data, don't drop tables
-	// This makes parallel tests slightly better (though still 
+	// This makes parallel tests slightly better (though still
 	// not perfect since they share the same schema).
 	// We use TRUNCATE for speed.
 	// NOTE: We don't truncate 'plans' and 'languages' as they are seeded.
-	
+
 	cfg := config.LoadConfig()
 	db, err := dbpkg.New(cfg)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Set search path first
 	_ = os.Setenv("DB_SCHEMA", "test")
 	_, _ = db.Exec("SET search_path TO test")
-	
+
 	_, _ = db.Exec(`TRUNCATE TABLE chatbots, users, organizations, workspaces, data_sources, analytics, handoff_requests, messages, conversations CASCADE`)
 
 	db.SetMaxOpenConns(1)
-	
+
 	// Restore plans to a clean state from migration 000035
 	restorePlans(db)
 
