@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
-import { CheckCircle2, RefreshCw, AlertCircle, Trash2, FileText } from 'lucide-react'
+import { CheckCircle2, RefreshCw, AlertCircle, Trash2, FileText, Database } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -10,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import ChunkInspector from './ChunkInspector'
 
 type Source = { 
   id: string; 
@@ -64,10 +66,17 @@ const StatusBadge = ({ status, errorMessage }: { status: string, errorMessage?: 
 }
 
 export default function SourceList({ sources, userPlan, onDelete, onRefresh, refreshingId }: SourceListProps) {
+  const [inspectingSourceId, setInspectingSourceId] = useState<string | null>(null)
   const canRefresh = userPlan !== 'free'
 
   return (
     <div className="space-y-4">
+      <ChunkInspector 
+        sourceId={inspectingSourceId || ''} 
+        open={!!inspectingSourceId} 
+        onOpenChange={(open) => !open && setInspectingSourceId(null)} 
+      />
+
       {/* Mobile View: Cards */}
       <div className="md:hidden space-y-4">
         {sources.map((s) => (
@@ -88,24 +97,34 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
                   <span className="font-medium text-foreground">{s.chunk_count}</span>
                   <span>Parça</span>
                </div>
-               {s.capability_summary && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="link" className="p-0 h-auto text-xs text-muted-foreground hover:text-primary mt-1">
-                        <FileText className="w-3 h-3 mr-1" />
-                        Özeti Göster
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Kaynak Özeti</DialogTitle>
-                      </DialogHeader>
-                      <div className="mt-4 text-sm text-foreground whitespace-pre-wrap">
-                        {s.capability_summary}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-               )}
+               <div className="flex flex-wrap gap-2 mt-2">
+                 <Button 
+                    variant="link" 
+                    className="p-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                    onClick={() => setInspectingSourceId(s.id)}
+                 >
+                    <Database className="w-3 h-3 mr-1" />
+                    Parçalar
+                 </Button>
+                 {s.capability_summary && (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="link" className="p-0 h-auto text-xs text-muted-foreground hover:text-primary">
+                          <FileText className="w-3 h-3 mr-1" />
+                          Özet
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Kaynak Özeti</DialogTitle>
+                        </DialogHeader>
+                        <div className="mt-4 text-sm text-foreground whitespace-pre-wrap">
+                          {s.capability_summary}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                 )}
+               </div>
             </CardContent>
             <CardFooter className="pt-2 flex justify-end gap-2 border-t">
               {s.source_type === 'url' && (
@@ -185,6 +204,16 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
                   )}
                 </td>
                 <td className="px-4 py-3 text-right space-x-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                    aria-label="Parçaları İncele"
+                    title="Parçaları İncele"
+                    onClick={() => setInspectingSourceId(s.id)}
+                  >
+                    <Database className="w-4 h-4" />
+                  </Button>
                   {s.source_type === 'url' && (
                     <TooltipProvider>
                       <Tooltip>
@@ -224,7 +253,7 @@ export default function SourceList({ sources, userPlan, onDelete, onRefresh, ref
             ))}
              {sources.length === 0 && (
                <tr>
-                 <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                 <td colSpan={6} className="text-center py-8 text-muted-foreground">
                    Henüz kaynak eklenmemiş.
                  </td>
                </tr>
