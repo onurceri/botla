@@ -40,7 +40,10 @@ migrate-down-test:
 	 migrate -path=$(MIGRATIONS_DIR) -database="$(TEST_DATABASE_URL)" down
 
 migrate-version-test:
-	 -migrate -path=$(MIGRATIONS_DIR) -database="$(TEST_DATABASE_URL)" version
+	-migrate -path=$(MIGRATIONS_DIR) -database="$(TEST_DATABASE_URL)" version
+
+migrate-force-test:
+	migrate -path=$(MIGRATIONS_DIR) -database="$(TEST_DATABASE_URL)" force $(v)
 
 migrate-up-docker:
 	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) up
