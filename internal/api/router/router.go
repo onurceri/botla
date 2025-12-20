@@ -15,7 +15,7 @@ import (
 )
 
 // New creates and configures the main HTTP handler for the application.
-func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService) *http.ServeMux {
+func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService, qdClient *rag.QdrantClient) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Services
@@ -26,7 +26,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 
 	factory := rag.NewClientFactory(cfg)
 	oaiClient, _ := rag.NewOpenAIClientFromEnv()
-	qdClient, _ := rag.NewQdrantClientFromEnv()
+	// qdClient is passed in
 	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
 	toolNameGenerator := rag.NewToolNameGenerator(oaiClient)
 
@@ -37,7 +37,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	plh := &handlers.PlanHandlers{DB: pool}
 	uh := &handlers.UsageHandlers{DB: pool}
 	ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg, ChatbotService: chatbotSvc}
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, Log: log}
+	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, QdrantClient: qdClient, Log: log}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log}
 	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: toolNameGenerator}

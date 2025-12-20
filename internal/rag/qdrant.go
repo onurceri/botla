@@ -190,6 +190,75 @@ func (c *QdrantClient) DeleteBySourceID(ctx context.Context, sourceID string) er
 	return nil
 }
 
+type scrollRequest struct {
+	Filter      filterBody  `json:"filter"`
+	Limit       int         `json:"limit"`
+	WithPayload bool        `json:"with_payload"`
+	WithVector  bool        `json:"with_vector"`
+	Offset      interface{} `json:"offset,omitempty"`
+}
+
+type scrollResult struct {
+	Points         []SearchResult `json:"points"`
+	NextPageOffset interface{}    `json:"next_page_offset"`
+}
+
+// ScrollChunks retrieves paginated chunks for a given sourceID.
+// It returns the list of points, the next offset (can be used for next call), and error.
+// The nextOffset is nil if there are no more pages.
+func (c *QdrantClient) ScrollChunks(ctx context.Context, sourceID string, limit int, offset interface{}) ([]SearchResult, *string, error) {
+	reqBody := scrollRequest{
+		Filter:      filterBody{Must: []condition{{Key: "source_id", Match: matchBody{Value: sourceID}}}},
+		Limit:       limit,
+		WithPayload: true,
+		WithVector:  false,
+		Offset:      offset,
+	}
+
+	b, _ := json.Marshal(reqBody)
+	url := fmt.Sprintf("%s/collections/embeddings/points/scroll", c.baseURL)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
+	setJSONHeaders(req, c.apiKey)
+
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("scroll failed: %s", res.Status)
+	}
+
+	var qres qdrantResponse
+	if err := json.NewDecoder(res.Body).Decode(&qres); err != nil {
+		return nil, nil, err
+	}
+
+	var result scrollResult
+	if err := json.Unmarshal(qres.Result, &result); err != nil {
+		return nil, nil, err
+	}
+
+	var nextOffset *string
+	if result.NextPageOffset != nil {
+		// handle UUID (string) or int offset
+		switch v := result.NextPageOffset.(type) {
+		case string:
+			nextOffset = &v
+		case float64: // json unmarshals numbers as float64
+			s := fmt.Sprintf("%.0f", v)
+			nextOffset = &s
+		default:
+			// if it's something else, try string conversion
+			s := fmt.Sprintf("%v", v)
+			nextOffset = &s
+		}
+	}
+
+	return result.Points, nextOffset, nil
+}
+
 func setHeaders(r *http.Request, apiKey string) {
 	if apiKey != "" {
 		r.Header.Set("api-key", apiKey)

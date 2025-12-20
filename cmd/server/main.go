@@ -152,7 +152,7 @@ func (app *application) start() {
 	app.schedulerCancel = schedulerCancel
 	app.refreshScheduler.Start(schedulerCtx)
 
-	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService)
+	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService, app.qdrantClient)
 	origins := strings.Split(app.cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	// Middleware chain: Recovery -> Logger -> PlanLoader -> RateLimit -> Mux
