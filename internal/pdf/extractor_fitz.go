@@ -18,13 +18,13 @@ import (
 func ExtractPDFText(filePath string, langCode string, allowOCR bool) (string, error) {
 	doc, err := fitz.New(filePath)
 	if err != nil {
-		return "", err
+		return "", &PDFError{Op: "open", Err: err}
 	}
 	defer doc.Close()
 
 	pages := doc.NumPage()
 	if pages < 1 {
-		return "", fmt.Errorf("pdf: no pages")
+		return "", &PDFError{Op: "validate", Err: fmt.Errorf("no pages")}
 	}
 
 	var out strings.Builder
@@ -35,7 +35,7 @@ func ExtractPDFText(filePath string, langCode string, allowOCR bool) (string, er
 			// fallback to simple text extraction
 			t, terr := doc.Text(n)
 			if terr != nil {
-				return "", terr
+				return "", &PDFError{Op: fmt.Sprintf("extract_text_page_%d", n), Err: terr}
 			}
 			pageText = t
 		}
