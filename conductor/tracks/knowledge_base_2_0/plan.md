@@ -1,23 +1,23 @@
 # Plan: Knowledge Base 2.0 - Transparency & Control
 
-## Phase 1: Backend - Chunk Inspection & Detailed Errors
+## Phase 1: Backend - Chunk Inspection & Detailed Errors [checkpoint: ea3784a]
 
-- [ ] Task: Create `GetSourceChunks` API Handler
+- [x] Task: Create `GetSourceChunks` API Handler
     - **Goal:** Expose the internal chunks for a specific source to the frontend.
     - **Implementation:**
         - Create a new handler method `GetSourceChunks` in `internal/api/handlers/source.go`.
         - If chunks are stored in Postgres (check `chatbot_source_chunks`), query them with pagination.
         - If chunks are only in Qdrant, use the Qdrant Scroll API to retrieve them.
         - Ensure strict ownership checks (User -> Org -> Chatbot -> Source).
-    - **Test:** Unit test the handler with mocked DB/Qdrant.
+    - **Test:** Unit test the handler with mocked DB/Qdrant. [0b9774c]
 
-- [ ] Task: Enhance Error Reporting in Ingestion
+- [x] Task: Enhance Error Reporting in Ingestion
     - **Goal:** Capture specific errors during scraping/PDF processing.
     - **Implementation:**
         - Modify `internal/scraper` and `internal/pdf` to return typed/detailed errors.
-        - Update `internal/processing/processor.go` to save the specific error message to the `sources` table (add `last_error` column if missing, or use a status details JSON field).
+        - Update `internal/processing/processor.go` to save the specific error message to the `sources` table (add `last_error` column if missing, or use a status details JSON field). [0130e67]
 
-- [ ] Task: Conductor - User Manual Verification 'Backend - Chunk Inspection & Detailed Errors' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Backend - Chunk Inspection & Detailed Errors' (Protocol in workflow.md) [checkpoint: ea3784a]
 
 ## Phase 2: Frontend - Source List & Error Status
 
