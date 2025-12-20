@@ -63,7 +63,11 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 	var scrapeErr error
 
 	c.OnError(func(r *colly.Response, e error) {
-		scrapeErr = e
+		scrapeErr = &ScrapeError{
+			StatusCode: r.StatusCode,
+			URL:        r.Request.URL.String(),
+			Err:        e,
+		}
 	})
 
 	c.OnHTML("body", func(e *colly.HTMLElement) {
