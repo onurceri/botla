@@ -5,7 +5,6 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { getSourceChunks } from '@/api/source'
 import { Loader2, Search, Database } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 
 interface ChunkInspectorProps {
   sourceId: string
@@ -42,21 +41,23 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 leading-normal">
             <Database className="w-5 h-5 text-primary" />
             Kaynak Parçaları
           </DialogTitle>
           <DialogDescription>
             Bu kaynaktan çıkarılan metin parçalarını inceleyin.
           </DialogDescription>
-          <div className="pt-4 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Yüklenen parçalarda ara..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+          <div className="pt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                placeholder="Yüklenen parçalarda ara..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
         </DialogHeader>
 
