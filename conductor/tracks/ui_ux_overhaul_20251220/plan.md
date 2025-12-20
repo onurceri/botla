@@ -1,14 +1,14 @@
 # Plan: Comprehensive UI/UX Overhaul (Apple Design Style)
 
 ## Phase 1: Authentication & Onboarding Overhaul
-- [ ] Task: Re-design Login and Sign-up UI with "Apple" aesthetics (minimalism, glassmorphism)
-    - [ ] Write unit tests for the new Auth UI components
-    - [ ] Implement the new Auth UI using Tailwind and Radix UI
-    - [ ] Ensure fluid transitions between Login and Sign-up states
-- [ ] Task: Restructure the "First-to-Launch" Onboarding Flow
-    - [ ] Write unit tests for the multi-step onboarding wizard
-    - [ ] Implement a guided, visual journey from registration to bot deployment
-    - [ ] Add progress indicators and "magical" reveal animations for each step
+- [x] Task: Re-design Login and Sign-up UI with "Apple" aesthetics (minimalism, glassmorphism)
+    - [x] Write unit tests for the new Auth UI components
+    - [x] Implement the new Auth UI using Tailwind and Radix UI
+    - [x] Ensure fluid transitions between Login and Sign-up states
+- [x] Task: Restructure the "First-to-Launch" Onboarding Flow
+    - [x] Write unit tests for the multi-step onboarding wizard
+    - [x] Implement a guided, visual journey from registration to bot deployment
+    - [x] Add progress indicators and "magical" reveal animations for each step
 - [ ] Task: Conductor - User Manual Verification 'Authentication & Onboarding Overhaul' (Protocol in workflow.md)
 
 ## Phase 2: Bot Configuration & Branding (The "Visual Builder")

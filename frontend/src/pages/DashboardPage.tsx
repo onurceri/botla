@@ -251,9 +251,9 @@ const DashboardPage = () => {
       </div>
 
       {/* Charts & Recent Activity */}
-      <div className="grid gap-4 md:grid-cols-7">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         {/* Main Chart */}
-        <Card className="col-span-4">
+        <Card className="lg:col-span-4">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -335,12 +335,12 @@ const DashboardPage = () => {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
+                <div className="h-[200px] sm:h-[300px] flex flex-col items-center justify-center text-muted-foreground space-y-2">
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                     <Zap className="w-6 h-6 opacity-50" />
                   </div>
                   <p className="text-sm font-medium">Henüz aktivite yok</p>
-                  <p className="text-xs">Botlarınız kullanılmaya başlandığında burada grafik göreceksiniz.</p>
+                  <p className="text-xs text-center px-4">Botlarınız kullanılmaya başlandığında burada grafik göreceksiniz.</p>
                 </div>
               )}
             </div>
@@ -348,33 +348,37 @@ const DashboardPage = () => {
         </Card>
 
         {/* Recent Bots */}
-        <Card className="col-span-3">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Son Botlarınız</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recentBots.map((bot) => (
                 <Link 
                   key={bot.id} 
                   to={`/dashboard/chatbots/${bot.id}`}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer group"
+                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/10">
-                    <Bot className="w-5 h-5" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10 flex-shrink-0">
+                    <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-none truncate text-foreground">{bot.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">{bot.model}</p>
+                    <p className="text-sm sm:text-base font-medium leading-none truncate text-foreground">{bot.name}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">{bot.model}</p>
                   </div>
-                  <div className="h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                  <div className="h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0">
                     <ArrowUpRight className="w-4 h-4" />
                   </div>
                 </Link>
               ))}
               {recentBots.length === 0 && (
-                <div className="text-center text-sm text-muted-foreground py-8">
-                  Henüz bir bot oluşturmadınız.
+                <div className="text-center py-8 sm:py-12">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-3">
+                    <Bot className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground mb-1">Henüz bot yok</p>
+                  <p className="text-xs text-muted-foreground">İlk chatbotunuzu oluşturun</p>
                 </div>
               )}
             </div>

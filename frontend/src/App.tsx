@@ -8,6 +8,7 @@ import ProfilePage from '@/pages/ProfilePage'
 import PlanPage from '@/pages/PlanPage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
+import OnboardingPage from '@/pages/OnboardingPage'
 import { ToastProvider, useToast } from '@/components/ui/toast'
 import { OrganizationProvider } from '@/features/organization/context/OrganizationContext'
 import { OrganizationSettingsPage } from '@/features/organization/pages/OrganizationSettingsPage'
@@ -69,6 +70,11 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/onboarding" element={
+            <PrivateRoute>
+              <OnboardingPage />
+            </PrivateRoute>
+          } />
 
           {/* Protected Routes */}
           <Route path="/dashboard" element={

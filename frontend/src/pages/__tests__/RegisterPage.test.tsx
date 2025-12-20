@@ -24,7 +24,10 @@ describe('RegisterPage', () => {
 
   it('submits successfully and shows success toast', async () => {
     const user = userEvent.setup()
-    const postSpy = vi.spyOn(api, 'post').mockResolvedValueOnce({ data: {} } as any)
+    // Mock both register and login calls
+    const postSpy = vi.spyOn(api, 'post')
+      .mockResolvedValueOnce({ data: {} } as any) // register
+      .mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any) // login
 
     render(
       <ToastProvider>
@@ -39,8 +42,12 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Şifre'), 'secret')
 
     await user.click(screen.getAllByRole('button', { name: 'Kayıt Ol' })[0])
-    expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/register', { full_name: 'Onur Ceri', email: 'onur@example.com', password: 'secret' })
-    expect(screen.getByText('Kayıt başarılı! Giriş yapabilirsiniz.')).toBeInTheDocument()
+    
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/register', { full_name: 'Onur Ceri', email: 'onur@example.com', password: 'secret' })
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/login', { email: 'onur@example.com', password: 'secret' })
+    })
+    expect(screen.getByText('Hesabınız oluşturuldu! Hadi başlayalım.')).toBeInTheDocument()
   })
 
   it('shows fallback error message on API failure', async () => {
