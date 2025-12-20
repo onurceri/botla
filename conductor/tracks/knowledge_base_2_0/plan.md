@@ -35,23 +35,23 @@
 
 - [x] Task: Conductor - User Manual Verification 'Frontend - Source List & Error Status' (Protocol in workflow.md) [checkpoint: c83c4c5]
 
-## Phase 3: Frontend - Chunk Inspector
+## Phase 3: Frontend - Chunk Inspector [checkpoint: 6323f45]
 
-- [ ] Task: Create `ChunkInspector` Component
+- [x] Task: Create `ChunkInspector` Component
     - **Goal:** A modal/slide-over to view and search chunks.
     - **Implementation:**
         - Create `frontend/src/features/chatbot/components/ChunkInspector.tsx`.
         - Use a Dialog or Sheet component from Radix UI.
         - Implement a paginated list of text chunks.
-        - Add a simple text search filter (client-side or server-side depending on API).
+        - Add a simple text search filter (client-side or server-side depending on API). [9bec4ea]
 
-- [ ] Task: Integrate Inspector into Source List
+- [x] Task: Integrate Inspector into Source List
     - **Goal:** Connect the "View Chunks" button to the Inspector.
     - **Implementation:**
         - Add state to `SourcesTab` to track the `selectedSourceForInspection`.
-        - Render the `ChunkInspector` when a source is selected.
+        - Render the `ChunkInspector` when a source is selected. [9bec4ea]
 
-- [ ] Task: Conductor - User Manual Verification 'Frontend - Chunk Inspector' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Frontend - Chunk Inspector' (Protocol in workflow.md) [checkpoint: 6323f45]
 
 ## Phase 4: Polish & Integration
 
