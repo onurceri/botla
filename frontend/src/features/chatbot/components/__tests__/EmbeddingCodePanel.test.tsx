@@ -22,6 +22,7 @@ describe('EmbeddingCodePanel', () => {
         onDomainsChange={onDomains}
         onSecretChange={onSecret}
         onSecretRefresh={onRefresh}
+        onSecretClear={() => {}}
       />
     )
 
@@ -45,6 +46,7 @@ describe('EmbeddingCodePanel', () => {
         onDomainsChange={() => {}}
         onSecretChange={() => {}}
         onSecretRefresh={() => {}}
+        onSecretClear={() => {}}
       />
     )
     const copyBtns = screen.getAllByRole('button', { name: /Kopyala/i })
@@ -66,6 +68,7 @@ describe('EmbeddingCodePanel', () => {
         onDomainsChange={onDomains}
         onSecretChange={() => {}}
         onSecretRefresh={() => {}}
+        onSecretClear={() => {}}
       />
     )
     const domainsInput = screen.getByPlaceholderText('ornek.com, digersite.com') as HTMLInputElement
@@ -85,6 +88,7 @@ describe('EmbeddingCodePanel', () => {
         onDomainsChange={() => {}}
         onSecretChange={() => {}}
         onSecretRefresh={() => {}}
+        onSecretClear={() => {}}
       />
     )
     // Advanced section toggle should be visible

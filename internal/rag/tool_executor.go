@@ -26,6 +26,16 @@ type ToolResult struct {
 	Error      string `json:"error,omitempty"`
 }
 
+// FindActionByToolName finds an action by its tool name within a list of actions
+func (e *ToolExecutor) FindActionByToolName(actions []*models.ChatbotAction, toolName string) *models.ChatbotAction {
+	for _, a := range actions {
+		if a.ToolName != nil && *a.ToolName == toolName {
+			return a
+		}
+	}
+	return nil
+}
+
 // Execute executes a tool call and returns the result
 func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *models.ChatbotAction, chatbotID, conversationID string) (*ToolResult, error) {
 	if action == nil {

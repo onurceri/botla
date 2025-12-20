@@ -19,7 +19,7 @@ export default function GuardrailsTab() {
 
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildGuardrailsPayload(),
-    saveFn: (id, payload) => updateGuardrails(payload),
+    saveFn: (_, payload) => updateGuardrails(payload),
   })
 
   return (

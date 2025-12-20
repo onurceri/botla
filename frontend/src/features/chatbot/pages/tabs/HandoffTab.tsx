@@ -19,7 +19,7 @@ export default function HandoffTab() {
 
   const { isSaving, lastSavedAt, error } = useAutoSave({
     payload: buildHandoffPayload(),
-    saveFn: (id, payload) => updateHandoff(payload),
+    saveFn: (_, payload) => updateHandoff(payload),
   })
 
   return (

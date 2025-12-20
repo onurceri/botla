@@ -141,12 +141,27 @@ export default function ActionForm({ action, onSave, onCancel, isSaving }: Props
           )}
 
           <div className="grid gap-2">
-            <label className="text-sm font-medium">Parametreler (JSON Schema)</label>
-            <p className="text-xs text-muted-foreground">AI'ın bu aksiyonu kullanırken hangi parametreleri çıkarması gerektiğini tanımlayın.</p>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Parametreler (JSON Schema)</label>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 text-xs"
+                onClick={() => setParameters('{\n  "type": "object",\n  "properties": {\n    "city": {\n      "type": "string",\n      "description": "Kullanıcının sorduğu şehir"\n    }\n  },\n  "required": ["city"]\n}')}
+              >
+                Örnek Doldur
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              AI'ın parametreleri tanıması için <a href="https://json-schema.org/learn/getting-started-step-by-step" target="_blank" rel="noopener noreferrer" className="underline text-primary">JSON Schema</a> formatında giriniz.
+              Örneğin bir şehir parametresi için "Örnek Doldur" butonunu kullanabilirsiniz.
+            </p>
             <textarea 
               className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
               value={parameters}
               onChange={e => setParameters(e.target.value)}
+              placeholder='{\n  "type": "object",\n  "properties": { ... }\n}'
             />
           </div>
 

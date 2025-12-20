@@ -59,6 +59,7 @@ func normalizeToolParameters(raw *json.RawMessage) json.RawMessage {
 	if _, ok := m["properties"]; !ok {
 		m["properties"] = map[string]any{}
 	}
+	
 	if b, err := json.Marshal(m); err == nil {
 		return b
 	}
@@ -72,7 +73,12 @@ func ConvertActionsToTools(actions []*models.ChatbotAction) []Tool {
 		if !action.Enabled {
 			continue
 		}
-		if !IsValidToolName(action.Name) {
+		// Use the LLM-generated tool_name, skip if not available
+		if action.ToolName == nil || *action.ToolName == "" {
+			continue
+		}
+		toolName := *action.ToolName
+		if !IsValidToolName(toolName) {
 			continue
 		}
 		desc := ""
@@ -84,7 +90,7 @@ func ConvertActionsToTools(actions []*models.ChatbotAction) []Tool {
 		tools = append(tools, Tool{
 			Type: "function",
 			Function: ToolFunction{
-				Name:        action.Name,
+				Name:        toolName, // Use LLM-generated tool_name
 				Description: desc,
 				Parameters:  params,
 			},

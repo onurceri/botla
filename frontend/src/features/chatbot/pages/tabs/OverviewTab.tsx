@@ -25,7 +25,6 @@ export default function OverviewTab() {
     model, setModel,
     temperature, setTemperature,
     maxTokens, setMaxTokens,
-    buildOverviewPayload,
     availableModels,
   } = useChatbotContext()
 
@@ -35,13 +34,13 @@ export default function OverviewTab() {
 
   const { isSaving: isBasicInfoSaving, lastSavedAt: basicInfoSavedAt, error: basicInfoError } = useAutoSave({
     payload: { name, description: null, custom_instruction: customInstruction, language: 'tr-TR' }, 
-    saveFn: (id, payload) => updateBasicInfo(payload),
+    saveFn: (_, payload) => updateBasicInfo(payload),
     enabled: !!name.trim(),
   })
 
   const { isSaving: isModelSaving, lastSavedAt: modelSavedAt, error: modelError } = useAutoSave({
     payload: { model, temperature, max_tokens: maxTokens },
-    saveFn: (id, payload) => updateModelSettings(payload),
+    saveFn: (_, payload) => updateModelSettings(payload),
     enabled: !!model,
   })
 
