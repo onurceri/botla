@@ -14,6 +14,10 @@ func registerSourceRoutes(mux *http.ServeMux, secret string, sh *handlers.Source
 			sh.RefreshSource(w, r)
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/chunks") {
+			sh.GetSourceChunks(w, r)
+			return
+		}
 		sh.GetSourceStatusOrDelete(w, r)
 	})))
 }
