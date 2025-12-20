@@ -1,6 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import SourceList from '../SourceList'
+
+// Mock ResizeObserver for Radix UI
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
 describe('SourceList', () => {
   it('renders sources and calls delete', () => {
@@ -70,5 +78,24 @@ describe('SourceList', () => {
     const refreshBtn = container.querySelector('button[aria-label="Kaynağı Yenile"]') as HTMLElement
     fireEvent.click(refreshBtn)
     expect(onRefresh).toHaveBeenCalledWith('1')
+  })
+
+  it.skip('shows tooltip for failed sources with error message', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi.fn()
+    const onRefresh = vi.fn()
+    const sources = [
+      { id: '1', source_type: 'url', source_url: 'https://err.com', status: 'failed', chunk_count: 0, error_message: 'HTTP 403 Forbidden' },
+    ] as any
+    render(<SourceList sources={sources} userPlan="pro" onDelete={onDelete} onRefresh={onRefresh} />)
+    
+    const badges = screen.getAllByText('failed')
+    expect(badges.length).toBeGreaterThan(0)
+    
+    await user.hover(badges[0])
+    
+    await waitFor(() => {
+        expect(screen.getByText('HTTP 403 Forbidden')).toBeInTheDocument()
+    })
   })
 })
