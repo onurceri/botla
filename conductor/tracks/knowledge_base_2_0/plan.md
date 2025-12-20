@@ -19,21 +19,21 @@
 
 - [x] Task: Conductor - User Manual Verification 'Backend - Chunk Inspection & Detailed Errors' (Protocol in workflow.md) [checkpoint: ea3784a]
 
-## Phase 2: Frontend - Source List & Error Status
+## Phase 2: Frontend - Source List & Error Status [checkpoint: c83c4c5]
 
-- [ ] Task: Update `useSources` Query & Types
+- [x] Task: Update `useSources` Query & Types
     - **Goal:** Fetch the new error details and handle the new API endpoints.
     - **Implementation:**
         - Update `frontend/src/api/sources.ts` (or equivalent) to add `getChunks(sourceId)`.
-        - Update the `Source` interface to include `last_error` or detailed status fields.
+        - Update the `Source` interface to include `last_error` or detailed status fields. [5c8ab60]
 
-- [ ] Task: Enhance Source List UI
+- [x] Task: Enhance Source List UI
     - **Goal:** Display detailed status.
     - **Implementation:**
         - Modify `frontend/src/features/chatbot/pages/tabs/SourcesTab.tsx`.
-        - Update the status badge to show a tooltip with `last_error` if the status is "failed".
+        - Update the status badge to show a tooltip with `last_error` if the status is "failed". [5c8ab60]
 
-- [ ] Task: Conductor - User Manual Verification 'Frontend - Source List & Error Status' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Frontend - Source List & Error Status' (Protocol in workflow.md) [checkpoint: c83c4c5]
 
 ## Phase 3: Frontend - Chunk Inspector
 
