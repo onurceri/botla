@@ -19,10 +19,13 @@ func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *ha
 	// Chat
 	mux.HandleFunc("POST /api/v1/chatbots/{id}/chat", chh.Chat)
 
-	// Actions (Legacy dispatch)
-	// We keep the manual dispatch for actions because it handles sub-paths dynamically
-	mux.HandleFunc("/api/v1/chatbots/{id}/actions/", acth.Dispatch)
-	mux.HandleFunc("/api/v1/chatbots/{id}/actions", acth.Dispatch)
+	// Actions
+	mux.HandleFunc("GET /api/v1/chatbots/{id}/actions", acth.List)
+	mux.HandleFunc("POST /api/v1/chatbots/{id}/actions", acth.Create)
+	mux.HandleFunc("GET /api/v1/chatbots/{id}/actions/logs", acth.GetLogs)
+	mux.HandleFunc("GET /api/v1/chatbots/{id}/actions/{actionId}", acth.Get)
+	mux.HandleFunc("PUT /api/v1/chatbots/{id}/actions/{actionId}", acth.Update)
+	mux.HandleFunc("DELETE /api/v1/chatbots/{id}/actions/{actionId}", acth.Delete)
 
 	// Handoff Requests
 	mux.HandleFunc("GET /api/v1/chatbots/{id}/handoff-requests", hoh.ListHandoffRequests)

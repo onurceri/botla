@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
@@ -54,6 +55,13 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+
+		// Validate that botID is a valid UUID
+		if _, err := uuid.Parse(botID); err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
 		c, err := db.GetChatbotByID(r.Context(), dbpool, botID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

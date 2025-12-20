@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"strconv"
 
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
@@ -28,81 +28,40 @@ type createActionRequest struct {
 	Enabled     bool            `json:"enabled"`
 }
 
-// Dispatch handles requests to /api/v1/chatbots/:id/actions...
-func (h *ActionHandlers) Dispatch(w http.ResponseWriter, r *http.Request) {
-	// Path is like /api/v1/chatbots/:id/actions...
-	// We need to extract botID
-	path := r.URL.Path
-	parts := strings.Split(path, "/")
-	// ["", "api", "v1", "chatbots", "{id}", "actions", ...]
-	if len(parts) < 6 || parts[5] != "actions" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	botID := parts[4]
-
-	// Check permissions
+func (h *ActionHandlers) authorize(w http.ResponseWriter, r *http.Request) (string, *models.Chatbot, bool) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok || userID == "" {
 		w.WriteHeader(http.StatusUnauthorized)
-		return
+		return "", nil, false
+	}
+	botID := r.PathValue("id")
+	if botID == "" {
+		w.WriteHeader(http.StatusNotFound)
+		return "", nil, false
 	}
 
 	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return "", nil, false
 	}
 	if bot == nil {
 		w.WriteHeader(http.StatusNotFound)
-		return
+		return "", nil, false
 	}
 	if bot.UserID != userID {
 		w.WriteHeader(http.StatusForbidden)
-		return
+		return "", nil, false
 	}
-
-	// Route based on suffix
-	// /api/v1/chatbots/{id}/actions
-	if len(parts) == 6 {
-		if r.Method == http.MethodGet {
-			h.List(w, r, botID)
-			return
-		}
-		if r.Method == http.MethodPost {
-			h.Create(w, r, botID)
-			return
-		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	// /api/v1/chatbots/{id}/actions/{actionId}
-	actionID := parts[6]
-	if len(parts) == 7 {
-		switch r.Method {
-		case http.MethodGet:
-			h.Get(w, r, botID, actionID)
-		case http.MethodPut:
-			h.Update(w, r, botID, actionID)
-		case http.MethodDelete:
-			h.Delete(w, r, botID, actionID)
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-		return
-	}
-
-	// /api/v1/chatbots/{id}/actions/{actionId}/test
-	if len(parts) == 8 && parts[7] == "test" && r.Method == http.MethodPost {
-		h.Test(w, r, botID, actionID)
-		return
-	}
-
-	w.WriteHeader(http.StatusNotFound)
+	return botID, bot, true
 }
 
-func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request, botID string) {
+func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request) {
+	botID, _, ok := h.authorize(w, r)
+	if !ok {
+		return
+	}
+
 	actions, err := db.GetActions(r.Context(), h.DB, botID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -116,8 +75,12 @@ func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request, botID stri
 	_ = json.NewEncoder(w).Encode(map[string]any{"actions": actions})
 }
 
-func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID string) {
-	bot, _ := db.GetChatbotByID(r.Context(), h.DB, botID)
+func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request) {
+	botID, bot, ok := h.authorize(w, r)
+	if !ok {
+		return
+	}
+
 	base := "tr"
 	if bot != nil {
 		base = api.BaseLang(bot.LanguageCode)
@@ -175,7 +138,13 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request, botID st
 	_ = json.NewEncoder(w).Encode(action)
 }
 
-func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request, botID, actionID string) {
+func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request) {
+	botID, _, ok := h.authorize(w, r)
+	if !ok {
+		return
+	}
+
+	actionID := r.PathValue("actionId")
 	action, err := db.GetActionByID(r.Context(), h.DB, actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -190,7 +159,13 @@ func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request, botID, acti
 	_ = json.NewEncoder(w).Encode(action)
 }
 
-func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request, botID, actionID string) {
+func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
+	botID, _, ok := h.authorize(w, r)
+	if !ok {
+		return
+	}
+
+	actionID := r.PathValue("actionId")
 	action, err := db.GetActionByID(r.Context(), h.DB, actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -258,7 +233,13 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request, botID, a
 	_ = json.NewEncoder(w).Encode(action)
 }
 
-func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request, botID, actionID string) {
+func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request) {
+	botID, _, ok := h.authorize(w, r)
+	if !ok {
+		return
+	}
+
+	actionID := r.PathValue("actionId")
 	action, err := db.GetActionByID(r.Context(), h.DB, actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -277,8 +258,44 @@ func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request, botID, a
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *ActionHandlers) Test(w http.ResponseWriter, r *http.Request, botID, actionID string) {
-	// TODO: Implement test logic (execute action with test params)
-	w.WriteHeader(http.StatusNotImplemented)
-	_, _ = fmt.Fprintf(w, "Test not implemented yet")
+func (h *ActionHandlers) GetLogs(w http.ResponseWriter, r *http.Request) {
+	botID, _, ok := h.authorize(w, r)
+	if !ok {
+		return
+	}
+
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page := 1
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	limit := 20
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	offset := (page - 1) * limit
+	logs, err := db.GetActionLogs(r.Context(), h.DB, botID, limit, offset)
+	if err != nil {
+		http.Error(w, "Failed to fetch logs", http.StatusInternalServerError)
+		return
+	}
+
+	if logs == nil {
+		logs = []*models.ActionExecutionLog{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"logs":  logs,
+		"page":  page,
+		"limit": limit,
+	})
 }

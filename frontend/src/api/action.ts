@@ -45,3 +45,23 @@ export const updateAction = async (chatbotId: string, actionId: string, action: 
 export const deleteAction = async (chatbotId: string, actionId: string) => {
   await api.delete(`/api/v1/chatbots/${chatbotId}/actions/${actionId}`)
 }
+
+export interface ActionLog {
+  id: string
+  chatbot_id: string
+  action_id: string
+  conversation_id?: string
+  status: string
+  request_payload: any
+  response_payload: any
+  error_message?: string
+  duration_ms: number
+  created_at: string
+}
+
+export const getActionLogs = async (chatbotId: string, page = 1, limit = 20) => {
+  const { data } = await api.get<{ logs: ActionLog[], page: number, limit: number }>(`/api/v1/chatbots/${chatbotId}/actions/logs`, {
+    params: { page, limit }
+  })
+  return data
+}

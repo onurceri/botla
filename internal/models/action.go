@@ -40,3 +40,17 @@ type HTTPActionConfig struct {
 type ZapierActionConfig struct {
 	WebhookURL string `json:"webhook_url"`
 }
+
+type ActionExecutionLog struct {
+	ID              string           `json:"id"`
+	ChatbotID       string           `json:"chatbot_id"`
+	ActionID        string           `json:"action_id"`
+	ConversationID  *string          `json:"conversation_id"`
+	MessageID       *string          `json:"message_id"`
+	Status          string           `json:"status"` // "success", "failure"
+	RequestPayload  *json.RawMessage `json:"request_payload"`
+	ResponsePayload *json.RawMessage `json:"response_payload"`
+	ErrorMessage    *string          `json:"error_message,omitempty"`
+	DurationMs      int              `json:"duration_ms"`
+	CreatedAt       time.Time        `json:"created_at"`
+}

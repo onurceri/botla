@@ -94,13 +94,21 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	factory := rag.NewClientFactory(cfg)
 	chatSvc := services.NewChatService(pool, factory, nil, nil, log) // nil embedder/qc -> lazy init
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
-	
+
 	// Create mock tool name generator for tests
 	mockClient := &mockToolsClient{}
 	tng := rag.NewToolNameGenerator(mockClient)
 	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: tng}
 	handh := &handlers.HandoffHandlers{DB: pool, Log: log}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q}
+
+	// Actions routes
+	mux.Handle("GET /api/v1/chatbots/{id}/actions", protected(http.HandlerFunc(acth.List)))
+	mux.Handle("POST /api/v1/chatbots/{id}/actions", protected(http.HandlerFunc(acth.Create)))
+	mux.Handle("GET /api/v1/chatbots/{id}/actions/logs", protected(http.HandlerFunc(acth.GetLogs)))
+	mux.Handle("GET /api/v1/chatbots/{id}/actions/{actionId}", protected(http.HandlerFunc(acth.Get)))
+	mux.Handle("PUT /api/v1/chatbots/{id}/actions/{actionId}", protected(http.HandlerFunc(acth.Update)))
+	mux.Handle("DELETE /api/v1/chatbots/{id}/actions/{actionId}", protected(http.HandlerFunc(acth.Delete)))
 
 	mux.Handle("/api/v1/chatbots/", protected(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
@@ -124,10 +132,6 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
 			chh.Chat(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/actions") {
-			acth.Dispatch(w, r)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff-requests") {
