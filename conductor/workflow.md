@@ -16,71 +16,60 @@ All tasks follow a strict lifecycle:
 
 ### Standard Task Workflow
 
-1. **Select Task:** Choose the next available task from `plan.md` in sequential order
+1.  **Select Task:** Choose the next available task from `plan.md` in sequential order
 
-2. **Create Worktree and Switch Context:**
-   - Generate a sibling directory path for the worktree (e.g., `../botla-co-task-<short_id>`).
-   - Create the worktree and new branch: `git worktree add -b task/<task_id_or_description> <worktree_path>`
-   - **CRITICAL AGENT INSTRUCTION:** All subsequent file edits, tests, and shell commands for this task **MUST** be executed within `<worktree_path>` (using the `dir_path` parameter).
-   - **Initialize Environment:** You must prepare the new worktree:
-     - Go: `go mod download`
-     - Frontend: `cd frontend && npm ci` (or `npm install`)
-     - Widget: `cd widget && npm ci` (or `npm install`)
-   - Mark the task as In Progress in `plan.md` (in the *main* repository) by changing `[ ]` to `[~]`.
+2.  **Create Branch:**
+    -   Create a new branch for the task: `git checkout -b task/<task_id_or_description>`
+    -   Mark the task as In Progress in `plan.md` by changing `[ ]` to `[~]`.
 
-3. **Write Failing Tests (Red Phase):**
-   - **Context:** Inside `<worktree_path>`.
-   - Create a new test file for the feature or bug fix.
-   - Write one or more unit tests that clearly define the expected behavior and acceptance criteria for the task.
-   - **CRITICAL:** Run the tests and confirm that they fail as expected. This is the "Red" phase of TDD. Do not proceed until you have failing tests.
+3.  **Write Failing Tests (Red Phase):**
+    -   Create a new test file for the feature or bug fix.
+    -   Write one or more unit tests that clearly define the expected behavior and acceptance criteria for the task.
+    -   **CRITICAL:** Run the tests and confirm that they fail as expected. This is the "Red" phase of TDD. Do not proceed until you have failing tests.
 
-4. **Implement to Pass Tests (Green Phase):**
-   - **Context:** Inside `<worktree_path>`.
-   - Write the minimum amount of application code necessary to make the failing tests pass.
-   - Run the test suite again and confirm that all tests now pass. This is the "Green" phase.
+4.  **Implement to Pass Tests (Green Phase):**
+    -   Write the minimum amount of application code necessary to make the failing tests pass.
+    -   Run the test suite again and confirm that all tests now pass. This is the "Green" phase.
 
-5. **Refactor (Optional but Recommended):**
-   - With the safety of passing tests, refactor the implementation code and the test code to improve clarity, remove duplication, and enhance performance without changing the external behavior.
-   - Rerun tests to ensure they still pass after refactoring.
+5.  **Refactor (Optional but Recommended):**
+    -   With the safety of passing tests, refactor the implementation code and the test code to improve clarity, remove duplication, and enhance performance without changing the external behavior.
+    -   Rerun tests to ensure they still pass after refactoring.
 
-6. **Verify Coverage:** Run coverage reports using the project's chosen tools.
-   Target: >= 90% coverage for new code.
+6.  **Verify Coverage:** Run coverage reports using the project's chosen tools.
+    Target: >= 90% coverage for new code.
 
-7. **Document Deviations:** If implementation differs from tech stack:
-   - **STOP** implementation
-   - Update `tech-stack.md` (in the *main* repository) with new design
-   - Add dated note explaining the change
-   - Resume implementation
+7.  **Document Deviations:** If implementation differs from tech stack:
+    -   **STOP** implementation
+    -   Update `tech-stack.md` with new design
+    -   Add dated note explaining the change
+    -   Resume implementation
 
-8. **Commit Task Changes with Summary:**
-   - **Context:** Inside `<worktree_path>`.
-   - Stage all code changes related to the task.
-   - Draft a comprehensive commit message that includes a summary of changes, modified files, and the "why" behind the change.
-   - Example:
-     ```
-     feat(ui): Create basic HTML structure for calculator
+8.  **Commit Task Changes with Summary:**
+    -   Stage all code changes related to the task.
+    -   Draft a comprehensive commit message that includes a summary of changes, modified files, and the "why" behind the change.
+    -   Example:
+        ```
+        feat(ui): Create basic HTML structure for calculator
 
-     Summary:
-     - Implemented the main container and display for the calculator.
-     - Added CSS classes for styling.
-     - Reason: To provide the foundation for the visual interface.
-     ```
-   - Perform the commit.
+        Summary:
+        - Implemented the main container and display for the calculator.
+        - Added CSS classes for styling.
+        - Reason: To provide the foundation for the visual interface.
+        ```
+    -   Perform the commit.
 
-9. **Record Task Commit SHA:**
-    - **Step 9.1: Update Plan:** Read `plan.md` (in *main* repo), find the line for the completed task, update its status from `[~]` to `[x]`, and append the first 7 characters of the *just-completed commit's* commit hash.
-    - **Step 9.2: Write Plan:** Write the updated content back to `plan.md`.
+9.  **Record Task Commit SHA:**
+    -   **Step 9.1: Update Plan:** Read `plan.md`, find the line for the completed task, update its status from `[~]` to `[x]`, and append the first 7 characters of the *just-completed commit's* commit hash.
+    -   **Step 9.2: Write Plan:** Write the updated content back to `plan.md`.
 
-10. **Merge and Cleanup Worktree:**
-    - **Context Switch:** Return to the *main* repository for these steps.
-    - Merge the task branch: `git merge task/<task_id_or_description>`
-    - Remove the worktree: `git worktree remove <worktree_path>`
-    - Delete the task branch: `git branch -d task/<task_id_or_description>`
+10. **Merge and Cleanup:**
+    -   Switch to the main branch: `git checkout main` (or `master`)
+    -   Merge the task branch: `git merge task/<task_id_or_description>`
+    -   Delete the task branch: `git branch -d task/<task_id_or_description>`
 
 11. **Commit Plan Update:**
-    - **Context:** Inside *main* repository.
-    - **Action:** Stage the modified `plan.md` file.
-    - **Action:** Commit this change with a descriptive message (e.g., `conductor(plan): Mark task 'Create user model' as complete`).
+    -   **Action:** Stage the modified `plan.md` file.
+    -   **Action:** Commit this change with a descriptive message (e.g., `conductor(plan): Mark task 'Create user model' as complete`).
 
 ### Phase Completion Verification and Checkpointing Protocol
 

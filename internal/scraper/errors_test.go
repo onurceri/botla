@@ -10,7 +10,9 @@ import (
 func TestScrapeURL_Error(t *testing.T) {
 	// Setup server that returns 403
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Forbidden"))
 	}))
 	defer srv.Close()
 
