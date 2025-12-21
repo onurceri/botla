@@ -13,6 +13,20 @@ import (
 func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (string, error) {
 	var id string
 
+	// Set defaults for new appearance fields
+	if bot.BubbleRadius == "" {
+		bot.BubbleRadius = "22px"
+	}
+	if bot.InputBackgroundColor == "" {
+		bot.InputBackgroundColor = "#ededed"
+	}
+	if bot.InputTextColor == "" {
+		bot.InputTextColor = "#000000"
+	}
+	if bot.SendButtonColor == "" {
+		bot.SendButtonColor = "#ebb800"
+	}
+
 	// Serialize JSONB fields
 	var sqJSON, tcJSON, fmJSON, trJSON, hcJSON interface{}
 	if bot.SuggestedQuestions != nil {
@@ -39,18 +53,20 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
             position, bot_message_color, user_message_color,
             bot_message_text_color, user_message_text_color,
             chat_font_family, chat_header_color, chat_header_text_color,
-            chat_background_color, bot_icon, bot_display_name, suggested_questions, suggestions_enabled,
+            chat_background_color, bubble_radius, input_background_color, input_text_color, send_button_color,
+            bot_icon, bot_display_name, suggested_questions, suggestions_enabled,
             include_paths, exclude_paths, selector_whitelist, discovery_mode,
             refresh_policy, refresh_frequency, next_refresh_at, last_refresh_at,
             confidence_threshold, threshold_config, fallback_messages, topic_restrictions,
             handoff_enabled, handoff_type, handoff_config
-        ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40) RETURNING id`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44) RETURNING id`,
 		bot.UserID, bot.WorkspaceID, bot.OrganizationID, bot.Name, bot.Description, bot.CustomInstruction, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
 		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
-		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName, sqJSON, bot.SuggestionsEnabled,
+		bot.ChatBackgroundColor, bot.BubbleRadius, bot.InputBackgroundColor, bot.InputTextColor, bot.SendButtonColor,
+		bot.BotIcon, bot.BotDisplayName, sqJSON, bot.SuggestionsEnabled,
 		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 		bot.RefreshPolicy, bot.RefreshFrequency, bot.NextRefreshAt, bot.LastRefreshAt,
 		bot.ConfidenceThreshold, tcJSON, fmJSON, trJSON,
@@ -70,7 +86,10 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                c.position, c.bot_message_color, c.user_message_color,
                c.bot_message_text_color, c.user_message_text_color,
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
-               c.chat_background_color,
+               c.chat_background_color, COALESCE(c.bubble_radius, '22px') AS bubble_radius,
+               COALESCE(c.input_background_color, '#ededed') AS input_background_color,
+               COALESCE(c.input_text_color, '#000000') AS input_text_color,
+               COALESCE(c.send_button_color, '#ebb800') AS send_button_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
@@ -98,7 +117,10 @@ func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID strin
                c.position, c.bot_message_color, c.user_message_color,
                c.bot_message_text_color, c.user_message_text_color,
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
-               c.chat_background_color,
+               c.chat_background_color, COALESCE(c.bubble_radius, '22px') AS bubble_radius,
+               COALESCE(c.input_background_color, '#ededed') AS input_background_color,
+               COALESCE(c.input_text_color, '#000000') AS input_text_color,
+               COALESCE(c.send_button_color, '#ebb800') AS send_button_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
@@ -130,7 +152,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			&c.Position, &c.BotMessageColor, &c.UserMessageColor,
 			&c.BotMessageTextColor, &c.UserMessageTextColor,
 			&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
-			&c.ChatBackgroundColor,
+			&c.ChatBackgroundColor, &c.BubbleRadius, &c.InputBackgroundColor, &c.InputTextColor, &c.SendButtonColor,
 			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
 			&sj, &asj, &c.SuggestionsEnabled,
 			&ipj, &epj, &swj, &c.DiscoveryMode,
@@ -209,7 +231,10 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                c.position, c.bot_message_color, c.user_message_color,
                c.bot_message_text_color, c.user_message_text_color,
                c.chat_font_family, c.chat_header_color, c.chat_header_text_color,
-               c.chat_background_color,
+               c.chat_background_color, COALESCE(c.bubble_radius, '22px') AS bubble_radius,
+               COALESCE(c.input_background_color, '#ededed') AS input_background_color,
+               COALESCE(c.input_text_color, '#000000') AS input_text_color,
+               COALESCE(c.send_button_color, '#ebb800') AS send_button_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
                c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
@@ -226,7 +251,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		&c.Position, &c.BotMessageColor, &c.UserMessageColor,
 		&c.BotMessageTextColor, &c.UserMessageTextColor,
 		&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
-		&c.ChatBackgroundColor,
+		&c.ChatBackgroundColor, &c.BubbleRadius, &c.InputBackgroundColor, &c.InputTextColor, &c.SendButtonColor,
 		&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
 		&sj, &asj, &c.SuggestionsEnabled,
 		&ipj, &epj, &swj, &c.DiscoveryMode,
@@ -343,21 +368,23 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             position=$10, bot_message_color=$11, user_message_color=$12,
             bot_message_text_color=$13, user_message_text_color=$14,
             chat_font_family=$15, chat_header_color=$16, chat_header_text_color=$17,
-            chat_background_color=$18, bot_icon=$19, bot_display_name=$20,
-            updated_at=NOW(), allowed_domains=$21, embed_secret=$22, secure_embed_enabled=$23,
-            suggested_questions=$24, all_suggested_questions=$24, suggestions_enabled=$25,
-            include_paths=$26, exclude_paths=$27, selector_whitelist=$28, discovery_mode=$29,
-            refresh_policy=$30, refresh_frequency=$31,
-            hide_branding=$32, custom_branding=$33,
-            confidence_threshold=$34, threshold_config=$35, fallback_messages=$36, topic_restrictions=$37,
-            handoff_enabled=$38, handoff_type=$39, handoff_config=$40
-        WHERE id=$41`,
+            chat_background_color=$18, bubble_radius=$19, input_background_color=$20, input_text_color=$21, send_button_color=$22,
+            bot_icon=$23, bot_display_name=$24,
+            updated_at=NOW(), allowed_domains=$25, embed_secret=$26, secure_embed_enabled=$27,
+            suggested_questions=$28, all_suggested_questions=$28, suggestions_enabled=$29,
+            include_paths=$30, exclude_paths=$31, selector_whitelist=$32, discovery_mode=$33,
+            refresh_policy=$34, refresh_frequency=$35,
+            hide_branding=$36, custom_branding=$37,
+            confidence_threshold=$38, threshold_config=$39, fallback_messages=$40, topic_restrictions=$41,
+            handoff_enabled=$42, handoff_type=$43, handoff_config=$44
+        WHERE id=$45`,
 		bot.Name, bot.Description, bot.CustomInstruction, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
 		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
-		bot.ChatBackgroundColor, bot.BotIcon, bot.BotDisplayName,
+		bot.ChatBackgroundColor, bot.BubbleRadius, bot.InputBackgroundColor, bot.InputTextColor, bot.SendButtonColor,
+		bot.BotIcon, bot.BotDisplayName,
 		bot.AllowedDomains, bot.EmbedSecret, bot.SecureEmbedEnabled,
 		sj, bot.SuggestionsEnabled,
 		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,

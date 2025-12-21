@@ -29,6 +29,10 @@ type Chatbot struct {
 	ChatHeaderColor       string            `json:"chat_header_color"`
 	ChatHeaderTextColor   string            `json:"chat_header_text_color"`
 	ChatBackgroundColor   string            `json:"chat_background_color"`
+	BubbleRadius          string            `json:"bubble_radius"`
+	InputBackgroundColor  string            `json:"input_background_color"`
+	InputTextColor        string            `json:"input_text_color"`
+	SendButtonColor       string            `json:"send_button_color"`
 	BotIcon               *string           `json:"bot_icon,omitempty"`
 	BotDisplayName        *string           `json:"bot_display_name,omitempty"`
 	AllowedDomains        *string           `json:"allowed_domains,omitempty"`

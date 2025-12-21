@@ -9,11 +9,15 @@ type Props = {
   botMessageTextColor: string
   userMessageColor: string
   userMessageTextColor: string
+  inputBackgroundColor: string
+  inputTextColor: string
+  sendButtonColor: string
   chatFontFamily: string
   position: string
   botDisplayName: string
   botIcon: string
   chatBackgroundColor: string
+  bubbleRadius: string
   welcomeMessage: string
   previewOpen: boolean
   sessionId: string
@@ -44,11 +48,15 @@ export default function PlaygroundPreview(props: Props) {
     botMessageTextColor,
     userMessageColor,
     userMessageTextColor,
+    inputBackgroundColor,
+    inputTextColor,
+    sendButtonColor,
     chatFontFamily,
     position,
     botDisplayName,
     botIcon,
     chatBackgroundColor,
+    bubbleRadius,
     welcomeMessage,
     sessionId,
     suggestionsEnabled,
@@ -78,7 +86,11 @@ export default function PlaygroundPreview(props: Props) {
     if (botMessageTextColor) config['bot-message-text-color'] = botMessageTextColor
     if (userMessageColor) config['user-message-color'] = userMessageColor
     if (userMessageTextColor) config['user-message-text-color'] = userMessageTextColor
+    if (inputBackgroundColor) config['input-bg-color'] = inputBackgroundColor
+    if (inputTextColor) config['input-text-color'] = inputTextColor
+    if (sendButtonColor) config['send-button-color'] = sendButtonColor
     if (chatBackgroundColor) config['chat-bg-color'] = chatBackgroundColor
+    if (bubbleRadius) config['bubble-radius'] = bubbleRadius
     if (chatFontFamily) config['font-family'] = chatFontFamily
 
     // Position
@@ -92,8 +104,10 @@ export default function PlaygroundPreview(props: Props) {
     if (welcomeMessage) config['welcome'] = welcomeMessage
 
     // Suggestions - serialize as JSON in URL param
-    if (suggestionsEnabled && suggestedQuestions.length > 0) {
-      config['suggestions'] = JSON.stringify(suggestedQuestions)
+    if (suggestionsEnabled) {
+      config['suggestions'] = JSON.stringify(suggestedQuestions || [])
+    } else {
+      config['suggestions'] = JSON.stringify([])
     }
 
     // Branding
@@ -108,7 +122,8 @@ export default function PlaygroundPreview(props: Props) {
   }, [
     id, themeColor, chatHeaderColor, chatHeaderTextColor,
     botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor,
-    chatFontFamily, position, botDisplayName, botIcon, chatBackgroundColor,
+    inputBackgroundColor, inputTextColor, sendButtonColor,
+    chatFontFamily, position, botDisplayName, botIcon, chatBackgroundColor, bubbleRadius,
     welcomeMessage, sessionId, suggestionsEnabled, suggestedQuestions,
     hideBranding, customBranding
   ])

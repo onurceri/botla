@@ -17,31 +17,36 @@ type Props = {
 
 export default function IdentitySection({ isExpanded, onToggle, botDisplayName, setBotDisplayName, botIcon, setBotIcon, welcomeMessage, setWelcomeMessage }: Props) {
   return (
-    <div className="border border-border rounded-xl bg-card overflow-hidden">
+    <div className={`transition-all duration-300 border border-slate-200/60 rounded-2xl overflow-hidden ${isExpanded ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]' : 'bg-white/40 hover:bg-white/60'}`}>
       <button 
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur hover:bg-white/70 transition-colors"
+        className="w-full flex items-center justify-between p-4 transition-colors"
       >
-        <div className="flex items-center gap-2 font-medium">
-          <User className="w-4 h-4 text-primary" />
-          Kimlik
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>
+            <User className="w-4 h-4" />
+          </div>
+          <span className={`text-[13px] font-bold tracking-tight ${isExpanded ? 'text-slate-900' : 'text-slate-600'}`}>Kimlik</span>
         </div>
-        {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+          <ChevronDown className="w-4 h-4 text-slate-300" />
+        </div>
       </button>
       {isExpanded && (
-        <div className="p-4 space-y-4 border-t border-border animate-in slide-in-from-top-2 duration-200">
-          <div className="space-y-2">
-            <label htmlFor="bot-display-name" className="text-xs font-medium text-muted-foreground uppercase">Bot Görünen Adı</label>
-            <Input id="bot-display-name" value={botDisplayName} onChange={(e) => setBotDisplayName(e.target.value)} placeholder="Örn: Asistan" className="bg-background" />
+        <div className="p-4 pt-0 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="h-px bg-slate-100/80 mb-5" />
+          <div className="space-y-2.5">
+            <label htmlFor="bot-display-name" className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bot Görünen Adı</label>
+            <Input id="bot-display-name" value={botDisplayName} onChange={(e) => setBotDisplayName(e.target.value)} placeholder="Örn: Asistan" className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all" />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="bot-icon-url" className="text-xs font-medium text-muted-foreground uppercase">Bot İkon URL</label>
-            <Input id="bot-icon-url" value={botIcon} onChange={(e) => setBotIcon(e.target.value)} placeholder="https://..." className="bg-background" />
+          <div className="space-y-2.5">
+            <label htmlFor="bot-icon-url" className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bot İkon URL</label>
+            <Input id="bot-icon-url" value={botIcon} onChange={(e) => setBotIcon(e.target.value)} placeholder="https://..." className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all" />
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="welcome-message" className="text-xs font-medium text-muted-foreground uppercase">Karşılama Mesajı (İlk Bot Mesajı)</label>
-              <span className="text-[11px] text-muted-foreground">
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between ml-1">
+              <label htmlFor="welcome-message" className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Karşılama Mesajı</label>
+              <span className="text-[10px] font-bold text-slate-300 tabular-nums">
                 {welcomeMessage.length}/{WELCOME_MESSAGE_MAX_LENGTH}
               </span>
             </div>
@@ -49,15 +54,10 @@ export default function IdentitySection({ isExpanded, onToggle, botDisplayName, 
               id="welcome-message"
               value={welcomeMessage}
               onChange={(e) => setWelcomeMessage(e.target.value)}
-              className="bg-background resize-none"
+              className="bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all rounded-xl resize-none p-3 text-sm leading-relaxed"
               maxLength={WELCOME_MESSAGE_MAX_LENGTH}
-              rows={3}
+              rows={4}
             />
-            <div className="flex justify-end">
-              <span className="text-[11px] text-muted-foreground">
-                {Math.max(0, WELCOME_MESSAGE_MAX_LENGTH - welcomeMessage.length).toLocaleString('tr-TR')} karakter kaldı
-              </span>
-            </div>
           </div>
         </div>
       )}

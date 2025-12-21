@@ -16,11 +16,18 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
   const [unread, setUnread] = useState(0)
   const [suggestions, setSuggestions] = useState<string[]>([])
 
+  const emitEvent = (type: string, payload?: any) => {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: `WIDGET_EVENT_${type.toUpperCase()}`, payload }, '*')
+    }
+  }
+
   useEffect(() => {
     const base = apiBase || ''
     const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}`
     fetch(url).then(r => r.json()).then(data => {
       setConfig(data)
+      emitEvent('CONFIG_LOADED', data)
       if (Array.isArray(data.suggested_questions)) {
         if (!useOverrides) setSuggestions(data.suggested_questions as string[])
       }
@@ -43,8 +50,8 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     if (!u) return undefined
     return u.replace(/[`'\"]/g, '').trim()
   }
-  const botName = (useOverrides && botNameOverride) || config?.bot_display_name
-  const botIcon = sanitizeUrl((useOverrides && botIconOverride) || config?.bot_icon)
+  const botName = (useOverrides && typeof botNameOverride !== 'undefined') ? botNameOverride : config?.bot_display_name
+  const botIcon = sanitizeUrl((useOverrides && typeof botIconOverride !== 'undefined') ? botIconOverride : config?.bot_icon)
   const hideBrand = (useOverrides && typeof hideBrandingOverride !== 'undefined') ? hideBrandingOverride : config?.hide_branding
   const customBrand = (useOverrides && customBrandingOverride) ? { ...customBrandingOverride, link: sanitizeUrl(customBrandingOverride.link) } : (config?.custom_branding ? { ...config?.custom_branding, link: sanitizeUrl(config?.custom_branding?.link) } : undefined)
   
@@ -60,10 +67,10 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       panelRef.current.style.setProperty('--cbw-font-family', fontFamily || config?.chat_font_family || 'inherit')
       if (panelBg || (config as any)?.chat_panel_bg_color) panelRef.current.style.setProperty('--cbw-panel-bg', panelBg || (config as any)?.chat_panel_bg_color)
       if (chatBg || (config as any)?.chat_background_color) panelRef.current.style.setProperty('--cbw-chat-bg', chatBg || (config as any)?.chat_background_color)
-      if (inputBg || (config as any)?.chat_input_bg_color) panelRef.current.style.setProperty('--cbw-input-bg', inputBg || (config as any)?.chat_input_bg_color)
-      if (inputText || (config as any)?.chat_input_text_color) panelRef.current.style.setProperty('--cbw-input-text', inputText || (config as any)?.chat_input_text_color)
-      if (bubbleRadius || (config as any)?.chat_bubble_radius) panelRef.current.style.setProperty('--cbw-bubble-radius', bubbleRadius || (config as any)?.chat_bubble_radius)
-      if (sendButtonColor || (config as any)?.chat_send_button_color) panelRef.current.style.setProperty('--cbw-send-bg', sendButtonColor || (config as any)?.chat_send_button_color)
+      if (inputBg || (config as any)?.input_background_color) panelRef.current.style.setProperty('--cbw-input-bg', inputBg || (config as any)?.input_background_color)
+      if (inputText || (config as any)?.input_text_color) panelRef.current.style.setProperty('--cbw-input-text', inputText || (config as any)?.input_text_color)
+      if (bubbleRadius || (config as any)?.bubble_radius) panelRef.current.style.setProperty('--cbw-bubble-radius', bubbleRadius || (config as any)?.bubble_radius)
+      if (sendButtonColor || (config as any)?.send_button_color) panelRef.current.style.setProperty('--cbw-send-bg', sendButtonColor || (config as any)?.send_button_color)
       if (panelHeight || (config as any)?.chat_panel_height) {
         panelRef.current.style.setProperty('--cbw-panel-height', panelHeight || (config as any)?.chat_panel_height)
       }
@@ -90,14 +97,26 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     const s = getSession(chatbotId)
     setSid(s.sessionId)
     if (s.messages && s.messages.length > 0) {
-      setMessages(s.messages)
+      // In playground/overrides mode, if the only message is the welcome message, update it
+      if (useOverrides && s.messages.length === 1 && s.messages[0].type === 'welcome') {
+        const msg = welcome || config?.welcome_message
+        if (msg && s.messages[0].content !== msg) {
+          const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as Message
+          setMessages([wm])
+          saveSession(chatbotId, { sessionId: s.sessionId, messages: [wm] })
+        } else {
+          setMessages(s.messages)
+        }
+      } else {
+        setMessages(s.messages)
+      }
     } else if (welcome || config?.welcome_message) {
       const msg = welcome || config?.welcome_message
       const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as Message
       setMessages([wm])
       saveSession(chatbotId, { sessionId: s.sessionId, messages: [wm] })
     }
-  }, [chatbotId, config, resetSession, sessionIdOverride])
+  }, [chatbotId, config, resetSession, sessionIdOverride, welcome, useOverrides])
 
   const send = async () => {
     if (loading) return
@@ -105,6 +124,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     if (!text) return
     setInput('')
     const um = { role: 'user', content: text, ts: Date.now() } as Message
+    emitEvent('MESSAGE_SENT', { content: text })
     setMessages((m) => {
       const nm = [...m, um]
       saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })
@@ -135,6 +155,8 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       const data = await res.json()
       const ans: string = data.response || 'Merhaba!'
       
+      emitEvent('RESPONSE_RECEIVED', { content: ans, message_id: data.message_id })
+
       // Check if this is a handoff response
       const isHandoff = !!data.handoff_request_id
       const am: Message = { 
@@ -152,7 +174,9 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
         return nm
       })
       if (!open) setUnread((u) => u + 1)
-    } catch {
+    } catch (e: any) {
+      emitEvent('ERROR', { message: e.message })
+      console.error('Chat error:', e)
       await new Promise((r) => setTimeout(r, 300))
       const em = { role: 'assistant', content: 'Şu an bir hata oluştu, lütfen tekrar deneyin.', ts: Date.now() } as Message
       setMessages((m) => {

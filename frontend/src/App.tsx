@@ -15,16 +15,14 @@ import { OrganizationSettingsPage } from '@/features/organization/pages/Organiza
 import { WorkspaceSettingsPage } from '@/features/organization/pages/WorkspaceSettingsPage'
 import LandingPage from '@/pages/LandingPage'
 
-import OverviewTab from '@/features/chatbot/pages/tabs/OverviewTab'
-import GuardrailsTab from '@/features/chatbot/pages/tabs/GuardrailsTab'
-import HandoffTab from '@/features/chatbot/pages/tabs/HandoffTab'
+// Dashboard 7-tab structure
+import SettingsTab from '@/features/chatbot/pages/tabs/SettingsTab'
+import SecurityTab from '@/features/chatbot/pages/tabs/SecurityTab'
 import SourcesTab from '@/features/chatbot/pages/tabs/SourcesTab'
 import ActionsTab from '@/features/chatbot/pages/tabs/ActionsTab'
-import SuggestionsTab from '@/features/chatbot/pages/tabs/SuggestionsTab'
 import PlaygroundTab from '@/features/chatbot/pages/tabs/PlaygroundTab'
-import ConnectTab from '@/features/chatbot/pages/tabs/ConnectTab'
-import AnalyticsTab from '@/features/chatbot/pages/tabs/AnalyticsTab'
-import HandoffRequestsTab from '@/features/chatbot/pages/tabs/HandoffRequestsTab'
+import DeployTab from '@/features/chatbot/pages/tabs/DeployTab'
+import InsightsTab from '@/features/chatbot/pages/tabs/InsightsTab'
 
 // Helper to validate stored tokens
 const isValidToken = (token: string | null): boolean => {
@@ -88,17 +86,14 @@ function App() {
             <Route path="chatbots" element={<ChatbotsPage />} />
             
             <Route path="chatbots/:id" element={<ChatbotDetailPage />}>
-              <Route index element={<Navigate to="overview" replace />} />
-              <Route path="overview" element={<OverviewTab />} />
-              <Route path="guardrails" element={<GuardrailsTab />} />
-              <Route path="handoff" element={<HandoffTab />} />
+              <Route index element={<Navigate to="settings" replace />} />
+              <Route path="settings" element={<SettingsTab />} />
+              <Route path="security" element={<SecurityTab />} />
               <Route path="sources" element={<SourcesTab />} />
               <Route path="actions" element={<ActionsTab />} />
-              <Route path="suggestions" element={<SuggestionsTab />} />
               <Route path="playground" element={<PlaygroundTab />} />
-              <Route path="connect" element={<ConnectTab />} />
-              <Route path="analytics" element={<AnalyticsTab />} />
-              <Route path="requests" element={<HandoffRequestsTab />} />
+              <Route path="deploy" element={<DeployTab />} />
+              <Route path="insights" element={<InsightsTab />} />
             </Route>
 
             <Route path="settings" element={<Navigate to="/dashboard/settings/profile" replace />} />

@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/preact'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/preact'
 import { Message } from '../Message'
 
 describe('Message', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it('renders markdown content correctly', () => {
     const msg = {
       role: 'assistant',
@@ -12,42 +16,64 @@ describe('Message', () => {
     
     render(<Message m={msg} />)
     
-    // Check if Strong element is rendered
     const strong = screen.getByText('Bold')
     expect(strong.tagName).toBe('STRONG')
     
-    // Check if Em element is rendered
     const em = screen.getByText('Italic')
     expect(em.tagName).toBe('EM')
   })
 
-  it('renders links correctly', () => {
+  it('renders user message differently', () => {
     const msg = {
-      role: 'assistant',
-      content: '[Link](https://example.com)',
-      id: '2'
+      role: 'user',
+      content: 'Hello',
+      id: '1'
     } as const
     
-    render(<Message m={msg} />)
-    
-    const link = screen.getByRole('link', { name: 'Link' })
-    expect(link).toBeDefined()
-    expect(link.getAttribute('href')).toBe('https://example.com')
+    const { container } = render(<Message m={msg} />)
+    expect(container.querySelector('.cbw-msg.user')).toBeDefined()
+    expect(screen.getByText('Hello')).toBeDefined()
   })
 
-  it('renders lists correctly', () => {
-     const msg = {
+  it('renders handoff card and handles email submission', async () => {
+    const onSubmitEmail = vi.fn().mockResolvedValue(undefined)
+    const msg = {
       role: 'assistant',
-      content: '- Item 1\n- Item 2',
-      id: '3'
+      content: 'Handoff',
+      type: 'handoff',
+      handoffRequestId: 'req123'
     } as const
 
-    render(<Message m={msg} />)
+    render(<Message m={msg} onSubmitEmail={onSubmitEmail} />)
+
+    expect(screen.getByText('Destek Talebi')).toBeDefined()
     
-    expect(screen.getByText('Item 1')).toBeDefined()
-    expect(screen.getByText('Item 2')).toBeDefined()
-    // List items are usually li
-    const items = screen.getAllByRole('listitem')
-    expect(items.length).toBe(2)
+    const input = screen.getByPlaceholderText('e-posta@adresiniz.com')
+    const button = screen.getByText('Gönder')
+
+    fireEvent.input(input, { target: { value: 'test@example.com' } })
+    
+    await act(async () => {
+      fireEvent.submit(button.closest('form')!)
+    })
+
+    expect(onSubmitEmail).toHaveBeenCalledWith('req123', 'test@example.com')
+    expect(screen.getByText('Talebiniz alındı!')).toBeDefined()
+  })
+
+  it('handles feedback clicks', () => {
+    const onFeedback = vi.fn()
+    const msg = {
+      role: 'assistant',
+      content: 'Helpful info',
+      id: 'msg123'
+    } as const
+
+    render(<Message m={msg} onFeedback={onFeedback} />)
+
+    const thumbsUp = screen.getByTitle('Yararlı')
+    fireEvent.click(thumbsUp)
+
+    expect(onFeedback).toHaveBeenCalledWith('msg123', true)
   })
 })

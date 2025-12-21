@@ -1,8 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/preact'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/preact'
 import { ChatDrawer } from '../ChatDrawer'
 
 describe('ChatDrawer', () => {
+  afterEach(() => {
+    cleanup()
+  })
   it('does not send on Enter when loading', async () => {
     const onSend = vi.fn()
     render(
@@ -19,6 +22,83 @@ describe('ChatDrawer', () => {
     const input = screen.getByPlaceholderText('Mesaj yazın...')
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
     expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('renders bot name and custom icon', () => {
+    render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[]}
+        loading={false}
+        input=""
+        setInput={() => {}}
+        onSend={() => {}}
+        onClose={() => {}}
+        botName="Custom Bot"
+        botIcon="https://example.com/icon.png"
+      />
+    )
+    expect(screen.getByText('Custom Bot')).toBeDefined()
+    const image = screen.getByRole('img', { hidden: true }) as HTMLImageElement
+    expect(image.src).toBe('https://example.com/icon.png')
+  })
+
+  it('renders default bot icon when none provided', () => {
+    render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[]}
+        loading={false}
+        input=""
+        setInput={() => {}}
+        onSend={() => {}}
+        onClose={() => {}}
+      />
+    )
+    // Should contain the SVG path for the default bot icon
+    const header = screen.getByRole('dialog')
+    expect(header.innerHTML).toContain('rect') // The robot head rect
+  })
+
+  it('updates character count as user types', () => {
+    const setInput = vi.fn()
+    render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[]}
+        loading={false}
+        input="Hello"
+        setInput={setInput}
+        onSend={() => {}}
+        onClose={() => {}}
+        maxChars={100}
+      />
+    )
+    
+    expect(screen.getByText('5 / 100')).toBeDefined()
+    
+    const textarea = screen.getByPlaceholderText('Mesaj yazın...')
+    fireEvent.input(textarea, { target: { value: 'Hello world' } })
+    
+    expect(setInput).toHaveBeenCalledWith('Hello world')
+  })
+
+  it('shows loading animation when loading is true', () => {
+    render(
+      <ChatDrawer 
+        color="#3b82f6"
+        messages={[]}
+        loading={true}
+        input=""
+        setInput={() => {}}
+        onSend={() => {}}
+        onClose={() => {}}
+      />
+    )
+    // The loading dots are spans with animation
+    const messages = screen.getByRole('dialog').querySelector('.cbw-messages')
+    const dots = messages?.querySelectorAll('span')
+    expect(dots?.length).toBe(3)
   })
 
   it('renders suggestions when no user message', async () => {
