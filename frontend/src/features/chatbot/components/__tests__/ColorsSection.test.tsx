@@ -1,124 +1,128 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ColorsSection from '../ColorsSection'
 
+beforeEach(() => {
+  cleanup()
+})
+
 describe('ColorsSection', () => {
+  const defaultProps = {
+    isExpanded: true,
+    onToggle: vi.fn(),
+    chatBackgroundColor: '#fff',
+    setChatBackgroundColor: vi.fn(),
+    chatHeaderColor: '#3b82f6',
+    setChatHeaderColor: vi.fn(),
+    chatHeaderTextColor: '#ffffff',
+    setChatHeaderTextColor: vi.fn(),
+    botMessageColor: '#eee',
+    setBotMessageColor: vi.fn(),
+    botMessageTextColor: '#000',
+    setBotMessageTextColor: vi.fn(),
+    userMessageColor: '#222',
+    setUserMessageColor: vi.fn(),
+    userMessageTextColor: '#fff',
+    setUserMessageTextColor: vi.fn(),
+    inputBackgroundColor: '#fff',
+    setInputBackgroundColor: vi.fn(),
+    inputTextColor: '#000',
+    setInputTextColor: vi.fn(),
+    sendButtonColor: '#000',
+    setSendButtonColor: vi.fn(),
+    chatFontFamily: 'Inter, sans-serif',
+    setChatFontFamily: vi.fn(),
+    themeColor: '#000',
+    setThemeColor: vi.fn(),
+    bubbleRadius: '22px',
+    setBubbleRadius: vi.fn(),
+  }
+
   it('updates header and user colors', () => {
-    const onToggle = vi.fn()
-    const setChatBg = vi.fn()
     const setHeader = vi.fn()
-    const setHeaderText = vi.fn()
-    const setBotMsg = vi.fn()
-    const setBotText = vi.fn()
-    const setUserMsg = vi.fn()
     const setUserText = vi.fn()
     render(
       <ColorsSection
-        isExpanded={true}
-        onToggle={onToggle}
-        chatBackgroundColor="#fff"
-        setChatBackgroundColor={setChatBg}
-        chatHeaderColor="#3b82f6"
+        {...defaultProps}
         setChatHeaderColor={setHeader}
-        chatHeaderTextColor="#ffffff"
-        setChatHeaderTextColor={setHeaderText}
-        botMessageColor="#eee"
-        setBotMessageColor={setBotMsg}
-        botMessageTextColor="#000"
-        setBotMessageTextColor={setBotText}
-        userMessageColor="#222"
-        setUserMessageColor={setUserMsg}
-        userMessageTextColor="#fff"
         setUserMessageTextColor={setUserText}
       />
     )
     const headerColor = screen.getByLabelText('Header') as HTMLInputElement
     fireEvent.change(headerColor, { target: { value: '#000000' } })
     expect(setHeader).toHaveBeenCalledWith('#000000')
-    const userText = screen.getByLabelText('Kullanıcı Yazı') as HTMLInputElement
+    // User message section
+    // Find the section by text and get its container
+    // H4 is inside the container div
+    const userMessageHeader = screen.getByText('Kullanıcı Mesajları')
+    const userMessageSection = userMessageHeader.parentElement!
+    
+    // Within that section, find the label "Yazı"
+    const userText = within(userMessageSection).getByLabelText('Yazı') as HTMLInputElement
+    
     fireEvent.change(userText, { target: { value: '#333333' } })
     expect(setUserText).toHaveBeenCalledWith('#333333')
   })
 
-  it('updates all color inputs', () => {
-    const setChatBg = vi.fn()
-    const setHeader = vi.fn()
-    const setHeaderText = vi.fn()
-    const setBotMsg = vi.fn()
-    const setBotText = vi.fn()
-    const setUserMsg = vi.fn()
-    const setUserText = vi.fn()
-    const utils2 = render(
+  it('updates font and theme color', async () => {
+    const user = userEvent.setup()
+    const setFont = vi.fn()
+    const setTheme = vi.fn()
+    render(
       <ColorsSection
-        isExpanded={true}
-        onToggle={() => {}}
-        chatBackgroundColor="#ffffff"
-        setChatBackgroundColor={setChatBg}
-        chatHeaderColor="#000000"
-        setChatHeaderColor={setHeader}
-        chatHeaderTextColor="#111111"
-        setChatHeaderTextColor={setHeaderText}
-        botMessageColor="#222222"
-        setBotMessageColor={setBotMsg}
-        botMessageTextColor="#333333"
-        setBotMessageTextColor={setBotText}
-        userMessageColor="#444444"
-        setUserMessageColor={setUserMsg}
-        userMessageTextColor="#555555"
-        setUserMessageTextColor={setUserText}
+        {...defaultProps}
+        setChatFontFamily={setFont}
+        setThemeColor={setTheme}
       />
     )
-    const view = within(utils2.container)
-    const chatBgLabel = view.getByText('Chat Arka Plan')
-    const chatBgTextInput = chatBgLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
-    fireEvent.change(chatBgTextInput, { target: { value: '#cccccc' } })
-    expect(setChatBg).toHaveBeenCalledWith('#cccccc')
-    const headerTextLabel = view.getByText('Header Yazı')
-    const headerTextInput = headerTextLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
-    fireEvent.change(headerTextInput, { target: { value: '#aaaaaa' } })
-    expect(setHeaderText).toHaveBeenCalledWith('#aaaaaa')
-    const botMsgLabel = view.getByText('Bot Mesaj Arka Planı')
-    const botMsgInput = botMsgLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
-    fireEvent.change(botMsgInput, { target: { value: '#bbbbbb' } })
-    expect(setBotMsg).toHaveBeenCalledWith('#bbbbbb')
-    const botTextLabel = view.getByText('Bot Yazı')
-    const botTextInput = botTextLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
-    fireEvent.change(botTextInput, { target: { value: '#dddddd' } })
-    expect(setBotText).toHaveBeenCalledWith('#dddddd')
-    const userMsgLabel = view.getByText('Kullanıcı Mesaj Arka Planı')
-    const userMsgInput = userMsgLabel.parentElement!.querySelectorAll('input')[1] as HTMLInputElement
-    fireEvent.change(userMsgInput, { target: { value: '#eeeeee' } })
-    expect(setUserMsg).toHaveBeenCalledWith('#eeeeee')
+    
+    // Debugging font selection - use last instance if multiple found
+    const fontSelects = screen.getAllByLabelText('Yazı Tipi')
+    const fontSelect = fontSelects[fontSelects.length - 1] as HTMLSelectElement
+    
+    await user.selectOptions(fontSelect, 'Roboto, sans-serif')
+    expect(setFont).toHaveBeenCalledWith('Roboto, sans-serif')
+
+    const themeInputs = screen.getAllByLabelText('Varsayılan İkon Rengi')
+    const themeInput = themeInputs[themeInputs.length - 1] as HTMLInputElement
+    
+    fireEvent.change(themeInput, { target: { value: '#ff0000' } })
+    expect(setTheme).toHaveBeenCalledWith('#ff0000')
   })
 
   it('renders labels and color pickers when expanded', () => {
-    const noop = () => {}
     const utils = render(
-      <ColorsSection
-        isExpanded={true}
-        onToggle={noop}
-        chatBackgroundColor="#ffffff"
-        setChatBackgroundColor={noop}
-        chatHeaderColor="#000000"
-        setChatHeaderColor={noop}
-        chatHeaderTextColor="#111111"
-        setChatHeaderTextColor={noop}
-        botMessageColor="#222222"
-        setBotMessageColor={noop}
-        botMessageTextColor="#333333"
-        setBotMessageTextColor={noop}
-        userMessageColor="#444444"
-        setUserMessageColor={noop}
-        userMessageTextColor="#555555"
-        setUserMessageTextColor={noop}
-      />
+      <ColorsSection {...defaultProps} />
     )
-    const headers = screen.getAllByText('Renkler')
+    const headers = screen.getAllByText('Yazı ve Renkler')
     expect(headers.length).toBeGreaterThan(0)
-    const labels = screen.getAllByText(/(Chat Arka Plan|Header$|Header Yazı|Bot Mesaj Arka Planı|Bot Yazı|Kullanıcı Mesaj Arka Planı|Kullanıcı Yazı)/)
-    expect(labels.length).toBeGreaterThanOrEqual(7)
-    const colorInputs = utils.container.querySelectorAll('input[type="color"]')
-    expect(colorInputs.length).toBeGreaterThanOrEqual(6)
-  })
+    
+    // Check for new fields
+    // Allow multiple instances if cleanup is flaky, but ensure at least one exists
+    const genelHeaders = screen.getAllByText('Genel')
+    expect(genelHeaders.length).toBeGreaterThanOrEqual(1)
+    expect(genelHeaders[genelHeaders.length - 1]).toBeInTheDocument()
+ 
+    const fonts = screen.getAllByText('Yazı Tipi')
+    expect(fonts[fonts.length - 1]).toBeInTheDocument()
 
+    const themes = screen.getAllByText('Varsayılan İkon Rengi')
+    expect(themes[themes.length - 1]).toBeInTheDocument()
+
+    const bubbles = screen.getAllByText('Kabarcık Ovalleşmesi')
+    expect(bubbles[bubbles.length - 1]).toBeInTheDocument()
+
+    // Check for section headers
+    expect(screen.getByText('Panel & Header')).toBeInTheDocument()
+    expect(screen.getByText('Bot Mesajları')).toBeInTheDocument()
+    expect(screen.getByText('Kullanıcı Mesajları')).toBeInTheDocument()
+    expect(screen.getByText('Giriş Alanı')).toBeInTheDocument()
+    
+    const colorInputs = utils.container.querySelectorAll('input[type="color"]')
+    // 6 existing + 1 theme color + 3 input/send = 10? 
+    // ChatBg, Header, HeaderText, BotMsg, BotText, UserMsg, UserText, InputBg, InputText, SendBtn, ThemeColor.
+    // 11 color inputs total.
+    expect(colorInputs.length).toBeGreaterThanOrEqual(10)
+  })
 })

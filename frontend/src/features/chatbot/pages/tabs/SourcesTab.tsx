@@ -77,12 +77,19 @@ export default function SourcesTab() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Bilgi Bankası</h2>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+              <Database className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Kaynaklar</h2>
+              <p className="text-muted-foreground">
+                Botunuzun soruları cevaplarken kullanacağı bilgi bankası.
+              </p>
+            </div>
+          </div>
           <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
         </div>
-        <p className="text-muted-foreground">
-          Botunuzun soruları cevaplarken kullanacağı kaynakları yönetin.
-        </p>
       </div>
 
       <div className="grid gap-6">

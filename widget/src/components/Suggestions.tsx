@@ -16,10 +16,12 @@ export function Suggestions({ items, disabled, onPick }: { items: string[]; disa
   return (
     <div className="cbw-suggestions" aria-label="Önerilen sorular">
       <div className="cbw-suggestions-header">
-        <span>✨ ÖRNEK SORULAR</span>
+        <span className="cbw-suggestions-title">
+          <span className="cbw-suggestions-sparkle">✨</span> ÖNERİLEN SORULAR
+        </span>
         {items.length > 1 && (
-          <span style={{ marginLeft: 'auto', fontSize: '9px', opacity: 0.6 }}>
-            {currentIndex + 1}/{items.length}
+          <span className="cbw-suggestions-counter">
+            {currentIndex + 1} / {items.length}
           </span>
         )}
       </div>
@@ -31,7 +33,7 @@ export function Suggestions({ items, disabled, onPick }: { items: string[]; disa
             disabled={disabled}
             aria-label="Önceki soru"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
@@ -56,7 +58,7 @@ export function Suggestions({ items, disabled, onPick }: { items: string[]; disa
             disabled={disabled}
             aria-label="Sonraki soru"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>

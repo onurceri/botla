@@ -1,0 +1,5 @@
+ALTER TABLE chatbots
+ADD COLUMN bubble_radius VARCHAR(50) NOT NULL DEFAULT '22px',
+ADD COLUMN input_background_color VARCHAR(50) NOT NULL DEFAULT '#ededed',
+ADD COLUMN input_text_color VARCHAR(50) NOT NULL DEFAULT '#000000',
+ADD COLUMN send_button_color VARCHAR(50) NOT NULL DEFAULT '#ebb800';

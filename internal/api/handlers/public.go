@@ -32,6 +32,10 @@ type publicChatbot struct {
 	ChatHeaderColor      string                 `json:"chat_header_color"`
 	ChatHeaderTextColor  string                 `json:"chat_header_text_color"`
 	ChatBackgroundColor  string                 `json:"chat_background_color"`
+	BubbleRadius         string                 `json:"bubble_radius"`
+	InputBackgroundColor string                 `json:"input_background_color"`
+	InputTextColor       string                 `json:"input_text_color"`
+	SendButtonColor      string                 `json:"send_button_color"`
 	BotIcon              *string                `json:"bot_icon,omitempty"`
 	BotDisplayName       *string                `json:"bot_display_name,omitempty"`
 	SuggestedQuestions   []string               `json:"suggested_questions,omitempty"`
@@ -108,6 +112,10 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			ChatHeaderColor:      c.ChatHeaderColor,
 			ChatHeaderTextColor:  c.ChatHeaderTextColor,
 			ChatBackgroundColor:  c.ChatBackgroundColor,
+			BubbleRadius:         c.BubbleRadius,
+			InputBackgroundColor: c.InputBackgroundColor,
+			InputTextColor:       c.InputTextColor,
+			SendButtonColor:      c.SendButtonColor,
 			BotIcon:              c.BotIcon,
 			BotDisplayName:       c.BotDisplayName,
 			SuggestedQuestions:   final,

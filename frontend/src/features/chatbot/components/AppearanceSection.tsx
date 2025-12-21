@@ -6,60 +6,39 @@ type Props = {
   onToggle: () => void
   position: string
   setPosition: (v: string) => void
-  chatFontFamily: string
-  setChatFontFamily: (v: string) => void
-  themeColor: string
-  setThemeColor: (v: string) => void
 }
 
-export default function AppearanceSection({ isExpanded, onToggle, position, setPosition, chatFontFamily, setChatFontFamily, themeColor, setThemeColor }: Props) {
+export default function AppearanceSection({ isExpanded, onToggle, position, setPosition }: Props) {
   return (
-    <div className="border border-border rounded-xl bg-card overflow-hidden">
+    <div className={`transition-all duration-300 border border-slate-200/60 rounded-2xl overflow-hidden ${isExpanded ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]' : 'bg-white/40 hover:bg-white/60'}`}>
       <button 
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur hover:bg-white/70 transition-colors"
+        className="w-full flex items-center justify-between p-4 transition-colors"
       >
-        <div className="flex items-center gap-2 font-medium">
-          <Layout className="w-4 h-4 text-primary" />
-          Görünüm
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>
+            <Layout className="w-4 h-4" />
+          </div>
+          <span className={`text-[13px] font-bold tracking-tight ${isExpanded ? 'text-slate-900' : 'text-slate-600'}`}>Konum</span>
         </div>
-        {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+          <ChevronDown className="w-4 h-4 text-slate-300" />
+        </div>
       </button>
       {isExpanded && (
-        <div className="p-4 space-y-4 border-t border-border animate-in slide-in-from-top-2 duration-200">
-          <div className="space-y-2">
-            <label htmlFor="position-select" className="text-xs font-medium text-muted-foreground uppercase">Konum</label>
+        <div className="p-4 pt-0 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="h-px bg-slate-100/80 mb-5" />
+          <div className="space-y-2.5">
+            <label htmlFor="position-select" className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Konum</label>
             <select 
               id="position-select"
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-11 w-full rounded-xl border border-slate-200/60 bg-slate-50/50 px-3 py-1 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/5"
               value={position}
               onChange={(e) => setPosition(e.target.value)}
             >
               <option value="bottom-right">Sağ Alt</option>
               <option value="bottom-left">Sol Alt</option>
             </select>
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="font-select" className="text-xs font-medium text-muted-foreground uppercase">Yazı Tipi</label>
-            <select 
-              id="font-select"
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={chatFontFamily}
-              onChange={(e) => setChatFontFamily(e.target.value)}
-            >
-              <option value="Inter, sans-serif">Inter (Modern)</option>
-              <option value="Roboto, sans-serif">Roboto</option>
-              <option value="Open Sans, sans-serif">Open Sans</option>
-              <option value="Lato, sans-serif">Lato</option>
-              <option value="Montserrat, sans-serif">Montserrat</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="theme-color" className="text-xs font-medium text-muted-foreground uppercase">Ana Renk (Theme)</label>
-            <div className="flex gap-2">
-              <Input id="theme-color" type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-8 h-8 p-0 border-0 rounded-full overflow-hidden cursor-pointer" />
-              <Input value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="flex-1 bg-background font-mono" />
-            </div>
           </div>
         </div>
       )}

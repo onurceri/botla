@@ -131,6 +131,10 @@ func (h *ChatbotHandlers) convertToServiceRequest(req createChatbotRequest) serv
 		ChatHeaderColor:      req.ChatHeaderColor,
 		ChatHeaderTextColor:  req.ChatHeaderTextColor,
 		ChatBackgroundColor:  req.ChatBackgroundColor,
+		BubbleRadius:         req.BubbleRadius,
+		InputBackgroundColor: req.InputBackgroundColor,
+		InputTextColor:       req.InputTextColor,
+		SendButtonColor:      req.SendButtonColor,
 		BotIcon:              req.BotIcon,
 		BotDisplayName:       req.BotDisplayName,
 		SecureEmbedEnabled:   req.SecureEmbedEnabled,
@@ -271,6 +275,18 @@ func applyChatbotUpdates(c *models.Chatbot, req createChatbotRequest) {
 	}
 	if req.ChatBackgroundColor != nil {
 		c.ChatBackgroundColor = *req.ChatBackgroundColor
+	}
+	if req.BubbleRadius != nil {
+		c.BubbleRadius = *req.BubbleRadius
+	}
+	if req.InputBackgroundColor != nil {
+		c.InputBackgroundColor = *req.InputBackgroundColor
+	}
+	if req.InputTextColor != nil {
+		c.InputTextColor = *req.InputTextColor
+	}
+	if req.SendButtonColor != nil {
+		c.SendButtonColor = *req.SendButtonColor
 	}
 	if req.BotIcon != nil {
 		c.BotIcon = req.BotIcon

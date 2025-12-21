@@ -105,7 +105,58 @@ export function mount() {
   injectStyles(shadow)
   const root = document.createElement('div')
   shadow.appendChild(root)
-  render(<WidgetApp chatbotId={chatbotId} apiBase={apiBase} themeColor={themeColor} headerColor={headerColor} headerTextColor={headerTextColor} botMessageColor={botMessageColor} botMessageTextColor={botMessageTextColor} userMessageColor={userMessageColor} userMessageTextColor={userMessageTextColor} fontFamily={fontFamily} position={position} botNameOverride={botName} botIconOverride={botIcon} panelHeight={panelHeight} panelBg={panelBg} inputBg={inputBg} inputText={inputText} chatBg={chatBg} bubbleRadius={bubbleRadius} sendButtonColor={sendButtonColor} useOverrides={useOverrides} welcome={welcome} embedTokenUrl={embedTokenUrl} captchaSiteKey={captchaSiteKey} autoOpen={autoOpen} resetSession={resetSession} sessionIdOverride={sessionIdOverride} positionStrategy={positionStrategy} suggestions={suggestionsOverride} hideBrandingOverride={hideBrandingOverride} customBrandingOverride={customBrandingOverride} />, root)
+  
+  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride }
+  
+  render(<WidgetApp {...props} />, root)
+
+  // Listen for live config updates (Playground support)
+  window.addEventListener('message', (event) => {
+    if (event.data?.type === 'WIDGET_CONFIG') {
+      const newConfig = event.data.config
+      const updatedProps = {
+        ...props,
+        chatbotId: newConfig['chatbot-id'] || chatbotId,
+        apiBase: newConfig['api-base'] || apiBase,
+        themeColor: newConfig['color'] || themeColor,
+        headerColor: newConfig['header-color'] || headerColor,
+        headerTextColor: newConfig['header-text-color'] || headerTextColor,
+        botMessageColor: newConfig['bot-message-color'] || botMessageColor,
+        botMessageTextColor: newConfig['bot-message-text-color'] || botMessageTextColor,
+        userMessageColor: newConfig['user-message-color'] || userMessageColor,
+        userMessageTextColor: newConfig['user-message-text-color'] || userMessageTextColor,
+        fontFamily: newConfig['font-family'] || fontFamily,
+        position: (newConfig['position'] || position) as "bottom-left" | "bottom-right" | undefined,
+        botNameOverride: newConfig['bot-name'] || botName,
+        botIconOverride: newConfig['bot-icon'] || botIcon,
+        welcome: newConfig['welcome'] || welcome,
+        chatBg: newConfig['chat-bg-color'] || chatBg,
+        panelBg: newConfig['panel-bg-color'] || panelBg,
+        inputBg: newConfig['input-bg-color'] || inputBg,
+        inputText: newConfig['input-text-color'] || inputText,
+        bubbleRadius: newConfig['bubble-radius'] || bubbleRadius,
+        sendButtonColor: newConfig['send-button-color'] || sendButtonColor,
+        useOverrides: true, // Always override in playground
+        autoOpen: newConfig['auto-open'] === '1',
+        sessionIdOverride: newConfig['session-id'] || sessionIdOverride,
+        hideBrandingOverride: newConfig['hide-branding'] === '1',
+        positionStrategy: (newConfig['position-strategy'] || positionStrategy) as "fixed" | "absolute",
+      }
+      
+      if (newConfig['suggestions']) {
+        try { updatedProps.suggestions = JSON.parse(newConfig['suggestions']) } catch {}
+      }
+      
+      if (newConfig['custom-branding']) {
+        try { updatedProps.customBrandingOverride = JSON.parse(newConfig['custom-branding']) } catch {}
+      }
+
+      render(<WidgetApp {...updatedProps} />, root)
+      
+      // Notify parent that config was applied
+      window.parent.postMessage({ type: 'WIDGET_CONFIG_APPLIED' }, '*')
+    }
+  })
 }
 
 export function unmount() {

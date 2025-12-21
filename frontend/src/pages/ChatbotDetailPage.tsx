@@ -3,7 +3,7 @@ import { useParams, useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { api } from '@/api/client'
 import { useToast } from '@/components/ui/toast'
 import HeaderActions from '@/features/chatbot/components/HeaderActions'
-import { ChatbotSidebar } from '@/features/chatbot/components/ChatbotSidebar'
+import { ChatbotTabBar } from '@/features/chatbot/components/ChatbotTabBar'
 import NewChatbotForm from '@/features/chatbot/components/NewChatbotForm'
 import { useOrganization } from '@/features/organization/context/OrganizationContext'
 import { ChatbotProvider, useChatbotContext } from '@/features/chatbot/context/ChatbotContext'
@@ -32,13 +32,29 @@ function ChatbotDetailContent() {
   // Test Chat State
   const [chatHistory, setChatHistory] = useState<{role: 'user' | 'assistant', content: string}[]>([])
 
-  // Redirect for legacy query params
+  // Redirect for legacy query params and old tab routes
   useEffect(() => {
     try {
       const u = new URL(window.location.href)
       const tab = u.searchParams.get('tab')
       if (tab && !location.pathname.includes(tab)) {
          navigate(tab, { replace: true })
+      }
+      
+      // Redirect old routes to new 8-tab structure
+      const pathTab = location.pathname.split('/').pop()
+      const redirectMap: Record<string, string> = {
+        'overview': 'settings',
+        'guardrails': 'security',
+        'handoff': 'security',
+        'intelligence': 'sources',
+        'suggestions': 'design',
+        'connect': 'deploy',
+        'analytics': 'insights',
+        'requests': 'insights',
+      }
+      if (pathTab && redirectMap[pathTab]) {
+        navigate(redirectMap[pathTab], { replace: true })
       }
     } catch {}
   }, [])
@@ -98,7 +114,7 @@ function ChatbotDetailContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 lg:pb-0">
       <HeaderActions
         isNew={isNew}
         name={name}
@@ -117,9 +133,9 @@ function ChatbotDetailContent() {
           onDescriptionChange={setDescription}
         />
       ) : (
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          <ChatbotSidebar />
-          <div className="flex-1 w-full min-w-0">
+        <div className="space-y-6">
+          <ChatbotTabBar />
+          <div className="w-full min-w-0">
             <Outlet />
           </div>
         </div>

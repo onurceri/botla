@@ -55,6 +55,10 @@ export function useChatbotForm() {
   const [chatHeaderColor, setChatHeaderColor] = useState('#3b82f6')
   const [chatHeaderTextColor, setChatHeaderTextColor] = useState('#ffffff')
   const [chatBackgroundColor, setChatBackgroundColor] = useState('#FFF5E6')
+  const [bubbleRadius, setBubbleRadius] = useState('22px')
+  const [inputBackgroundColor, setInputBackgroundColor] = useState('#ededed')
+  const [inputTextColor, setInputTextColor] = useState('#000000')
+  const [sendButtonColor, setSendButtonColor] = useState('#ebb800')
   const [botIcon, setBotIcon] = useState('')
   const [botDisplayName, setBotDisplayName] = useState('')
   const [secureEmbedEnabled, setSecureEmbedEnabled] = useState(false)
@@ -99,6 +103,10 @@ export function useChatbotForm() {
     setChatHeaderColor(data.chat_header_color || '#3b82f6')
     setChatHeaderTextColor(data.chat_header_text_color || '#ffffff')
     setChatBackgroundColor(data.chat_background_color || '#FFF5E6')
+    setBubbleRadius(data.bubble_radius || '22px')
+    setInputBackgroundColor(data.input_background_color || '#ededed')
+    setInputTextColor(data.input_text_color || '#000000')
+    setSendButtonColor(data.send_button_color || '#ebb800')
     setBotIcon(data.bot_icon || '')
     setBotDisplayName(data.bot_display_name || '')
     setAllowedDomains(data.allowed_domains || '')
@@ -149,6 +157,10 @@ export function useChatbotForm() {
       chat_header_color: chatHeaderColor,
       chat_header_text_color: chatHeaderTextColor,
       chat_background_color: chatBackgroundColor,
+      bubble_radius: bubbleRadius,
+      input_background_color: inputBackgroundColor,
+      input_text_color: inputTextColor,
+      send_button_color: sendButtonColor,
       bot_icon: botIcon,
       bot_display_name: botDisplayName,
       secure_embed_enabled: secureEmbedEnabled,
@@ -222,6 +234,10 @@ export function useChatbotForm() {
       bot_message_text_color: botMessageTextColor,
       user_message_color: userMessageColor,
       user_message_text_color: userMessageTextColor,
+      bubble_radius: bubbleRadius,
+      input_background_color: inputBackgroundColor,
+      input_text_color: inputTextColor,
+      send_button_color: sendButtonColor,
       hide_branding: hideBranding,
       custom_branding: hideBranding ? customBranding : null,
     }
@@ -263,6 +279,10 @@ export function useChatbotForm() {
     chatHeaderColor, setChatHeaderColor,
     chatHeaderTextColor, setChatHeaderTextColor,
     chatBackgroundColor, setChatBackgroundColor,
+    bubbleRadius, setBubbleRadius,
+    inputBackgroundColor, setInputBackgroundColor,
+    inputTextColor, setInputTextColor,
+    sendButtonColor, setSendButtonColor,
     botIcon, setBotIcon,
     botDisplayName, setBotDisplayName,
     secureEmbedEnabled, setSecureEmbedEnabled,

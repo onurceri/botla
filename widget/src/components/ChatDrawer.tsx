@@ -71,43 +71,65 @@ export function ChatDrawer(
     <div className="cbw-panel" role="dialog" aria-label="Chatbot">
       <div className="cbw-header">
         <div className="cbw-header-title">
-            {botIcon && <img src={botIcon} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />}
+            {botIcon ? (
+              <img src={botIcon} alt="" className="cbw-header-icon" />
+            ) : (
+              <div className="cbw-header-icon-default">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 8V4H8" />
+                  <rect width="16" height="12" x="4" y="8" rx="2" />
+                  <path d="M2 14h2" />
+                  <path d="M20 14h2" />
+                  <path d="M15 13v2" />
+                  <path d="M9 13v2" />
+                </svg>
+              </div>
+            )}
             <span>{botName || 'Chatbot'}</span>
         </div>
-        <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">×</button>
+        <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <div className="cbw-messages">
-        {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} />)}
+        {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} botIcon={botIcon} />)}
         {(!messages || (messages.filter(m => m.role === 'user').length === 0 && !messages.some(m => m.type === 'handoff'))) && suggestions && suggestions.length > 0 && (
-          <div className="cbw-suggestions-container" style={{ width: '100%', padding: '0 8px', margin: '8px 0 16px 0' }}>
+          <div className="cbw-suggestions-container">
             <Suggestions items={suggestions} disabled={!!loading} onPick={(q) => {
               if (onPickSuggestion) onPickSuggestion(q)
             }} />
           </div>
         )}
         {loading && (
-          <div className="cbw-msg-row assistant" style={{ justifyContent: 'flex-start' }}>
+          <div className="cbw-loading-row">
             <div className="cbw-avatar">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 8V4H8" />
-                <rect width="16" height="12" x="4" y="8" rx="2" />
-                <path d="M2 14h2" />
-                <path d="M20 14h2" />
-                <path d="M15 13v2" />
-                <path d="M9 13v2" />
-              </svg>
+              {botIcon ? (
+                <img src={botIcon} alt="" className="cbw-avatar-img" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 8V4H8" />
+                  <rect width="16" height="12" x="4" y="8" rx="2" />
+                  <path d="M2 14h2" />
+                  <path d="M20 14h2" />
+                  <path d="M15 13v2" />
+                  <path d="M9 13v2" />
+                </svg>
+              )}
             </div>
-            <div className="cbw-msg assistant" style={{ display: 'flex', gap: '4px', alignItems: 'center', padding: '12px 16px' }}>
-              <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%', animation: 'cbw-bounce 1.4s infinite ease-in-out both', opacity: 0.7 }}></span>
-              <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%', animation: 'cbw-bounce 1.4s infinite ease-in-out both', animationDelay: '0.16s', opacity: 0.7 }}></span>
-              <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%', animation: 'cbw-bounce 1.4s infinite ease-in-out both', animationDelay: '0.32s', opacity: 0.7 }}></span>
+            <div className="cbw-loading-bubble">
+              <span className="cbw-loading-dot"></span>
+              <span className="cbw-loading-dot"></span>
+              <span className="cbw-loading-dot"></span>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
       <div className="cbw-input-area">
-        <div className="cbw-input-wrapper" style={{ alignItems: 'flex-end' }}>
+        <div className="cbw-input-wrapper">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -117,28 +139,27 @@ export function ChatDrawer(
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             disabled={loading}
-            style={{ resize: 'none', overflowY: 'auto' }}
           />
-          <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label="Gönder" style={{ marginBottom: '2px' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label="Gönder">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 2L11 13"></path>
+              <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
             </svg>
           </button>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="cbw-input-footer">
           {/* Branding Footer */}
           {hideBranding && customBranding ? (
-            <div className="cbw-brand">
-              {customBranding.logo_url && <img src={customBranding.logo_url} alt="" style={{ height: '16px', marginRight: '4px', verticalAlign: 'middle' }} />}
+            <div className="cbw-brand-custom">
+              {customBranding.logo_url && <img src={customBranding.logo_url} alt="" className="cbw-brand-logo" />}
               {customBranding.link ? (
-                <a href={customBranding.link} target="_blank" rel="noreferrer">{customBranding.text || 'Powered by'}</a>
+                <a href={customBranding.link} target="_blank" rel="noreferrer" className="cbw-brand-text">{typeof customBranding.text === 'string' ? customBranding.text : 'Powered by'}</a>
               ) : (
-                <span>{customBranding.text || ''}</span>
+                <span className="cbw-brand-text">{typeof customBranding.text === 'string' ? customBranding.text : ''}</span>
               )}
             </div>
           ) : !hideBranding ? (
-            <div className="cbw-brand">Powered by <a href={MARKETING_URL} target="_blank" rel="noreferrer">Botla</a></div>
+            <div className="cbw-brand-default">Powered by <a href={MARKETING_URL} target="_blank" rel="noreferrer">Botla</a></div>
           ) : (
             <div></div>
           )}
@@ -146,10 +167,7 @@ export function ChatDrawer(
         </div>
       </div>
       <style>{`
-        @keyframes cbw-bounce {
-          0%, 80%, 100% { transform: scale(0); }
-          40% { transform: scale(1); }
-        }
+        /* Local overrides if needed */
       `}</style>
     </div>
   )
