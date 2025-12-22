@@ -4,7 +4,7 @@ import { ChatDrawer } from './components/ChatDrawer'
 
 type Message = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal'; handoffRequestId?: string; emailSubmitted?: boolean }
 
-export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed' }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute' }) {
+export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed', previewMode = false }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelWidth?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute'; previewMode?: boolean }) {
   const [open, setOpen] = useState(!!autoOpen)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -74,18 +74,23 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       if (panelHeight || (config as any)?.chat_panel_height) {
         panelRef.current.style.setProperty('--cbw-panel-height', panelHeight || (config as any)?.chat_panel_height)
       }
+      if (panelWidth || (config as any)?.chat_panel_width) {
+        panelRef.current.style.setProperty('--cbw-panel-width', panelWidth || (config as any)?.chat_panel_width)
+      }
       
-      // Position
-      panelRef.current.style.bottom = '20px'
-      if (pos === 'bottom-left') {
-        panelRef.current.style.left = '20px'
-        panelRef.current.style.right = 'auto'
-      } else {
-        panelRef.current.style.right = '20px'
-        panelRef.current.style.left = 'auto'
+      // Position - skip in preview mode for full container fill
+      if (!previewMode) {
+        panelRef.current.style.bottom = '20px'
+        if (pos === 'bottom-left') {
+          panelRef.current.style.left = '20px'
+          panelRef.current.style.right = 'auto'
+        } else {
+          panelRef.current.style.right = '20px'
+          panelRef.current.style.left = 'auto'
+        }
       }
     }
-  }, [color, config, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, pos, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor])
+  }, [color, config, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, pos, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, previewMode])
 
   useEffect(() => {
     if (resetSession) {
@@ -239,8 +244,27 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     return nv
   })
 
+  // Preview mode container styles
+  const previewContainerStyle = previewMode ? {
+    position: 'absolute' as const,
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+  } : {
+    position: positionStrategy as 'fixed' | 'absolute',
+  }
+
+  // Position class for preview mode
+  const posClass = pos === 'bottom-left' ? 'cbw-pos-left' : 'cbw-pos-right'
+
   return (
-    <div className="cbw-container" ref={panelRef} style={{ position: positionStrategy }}>
+    <div 
+      className={`cbw-container ${previewMode ? 'cbw-preview-mode' : ''} ${posClass}`} 
+      ref={panelRef} 
+      style={previewContainerStyle}
+    >
       {open ? (
         <ChatDrawer 
           color={color} 
@@ -259,6 +283,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
           customBranding={customBrand}
           onFeedback={handleFeedback}
           onSubmitEmail={submitHandoffEmail}
+          isPreviewMode={previewMode}
         />
       ) : (
         <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />

@@ -70,10 +70,10 @@
 
 /* Main Panel */
 .cbw-panel {
-  width: 400px;
+  width: var(--cbw-panel-width, 400px);
   max-width: 100%;
-  height: var(--cbw-panel-height, 660px);
-  max-height: calc(100vh - 100px);
+  height: var(--cbw-panel-height, 720px);
+  max-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
   border-radius: 32px;
@@ -98,13 +98,69 @@
 }
 
 @media (max-width: 480px) {
+  .cbw-container {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
   .cbw-panel {
     width: 100% !important;
     height: 100% !important;
     max-height: 100% !important;
     border-radius: 0 !important;
     margin-bottom: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
+}
+
+/* Preview Mode - Container fills iframe */
+.cbw-container.cbw-preview-mode {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 20px !important;
+  z-index: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+}
+
+/* Preview mode - position right (default) */
+.cbw-container.cbw-preview-mode.cbw-pos-right {
+  align-items: flex-end !important;
+}
+
+/* Preview mode - position left */
+.cbw-container.cbw-preview-mode.cbw-pos-left {
+  align-items: flex-start !important;
+}
+
+/* Preview mode - bubble stays visible */
+.cbw-container.cbw-preview-mode .cbw-bubble {
+  position: relative !important;
+  right: auto !important;
+  bottom: auto !important;
+}
+
+/* Preview mode - panel fills container when open */
+.cbw-container.cbw-preview-mode .cbw-panel {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  border-radius: 24px !important;
 }
 
 /* Header */
@@ -148,6 +204,7 @@
 /* Messages Area */
 .cbw-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -447,7 +504,7 @@
 
 .cbw-handoff-success-sparkle {
   font-size: 40px;
-  marginBottom: 16px;
+  margin-bottom: 16px;
 }
 
 .cbw-handoff-success-title {

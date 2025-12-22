@@ -55,6 +55,13 @@ func TestGenerateEmbeddings_RetryAndWarn(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "k")
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qdr.URL)
+	t.Setenv("DB_HOST", "localhost")
+	t.Setenv("DB_PORT", "5432")
+	t.Setenv("DB_NAME", "test")
+	t.Setenv("DB_USER", "test")
+	t.Setenv("DB_PASSWORD", "test")
+	t.Setenv("JWT_SECRET", "secret")
+	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	if err := GenerateEmbeddings(chunks, "cb"); err != nil {
 		t.Fatalf("gen err: %v", err)
@@ -77,6 +84,13 @@ func TestGenerateEmbeddingsForSource_UpsertError(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "k")
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qdr.URL)
+	t.Setenv("DB_HOST", "localhost")
+	t.Setenv("DB_PORT", "5432")
+	t.Setenv("DB_NAME", "test")
+	t.Setenv("DB_USER", "test")
+	t.Setenv("DB_PASSWORD", "test")
+	t.Setenv("JWT_SECRET", "secret")
+	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	if err := GenerateEmbeddingsForSource(chunks, "cb", "src", "file"); err == nil {
 		t.Fatalf("expected error")
@@ -128,6 +142,13 @@ func TestGenerateEmbeddings_Batching(t *testing.T) {
 	}))
 	defer qdrSrv.Close()
 	t.Setenv("QDRANT_URL", qdrSrv.URL)
+	t.Setenv("DB_HOST", "localhost")
+	t.Setenv("DB_PORT", "5432")
+	t.Setenv("DB_NAME", "test")
+	t.Setenv("DB_USER", "test")
+	t.Setenv("DB_PASSWORD", "test")
+	t.Setenv("JWT_SECRET", "secret")
+	t.Setenv("PORT", "8080")
 
 	chunks := make([]models.Chunk, 26)
 	for i := 0; i < 26; i++ {

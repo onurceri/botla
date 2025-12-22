@@ -132,7 +132,7 @@ export default function HandoffRequestsTab() {
       </div>
 
       {requests.length === 0 ? (
-        <Card>
+        <Card className="glass-card border-border/50">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Inbox className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium mb-2">Henüz destek talebi yok</h3>
@@ -144,40 +144,38 @@ export default function HandoffRequestsTab() {
       ) : (
         <div className="grid gap-4">
           {requests.map((request) => (
-            <Card 
+            <div 
               key={request.id} 
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="glass-card rounded-xl border border-border/50 cursor-pointer hover:shadow-md transition-all duration-300 p-4"
               onClick={() => openDetail(request)}
             >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <Inbox className="h-4 w-4 text-primary" />
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-full bg-primary/10">
+                    <Inbox className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {request.user_email ? (
+                        <span className="font-medium flex items-center gap-1 truncate text-sm">
+                          <Mail className="h-3.5 w-3.5" />
+                          {request.user_email}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">E-posta bekleniyor</span>
+                      )}
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {request.user_email ? (
-                          <span className="font-medium flex items-center gap-1 truncate">
-                            <Mail className="h-3.5 w-3.5" />
-                            {request.user_email}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">E-posta bekleniyor</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {formatRelativeTime(new Date(request.created_at))}
-                      </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {formatRelativeTime(new Date(request.created_at))}
                     </div>
                   </div>
-                  <Badge variant={statusLabels[request.status]?.variant || 'outline'}>
-                    {statusLabels[request.status]?.label || request.status}
-                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
+                <Badge variant={statusLabels[request.status]?.variant || 'outline'}>
+                  {statusLabels[request.status]?.label || request.status}
+                </Badge>
+              </div>
+            </div>
           ))}
         </div>
       )}

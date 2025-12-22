@@ -70,7 +70,8 @@ func TestUpdateAppearance_NewFields(t *testing.T) {
 	}
 
 	var updatedBot models.Chatbot
-	if err := json.NewDecoder(rr.Body).Decode(&updatedBot); err != nil {
+	err = json.NewDecoder(rr.Body).Decode(&updatedBot)
+	if err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 

@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"strconv"
+
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -62,37 +61,7 @@ func NewOpenRouterClient(cfg *config.Config) (*OpenRouterClient, error) {
 	}, nil
 }
 
-// NewOpenRouterClientFromEnv creates an OpenRouter client from environment variables (backward compatibility)
-func NewOpenRouterClientFromEnv() (*OpenRouterClient, error) {
-	k := os.Getenv("OPENROUTER_API_KEY")
-	// Fallback to OPENAI_API_KEY if OPENROUTER_API_KEY is missing.
-	if k == "" {
-		k = os.Getenv("OPENAI_API_KEY")
-	}
-	if k == "" {
-		return nil, errors.New("OPENROUTER_API_KEY (or OPENAI_API_KEY) is empty")
-	}
 
-	b := os.Getenv("OPENROUTER_API_BASE")
-	if b == "" {
-		b = "https://openrouter.ai/api/v1"
-	}
-	to := 30 * time.Second
-	if v := os.Getenv("OPENROUTER_TIMEOUT_MS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			to = time.Duration(n) * time.Millisecond
-		}
-	}
-
-	defModel := config.DefaultChatbotModel()
-
-	return &OpenRouterClient{
-		apiKey:       k,
-		http:         &http.Client{Timeout: to},
-		base:         b,
-		defaultModel: defModel,
-	}, nil
-}
 
 func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	// Use standard OpenAI-compatible embedding endpoint.

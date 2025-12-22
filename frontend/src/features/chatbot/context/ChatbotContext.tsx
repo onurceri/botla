@@ -45,6 +45,7 @@ interface ChatbotContextType extends ChatbotFormReturn {
   }
   userPlan: string
   availableModels: ModelInfo[]
+  isLoading: boolean
 }
 
 export const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined)
@@ -67,7 +68,7 @@ export function ChatbotProvider({
   const userPlan = planData?.code || 'free'
 
   // Use React Query for chatbot data (replaces manual api.get)
-  const { data: chatbotData } = useChatbot(chatbotId, !isNew)
+  const { data: chatbotData, isLoading } = useChatbot(chatbotId, !isNew)
 
   // Sync form state when chatbot data changes
   useEffect(() => {
@@ -96,7 +97,7 @@ export function ChatbotProvider({
   }, [planConfig, form.handoffEnabled, form.setHandoffEnabled])
 
   return (
-    <ChatbotContext.Provider value={{ ...form, planConfig, userPlan, availableModels }}>
+    <ChatbotContext.Provider value={{ ...form, planConfig, userPlan, availableModels, isLoading }}>
       {children}
     </ChatbotContext.Provider>
   )

@@ -120,7 +120,7 @@ func GetAnalyticsOverview(ctx context.Context, pool *sql.DB, chatbotID string) (
 			COALESCE(SUM(thumbs_down_count), 0)::INT,
 			COALESCE(SUM(handoff_count), 0)::INT
 		FROM analytics
-		WHERE chatbot_id = $1 AND analytics_date >= CURRENT_DATE - INTERVAL '30 days'
+		WHERE chatbot_id = $1 AND analytics_date >= CURRENT_DATE - INTERVAL '29 days'
 	`
 	var stats models.AnalyticsOverview
 	row := pool.QueryRowContext(ctx, query, chatbotID)
@@ -226,7 +226,8 @@ func GetGlobalAnalytics(ctx context.Context, pool *sql.DB, userID string, orgID,
 		whereClause = "c.workspace_id = $1"
 		args = append(args, *wsID)
 	case orgID != nil:
-		whereClause = "c.organization_id = $1" // Assuming chatbots have direct org link or via workspace
+		// Chatbots can be linked to an organization directly OR via a workspace
+		whereClause = "(c.organization_id = $1 OR c.workspace_id IN (SELECT id FROM workspaces WHERE organization_id = $1))"
 		args = append(args, *orgID)
 	default:
 		// Personal scope: UserID matches AND not in any workspace/org
@@ -238,7 +239,7 @@ func GetGlobalAnalytics(ctx context.Context, pool *sql.DB, userID string, orgID,
 	query := `
 		WITH dates AS (
 			SELECT generate_series(
-				CURRENT_DATE - INTERVAL '6 days',
+				CURRENT_DATE - INTERVAL '29 days',
 				CURRENT_DATE,
 				'1 day'::interval
 			)::date AS date
@@ -247,7 +248,7 @@ func GetGlobalAnalytics(ctx context.Context, pool *sql.DB, userID string, orgID,
 			SELECT a.analytics_date, a.total_messages, a.total_conversations, a.total_tokens_used, a.thumbs_up_count, a.thumbs_down_count, a.handoff_count
 			FROM analytics a
 			JOIN chatbots c ON a.chatbot_id = c.id
-			WHERE ` + whereClause + `
+			WHERE (` + whereClause + `) AND a.analytics_date >= CURRENT_DATE - INTERVAL '29 days'
 		)
 		SELECT 
 			to_char(d.date, 'YYYY-MM-DD') as date,

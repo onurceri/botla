@@ -7,7 +7,7 @@ import (
 
 func TestExtractTopics_UsesLLM(t *testing.T) {
 	m := mockLLM{out: " summary "}
-	s, err := ExtractTopics(context.Background(), m, "content", "en")
+	s, err := extractTopicsFallback(context.Background(), m, "content", "en")
 	if err != nil || s == "" {
 		t.Fatalf("extract topics err: %v", err)
 	}

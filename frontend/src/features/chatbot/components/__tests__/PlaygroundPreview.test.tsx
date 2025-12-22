@@ -25,6 +25,10 @@ const defaultProps = {
   sessionId: 'test-session-id',
   suggestionsEnabled: false,
   suggestedQuestions: [],
+  inputBackgroundColor: '#ffffff',
+  inputTextColor: '#000000',
+  sendButtonColor: '#3b82f6',
+  bubbleRadius: '1rem',
 }
 
 describe('PlaygroundPreview', () => {

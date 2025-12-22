@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
@@ -22,7 +23,8 @@ func GenerateEmbeddings(chunks []models.Chunk, chatbotID string) error {
 		return nil
 	}
 	log := logger.New("INFO")
-	oai, err := NewOpenAIClientFromEnv()
+	cfg := config.LoadConfig()
+	oai, err := NewOpenAIClient(cfg)
 	if err != nil {
 		log.Error("openai_client_init_failed", map[string]any{"error": err.Error()})
 		return err
@@ -97,7 +99,8 @@ func GenerateEmbeddingsForSource(chunks []models.Chunk, chatbotID, sourceID, sou
 		return nil
 	}
 	log := logger.New("INFO")
-	oai, err := NewOpenAIClientFromEnv()
+	cfg := config.LoadConfig()
+	oai, err := NewOpenAIClient(cfg)
 	if err != nil {
 		log.Error("openai_client_init_failed", map[string]any{"error": err.Error()})
 		return err

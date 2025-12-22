@@ -2,6 +2,7 @@ package models
 
 // Usage represents user usage statistics
 type Usage struct {
+	ChatbotsCount            int `json:"chatbots_count"`
 	FilesCount               int `json:"files_count"`
 	MaxFilesCountInOneBot    int `json:"max_files_count_in_one_bot"`
 	StorageUsedMB            int `json:"storage_used_mb"`

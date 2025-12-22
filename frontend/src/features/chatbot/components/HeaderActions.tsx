@@ -21,21 +21,29 @@ export default function HeaderActions({
   onCreate,
 }: HeaderActionsProps) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {isNew ? 'Yeni Chatbot' : name}
-        </h1>
-        <p className="text-muted-foreground">
-          {isNew ? 'Asistanınızı yapılandırın' : 'Bot ayarlarını ve kaynaklarını yönetin'}
+    <div className="flex items-center justify-between gap-4 mb-2">
+      <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-foreground truncate max-w-[180px] sm:max-w-[400px]">
+            {isNew ? 'Yeni Chatbot' : name}
+          </h1>
+          {!isNew && (
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
+              Aktif
+            </span>
+          )}
+        </div>
+        <p className="text-[10px] lg:text-xs text-muted-foreground font-medium opacity-70">
+          {isNew ? 'Asistanınızı yapılandırın' : 'Ayarlar ve Kaynaklar'}
         </p>
       </div>
+      
       <div className="flex items-center gap-2">
         {!isNew && (
           <Button
-            variant="destructive"
+            variant="ghost"
             size="icon"
-            className="mr-2"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={onDelete}
             isLoading={isDeleting}
             aria-label="Sil"
@@ -46,13 +54,14 @@ export default function HeaderActions({
         {isNew && onCreate && (
           <Button
             onClick={onCreate}
-            className="gap-2"
+            size="sm"
+            className="h-9 px-4 gap-2 shadow-sm"
             isLoading={isCreating}
             disabled={disabled}
             aria-label="Oluştur"
           >
             <Save className="w-4 h-4" />
-            Oluştur
+            <span className="hidden sm:inline">Oluştur</span>
           </Button>
         )}
       </div>

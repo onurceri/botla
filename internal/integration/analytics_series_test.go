@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestAnalytics_SeriesLength7(t *testing.T) {
+func TestAnalytics_SeriesLength30(t *testing.T) {
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -22,7 +22,7 @@ func TestAnalytics_SeriesLength7(t *testing.T) {
 	var data []map[string]any
 	json.NewDecoder(res.Body).Decode(&data)
 	res.Body.Close()
-	if len(data) != 7 {
-		t.Fatalf("expected 7 points, got %d", len(data))
+	if len(data) != 30 {
+		t.Fatalf("expected 30 points, got %d", len(data))
 	}
 }

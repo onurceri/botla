@@ -35,8 +35,10 @@ type ChatService struct {
 // NewChatService creates a new ChatService instance.
 func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc *rag.QdrantClient, log *logger.Logger) *ChatService {
 	if embedder == nil {
-		if client, err := rag.NewOpenAIClientFromEnv(); err == nil {
-			embedder = client
+		if client, err := factory.GetClient("openai"); err == nil {
+			if e, ok := client.(rag.EmbeddingClient); ok {
+				embedder = e
+			}
 		}
 	}
 	return &ChatService{

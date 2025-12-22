@@ -18,7 +18,7 @@ describe('PlaygroundConsole', () => {
     const header = screen.getByText(/Event Debug Console/i)
     
     // Initially collapsed (h-11)
-    const consoleContainer = header.closest('.absolute')
+    const consoleContainer = screen.getByTestId('playground-console-container')
     expect(consoleContainer).toHaveClass('h-11')
     
     // Click to expand

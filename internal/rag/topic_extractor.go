@@ -49,8 +49,8 @@ No extra explanation or text. Write the summary and questions in %s.`
 // DefaultMaxSuggestedQuestions is the fallback when plan limit is not specified.
 const DefaultMaxSuggestedQuestions = 6
 
-// ExtractTopics remains for backward compatibility.
-func ExtractTopics(ctx context.Context, client LLMClient, content string, langCode string) (string, error) {
+// extractTopicsFallback is used as a fallback when structured metadata extraction fails.
+func extractTopicsFallback(ctx context.Context, client LLMClient, content string, langCode string) (string, error) {
 	if len(content) > 2000 {
 		content = content[:2000]
 	}
@@ -114,7 +114,7 @@ func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content str
 	var im models.IngestionMetadata
 	if jerr := json.Unmarshal([]byte(raw), &im); jerr != nil {
 		// Fallback: derive minimal metadata from legacy summary
-		sum, serr := ExtractTopics(ctx, client, content, langCode)
+		sum, serr := extractTopicsFallback(ctx, client, content, langCode)
 		if serr != nil {
 			return models.IngestionMetadata{}, errors.New("failed to parse and fallback summary")
 		}
@@ -127,7 +127,7 @@ func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content str
 			im.SuggestedQuestions = deriveQuestionsFromSummary(im.CapabilitySummary, cfg.Code)
 		} else {
 			// Last resort: try legacy extraction
-			if sum, serr := ExtractTopics(ctx, client, content, langCode); serr == nil {
+			if sum, serr := extractTopicsFallback(ctx, client, content, langCode); serr == nil {
 				im.CapabilitySummary = strings.TrimSpace(sum)
 				im.SuggestedQuestions = deriveQuestionsFromSummary(sum, cfg.Code)
 			}

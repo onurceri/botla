@@ -25,7 +25,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	chatbotSvc := services.NewChatbotService(pool, log)
 
 	factory := rag.NewClientFactory(cfg)
-	oaiClient, _ := rag.NewOpenAIClientFromEnv()
+	oaiClient, _ := rag.NewOpenAIClient(cfg)
 	// qdClient is passed in
 	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
 	toolNameGenerator := rag.NewToolNameGenerator(oaiClient)
@@ -37,7 +37,13 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	plh := &handlers.PlanHandlers{DB: pool}
 	uh := &handlers.UsageHandlers{DB: pool}
 	onbh := &handlers.OnboardingHandlers{DB: pool}
-	ch := &handlers.ChatbotHandlers{DB: pool, Cfg: cfg, ChatbotService: chatbotSvc}
+	ch := &handlers.ChatbotHandlers{
+		DB:               pool,
+		Cfg:              cfg,
+		ChatbotService:   chatbotSvc,
+		OrgService:       orgSvc,
+		WorkspaceService: workspaceSvc,
+	}
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, QdrantClient: qdClient, Log: log}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log}
@@ -58,7 +64,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	// User
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(plh.GetPlan)))
-	mux.Handle("/api/v1/me/usage", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uh.GetUsage)))
+	mux.Handle("/api/v1/me/usage", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(uh.GetUsage))))
 
 	// Onboarding
 	mux.Handle("GET /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.GetOnboardingState)))

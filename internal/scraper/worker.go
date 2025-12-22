@@ -153,7 +153,7 @@ func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
 
 // ExtractLinks finds all links in the HTML content that belong to the same domain as baseURL.
 // It returns a list of absolute URLs, optionally filtered by the provided PathFilter.
-// If filter is nil, all same-domain links are returned (backward compatibility).
+// If filter is nil, all same-domain links are returned.
 func ExtractLinks(htmlContent string, baseURL string, filter *PathFilter) ([]string, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {

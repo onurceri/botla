@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Tag, ChevronDown, ChevronRight, Lock, Crown, AlertCircle } from 'lucide-react'
+import { Tag, ChevronDown, Lock, Crown, AlertCircle } from 'lucide-react'
 
 type CustomBranding = {
   logo_url?: string
@@ -80,7 +80,7 @@ export default function BrandingSettings({
                   }}
                   disabled={!canHideBranding}
                   className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 ${
-                    hideBranding ? 'bg-primary shadow-[0_2px_8px_rgba(var(--primary-rgb),0.3)]' : 'bg-slate-200'
+                    hideBranding ? 'bg-primary shadow-[0_2px_8px_rgba(245,158,11,0.3)]' : 'bg-slate-200'
                   } ${!canHideBranding ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'}`}
                 >
                   <span

@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+
 )
 
 // RAG-003: Search with invalid chatbot ID
@@ -72,7 +74,7 @@ func TestSearchContext_InvalidChatbotID(t *testing.T) {
 	// but here it runs during the request.
 	// Ideally we'd capture the request and check it after.
 
-	_, _, err := SearchContext([]float32{0.1}, "invalid-bot-id", 5, 1000, 0)
+	_, err := SearchContextTiered([]float32{0.1}, "invalid-bot-id", 5, 1000, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

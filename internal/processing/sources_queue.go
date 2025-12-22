@@ -11,6 +11,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
@@ -35,7 +36,8 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService) (*SourceQueue, 
 	c := make(chan string, 64)
 	stop := make(chan struct{})
 
-	oa, err := rag.NewOpenAIClientFromEnv()
+	cfg := config.LoadConfig()
+	oa, err := rag.NewOpenAIClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create openai client: %w", err)
 	}

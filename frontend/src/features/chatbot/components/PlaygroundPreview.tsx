@@ -26,6 +26,9 @@ type Props = {
   refreshKey?: number
   hideBranding?: boolean
   customBranding?: { logo_url?: string; text?: string; link?: string } | null
+  autoOpen?: boolean
+  panelHeight?: string
+  panelWidth?: string
 }
 
 // Get widget URL from environment, fallback to localhost for development
@@ -64,6 +67,9 @@ export default function PlaygroundPreview(props: Props) {
     refreshKey,
     hideBranding,
     customBranding,
+    autoOpen = false,
+    panelHeight,
+    panelWidth,
   } = props
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -75,8 +81,11 @@ export default function PlaygroundPreview(props: Props) {
       'chatbot-id': id,
       'api-base': API_BASE,
       'session-id': sessionId,
-      'auto-open': '1', // Always open in playground
+      'auto-open': autoOpen ? '1' : '0',
     }
+
+    if (panelHeight) config['panel-height'] = panelHeight
+    if (panelWidth) config['panel-width'] = panelWidth
 
     // Theme & colors
     if (themeColor) config['color'] = themeColor
@@ -125,7 +134,7 @@ export default function PlaygroundPreview(props: Props) {
     inputBackgroundColor, inputTextColor, sendButtonColor,
     chatFontFamily, position, botDisplayName, botIcon, chatBackgroundColor, bubbleRadius,
     welcomeMessage, sessionId, suggestionsEnabled, suggestedQuestions,
-    hideBranding, customBranding
+    hideBranding, customBranding, panelHeight
   ])
 
   // Send config to iframe
@@ -174,7 +183,7 @@ export default function PlaygroundPreview(props: Props) {
   }, [])
 
   return (
-    <div className="flex-1 relative h-full min-h-[400px]">
+    <div className="w-full h-full relative">
       <iframe
         ref={iframeRef}
         src={`${WIDGET_URL}/preview.html`}

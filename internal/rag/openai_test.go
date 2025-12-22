@@ -8,23 +8,10 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
-func TestNewOpenAIClientFromEnv(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
-	c, err := NewOpenAIClientFromEnv()
-	if err != nil || c == nil {
-		t.Fatalf("client err: %v", err)
-	}
-}
 
-func TestNewOpenAIClientFromEnv_MissingKey(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "")
-	c, err := NewOpenAIClientFromEnv()
-	if err == nil || c != nil {
-		t.Fatalf("expected error for missing key")
-	}
-}
 
 func TestCreateEmbedding_Success(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "k")
@@ -40,8 +27,12 @@ func TestCreateEmbedding_Success(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("OPENAI_API_BASE", srv.URL)
-	c, _ := NewOpenAIClientFromEnv()
+	defer srv.Close()
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
 	v, err := c.CreateEmbedding(context.Background(), "hi")
 	if err != nil || len(v) != 2 {
 		t.Fatalf("embedding err: %v", err)
@@ -62,8 +53,12 @@ func TestCreateEmbeddingsBatch_Success(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("OPENAI_API_BASE", srv.URL)
-	c, _ := NewOpenAIClientFromEnv()
+	defer srv.Close()
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
 	v, err := c.CreateEmbeddingsBatch(context.Background(), []string{"a", "b"})
 	if err != nil || len(v) != 2 {
 		t.Fatalf("batch err: %v", err)
@@ -76,8 +71,12 @@ func TestCreateEmbedding_RetryFailure(t *testing.T) {
 		http.Error(w, "fail", http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	t.Setenv("OPENAI_API_BASE", srv.URL)
-	c, _ := NewOpenAIClientFromEnv()
+	defer srv.Close()
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
 	_, err := c.CreateEmbedding(context.Background(), "hi")
 	if err == nil {
 		t.Fatalf("expected error after retries")
@@ -95,8 +94,12 @@ func TestCreateCompletion_NoChoices(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("OPENAI_API_BASE", srv.URL)
-	c, _ := NewOpenAIClientFromEnv()
+	defer srv.Close()
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
 	_, err := c.CreateCompletion(context.Background(), models.CompletionParams{
 		SystemPrompt: "sys",
 		Context:      "ctx",
@@ -124,8 +127,12 @@ func TestCreateCompletion_Success(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("OPENAI_API_BASE", srv.URL)
-	c, _ := NewOpenAIClientFromEnv()
+	defer srv.Close()
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
 	res, err := c.CreateCompletion(context.Background(), models.CompletionParams{
 		SystemPrompt: "sys",
 		Context:      "ctx",
@@ -151,9 +158,12 @@ func TestCreateCompletionWithTools_IncludesErrorBody(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("OPENAI_API_BASE", srv.URL)
-
-	c, _ := NewOpenAIClientFromEnv()
+	
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
 	msg := "hi"
 	_, err := c.CreateCompletionWithTools(context.Background(), []ChatMessage{{Role: "user", Content: &msg}}, []Tool{{Type: "function", Function: ToolFunction{Name: "list_sources", Description: "d", Parameters: json.RawMessage(`{"type":"object"}`)}}}, "gpt-4o-mini", 0, 10)
 	if err == nil {

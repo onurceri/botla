@@ -2,12 +2,16 @@ package rag
 
 import (
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
-func TestNewOpenAIClientFromEnv_TimeoutOverride(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
-	t.Setenv("OPENAI_TIMEOUT_MS", "2500")
-	c, err := NewOpenAIClientFromEnv()
+func TestNewOpenAIClient_TimeoutOverride(t *testing.T) {
+	cfg := &config.Config{
+		OPENAI_API_KEY:    "k",
+		OPENAI_TIMEOUT_MS: 2500,
+	}
+	c, err := NewOpenAIClient(cfg)
 	if err != nil {
 		t.Fatalf("client err: %v", err)
 	}
