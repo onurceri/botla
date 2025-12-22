@@ -173,7 +173,7 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, re
 		Description:          req.Description,
 		CustomInstruction:    defaultString(req.CustomInstruction, ""),
 		LanguageCode:         langCode,
-		Model:                defaultString(req.Model, config.ResolveChatbotModel(h.Cfg)),
+		Model:                defaultString(req.Model, config.DefaultChatbotModel()),
 		Temperature:          defaultFloat32(req.Temperature, 0.7),
 		MaxTokens:            defaultInt(req.MaxTokens, 4096),
 		ThemeColor:           defaultString(req.ThemeColor, "#3b82f6"),

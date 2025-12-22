@@ -3,9 +3,13 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/stretchr/testify/mock"
 )
 
 // startOpenAIErrorStub returns embeddings OK, but chat completions 500
@@ -28,24 +32,32 @@ func startOpenAIErrorStub() *httptest.Server {
 }
 
 func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
-	oai := startOpenAIErrorStub()
-	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qd.URL)
 	te, err := SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer TeardownTestEnv(te)
-	defer oai.Close()
-	defer qd.Close()
 
-	token := authToken(t, te.Server.URL, "chaterr@example.com")
+	// Replace the real factory/client with a mock that always fails
+	mockLLM := &rag.MockFullClient{}
+	mockLLM.On("CreateEmbedding", mock.Anything, mock.Anything).Return([]float32{0.1}, nil)
+	mockLLM.On("CreateCompletionWithTools", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("simulated openai error"))
+	
+	mockVC := &rag.MockVectorClient{}
+	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
+	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{}, nil)
+
+	// Actually, let's just create a custom mux for this test
+	mux := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	token := authToken(t, ts.URL, "chaterr@example.com")
 
 	// create chatbot
 	create := map[string]any{"name": "Chat Err Bot"}
 	cbj, _ := json.Marshal(create)
-	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
+	reqC, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
@@ -56,7 +68,7 @@ func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
 	// chat
 	cr := chatReq{Message: "merhaba", SessionID: "s3"}
 	crb, _ := json.Marshal(cr)
-	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
+	reqCh, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
 	resCh, _ := http.DefaultClient.Do(reqCh)

@@ -1,5 +1,6 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { useChatbotContext, type ModelInfo } from '../context/ChatbotContext'
 
 type Props = {
   name: string
@@ -21,6 +22,9 @@ export default function OverviewPanel({
   temperature, setTemperature,
   maxTokens, setMaxTokens
 }: Props) {
+  // Get available models from context (fetched from backend)
+  const { availableModels } = useChatbotContext()
+
   return (
     <div className="grid gap-6">
       <Card>
@@ -59,18 +63,15 @@ export default function OverviewPanel({
               value={model}
               onChange={(e) => setModel(e.target.value)}
             >
-              <optgroup label="OpenAI">
-                <option value="openai:gpt-4o">GPT-4o</option>
-                <option value="openai:gpt-4o-mini">GPT-4o Mini</option>
-              </optgroup>
-              <optgroup label="Anthropic">
-                <option value="anthropic:claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
-                <option value="anthropic:claude-3-5-haiku-latest">Claude 3.5 Haiku</option>
-              </optgroup>
-              <optgroup label="Google">
-                <option value="google:gemini-1.5-pro">Gemini 1.5 Pro</option>
-                <option value="google:gemini-1.5-flash">Gemini 1.5 Flash</option>
-              </optgroup>
+              {availableModels.length > 0 ? (
+                availableModels.map((m: ModelInfo) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))
+              ) : (
+                <option value={model}>{model}</option>
+              )}
             </select>
           </div>
           

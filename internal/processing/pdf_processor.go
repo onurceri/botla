@@ -21,15 +21,17 @@ type PDFProcessor struct {
 	DB           *sql.DB
 	Storage      storage.StorageService
 	OpenAIClient rag.LLMClient
+	VectorClient rag.VectorClient
 	Log          *logger.Logger
 }
 
 // NewPDFProcessor creates a new PDFProcessor
-func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, log *logger.Logger) *PDFProcessor {
+func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger) *PDFProcessor {
 	return &PDFProcessor{
 		DB:           db,
 		Storage:      st,
 		OpenAIClient: oai,
+		VectorClient: vc,
 		Log:          log,
 	}
 }
@@ -89,7 +91,13 @@ func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	if rerr != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: rerr.Error()}}
 	}
-	if err := rag.GenerateEmbeddingsForSource(rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+
+	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
+	if !ok {
+		return ProcessResult{Error: &ProcessingError{Msg: "llm_client_does_not_support_embeddings"}}
+	}
+
+	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
 	}
 

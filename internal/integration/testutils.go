@@ -13,7 +13,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	dbpkg "github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/stretchr/testify/mock"
 )
 
 // MockVectorStore for testing
@@ -34,6 +37,8 @@ type TestEnv struct {
 	DB          *sql.DB
 	Server      *httptest.Server
 	VectorStore *MockVectorStore
+	MockVC      *rag.MockVectorClient
+	MockLLM     *rag.MockFullClient
 }
 
 func SetupTestEnv() (*TestEnv, error) {
@@ -133,10 +138,40 @@ func SetupTestEnv() (*TestEnv, error) {
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits,requests_per_minute}', '1000'::jsonb) WHERE code = 'free'`)
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_chatbots}', '100'::jsonb) WHERE code = 'free'`)
 
+	mockVC := &rag.MockVectorClient{}
+	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
+	mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mockVC.On("DeleteBySourceID", mock.Anything, mock.Anything).Return(nil)
+	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{}, nil)
+
+	mockLLM := &rag.MockFullClient{}
+	mockLLM.On("CreateCompletion", mock.Anything, mock.Anything).Return(&models.CompletionResult{
+		Content: "Mock response",
+	}, nil)
+	mockLLM.On("CreateEmbedding", mock.Anything, mock.Anything).Return([]float32{0.1}, nil)
+	mockLLM.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil)
+	mockLLM.On("CreateCompletionWithTools", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&rag.ChatResponseWithTools{
+		Choices: []struct {
+			Message      rag.ChatMessage `json:"message"`
+			FinishReason string          `json:"finish_reason"`
+		}{{
+			Message: rag.ChatMessage{Content: strPtr("Mock tool response")},
+		}},
+		Usage: struct {
+			TotalTokens int `json:"total_tokens"`
+		}{TotalTokens: 10},
+	}, nil)
+
 	vs := &MockVectorStore{}
-	mux := NewTestMux(cfg, db, vs)
+	// For now, continue using real clients by default to keep existing tests passing
+	// New tests can manually create a mux with mocks.
+	mux := NewTestMux(cfg, db, vs, nil, nil)
 	srv := httptest.NewServer(mux)
-	return &TestEnv{Cfg: cfg, DB: db, Server: srv, VectorStore: vs}, nil
+	return &TestEnv{Cfg: cfg, DB: db, Server: srv, VectorStore: vs, MockVC: nil, MockLLM: nil}, nil
+}
+
+func strPtr(s string) *string {
+	return &s
 }
 
 func TeardownTestEnv(te *TestEnv) {
@@ -152,12 +187,12 @@ func TeardownTestEnv(te *TestEnv) {
 }
 
 func restorePlans(db *sql.DB) {
-	// Re-apply migration 000035 configs to ensure clean state
+	// Re-apply plan configs with bare model names (matching migration 000040)
 	// Free
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', false, 'max_urls_per_bot', 1, 'max_pages_per_crawl', 5),
     'files', jsonb_build_object('ocr_enabled', false, 'max_size_mb', 5, 'max_files_per_bot', 1, 'max_files_total', 5, 'total_storage_mb', 10, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', 'openai/gpt-4o-mini', 'allowed_models', '["openai/gpt-4o-mini"]'::jsonb, 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k', 3, 'max_context_tokens', 2000), 'max_suggested_questions', 3),
+    'chat', jsonb_build_object('default_model', 'gpt-4o-mini', 'allowed_models', '["gpt-4o-mini"]'::jsonb, 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k', 3, 'max_context_tokens', 2000), 'max_suggested_questions', 3),
     'refresh', jsonb_build_object('enabled', false, 'max_monthly', 0),
     'security', jsonb_build_object('secure_embed_enabled', false),
     'guardrails', jsonb_build_object('can_customize_thresholds', false, 'can_use_smart_fallback', false, 'can_use_escalate_fallback', false, 'can_manage_topics', false, 'can_customize_messages', false),
@@ -170,7 +205,7 @@ func restorePlans(db *sql.DB) {
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 10, 'max_pages_per_crawl', 50),
     'files', jsonb_build_object('ocr_enabled', true, 'max_size_mb', 20, 'max_files_per_bot', 20, 'max_files_total', 100, 'total_storage_mb', 500, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', 'openai/gpt-4o', 'allowed_models', '["openai/gpt-4o-mini", "openai/gpt-4o"]'::jsonb, 'max_monthly_tokens', 1000000, 'rag', jsonb_build_object('top_k', 5, 'max_context_tokens', 4000), 'max_suggested_questions', 6),
+    'chat', jsonb_build_object('default_model', 'gpt-4o', 'allowed_models', '["gpt-4o-mini", "gpt-4o"]'::jsonb, 'max_monthly_tokens', 1000000, 'rag', jsonb_build_object('top_k', 5, 'max_context_tokens', 4000), 'max_suggested_questions', 6),
     'refresh', jsonb_build_object('enabled', true, 'max_monthly', 5),
     'security', jsonb_build_object('secure_embed_enabled', true),
     'guardrails', jsonb_build_object('can_customize_thresholds', true, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', false, 'can_manage_topics', true, 'can_customize_messages', true),
@@ -183,7 +218,7 @@ func restorePlans(db *sql.DB) {
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 50, 'max_pages_per_crawl', 200),
     'files', jsonb_build_object('ocr_enabled', true, 'max_size_mb', 50, 'max_files_per_bot', 100, 'max_files_total', 1000, 'total_storage_mb', 2000, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', 'openai/gpt-4o', 'allowed_models', '["openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-5"]'::jsonb, 'max_monthly_tokens', 5000000, 'rag', jsonb_build_object('top_k', 10, 'max_context_tokens', 8000), 'max_suggested_questions', 10),
+    'chat', jsonb_build_object('default_model', 'gpt-4o', 'allowed_models', '["gpt-4o-mini", "gpt-4o", "gpt-5"]'::jsonb, 'max_monthly_tokens', 5000000, 'rag', jsonb_build_object('top_k', 10, 'max_context_tokens', 8000), 'max_suggested_questions', 10),
     'refresh', jsonb_build_object('enabled', true, 'max_monthly', 100),
     'security', jsonb_build_object('secure_embed_enabled', true),
     'guardrails', jsonb_build_object('can_customize_thresholds', true, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', true, 'can_manage_topics', true, 'can_customize_messages', true),

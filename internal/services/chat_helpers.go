@@ -38,7 +38,7 @@ func (s *ChatService) getEmbedder() rag.EmbeddingClient {
 }
 
 // getQdrantClient returns the Qdrant client, creating one if needed.
-func (s *ChatService) getQdrantClient() *rag.QdrantClient {
+func (s *ChatService) getQdrantClient() rag.VectorClient {
 	if s.QC != nil {
 		return s.QC
 	}
@@ -59,10 +59,10 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 		// Fallback chain: OpenRouter → OpenAI
 		if orClient, orErr := s.Factory.GetClient("openrouter"); orErr == nil && orClient != nil {
 			client = orClient
-			modelName = config.ModelOpenRouterGPT4oMini
+			modelName = config.DefaultModelName // Bare model name, resolved to API format at call time
 		} else if oaiClient, oaiErr := s.Factory.GetClient("openai"); oaiErr == nil && oaiClient != nil {
 			client = oaiClient
-			modelName = config.ModelGPT4oMini
+			modelName = config.DefaultModelName
 		}
 		if client == nil {
 			return nil, "", errors.New("no LLM client available")
@@ -75,9 +75,8 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 		if orClient, orErr := s.Factory.GetClient("openrouter"); orErr == nil {
 			if tc, tcOk := orClient.(rag.ToolsLLMClient); tcOk {
 				toolsClient = tc
-				if !strings.Contains(modelName, "/") {
-					modelName = config.ModelOpenRouterGPT4oMini
-				}
+				// Use bare model name, API format resolved at call time
+				modelName = config.DefaultModelName
 			}
 		}
 		// Final fallback to OpenAI
@@ -88,7 +87,7 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 			}
 			if tc, ok := c.(rag.ToolsLLMClient); ok {
 				toolsClient = tc
-				modelName = config.ModelGPT4oMini
+				modelName = config.DefaultModelName
 			} else {
 				return nil, "", errors.New("openai client does not support tools")
 			}

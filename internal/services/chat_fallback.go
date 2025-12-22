@@ -99,7 +99,7 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 			return "", 0, fmt.Errorf("openai client not configured: %w", e)
 		}
 		client = c
-		modelName = config.ModelGPT4oMini
+		modelName = config.DefaultModelName
 	}
 
 	if client == nil {

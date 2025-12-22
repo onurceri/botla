@@ -7,11 +7,12 @@ import (
 	"testing"
 )
 
-func TestChat_OpenAIEnvMissing_500(t *testing.T) {
+func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 	oai := NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	// Use an invalid port to force connection failure
+	t.Setenv("OPENAI_API_BASE", "http://127.0.0.1:1")
+	t.Setenv("OPENROUTER_API_BASE", "http://127.0.0.1:1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
 	// Ensure OPENAI_API_KEY is missing, but satisfy LoadConfig with another key
@@ -43,10 +44,16 @@ func TestChat_OpenAIEnvMissing_500(t *testing.T) {
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
 	resCh, _ := http.DefaultClient.Do(reqCh)
-	if resCh.StatusCode != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", resCh.StatusCode)
+	if resCh.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}
+	var crp chatResp
+	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
+
+	if crp.Response != "Şu an bir hata oluştu, lütfen tekrar deneyin." {
+		t.Fatalf("expected graceful error message, got %q", crp.Response)
+	}
 }
 
 // TestChat_QdrantEnvMissing_Fallback verifies that chat works when QDRANT_URL is missing.

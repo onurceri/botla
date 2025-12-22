@@ -369,9 +369,9 @@ func TestModelConfiguration(t *testing.T) {
 		model    *string
 		expected string
 	}{
-		{"Default Model", nil, "openai/gpt-4o-mini"},
-		{"GPT-4o", stringPtr("gpt-4o"), "openai/gpt-4o"},
-		{"GPT-4o-Mini", stringPtr("gpt-4o-mini"), "openai/gpt-4o-mini"},
+		{"Default Model", nil, "gpt-4o-mini"},
+		{"GPT-4o", stringPtr("gpt-4o"), "gpt-4o"},
+		{"GPT-4o-Mini", stringPtr("gpt-4o-mini"), "gpt-4o-mini"},
 		{"Anthropic", stringPtr("anthropic:claude-3-5-sonnet"), "anthropic/claude-3-5-sonnet"},
 		{"Google", stringPtr("google:gemini-1.5-flash"), "google/gemini-1.5-flash"},
 		{"OpenRouter", stringPtr("openrouter:meta-llama/llama-3"), "meta-llama/llama-3"},

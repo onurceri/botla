@@ -2,7 +2,9 @@ package rag
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,7 +32,10 @@ type TieredSearchResult struct {
 }
 
 // SearchContextTiered performs a tiered similarity search using ThresholdConfig
-func SearchContextTiered(queryEmbedding []float32, chatbotID string, limitTopK int, limitMaxTokens int, thresholdConfig *models.ThresholdConfig) (*TieredSearchResult, error) {
+func SearchContextTiered(ctx context.Context, vc VectorClient, queryEmbedding []float32, chatbotID string, limitTopK int, limitMaxTokens int, thresholdConfig *models.ThresholdConfig) (*TieredSearchResult, error) {
+	if vc == nil || (reflect.ValueOf(vc).Kind() == reflect.Ptr && reflect.ValueOf(vc).IsNil()) {
+		return nil, fmt.Errorf("vector client is nil")
+	}
 	if len(queryEmbedding) == 0 || chatbotID == "" {
 		return &TieredSearchResult{Tier: TierLow}, nil
 	}
@@ -40,12 +45,6 @@ func SearchContextTiered(queryEmbedding []float32, chatbotID string, limitTopK i
 		thresholdConfig = models.DefaultThresholdConfig()
 	}
 
-	qc, err := NewQdrantClientFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := context.Background()
 	topK := limitTopK
 	if topK <= 0 {
 		topK = 5
@@ -56,7 +55,7 @@ func SearchContextTiered(queryEmbedding []float32, chatbotID string, limitTopK i
 		}
 	}
 
-	items, err := qc.SearchSimilar(ctx, queryEmbedding, chatbotID, topK)
+	items, err := vc.SearchSimilar(ctx, queryEmbedding, chatbotID, topK)
 	if err != nil {
 		return nil, err
 	}

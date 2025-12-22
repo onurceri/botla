@@ -90,7 +90,7 @@ func TestAutomatedHandoff(t *testing.T) {
 		Name:             "AutoHandoffBot",
 		SystemPrompt:     "You are helpful.",
 		LanguageCode:     "en",
-		Model:            "openrouter:openai/gpt-4o-mini", // OpenRouter is primary provider
+		Model:            "gpt-4o-mini", // Bare model name, resolved to API format at call time
 		Temperature:      0.7,
 		MaxTokens:        100,
 		HandoffEnabled:   true,

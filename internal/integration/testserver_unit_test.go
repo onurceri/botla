@@ -1,22 +1,28 @@
 package integration
 
 import (
-	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestNewTestMux_CORSPreflightAndAuth(t *testing.T) {
 	_ = os.Setenv("CORS_ALLOWED_ORIGINS", "http://example.com")
 	_ = os.Setenv("JWT_SECRET", "test-secret")
 	cfg := config.LoadConfig()
-	db := &sql.DB{}
+	db := testdb.OpenParallelTestDB(t)
 
-	h := NewTestMux(cfg, db, nil)
+	mockVC := &rag.MockVectorClient{}
+	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
+	mockLLM := &rag.MockFullClient{}
+
+	h := NewTestMux(cfg, db, nil, mockLLM, mockVC)
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 

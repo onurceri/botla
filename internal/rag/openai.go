@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -21,12 +22,18 @@ type OpenAIClient struct {
 	defaultModel string
 }
 
+// GlobalHTTPClient can be set in tests to override all clients
+var GlobalHTTPClient *http.Client
+
 // NewOpenAIClient creates an OpenAI client from config
 func NewOpenAIClient(cfg *config.Config) (*OpenAIClient, error) {
 	if cfg == nil || cfg.OPENAI_API_KEY == "" {
 		return nil, errors.New("OPENAI_API_KEY is empty")
 	}
 	base := cfg.OPENAI_API_BASE
+	if base == "" {
+		base = os.Getenv("OPENAI_API_BASE")
+	}
 	if base == "" {
 		base = "https://api.openai.com"
 	}
@@ -36,11 +43,15 @@ func NewOpenAIClient(cfg *config.Config) (*OpenAIClient, error) {
 	}
 	defModel := cfg.DEFAULT_CHATBOT_MODEL
 	if defModel == "" {
-		defModel = config.ModelGPT4oMini
+		defModel = config.DefaultModelName
+	}
+	httpClient := &http.Client{Timeout: to}
+	if GlobalHTTPClient != nil {
+		httpClient = GlobalHTTPClient
 	}
 	return &OpenAIClient{
 		apiKey:       cfg.OPENAI_API_KEY,
-		http:         &http.Client{Timeout: to},
+		http:         httpClient,
 		base:         base,
 		defaultModel: defModel,
 	}, nil
@@ -64,7 +75,17 @@ type embeddingResponse struct {
 	} `json:"usage"`
 }
 
+func (c *OpenAIClient) getHTTPClient() *http.Client {
+	if GlobalHTTPClient != nil {
+		return GlobalHTTPClient
+	}
+	return c.http
+}
+
 func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	if c == nil {
+		return nil, fmt.Errorf("openai client is nil")
+	}
 	body := embeddingRequest{Model: "text-embedding-3-small", Input: text}
 	b, _ := json.Marshal(body)
 	var lastErr error
@@ -72,7 +93,7 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
 			lastErr = err
@@ -108,6 +129,9 @@ type embeddingBatchRequest struct {
 }
 
 func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	if c == nil {
+		return nil, fmt.Errorf("openai client is nil")
+	}
 	if len(texts) == 0 {
 		return nil, nil
 	}
@@ -118,7 +142,7 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
 			lastErr = err
@@ -150,22 +174,16 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 	return nil, lastErr
 }
 
-// Completions
-type chatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type chatRequest struct {
+type ChatRequest struct {
 	Model       string        `json:"model"`
-	Messages    []chatMessage `json:"messages"`
-	Temperature float32       `json:"temperature,omitempty"`
-	MaxTokens   int           `json:"max_tokens,omitempty"`
+	Messages    []ChatMessage `json:"messages"`
+	Temperature float32       `json:"temperature"`
+	MaxTokens   int           `json:"max_tokens"`
 }
 
 type chatResponse struct {
 	Choices []struct {
-		Message chatMessage `json:"message"`
+		Message ChatMessage `json:"message"`
 	} `json:"choices"`
 	Usage struct {
 		TotalTokens int `json:"total_tokens"`
@@ -174,7 +192,7 @@ type chatResponse struct {
 
 func (c *OpenAIClient) GetModelInfo() models.ModelInfo {
 	return models.ModelInfo{
-		Name:              config.ModelGPT4oMini,
+		Name:              config.DefaultModelName,
 		Provider:          "openai",
 		MaxTokens:         128000,
 		SupportedFeatures: []string{"chat", "tools"},
@@ -182,16 +200,19 @@ func (c *OpenAIClient) GetModelInfo() models.ModelInfo {
 }
 
 func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
+	if c == nil {
+		return nil, fmt.Errorf("openai client is nil")
+	}
 	model := params.Model
 	if model == "" {
 		model = c.defaultModel
 	}
 	user := "Context:\n" + params.Context + "\n\nQuestion:\n" + params.UserMessage
-	reqBody := chatRequest{
+	reqBody := ChatRequest{
 		Model: model,
-		Messages: []chatMessage{
-			{Role: "system", Content: params.SystemPrompt},
-			{Role: "user", Content: user},
+		Messages: []ChatMessage{
+			{Role: "system", Content: &params.SystemPrompt},
+			{Role: "user", Content: &user},
 		},
 		Temperature: params.Temperature,
 		MaxTokens:   params.MaxTokens,
@@ -202,7 +223,7 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
 			lastErr = err
@@ -219,8 +240,12 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 			case len(cr.Choices) == 0:
 				lastErr = errors.New("no completion returned")
 			default:
+				content := ""
+				if cr.Choices[0].Message.Content != nil {
+					content = *cr.Choices[0].Message.Content
+				}
 				return &models.CompletionResult{
-					Content:     cr.Choices[0].Message.Content,
+					Content:     content,
 					UsageTokens: cr.Usage.TotalTokens,
 				}, nil
 			}
@@ -235,8 +260,8 @@ type ChatRequestWithTools struct {
 	Messages    []ChatMessage `json:"messages"`
 	Tools       []Tool        `json:"tools,omitempty"`
 	ToolChoice  string        `json:"tool_choice,omitempty"` // "auto", "none"
-	Temperature float32       `json:"temperature,omitempty"`
-	MaxTokens   int           `json:"max_tokens,omitempty"`
+	Temperature float32       `json:"temperature"`
+	MaxTokens   int           `json:"max_tokens"`
 }
 
 type ChatResponseWithTools struct {
@@ -258,6 +283,9 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 	temperature float32,
 	maxTokens int,
 ) (*ChatResponseWithTools, error) {
+	if c == nil {
+		return nil, fmt.Errorf("openai client is nil")
+	}
 	if model == "" {
 		model = c.defaultModel
 	}
@@ -282,7 +310,7 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
 			lastErr = err

@@ -64,6 +64,8 @@ func (s *ChatService) performRAGSearch(ctx context.Context, cc *chatContext) {
 
 	// Perform tiered search
 	result, err := rag.SearchContextTiered(
+		ctx,
+		qc,
 		embedding,
 		cc.Bot.ID,
 		cc.RAGConfig.TopK,

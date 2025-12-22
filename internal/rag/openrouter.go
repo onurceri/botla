@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
+	"os"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -40,6 +40,9 @@ func NewOpenRouterClient(cfg *config.Config) (*OpenRouterClient, error) {
 	if cfg != nil && cfg.OPENROUTER_API_BASE != "" {
 		base = cfg.OPENROUTER_API_BASE
 	} else {
+		base = os.Getenv("OPENROUTER_API_BASE")
+	}
+	if base == "" {
 		base = "https://openrouter.ai/api/v1"
 	}
 
@@ -53,15 +56,27 @@ func NewOpenRouterClient(cfg *config.Config) (*OpenRouterClient, error) {
 		defModel = cfg.DEFAULT_CHATBOT_MODEL
 	}
 
+	httpClient := &http.Client{Timeout: to}
+	if GlobalHTTPClient != nil {
+		httpClient = GlobalHTTPClient
+	}
+
 	return &OpenRouterClient{
 		apiKey:       k,
-		http:         &http.Client{Timeout: to},
+		http:         httpClient,
 		base:         base,
 		defaultModel: defModel,
 	}, nil
 }
 
 
+
+func (c *OpenRouterClient) getHTTPClient() *http.Client {
+	if GlobalHTTPClient != nil {
+		return GlobalHTTPClient
+	}
+	return c.http
+}
 
 func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	// Use standard OpenAI-compatible embedding endpoint.
@@ -76,7 +91,7 @@ func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]
 		req.Header.Set("HTTP-Referer", "https://botla.app") // Placeholder
 		req.Header.Set("X-Title", "Botla")
 
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
 			lastErr = err
@@ -119,7 +134,7 @@ func (c *OpenRouterClient) CreateEmbeddingsBatch(ctx context.Context, texts []st
 		req.Header.Set("HTTP-Referer", "https://botla.app")
 		req.Header.Set("X-Title", "Botla")
 
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
 			lastErr = err
@@ -167,11 +182,11 @@ func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.C
 	}
 	// Assume caller provides correct model ID (e.g. "openai/gpt-4").
 	user := "Context:\n" + params.Context + "\n\nQuestion:\n" + params.UserMessage
-	reqBody := chatRequest{
+	reqBody := ChatRequest{
 		Model: model,
-		Messages: []chatMessage{
-			{Role: "system", Content: params.SystemPrompt},
-			{Role: "user", Content: user},
+		Messages: []ChatMessage{
+			{Role: "system", Content: &params.SystemPrompt},
+			{Role: "user", Content: &user},
 		},
 		Temperature: params.Temperature,
 		MaxTokens:   params.MaxTokens,
@@ -185,7 +200,7 @@ func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.C
 		req.Header.Set("HTTP-Referer", "https://botla.app")
 		req.Header.Set("X-Title", "Botla")
 
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		if err != nil {
 			lastErr = err
 		} else {
@@ -196,8 +211,12 @@ func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.C
 				} else {
 					_ = res.Body.Close()
 					if len(cr.Choices) > 0 {
+						content := ""
+						if cr.Choices[0].Message.Content != nil {
+							content = *cr.Choices[0].Message.Content
+						}
 						return &models.CompletionResult{
-							Content:     cr.Choices[0].Message.Content,
+							Content:     content,
 							UsageTokens: cr.Usage.TotalTokens,
 						}, nil
 					}
@@ -250,7 +269,7 @@ func (c *OpenRouterClient) CreateCompletionWithTools(
 		req.Header.Set("HTTP-Referer", "https://botla.app")
 		req.Header.Set("X-Title", "Botla")
 
-		res, err := c.http.Do(req)
+		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
 			lastErr = err

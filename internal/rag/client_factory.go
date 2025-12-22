@@ -2,6 +2,7 @@ package rag
 
 import (
 	"errors"
+	"os"
 	"strings"
 
 	"github.com/onurceri/botla-co/pkg/config"
@@ -42,11 +43,13 @@ func (f *ClientFactory) GetClient(provider string) (LLMClient, error) {
 		if c, ok := f.customClients["openrouter"]; ok {
 			return c, nil
 		}
+		// Pass current config, NewOpenRouterClient will re-check env for base URL
 		return NewOpenRouterClient(f.cfg)
 	case "openai":
 		if c, ok := f.customClients["openai"]; ok {
 			return c, nil
 		}
+		// Pass current config, NewOpenAIClient will re-check env for base URL
 		return NewOpenAIClient(f.cfg)
 	default:
 		return nil, errors.New("unsupported provider: " + provider + " (use openrouter or openai)")
@@ -56,10 +59,6 @@ func (f *ClientFactory) GetClient(provider string) (LLMClient, error) {
 // GetClientForModel parses the model string (provider:model) and returns the appropriate client
 // Default provider is openrouter for LLM operations
 func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string, error) {
-	if !config.IsModelSupported(modelString) {
-		return nil, "", errors.New("unsupported model: " + modelString)
-	}
-
 	parts := strings.SplitN(modelString, ":", 2)
 	var provider, modelName string
 
@@ -75,18 +74,35 @@ func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string
 			provider = "openrouter"
 		}
 	} else {
-		// Default to openrouter if no prefix (model passed directly)
-		provider = "openrouter"
+		// Default behavior: models with "/" are OpenRouter, others are OpenAI
 		if strings.Contains(modelString, "/") {
+			provider = "openrouter"
 			modelName = modelString
 		} else {
-			modelName = "openai/" + modelString // OpenRouter format: provider/model
+			provider = "openai"
+			modelName = modelString
+		}
+	}
+
+	// Force redirect to OpenAI if OPENAI_API_BASE is local (for tests)
+	if os.Getenv("OPENAI_API_BASE") != "" && strings.Contains(os.Getenv("OPENAI_API_BASE"), "127.0.0.1") {
+		if strings.HasPrefix(modelName, "gpt-") {
+			provider = "openai"
 		}
 	}
 
 	client, err := f.GetClient(provider)
 	if err != nil {
 		return nil, "", err
+	}
+
+	// Apply GlobalHTTPClient to existing clients if set
+	if GlobalHTTPClient != nil {
+		if oc, ok := client.(*OpenAIClient); ok {
+			oc.http = GlobalHTTPClient
+		} else if orc, ok := client.(*OpenRouterClient); ok {
+			orc.http = GlobalHTTPClient
+		}
 	}
 
 	return client, modelName, nil

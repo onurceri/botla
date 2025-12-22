@@ -88,7 +88,7 @@ func (h *SourcesHandlers) getSourceStatus(w http.ResponseWriter, r *http.Request
 // deleteSource handles source deletion
 func (h *SourcesHandlers) deleteSource(w http.ResponseWriter, r *http.Request, s *models.DataSource) {
 	// Best-effort: delete associated vectors then remove source record
-	if err := processing.DeleteSourceVectors(r.Context(), s.ID); err != nil {
+	if err := processing.DeleteSourceVectors(r.Context(), h.QdrantClient, s.ID); err != nil {
 		h.logWarn("vector_delete_error", map[string]any{"source_id": s.ID, "error": err.Error()})
 	}
 

@@ -14,6 +14,6 @@ type SourcesHandlers struct {
 	DB           *sql.DB
 	Queue        *processing.SourceQueue
 	Storage      storage.StorageService
-	QdrantClient *rag.QdrantClient
+	QdrantClient rag.VectorClient
 	Log          *logger.Logger
 }

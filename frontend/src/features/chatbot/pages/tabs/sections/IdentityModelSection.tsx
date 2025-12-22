@@ -6,9 +6,7 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
@@ -41,15 +39,6 @@ export default function IdentityModelSection({
   setMaxTokens,
   availableModels,
 }: IdentityModelSectionProps) {
-  // Group models by provider
-  const groupedModels = (availableModels || []).reduce((acc, model) => {
-    if (!acc[model.provider]) {
-      acc[model.provider] = []
-    }
-    acc[model.provider].push(model)
-    return acc
-  }, {} as Record<string, ModelInfo[]>)
-
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card className="h-full border-muted-foreground/20 shadow-sm hover:shadow-md transition-shadow">
@@ -114,21 +103,14 @@ export default function IdentityModelSection({
                 <SelectValue placeholder="Model seçin" />
               </SelectTrigger>
               <SelectContent>
-              {Object.keys(groupedModels).length > 0 ? (
-                Object.entries(groupedModels).map(([provider, models]) => (
-                  <SelectGroup key={provider}>
-                    <SelectLabel>{provider}</SelectLabel>
-                    {models.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+              {availableModels && availableModels.length > 0 ? (
+                availableModels.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.name}
+                  </SelectItem>
                 ))
               ) : (
-                <SelectGroup>
-                  <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
-                </SelectGroup>
+                <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
               )}
             </SelectContent>
             </Select>

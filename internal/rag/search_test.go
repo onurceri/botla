@@ -1,6 +1,7 @@
 package rag
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,8 @@ import (
 )
 
 func TestSearchContext_Empty(t *testing.T) {
-	s, err := SearchContextTiered(nil, "", 0, 0, nil)
+	mockVC := &MockVectorClient{}
+	s, err := SearchContextTiered(context.Background(), mockVC, nil, "", 0, 0, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -41,7 +43,8 @@ func TestSearchContext_ThresholdAndMaxTokens(t *testing.T) {
 	// Use MediumThreshold 0.2 to filter out 0.1 score item
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.2, HighThreshold: 0.95}
 
-	res, err := SearchContextTiered([]float32{0.1}, "cb", 0, 0, cfg)
+	vc, _ := NewQdrantClientFromEnv()
+	res, err := SearchContextTiered(context.Background(), vc, []float32{0.1}, "cb", 0, 0, cfg)
 	if err != nil {
 		t.Fatalf("search err: %v", err)
 	}
@@ -55,10 +58,14 @@ func TestSearchContext_ThresholdAndMaxTokens(t *testing.T) {
 
 func TestSearchContext_MissingQdrant(t *testing.T) {
 	t.Setenv("QDRANT_URL", "")
-	// should handle missing qdrant gracefully (return error from NewQdrantClient)
-	_, err := SearchContextTiered([]float32{0.1}, "cb", 0, 0, nil)
+	// should handle missing qdrant gracefully
+	vc, err := NewQdrantClientFromEnv()
 	if err == nil {
-		t.Fatalf("expected error when qdrant url missing")
+		t.Fatalf("expected error from NewQdrantClientFromEnv")
+	}
+	_, err = SearchContextTiered(context.Background(), vc, []float32{0.1}, "cb", 0, 0, nil)
+	if err == nil {
+		t.Fatalf("expected error when qdrant client is nil")
 	}
 }
 
@@ -78,7 +85,8 @@ func TestSearchContext_AllBelowThreshold(t *testing.T) {
 	t.Setenv("QDRANT_URL", srv.URL)
 
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.2, HighThreshold: 0.8}
-	res, err := SearchContextTiered([]float32{0.1}, "cb", 0, 0, cfg)
+	vc, _ := NewQdrantClientFromEnv()
+	res, err := SearchContextTiered(context.Background(), vc, []float32{0.1}, "cb", 0, 0, cfg)
 	if err != nil {
 		t.Fatalf("search err: %v", err)
 	}
@@ -108,7 +116,8 @@ func TestSearchContext_ThresholdZero(t *testing.T) {
 
 	// Threshold 0.0 should include the 0.0 score item
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.0, HighThreshold: 0.5}
-	res, err := SearchContextTiered([]float32{0.1}, "cb", 5, 1000, cfg)
+	vc, _ := NewQdrantClientFromEnv()
+	res, err := SearchContextTiered(context.Background(), vc, []float32{0.1}, "cb", 5, 1000, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -137,7 +146,8 @@ func TestSearchContext_ThresholdOne(t *testing.T) {
 
 	// Threshold 1.0 should exclude 0.99
 	cfg := &models.ThresholdConfig{MediumThreshold: 1.0, HighThreshold: 1.0}
-	res, err := SearchContextTiered([]float32{0.1}, "cb", 5, 1000, cfg)
+	vc, _ := NewQdrantClientFromEnv()
+	res, err := SearchContextTiered(context.Background(), vc, []float32{0.1}, "cb", 5, 1000, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -171,7 +181,8 @@ func TestSearchContext_Separator(t *testing.T) {
 	t.Setenv("QDRANT_URL", srv.URL)
 
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.5, HighThreshold: 0.8}
-	res, err := SearchContextTiered([]float32{0.1}, "cb", 5, 1000, cfg)
+	vc, _ := NewQdrantClientFromEnv()
+	res, err := SearchContextTiered(context.Background(), vc, []float32{0.1}, "cb", 5, 1000, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
