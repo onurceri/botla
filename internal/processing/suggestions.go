@@ -223,10 +223,6 @@ func logWarnIfPresent(log *logger.Logger, event string, data map[string]any) {
 }
 
 // DeleteSourceVectors deletes vectors associated with a source from Qdrant.
-func DeleteSourceVectors(ctx context.Context, sourceID string) error {
-	qc, err := rag.NewQdrantClientFromEnv()
-	if err != nil {
-		return err
-	}
-	return qc.DeleteBySourceID(ctx, sourceID)
+func DeleteSourceVectors(ctx context.Context, vc rag.VectorClient, sourceID string) error {
+	return vc.DeleteBySourceID(ctx, sourceID)
 }

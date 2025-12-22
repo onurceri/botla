@@ -27,13 +27,13 @@ type ChatService struct {
 	DB            *sql.DB
 	Factory       *rag.ClientFactory
 	Embedder      rag.EmbeddingClient
-	QC            *rag.QdrantClient
+	QC            rag.VectorClient
 	Log           *logger.Logger
 	SyncAnalytics bool // When true, analytics run synchronously (useful for testing)
 }
 
 // NewChatService creates a new ChatService instance.
-func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc *rag.QdrantClient, log *logger.Logger) *ChatService {
+func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc rag.VectorClient, log *logger.Logger) *ChatService {
 	if embedder == nil {
 		if client, err := factory.GetClient("openai"); err == nil {
 			if e, ok := client.(rag.EmbeddingClient); ok {
@@ -99,7 +99,10 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 
 	// Step 6: Execute agentic loop (LLM + tools)
 	if err := s.executeAgenticLoop(ctx, cc); err != nil {
-		return nil, err
+		// Log error but proceed to fallback
+		if s.Log != nil {
+			s.Log.Error("chat_agentic_loop_failed", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
+		}
 	}
 
 	// Step 7: Apply fallback if needed

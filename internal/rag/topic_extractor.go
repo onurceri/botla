@@ -63,7 +63,7 @@ func extractTopicsFallback(ctx context.Context, client LLMClient, content string
 		SystemPrompt: sp,
 		Context:      ct,
 		UserMessage:  um,
-		Model:        config.ModelGPT4oMini,
+		Model:        config.DefaultModelName,
 		Temperature:  0.0,
 		MaxTokens:    150,
 	}
@@ -96,7 +96,7 @@ func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content str
 		SystemPrompt: sp,
 		Context:      ct,
 		UserMessage:  um,
-		Model:        config.ModelGPT4oMini,
+		Model:        config.DefaultModelName,
 		Temperature:  0.0,
 		MaxTokens:    300,
 	}

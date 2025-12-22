@@ -12,15 +12,19 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
-	te, err := SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup: %v", err)
-	}
+	te, _ := SetupTestEnv()
 	defer TeardownTestEnv(te)
-	mux := NewTestMux(te.Cfg, te.DB, nil)
+
+	mockVC := &rag.MockVectorClient{}
+	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
+	mockLLM := &rag.MockFullClient{}
+
+	mux := NewTestMux(te.Cfg, te.DB, nil, mockLLM, mockVC)
 
 	// Create user and bot
 	userID := createTestUser(t, te.DB)

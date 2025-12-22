@@ -99,7 +99,11 @@ test('Chunk Inspector Flow: Login -> Create Bot -> Add Source -> Inspect Chunks'
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Şifre').fill('password')
     await page.getByRole('button', { name: 'Kayıt Ol' }).click()
-    await expect(page).toHaveURL(/.*login/, { timeout: 10000 })
+    await expect(page).toHaveURL(/.*onboarding|.*login/, { timeout: 10000 })
+
+    if (page.url().includes('onboarding')) {
+        await page.goto('/login')
+    }
 
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Şifre').fill('password')
@@ -115,20 +119,15 @@ test('Chunk Inspector Flow: Login -> Create Bot -> Add Source -> Inspect Chunks'
     await expect(page).toHaveURL(/\/chatbots\/[a-zA-Z0-9_-]+$/, { timeout: 10000 })
 
     // 3. Go to Sources
-    await page.getByRole('link', { name: 'Veri Kaynakları' }).click()
+    await page.getByRole('link', { name: 'Kaynaklar' }).click()
 
     // 4. Verify List & Open Inspector
     // If mocked, the list should show 'src-1' immediately.
     // We need to wait for the list to load.
-    await expect(page.getByRole('cell', { name: 'test-source.txt' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'test-source.txt' })).toBeVisible()
 
     // Find "View Chunks" button (Desktop or Mobile).
-    // The list has multiple buttons. We target the one with title "Parçaları İncele".
-    // Note: shadcn/ui tooltip trigger might not have title attribute if using Tooltip?
-    // In SourceList.tsx: <Button ... title="Parçaları İncele">
-    // Yes I added title prop.
-
-    const inspectBtn = page.locator('button[title="Parçaları İncele"]').first()
+    const inspectBtn = page.getByRole('button', { name: 'Parçaları İncele' }).first()
     await inspectBtn.click()
 
     // 5. Verify Inspector Content

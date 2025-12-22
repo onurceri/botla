@@ -19,14 +19,16 @@ import (
 type URLProcessor struct {
 	DB           *sql.DB
 	OpenAIClient rag.LLMClient
+	VectorClient rag.VectorClient
 	Log          *logger.Logger
 }
 
 // NewURLProcessor creates a new URLProcessor
-func NewURLProcessor(db *sql.DB, oai rag.LLMClient, log *logger.Logger) *URLProcessor {
+func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger) *URLProcessor {
 	return &URLProcessor{
 		DB:           db,
 		OpenAIClient: oai,
+		VectorClient: vc,
 		Log:          log,
 	}
 }
@@ -146,7 +148,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"old_hash":  (*s.Hash)[:16],
 			"new_hash":  newHash[:16],
 		})
-		if err := DeleteSourceVectors(ctx, s.ID); err != nil {
+		if err := DeleteSourceVectors(ctx, p.VectorClient, s.ID); err != nil {
 			p.logWarn("url_processing_delete_vectors_error", map[string]any{
 				"source_id": s.ID,
 				"error":     err.Error(),
@@ -182,7 +184,12 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 		"chunk_count": len(rc),
 	})
 
-	if err := rag.GenerateEmbeddingsForSource(rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
+	if !ok {
+		return ProcessResult{Error: &ProcessingError{Msg: "llm_client_does_not_support_embeddings"}}
+	}
+
+	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 		p.logWarn("url_processing_embedding_failed", map[string]any{
 			"source_id": s.ID,
 			"error":     err.Error(),

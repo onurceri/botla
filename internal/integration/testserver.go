@@ -16,7 +16,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
-func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.Handler {
+func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) http.Handler {
 	mux := http.NewServeMux()
 	log := logger.New("INFO")
 
@@ -28,7 +28,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/health", middleware.RateLimitMiddleware(rl)(http.HandlerFunc(hh.Health)))
 
-	// Org Service
+	// Services
 	orgSvc := services.NewOrganizationService(pool, log)
 	workspaceSvc := services.NewWorkspaceService(pool, log)
 	analyticsSvc := services.NewAnalyticsService(pool, log)
@@ -89,17 +89,41 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore) http.
 	mux.Handle("DELETE /api/v1/organizations/{id}/members/{userID}", protected(requireAdmin(http.HandlerFunc(oh.RemoveMember))))
 
 	ch := &handlers.ChatbotHandlers{
-		DB:             pool,
-		VectorStore:    vs,
-		ChatbotService: services.NewChatbotService(pool, log),
+		DB:               pool,
+		VectorStore:      vs,
+		ChatbotService:   services.NewChatbotService(pool, log),
+		OrgService:       orgSvc,
+		WorkspaceService: workspaceSvc,
 	}
 	// Add ExtractTenantContext to support X-Workspace-ID header
 	mux.Handle("/api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
 	memStore := storage.NewMemoryStorage()
-	q, _ := processing.StartSourceQueue(pool, memStore)
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore}
+	
+	// Use real clients if mocks are nil
+	var actualLLM rag.LLMClient = llm
+	if actualLLM == nil {
+		if c, err := rag.NewOpenAIClient(cfg); err == nil {
+			actualLLM = c
+		}
+	}
+	var actualVC rag.VectorClient = vc
+	if actualVC == nil {
+		if c, err := rag.NewQdrantClientFromEnv(); err == nil {
+			actualVC = c
+		}
+	}
+
+	q, _ := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC)
+	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore, QdrantClient: actualVC}
 	factory := rag.NewClientFactory(cfg)
-	chatSvc := services.NewChatService(pool, factory, nil, nil, log) // nil embedder/qc -> lazy init
+	if llm != nil {
+		factory.RegisterClient("openai", llm)
+		factory.RegisterClient("openrouter", llm)
+	}
+	chatSvc := services.NewChatService(pool, factory, nil, actualVC, log)
+	if llmEmbed, ok := actualLLM.(rag.EmbeddingClient); ok {
+		chatSvc.Embedder = llmEmbed
+	}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
 
 	// Create mock tool name generator for tests

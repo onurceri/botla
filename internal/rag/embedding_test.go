@@ -1,12 +1,14 @@
 package rag
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 // simulate OpenAI embeddings with first failure then success
@@ -63,7 +65,13 @@ func TestGenerateEmbeddings_RetryAndWarn(t *testing.T) {
 	t.Setenv("JWT_SECRET", "secret")
 	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
-	if err := GenerateEmbeddings(chunks, "cb"); err != nil {
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: oai.URL,
+	}
+	emb, _ := NewOpenAIClient(cfg)
+	vc, _ := NewQdrantClientFromEnv()
+	if err := GenerateEmbeddings(context.Background(), emb, vc, chunks, "cb"); err != nil {
 		t.Fatalf("gen err: %v", err)
 	}
 }
@@ -92,18 +100,24 @@ func TestGenerateEmbeddingsForSource_UpsertError(t *testing.T) {
 	t.Setenv("JWT_SECRET", "secret")
 	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
-	if err := GenerateEmbeddingsForSource(chunks, "cb", "src", "file"); err == nil {
+	cfg := &config.Config{
+		OPENAI_API_KEY: "k",
+		OPENAI_API_BASE: oai.URL,
+	}
+	emb, _ := NewOpenAIClient(cfg)
+	vc, _ := NewQdrantClientFromEnv()
+	if err := GenerateEmbeddingsForSource(context.Background(), emb, vc, chunks, "cb", "src", "file"); err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 // EMB-001: Generate embeddings for 0 chunks
 func TestGenerateEmbeddings_Empty(t *testing.T) {
-	err := GenerateEmbeddings(nil, "cb")
+	err := GenerateEmbeddings(context.Background(), nil, nil, nil, "cb")
 	if err != nil {
 		t.Fatalf("expected nil error for empty input, got %v", err)
 	}
-	err = GenerateEmbeddings([]models.Chunk{}, "cb")
+	err = GenerateEmbeddings(context.Background(), nil, nil, []models.Chunk{}, "cb")
 	if err != nil {
 		t.Fatalf("expected nil error for empty chunks, got %v", err)
 	}
@@ -155,11 +169,18 @@ func TestGenerateEmbeddings_Batching(t *testing.T) {
 		chunks[i] = models.Chunk{Text: "a", TokenCount: 1}
 	}
 
+	cfg := &config.Config{
+		OPENAI_API_KEY: "dummy",
+		OPENAI_API_BASE: oaiSrv.URL,
+	}
+	emb, _ := NewOpenAIClient(cfg)
+	vc, _ := NewQdrantClientFromEnv()
+
 	// We need to speed up the ticker or wait.
 	// The code uses time.NewTicker(time.Second / 58) which is ~17ms.
 	// 2 batches = ~34ms wait. This is fast enough for a test.
 
-	err := GenerateEmbeddings(chunks, "cb")
+	err := GenerateEmbeddings(context.Background(), emb, vc, chunks, "cb")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

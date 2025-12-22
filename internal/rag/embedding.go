@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
@@ -18,22 +17,11 @@ import (
 // - Retry: up to 3x per batch with exponential backoff handled in client
 // - Error recovery: skip failed items; continue others
 // - Cost tracking: logs approximate cost based on chunk token counts
-func GenerateEmbeddings(chunks []models.Chunk, chatbotID string) error {
+func GenerateEmbeddings(ctx context.Context, emb EmbeddingClient, vc VectorClient, chunks []models.Chunk, chatbotID string) error {
 	if len(chunks) == 0 || chatbotID == "" {
 		return nil
 	}
 	log := logger.New("INFO")
-	cfg := config.LoadConfig()
-	oai, err := NewOpenAIClient(cfg)
-	if err != nil {
-		log.Error("openai_client_init_failed", map[string]any{"error": err.Error()})
-		return err
-	}
-	qc, err := NewQdrantClientFromEnv()
-	if err != nil {
-		log.Error("qdrant_client_init_failed", map[string]any{"error": err.Error()})
-		return err
-	}
 
 	// soft rate limiter: ~58 req/sec
 	ticker := time.NewTicker(time.Second / 58)
@@ -50,20 +38,20 @@ func GenerateEmbeddings(chunks []models.Chunk, chatbotID string) error {
 		batch := chunks[start:end]
 
 		<-ticker.C
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		batchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		texts := make([]string, len(batch))
 		for i, ch := range batch {
 			texts[i] = ch.Text
 			totalTokens += ch.TokenCount
 		}
-		vectors, berr := oai.CreateEmbeddingsBatch(ctx, texts)
+		vectors, berr := emb.CreateEmbeddingsBatch(batchCtx, texts)
 		cancel()
 		if berr != nil {
 			log.Warn("embedding_batch_failed", map[string]any{"error": berr.Error(), "start_index": start, "count": len(batch)})
 			// retry one more time quickly honoring limiter
 			<-ticker.C
-			ctx2, cancel2 := context.WithTimeout(context.Background(), 30*time.Second)
-			vectors, berr = oai.CreateEmbeddingsBatch(ctx2, texts)
+			batchCtx2, cancel2 := context.WithTimeout(ctx, 30*time.Second)
+			vectors, berr = emb.CreateEmbeddingsBatch(batchCtx2, texts)
 			cancel2()
 		}
 		if berr != nil {
@@ -81,8 +69,8 @@ func GenerateEmbeddings(chunks []models.Chunk, chatbotID string) error {
 				SourceType:   "unknown",
 				CreatedAt:    time.Now(),
 			}
-			ctx3, cancel3 := context.WithTimeout(context.Background(), 10*time.Second)
-			if err := qc.UpsertEmbedding(ctx3, id, vectors[i], payload); err != nil {
+			batchCtx3, cancel3 := context.WithTimeout(ctx, 10*time.Second)
+			if err := vc.UpsertEmbedding(batchCtx3, id, vectors[i], payload); err != nil {
 				log.Warn("qdrant_upsert_failed", map[string]any{"error": err.Error(), "id": id})
 			}
 			cancel3()
@@ -94,21 +82,9 @@ func GenerateEmbeddings(chunks []models.Chunk, chatbotID string) error {
 	return nil
 }
 
-func GenerateEmbeddingsForSource(chunks []models.Chunk, chatbotID, sourceID, sourceType string) error {
+func GenerateEmbeddingsForSource(ctx context.Context, emb EmbeddingClient, vc VectorClient, chunks []models.Chunk, chatbotID, sourceID, sourceType string) error {
 	if len(chunks) == 0 || chatbotID == "" || sourceID == "" {
 		return nil
-	}
-	log := logger.New("INFO")
-	cfg := config.LoadConfig()
-	oai, err := NewOpenAIClient(cfg)
-	if err != nil {
-		log.Error("openai_client_init_failed", map[string]any{"error": err.Error()})
-		return err
-	}
-	qc, err := NewQdrantClientFromEnv()
-	if err != nil {
-		log.Error("qdrant_client_init_failed", map[string]any{"error": err.Error()})
-		return err
 	}
 	ticker := time.NewTicker(time.Second / 58)
 	defer ticker.Stop()
@@ -120,17 +96,17 @@ func GenerateEmbeddingsForSource(chunks []models.Chunk, chatbotID, sourceID, sou
 		}
 		batch := chunks[start:end]
 		<-ticker.C
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		batchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		texts := make([]string, len(batch))
 		for i, ch := range batch {
 			texts[i] = ch.Text
 		}
-		vectors, berr := oai.CreateEmbeddingsBatch(ctx, texts)
+		vectors, berr := emb.CreateEmbeddingsBatch(batchCtx, texts)
 		cancel()
 		if berr != nil {
 			<-ticker.C
-			ctx2, cancel2 := context.WithTimeout(context.Background(), 30*time.Second)
-			vectors, berr = oai.CreateEmbeddingsBatch(ctx2, texts)
+			batchCtx2, cancel2 := context.WithTimeout(ctx, 30*time.Second)
+			vectors, berr = emb.CreateEmbeddingsBatch(batchCtx2, texts)
 			cancel2()
 		}
 		if berr != nil {
@@ -139,8 +115,8 @@ func GenerateEmbeddingsForSource(chunks []models.Chunk, chatbotID, sourceID, sou
 		for i := range vectors {
 			pid := MakePointID(sourceID, start+i)
 			payload := EmbeddingPayload{ChatbotID: chatbotID, SourceID: sourceID, ChunkIndex: start + i, OriginalText: batch[i].Text, SourceType: sourceType, CreatedAt: time.Now()}
-			ctx3, cancel3 := context.WithTimeout(context.Background(), 10*time.Second)
-			if err := qc.UpsertEmbedding(ctx3, pid, vectors[i], payload); err != nil {
+			batchCtx3, cancel3 := context.WithTimeout(ctx, 10*time.Second)
+			if err := vc.UpsertEmbedding(batchCtx3, pid, vectors[i], payload); err != nil {
 				cancel3()
 				return err
 			}

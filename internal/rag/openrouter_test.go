@@ -213,7 +213,7 @@ func TestOpenRouterClient_CreateCompletion(t *testing.T) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		var req chatRequest
+		var req ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
@@ -224,12 +224,13 @@ func TestOpenRouterClient_CreateCompletion(t *testing.T) {
 			t.Errorf("Expected model my-model, got %s", req.Model)
 		}
 
+		msg := "Hello human"
 		resp := chatResponse{
 			Choices: []struct {
-				Message chatMessage `json:"message"`
+				Message ChatMessage `json:"message"`
 			}{
 				{
-					Message: chatMessage{Content: "Hello human"},
+					Message: ChatMessage{Content: &msg},
 				},
 			},
 			Usage: struct {
@@ -273,18 +274,19 @@ func TestOpenRouterClient_CreateCompletion(t *testing.T) {
 
 func TestOpenRouterClient_CreateCompletion_DefaultModel(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		var req chatRequest
+		var req ChatRequest
 		json.NewDecoder(r.Body).Decode(&req)
 		if req.Model != "default-model" {
 			t.Errorf("Expected default-model, got %s", req.Model)
 		}
 		// Return minimal valid response
+		msg := "ok"
 		resp := chatResponse{
 			Choices: []struct {
-				Message chatMessage `json:"message"`
+				Message ChatMessage `json:"message"`
 			}{
 				{
-					Message: chatMessage{Content: "ok"},
+					Message: ChatMessage{Content: &msg},
 				},
 			},
 		}

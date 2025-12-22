@@ -3,7 +3,6 @@ package processing
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
@@ -23,6 +21,7 @@ type SourceQueue struct {
 	db           *sql.DB
 	storage      storage.StorageService
 	openaiClient rag.LLMClient
+	vectorClient rag.VectorClient
 	log          *logger.Logger
 
 	// Processors
@@ -32,15 +31,9 @@ type SourceQueue struct {
 }
 
 // StartSourceQueue creates and starts a new source processing queue
-func StartSourceQueue(dbpool *sql.DB, st storage.StorageService) (*SourceQueue, error) {
+func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient) (*SourceQueue, error) {
 	c := make(chan string, 64)
 	stop := make(chan struct{})
-
-	cfg := config.LoadConfig()
-	oa, err := rag.NewOpenAIClient(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create openai client: %w", err)
-	}
 
 	log := logger.New("INFO")
 
@@ -49,23 +42,22 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService) (*SourceQueue, 
 		stopCh:       stop,
 		db:           dbpool,
 		storage:      st,
-		openaiClient: oa,
+		openaiClient: oai,
+		vectorClient: vc,
 		log:          log,
 
 		// Initialize processors
-		urlProcessor:  NewURLProcessor(dbpool, oa, log),
-		pdfProcessor:  NewPDFProcessor(dbpool, st, oa, log),
-		textProcessor: NewTextProcessor(dbpool, st, oa, log),
+		urlProcessor:  NewURLProcessor(dbpool, oai, vc, log),
+		pdfProcessor:  NewPDFProcessor(dbpool, st, oai, vc, log),
+		textProcessor: NewTextProcessor(dbpool, st, oai, vc, log),
 	}
 
 	go q.worker()
 
 	// Ensure collection exists at startup (best-effort)
-	if qc, err := rag.NewQdrantClientFromEnv(); err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		_ = qc.EnsureEmbeddingsCollection(ctx)
-		cancel()
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	_ = vc.EnsureEmbeddingsCollection(ctx)
+	cancel()
 
 	// Recover pending sources at startup
 	go q.recoverPendingSources()

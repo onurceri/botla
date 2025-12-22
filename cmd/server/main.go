@@ -91,8 +91,15 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		}
 	}
 
+	// Initialize OpenAI client
+	oaiClient, err := rag.NewOpenAIClient(cfg)
+	if err != nil {
+		log.Error("openai_init_failed", map[string]any{"error": err.Error()})
+		return nil, err
+	}
+
 	// Start source processing queue
-	q, _ := processing.StartSourceQueue(pool, storageService)
+	q, _ := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient)
 
 	// Initialize Redis client for rate limiting
 	var redisClient *redis.Client

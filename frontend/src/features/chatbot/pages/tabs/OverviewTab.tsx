@@ -6,13 +6,11 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useChatbotContext, ModelInfo } from '../../context/ChatbotContext'
+import { useChatbotContext } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
 import { useUpdateBasicInfo, useUpdateModelSettings } from '@/hooks/mutations/useChatbotMutations'
@@ -49,15 +47,6 @@ export default function OverviewTab() {
     ? (basicInfoSavedAt > modelSavedAt ? basicInfoSavedAt : modelSavedAt) 
     : (basicInfoSavedAt || modelSavedAt)
   const error = basicInfoError || modelError
-
-  // Group models by provider
-  const groupedModels = (availableModels || []).reduce((acc, model) => {
-    if (!acc[model.provider]) {
-      acc[model.provider] = []
-    }
-    acc[model.provider].push(model)
-    return acc
-  }, {} as Record<string, ModelInfo[]>)
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -134,21 +123,14 @@ export default function OverviewTab() {
                   <SelectValue placeholder="Model seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                {Object.keys(groupedModels).length > 0 ? (
-                  Object.entries(groupedModels).map(([provider, models]) => (
-                    <SelectGroup key={provider}>
-                      <SelectLabel>{provider}</SelectLabel>
-                      {models.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
+                {availableModels && availableModels.length > 0 ? (
+                  availableModels.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
                   ))
                 ) : (
-                  <SelectGroup>
-                    <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
-                  </SelectGroup>
+                  <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
                 )}
               </SelectContent>
               </Select>

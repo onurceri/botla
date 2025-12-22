@@ -12,6 +12,15 @@ import (
 	"time"
 )
 
+// VectorClient defines the interface for interacting with a vector database
+type VectorClient interface {
+	EnsureEmbeddingsCollection(ctx context.Context) error
+	UpsertEmbedding(ctx context.Context, id interface{}, vector []float32, payload EmbeddingPayload) error
+	SearchSimilar(ctx context.Context, embedding []float32, chatbotID string, topK int) ([]SearchResult, error)
+	DeleteBySourceID(ctx context.Context, sourceID string) error
+	ScrollChunks(ctx context.Context, sourceID string, limit int, offset interface{}) ([]SearchResult, *string, error)
+}
+
 type QdrantClient struct {
 	baseURL string
 	apiKey  string

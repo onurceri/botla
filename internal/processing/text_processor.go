@@ -19,15 +19,17 @@ type TextProcessor struct {
 	DB           *sql.DB
 	Storage      storage.StorageService
 	OpenAIClient rag.LLMClient
+	VectorClient rag.VectorClient
 	Log          *logger.Logger
 }
 
 // NewTextProcessor creates a new TextProcessor
-func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, log *logger.Logger) *TextProcessor {
+func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger) *TextProcessor {
 	return &TextProcessor{
 		DB:           db,
 		Storage:      st,
 		OpenAIClient: oai,
+		VectorClient: vc,
 		Log:          log,
 	}
 }
@@ -72,7 +74,13 @@ func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *
 	if rerr != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: rerr.Error()}}
 	}
-	if err := rag.GenerateEmbeddingsForSource(rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+
+	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
+	if !ok {
+		return ProcessResult{Error: &ProcessingError{Msg: "llm_client_does_not_support_embeddings"}}
+	}
+
+	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
 	}
 

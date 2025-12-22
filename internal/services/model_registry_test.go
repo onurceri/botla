@@ -11,9 +11,8 @@ import (
 func TestModelService_GetAvailableModels(t *testing.T) {
 	db := testdb.OpenTestDB(t)
 
-	// Ensure seed data is present (testdb should have migrations applied)
-	// We no longer manually insert data here to respect migration-driven testing.
-	// If data is missing, the test will fail, indicating a migration issue.
+	// Ensure seed data is present (testdb should have migrations applied).
+	// After migration 000040, models use bare names (e.g., "gpt-4o-mini").
 
 	svc := NewModelService(db)
 
@@ -25,25 +24,25 @@ func TestModelService_GetAvailableModels(t *testing.T) {
 	})
 
 	t.Run("Returns only allowed models", func(t *testing.T) {
-		allowed := []string{"openai/gpt-4o-mini"}
+		allowed := []string{"gpt-4o-mini"}
 		models, err := svc.GetAvailableModels(context.Background(), allowed)
 		assert.NoError(t, err)
 		assert.Len(t, models, 1)
-		assert.Equal(t, "openai/gpt-4o-mini", models[0].ID)
+		assert.Equal(t, "gpt-4o-mini", models[0].ID)
 	})
 
 	t.Run("Returns multiple allowed models", func(t *testing.T) {
-		allowed := []string{"openai/gpt-4o-mini", "openai/gpt-4o"}
+		allowed := []string{"gpt-4o-mini", "gpt-4o"}
 		models, err := svc.GetAvailableModels(context.Background(), allowed)
 		assert.NoError(t, err)
 		assert.Len(t, models, 2)
 	})
 
 	t.Run("Ignores unknown models", func(t *testing.T) {
-		allowed := []string{"openai/gpt-4o-mini", "unknown/model"}
+		allowed := []string{"gpt-4o-mini", "unknown-model"}
 		models, err := svc.GetAvailableModels(context.Background(), allowed)
 		assert.NoError(t, err)
 		assert.Len(t, models, 1)
-		assert.Equal(t, "openai/gpt-4o-mini", models[0].ID)
+		assert.Equal(t, "gpt-4o-mini", models[0].ID)
 	})
 }
