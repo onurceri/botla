@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { X, Check, MessageSquare, Sparkles, PlusCircle, Trash2, Power } from 'lucide-react'
+import { Check, MessageSquare, Sparkles, PlusCircle, Trash2, Power } from 'lucide-react'
 
 type Props = {
   suggestionsEnabled: boolean

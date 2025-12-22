@@ -33,14 +33,30 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 
 // listChatbots returns all chatbots for a user or workspace
 func (h *ChatbotHandlers) listChatbots(w http.ResponseWriter, r *http.Request, userID string) {
+	// Initialize language config for localized errors
+	langBase := api.LangFromRequest(r)
+	langCfg := api.ConfigFromBase(langBase)
+
 	var bots []models.Chatbot
 	var err error
 
 	// Check for workspace context from header
 	if wsID, ok := middleware.WorkspaceIDFromContext(r.Context()); ok && wsID != "" {
+		// Verify workspace membership using Helper
+		var wsInfo *models.Workspace
+		wsInfo, err = h.WorkspaceService.CheckAccess(r.Context(), userID, wsID)
+		if err != nil {
+			api.WriteLocalizedError(w, http.StatusInternalServerError, "workspace_check_error", langCfg)
+			return
+		}
+		if wsInfo == nil {
+			api.WriteLocalizedError(w, http.StatusForbidden, "not_workspace_member", langCfg)
+			return
+		}
+
 		bots, err = db.GetChatbotsByWorkspace(r.Context(), h.DB, wsID)
 	} else {
-		// Fallback to user-based query for backward compatibility
+		// Fallback to user-based query
 		bots, err = db.GetChatbotsByUserID(r.Context(), h.DB, userID)
 	}
 
@@ -92,12 +108,37 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	// Get workspace/org context from headers
+	// Get workspace/org context from headers with security checks
 	var wsID, orgID *string
 	if ws, ok := middleware.WorkspaceIDFromContext(r.Context()); ok && ws != "" {
+		// Verify workspace membership using Helper
+		var wsInfo *models.Workspace
+		wsInfo, err = h.WorkspaceService.CheckAccess(r.Context(), userID, ws)
+		if err != nil {
+			api.WriteLocalizedError(w, http.StatusInternalServerError, "workspace_check_error: "+err.Error(), langCfg)
+			return
+		}
+		if wsInfo == nil {
+			api.WriteLocalizedError(w, http.StatusForbidden, "not_workspace_member", langCfg)
+			return
+		}
+
 		wsID = &ws
-	}
-	if org, ok := middleware.OrgIDFromContext(r.Context()); ok && org != "" {
+		// Ensure orgID matches the workspace's orgID
+		orgIDStr := wsInfo.OrganizationID
+		orgID = &orgIDStr
+	} else if org, ok := middleware.OrgIDFromContext(r.Context()); ok && org != "" {
+		// Verify org membership
+		var memInfo *models.Membership
+		memInfo, err = h.OrgService.CheckMembership(r.Context(), userID, org)
+		if err != nil {
+			api.WriteLocalizedError(w, http.StatusInternalServerError, "membership_check_error: "+err.Error(), langCfg)
+			return
+		}
+		if memInfo == nil {
+			api.WriteLocalizedError(w, http.StatusForbidden, "not_org_member", langCfg)
+			return
+		}
 		orgID = &org
 	}
 

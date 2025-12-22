@@ -16,9 +16,10 @@ import {
   ArrowUpRight, 
   Plus,
   Bot,
-  ThumbsUp
+  ThumbsUp,
+  Activity
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { api } from '@/api/client'
 import { getAnalytics } from '@/api/analytics'
@@ -28,50 +29,43 @@ export const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0]?.payload || {}
     return (
-      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-xl min-w-[180px]">
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-          {new Date(label).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+      <div className="glass-card p-3 border border-border/50 shadow-xl rounded-lg bg-background/95 backdrop-blur-sm">
+        <p className="text-sm font-medium mb-2 border-b border-border/50 pb-1">
+          {new Date(label).toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
-        <div className="space-y-2">
-          {/* Chart data (colored) */}
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-2 h-2 rounded-full" 
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="text-slate-600 dark:text-slate-300">
-                  {entry.name}
-                </span>
-              </div>
-              <span className="font-semibold text-slate-900 dark:text-white">
-                {entry.value}
+        <div className="space-y-1">
+          {payload.map((entry: any) => (
+            <div key={entry.name} className="flex items-center gap-2 text-sm">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+              <span className="text-muted-foreground capitalize">
+                {entry.name === 'conversations' ? 'Konuşma' : 
+                 entry.name === 'messages' ? 'Mesaj' : entry.name}
               </span>
+              <span className="font-bold font-mono">{entry.value}</span>
             </div>
           ))}
           
           {/* Additional data */}
           {(data.tokens > 0 || data.thumbs_up > 0 || data.thumbs_down > 0 || data.handoffs > 0) && (
-            <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+            <div className="pt-2 mt-2 border-t border-border/50 space-y-1">
               {data.tokens > 0 && (
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>Token</span>
-                  <span className="font-medium">{data.tokens.toLocaleString()}</span>
+                <div className="flex items-center justify-between gap-4 text-xs">
+                  <span className="text-muted-foreground">Token</span>
+                  <span className="font-mono">{data.tokens.toLocaleString()}</span>
                 </div>
               )}
               {(data.thumbs_up > 0 || data.thumbs_down > 0) && (
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>Geri Bildirim</span>
-                  <span className="font-medium">
+                <div className="flex items-center justify-between gap-4 text-xs">
+                  <span className="text-muted-foreground">Geri Bildirim</span>
+                  <span className="font-mono">
                     👍 {data.thumbs_up} / 👎 {data.thumbs_down}
                   </span>
                 </div>
               )}
               {data.handoffs > 0 && (
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>İnsan Desteği</span>
-                  <span className="font-medium">{data.handoffs}</span>
+                <div className="flex items-center justify-between gap-4 text-xs">
+                  <span className="text-muted-foreground">İnsan Desteği</span>
+                  <span className="font-mono">{data.handoffs}</span>
                 </div>
               )}
             </div>
@@ -85,6 +79,7 @@ export const CustomTooltip = ({ active, payload, label }: any) => {
 
 export const formatXAxisTick = (value: string) => {
   const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })
 }
 
@@ -173,7 +168,26 @@ const DashboardPage = () => {
   }, [currentWorkspace, isOrgLoading])
 
   if (loading) {
-    return <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-muted rounded"></div>
+            <div className="h-4 w-64 bg-muted rounded"></div>
+          </div>
+          <div className="h-10 w-32 bg-muted rounded"></div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i} className="h-32 bg-muted/50 border-0" />
+          ))}
+        </div>
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+          <Card className="lg:col-span-4 h-96 bg-muted/50 border-0" />
+          <Card className="lg:col-span-3 h-96 bg-muted/50 border-0" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -181,11 +195,13 @@ const DashboardPage = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Botlarınızın performansına genel bakış.</p>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground">Botlarınızın son 30 günlük performansına genel bakış.</p>
         </div>
         <Link to="/dashboard/chatbots/new">
-          <Button className="gap-2 shadow-lg shadow-primary/20">
+          <Button className="gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-300">
             <Plus className="w-4 h-4" /> Yeni Chatbot
           </Button>
         </Link>
@@ -193,197 +209,218 @@ const DashboardPage = () => {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Konuşma</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalConversations}</div>
+        <div className="glass-card rounded-xl overflow-hidden relative group hover:shadow-md transition-all duration-300 border-l-4 border-l-blue-500/50">
+          <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Users className="w-24 h-24" />
+          </div>
+          <div className="p-6 pb-2 relative z-10 flex justify-between items-center">
+            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">Toplam Konuşma</h3>
+            <div className="p-2 bg-blue-500/10 rounded-full text-blue-500">
+              <Users className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="p-6 pt-0 relative z-10">
+            <div className="text-2xl font-bold tracking-tight">{stats.totalConversations}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Tüm botlarınızdaki toplam
+              Son 30 günde tüm botlarınızdaki toplam
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Mesaj</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalMessages}</div>
+        <div className="glass-card rounded-xl overflow-hidden relative group hover:shadow-md transition-all duration-300 border-l-4 border-l-purple-500/50">
+          <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <MessageSquare className="w-24 h-24" />
+          </div>
+          <div className="p-6 pb-2 relative z-10 flex justify-between items-center">
+            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">Toplam Mesaj</h3>
+            <div className="p-2 bg-purple-500/10 rounded-full text-purple-500">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="p-6 pt-0 relative z-10">
+            <div className="text-2xl font-bold tracking-tight">{stats.totalMessages}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              İşlenen toplam mesaj
+              Son 30 günde işlenen toplam mesaj
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Harcanan Token</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(stats.totalTokens / 1000).toFixed(1)}k</div>
+        <div className="glass-card rounded-xl overflow-hidden relative group hover:shadow-md transition-all duration-300 border-l-4 border-l-amber-500/50">
+          <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Zap className="w-24 h-24" />
+          </div>
+          <div className="p-6 pb-2 relative z-10 flex justify-between items-center">
+            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">Harcanan Token</h3>
+            <div className="p-2 bg-amber-500/10 rounded-full text-amber-500">
+              <Zap className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="p-6 pt-0 relative z-10">
+            <div className="text-2xl font-bold tracking-tight">{(stats.totalTokens / 1000).toFixed(1)}k</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Tahmini maliyet: ${((stats.totalTokens / 1000) * 0.002).toFixed(3)}
+              Son 30 günlük tahmini maliyet: ${((stats.totalTokens / 1000) * 0.002).toFixed(3)}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Memnuniyet</CardTitle>
-            <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+        <div className="glass-card rounded-xl overflow-hidden relative group hover:shadow-md transition-all duration-300 border-l-4 border-l-emerald-500/50">
+          <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <ThumbsUp className="w-24 h-24" />
+          </div>
+          <div className="p-6 pb-2 relative z-10 flex justify-between items-center">
+            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">Memnuniyet</h3>
+            <div className="p-2 bg-emerald-500/10 rounded-full text-emerald-500">
+              <ThumbsUp className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="p-6 pt-0 relative z-10">
+            <div className="text-2xl font-bold tracking-tight">
               {stats.positiveFeedback + stats.negativeFeedback > 0 
                 ? Math.round((stats.positiveFeedback / (stats.positiveFeedback + stats.negativeFeedback)) * 100)
                 : 0}%
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.positiveFeedback} olumlu, {stats.negativeFeedback} olumsuz
+              Son 30 günde: {stats.positiveFeedback} olumlu, {stats.negativeFeedback} olumsuz
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Charts & Recent Activity */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         {/* Main Chart */}
-        <Card className="lg:col-span-4">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Aktivite Özeti</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {chartData.length > 0 ? (
-                    <>
-                      {new Date(chartData[0].date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} - {new Date(chartData[chartData.length - 1].date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                    </>
-                  ) : (
-                    'Son 7 Gün'
-                  )}
-                </p>
+        <div className="lg:col-span-4 glass-card rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="font-semibold text-lg">Aktivite Özeti</h3>
+              <p className="text-sm text-muted-foreground">
+                {chartData.length > 0 ? (
+                  <>
+                    {new Date(chartData[0].date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} - {new Date(chartData[chartData.length - 1].date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                  </>
+                ) : (
+                  'Son 30 Gün'
+                )}
+              </p>
+            </div>
+            {chartData.length > 0 && (
+              <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
+                <Activity className="w-3.5 h-3.5" />
+                <span>Canlı</span>
               </div>
-              {chartData.length > 0 && (
-                <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-medium">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>+12.5%</span>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <div className="min-w-0">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300} minWidth={0}>
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorConversations" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} strokeOpacity={0.5} />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="#94a3b8" 
-                      fontSize={12} 
-                      tickLine={false} 
-                      axisLine={false}
-                      tickFormatter={formatXAxisTick}
-                      dy={10}
-                    />
-                    <YAxis 
-                      stroke="#94a3b8" 
-                      fontSize={12} 
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={formatYAxisTick}
-                      dx={-10}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="conversations" 
-                      name="Konuşma"
-                      stroke="#8b5cf6" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorConversations)" 
-                      dot={false}
-                      activeDot={{ r: 6, strokeWidth: 0, fill: '#8b5cf6' }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="messages" 
-                      name="Mesaj"
-                      stroke="#f59e0b" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorMessages)" 
-                      dot={false}
-                      activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[200px] sm:h-[300px] flex flex-col items-center justify-center text-muted-foreground space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <Zap className="w-6 h-6 opacity-50" />
-                  </div>
-                  <p className="text-sm font-medium">Henüz aktivite yok</p>
-                  <p className="text-xs text-center px-4">Botlarınız kullanılmaya başlandığında burada grafik göreceksiniz.</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
+          
+          <div className="min-w-0">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300} minWidth={0}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorConversations" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} strokeOpacity={0.5} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tickFormatter={formatXAxisTick}
+                    minTickGap={30}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tickFormatter={formatYAxisTick}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="messages"
+                    name="messages"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorMessages)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="conversations"
+                    name="conversations"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorConversations)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center border-2 border-dashed border-muted rounded-lg">
+                <p className="text-muted-foreground">Henüz aktivite yok</p>
+              </div>
+            )}
+          </div>
+        </div>
 
-        {/* Recent Bots */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Son Botlarınız</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentBots.map((bot) => (
+        {/* Recent Chatbots */}
+        <div className="lg:col-span-3 glass-card rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-semibold text-lg">Son Chatbotlar</h3>
+            <Link to="/dashboard/chatbots" className="text-xs text-primary hover:underline">
+              Tümünü Gör
+            </Link>
+          </div>
+          
+          <div className="space-y-4">
+            {recentBots.length > 0 ? (
+              recentBots.map((bot) => (
                 <Link 
                   key={bot.id} 
                   to={`/dashboard/chatbots/${bot.id}`}
-                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer group"
+                  className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group border border-border/50"
                 >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10 flex-shrink-0">
-                    <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-full text-primary group-hover:scale-110 transition-transform">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm group-hover:text-primary transition-colors">{bot.name}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {bot.model}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm sm:text-base font-medium leading-none truncate text-foreground">{bot.name}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">{bot.model}</p>
-                  </div>
-                  <div className="h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0">
-                    <ArrowUpRight className="w-4 h-4" />
-                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
-              ))}
-              {recentBots.length === 0 && (
-                <div className="text-center py-8 sm:py-12">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-3">
-                    <Bot className="w-6 h-6" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground mb-1">Henüz bot yok</p>
-                  <p className="text-xs text-muted-foreground">İlk chatbotunuzu oluşturun</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              ))
+            ) : (
+              <div className="text-center py-12 border-2 border-dashed border-muted rounded-lg">
+                <p className="text-muted-foreground text-sm">Henüz chatbot oluşturulmadı</p>
+                <Link to="/dashboard/chatbots/new">
+                  <Button variant="link" className="text-primary mt-2">
+                    İlk botunuzu oluşturun
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-6 pt-6 border-t border-border/50">
+             <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Toplam Aktif Bot</span>
+                <span className="font-bold">{stats.activeBots}</span>
+             </div>
+          </div>
+        </div>
       </div>
     </div>
   )

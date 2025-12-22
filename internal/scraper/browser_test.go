@@ -3,14 +3,13 @@ package scraper
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 )
 
 func TestScrapeDynamicURL(t *testing.T) {
 	// Ensure domain whitelist allows localhost
-	os.Setenv("SCRAPER_ALLOWED_DOMAINS", "127.0.0.1,localhost")
+	t.Setenv("SCRAPER_ALLOWED_DOMAINS", "127.0.0.1,localhost")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)

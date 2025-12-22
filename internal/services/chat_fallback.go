@@ -94,7 +94,7 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 
 	client, modelName, err := s.Factory.GetClientForModel(cc.Bot.Model)
 	if err != nil {
-		c, e := rag.NewOpenAIClientFromEnv()
+		c, e := s.Factory.GetClient("openai")
 		if e != nil || c == nil {
 			return "", 0, fmt.Errorf("openai client not configured: %w", e)
 		}

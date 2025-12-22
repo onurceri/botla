@@ -27,11 +27,14 @@ func (s *ChatService) getEmbedder() rag.EmbeddingClient {
 	if s.Embedder != nil {
 		return s.Embedder
 	}
-	client, err := rag.NewOpenAIClientFromEnv()
-	if err != nil {
-		return nil
+	// Try getting from factory
+	client, err := s.Factory.GetClient("openai")
+	if err == nil && client != nil {
+		if e, ok := client.(rag.EmbeddingClient); ok {
+			return e
+		}
 	}
-	return client
+	return nil
 }
 
 // getQdrantClient returns the Qdrant client, creating one if needed.
@@ -57,7 +60,7 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 		if orClient, orErr := s.Factory.GetClient("openrouter"); orErr == nil && orClient != nil {
 			client = orClient
 			modelName = config.ModelOpenRouterGPT4oMini
-		} else if oaiClient, oaiErr := rag.NewOpenAIClientFromEnv(); oaiErr == nil && oaiClient != nil {
+		} else if oaiClient, oaiErr := s.Factory.GetClient("openai"); oaiErr == nil && oaiClient != nil {
 			client = oaiClient
 			modelName = config.ModelGPT4oMini
 		}
@@ -79,12 +82,16 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 		}
 		// Final fallback to OpenAI
 		if toolsClient == nil {
-			c, err := rag.NewOpenAIClientFromEnv()
+			c, err := s.Factory.GetClient("openai")
 			if err != nil {
 				return nil, "", errors.New("tool support requires OpenAI or OpenRouter client")
 			}
-			toolsClient = c
-			modelName = config.ModelGPT4oMini
+			if tc, ok := c.(rag.ToolsLLMClient); ok {
+				toolsClient = tc
+				modelName = config.ModelGPT4oMini
+			} else {
+				return nil, "", errors.New("openai client does not support tools")
+			}
 		}
 	}
 

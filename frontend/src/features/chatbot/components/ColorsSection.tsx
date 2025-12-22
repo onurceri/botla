@@ -1,5 +1,5 @@
 import { Input } from '@/components/ui/input'
-import { ChevronDown, ChevronRight, Palette } from 'lucide-react'
+import { ChevronDown, Palette } from 'lucide-react'
 
 type Props = {
   isExpanded: boolean
@@ -87,7 +87,7 @@ export default function ColorsSection({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2.5">
                   <label htmlFor="theme-color" className="text-[11px] font-bold text-slate-500 tracking-tight ml-1">Varsayılan İkon Rengi</label>
                   <div className="flex gap-2.5">
@@ -136,7 +136,7 @@ export default function ColorsSection({
                   <Input value={chatBackgroundColor} onChange={(e) => setChatBackgroundColor(e.target.value)} className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2.5">
                   <label htmlFor="header-color" className="text-[11px] font-bold text-slate-500 tracking-tight ml-1">Header</label>
                   <div className="flex gap-2.5">

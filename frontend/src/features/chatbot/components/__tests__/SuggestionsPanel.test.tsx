@@ -22,7 +22,7 @@ describe('SuggestionsPanel', () => {
     }
     const utils = render(<Harness />)
     const view = within(utils.container)
-    const input = view.getByPlaceholderText('Yeni bir soru yazın...') as HTMLInputElement
+    const input = view.getByPlaceholderText('Soru ekle...') as HTMLInputElement
     await user.type(input, 'Nasılsın?{Enter}')
     const chip = await view.findByText('Nasılsın?')
     const removeBtn = chip.parentElement!.querySelector('button') as HTMLButtonElement
@@ -47,7 +47,7 @@ describe('SuggestionsPanel', () => {
     }
     const utils2 = render(<Harness />)
     const view2 = within(utils2.container)
-    const input = view2.getAllByPlaceholderText('Yeni bir soru yazın...')[0] as HTMLInputElement
+    const input = view2.getAllByPlaceholderText('Soru ekle...')[0] as HTMLInputElement
     const entries = ['A?', 'B?', 'C?', 'D?', 'E?', 'F?', 'G?']
     for (const q of entries) {
       await user.type(input, `${q}{Enter}`)
@@ -74,7 +74,7 @@ describe('SuggestionsPanel', () => {
     }
     const utils3 = render(<Harness />)
     const view3 = within(utils3.container)
-    const checkbox = view3.getAllByRole('checkbox')[0] as HTMLInputElement
+    const checkbox = view3.getAllByRole('switch')[0] as HTMLButtonElement
     expect(checkbox.checked).toBe(true)
     checkbox.click()
     expect(checkbox.checked).toBe(false)
@@ -97,9 +97,9 @@ describe('SuggestionsPanel', () => {
     }
     const utils = render(<Harness />)
     const view = within(utils.container)
-    const input = view.getByPlaceholderText('Yeni bir soru yazın...') as HTMLInputElement
+    const input = view.getByPlaceholderText('Soru ekle...') as HTMLInputElement
     await user.type(input, 'Merhaba?')
-    const addBtn = view.getByRole('button', { name: 'Ekle' })
+    const addBtn = view.getByRole('button', { name: /ekle/i })
     const origGet = document.getElementById
     ;(document as any).getElementById = vi.fn(() => input)
     await user.click(addBtn)

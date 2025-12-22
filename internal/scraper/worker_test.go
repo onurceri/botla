@@ -50,7 +50,8 @@ func TestExtractLinks(t *testing.T) {
 	// url.URL.Host usually includes port if present.
 	// "example.com" == "example.com".
 
-	links, err := ExtractLinks(htmlContent, baseURL, nil) // nil filter for backward compatibility
+	links, err := ExtractLinks(htmlContent, baseURL, nil) // nil filter returns all links
+
 	if err != nil {
 		t.Fatalf("ExtractLinks failed: %v", err)
 	}

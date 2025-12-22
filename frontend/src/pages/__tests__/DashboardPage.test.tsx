@@ -55,7 +55,7 @@ describe('DashboardPage', () => {
       { id: 3, name: 'Bot C', model: 'gpt-3.5' },
     ] } as any)
 
-    render(
+    const { container } = render(
       <ToastProvider>
         <MemoryRouter>
           <DashboardPage />
@@ -63,7 +63,8 @@ describe('DashboardPage', () => {
       </ToastProvider>
     )
 
-    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument()
+    // Check for skeleton
+    expect(container.querySelector('.animate-pulse')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
@@ -96,7 +97,6 @@ describe('DashboardPage', () => {
 
     expect(errSpy).toHaveBeenCalled()
 
-    expect(screen.queryByText('Yükleniyor...')).not.toBeInTheDocument()
     expect(screen.getByText('Henüz aktivite yok')).toBeInTheDocument()
   })
 
@@ -124,7 +124,7 @@ describe('DashboardPage', () => {
 
     const rangeText = await screen.findByText((t) => t.includes('10') && t.includes('16'))
     expect(rangeText).toBeInTheDocument()
-    expect(screen.getAllByText('+12.5%').length).toBeGreaterThan(0)
+    expect(screen.getByText('Canlı')).toBeInTheDocument()
 
     expect(screen.queryByText('Bot D')).not.toBeInTheDocument()
   })
@@ -141,12 +141,12 @@ describe('DashboardPage', () => {
       </ToastProvider>
     )
 
-    const header = await screen.findByText('Son 7 Gün')
+    const header = await screen.findByText('Son 30 Gün')
     expect(header).toBeInTheDocument()
     expect(screen.getAllByText('Henüz aktivite yok').length).toBeGreaterThan(0)
     
     await waitFor(() => {
-        expect(screen.getAllByText('Henüz bir bot oluşturmadınız.').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Henüz chatbot oluşturulmadı').length).toBeGreaterThan(0)
     })
   })
 

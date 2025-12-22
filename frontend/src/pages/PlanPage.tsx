@@ -1,13 +1,29 @@
-
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { HardDrive, Globe, Cpu, Zap, Shield, Check, X, LayoutDashboard } from 'lucide-react'
+import { 
+  HardDrive, 
+  Globe, 
+  Cpu, 
+  Zap, 
+  Shield, 
+  Check, 
+  X, 
+  LayoutDashboard,
+  CreditCard,
+  Sparkles,
+  RefreshCcw,
+  FileText,
+  ArrowUpRight,
+  Clock,
+  Database
+} from 'lucide-react'
 import { usePlan, useUsage } from '@/hooks/queries/useProfile'
 import { useRateLimit } from '@/hooks/useRateLimit'
+import { cn } from '@/lib/utils'
 
 interface PlanLimits {
   max_chatbots: number
@@ -51,6 +67,7 @@ interface PlanFeatures {
 }
 
 interface Usage {
+  chatbots_count: number
   files_count: number
   max_files_count_in_one_bot: number
   storage_used_mb: number
@@ -61,6 +78,182 @@ interface Usage {
   ingestion_embedding_tokens: number
   refresh_count?: number
 }
+
+// Skeleton component for loading state
+const Skeleton = ({ className }: { className?: string }) => (
+  <div className={cn("animate-pulse rounded-md bg-muted/60", className)} />
+)
+
+// Modern stat card component
+const StatCard = ({ 
+  icon: Icon, 
+  label, 
+  value, 
+  max, 
+  subtext,
+  showProgress = false,
+  gradient = "from-primary/10 to-primary/5"
+}: { 
+  icon: React.ElementType
+  label: string
+  value: string | number
+  max?: string | number
+  subtext?: React.ReactNode
+  showProgress?: boolean
+  gradient?: string
+}) => {
+  const percentage = showProgress && typeof value === 'number' && typeof max === 'number' && max > 0
+    ? Math.min(100, Math.max(0, (value / max) * 100))
+    : 0
+
+  return (
+    <div className={cn(
+      "relative overflow-hidden rounded-2xl border border-border/50 p-5",
+      "bg-gradient-to-br backdrop-blur-sm",
+      "transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
+      "group",
+      gradient
+    )}>
+      {/* Background decoration */}
+      <div className="absolute right-0 top-0 -mr-4 -mt-4 opacity-[0.07] group-hover:opacity-[0.12] transition-opacity">
+        <Icon className="w-24 h-24" />
+      </div>
+      
+      <div className="relative z-10">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2.5 rounded-xl bg-background/80 shadow-sm border border-border/50">
+            <Icon className="w-4 h-4 text-primary" />
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold tracking-tight">{value}</span>
+            {max !== undefined && (
+              <span className="text-sm text-muted-foreground">/ {max}</span>
+            )}
+          </div>
+          
+          {showProgress && (
+            <div className="space-y-1.5">
+              <Progress value={percentage} className="h-2" />
+              <p className="text-xs text-muted-foreground">
+                %{Math.round(percentage)} kullanıldı
+              </p>
+            </div>
+          )}
+          
+          {subtext && !showProgress && (
+            <div className="text-sm text-muted-foreground">{subtext}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Feature row component
+const FeatureRow = ({ 
+  label, 
+  value, 
+  enabled,
+  showProgress = false,
+  current,
+  max,
+  className
+}: { 
+  label: string
+  value?: string | number
+  enabled?: boolean
+  showProgress?: boolean
+  current?: number
+  max?: number
+  className?: string
+}) => {
+  const percentage = showProgress && current !== undefined && max !== undefined && max > 0
+    ? Math.min(100, Math.max(0, (current / max) * 100))
+    : 0
+
+  return (
+    <div className={cn("py-3 border-b border-border/50 last:border-0", className)}>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        {enabled !== undefined ? (
+          enabled ? (
+            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">
+              <Check className="w-3 h-3 mr-1" />
+              Aktif
+            </Badge>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0} className="inline-flex cursor-help">
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground border-border hover:bg-muted">
+                    <X className="w-3 h-3 mr-1" />
+                    Pasif
+                  </Badge>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Bu özellik üst paketlerde mevcuttur.</p>
+              </TooltipContent>
+            </Tooltip>
+          )
+        ) : showProgress ? (
+          <span className="text-sm font-medium">
+            {current?.toLocaleString()} / {max?.toLocaleString()}
+          </span>
+        ) : (
+          <span className="text-sm font-medium">{value}</span>
+        )}
+      </div>
+      {showProgress && current !== undefined && max !== undefined && (
+        <div className="mt-2">
+          <Progress value={percentage} className="h-1.5" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Section card component
+const SectionCard = ({ 
+  icon: Icon, 
+  title, 
+  description,
+  children,
+  gradient = "from-background to-muted/20"
+}: { 
+  icon: React.ElementType
+  title: string
+  description?: string
+  children: React.ReactNode
+  gradient?: string
+}) => (
+  <Card className={cn(
+    "overflow-hidden border-border/50 shadow-sm",
+    "bg-gradient-to-br transition-all duration-300 hover:shadow-md",
+    gradient
+  )}>
+    <CardHeader className="pb-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+          <Icon className="w-5 h-5" />
+        </div>
+        <div>
+          <CardTitle className="text-lg">{title}</CardTitle>
+          {description && (
+            <CardDescription className="mt-0.5">{description}</CardDescription>
+          )}
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent className="pt-0">
+      {children}
+    </CardContent>
+  </Card>
+)
 
 const PlanPage = () => {
   const { data: planData, isLoading: planLoading } = usePlan()
@@ -75,311 +268,369 @@ const PlanPage = () => {
   const usage = usageData as Usage | null
   const loading = planLoading || usageLoading
 
-
-
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency }).format(amount)
-  }
-
-  const calculatePercentage = (used: number, total: number) => {
-    if (!total || total === 0) return 0
-    return Math.min(100, Math.max(0, (used / total) * 100))
   }
 
   const rateLimitPercentage = rateLimit.limit && rateLimit.remaining !== null
     ? ((rateLimit.limit - rateLimit.remaining) / rateLimit.limit) * 100
     : 0
 
-  const InactiveBadge = () => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span tabIndex={0} className="inline-flex cursor-help">
-          <Badge variant="destructive" className="hover:bg-destructive/90">
-            <X className="h-3 w-3 mr-1"/> Pasif
-          </Badge>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Bu özellik üst paketlerde mevcuttur.</p>
-      </TooltipContent>
-    </Tooltip>
-  )
-
+  // Loading skeleton
   if (loading) {
-    return <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
+    return (
+      <TooltipProvider>
+        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+          {/* Header Skeleton */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-12 h-12 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-96" />
+              </div>
+            </div>
+          </div>
+
+          {/* Plan Card Skeleton */}
+          <Skeleton className="h-48 rounded-2xl" />
+
+          {/* Stats Grid Skeleton */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-36 rounded-2xl" />
+            ))}
+          </div>
+
+          {/* Section Cards Skeleton */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-64 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </TooltipProvider>
+    )
   }
 
   return (
     <TooltipProvider>
-    <div className="max-w-5xl space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Plan ve Faturalandırma</h1>
-        <p className="text-muted-foreground mt-1">Mevcut planınızı ve kullanım detaylarını inceleyin.</p>
-      </div>
-
-      <div className="space-y-6">
-        {/* Current Plan Overview */}
-        <Card className="overflow-hidden border-primary/20">
-          <div className="bg-primary/5 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                 <h2 className="text-2xl font-bold capitalize">{userPlan} Plan</h2>
-                 <PlanBadge plan={userPlan as PlanTier} size="md" />
-              </div>
-              <p className="text-muted-foreground">
-                {planPrice > 0 
-                  ? `${formatCurrency(planPrice, planCurrency)} / ay` 
-                  : 'Ücretsiz'}
-              </p>
+      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+        {/* Modern Header */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary shadow-sm">
+              <CreditCard className="w-6 h-6" />
             </div>
-            <Button variant="default" disabled>Planı Yönet</Button>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Plan ve Faturalandırma</h1>
+              <p className="text-muted-foreground">Mevcut planınızı ve kullanım detaylarınızı görüntüleyin.</p>
+            </div>
           </div>
-          <CardContent className="p-6">
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
-                   <div className="p-2 bg-primary/10 rounded-full text-primary">
-                     <HardDrive className="h-4 w-4" />
-                   </div>
-                   <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1">Depolama</p>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs font-medium">
-                          <span>{usage?.storage_used_mb ?? 0} MB</span>
-                          <span className="text-muted-foreground">/ {planFeatures?.files.total_storage_mb ?? 0} MB</span>
-                        </div>
-                        <Progress value={calculatePercentage(usage?.storage_used_mb ?? 0, planFeatures?.files.total_storage_mb ?? 0)} className="h-1.5" />
-                      </div>
-                   </div>
+        </div>
+
+        {/* Current Plan Hero Card */}
+        <Card className="overflow-hidden border-border/50 shadow-lg bg-gradient-to-br from-primary/5 via-background to-primary/10 relative">
+          {/* Background decorations */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl -ml-24 -mb-24" />
+          
+          <div className="relative z-10">
+            <div className="p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25">
+                  <Sparkles className="w-8 h-8" />
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
-                   <div className="p-2 bg-primary/10 rounded-full text-primary">
-                     <Globe className="h-4 w-4" />
-                   </div>
-                   <div>
-                      <p className="text-xs text-muted-foreground">URL Kullanımı</p>
-                      <p className="font-medium">{usage?.urls_count ?? 0} adet</p>
-                   </div>
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h2 className="text-2xl md:text-3xl font-bold capitalize">{userPlan} Plan</h2>
+                    <PlanBadge plan={userPlan as PlanTier} size="md" />
+                  </div>
+                  <p className="text-lg text-muted-foreground">
+                    {planPrice > 0 
+                      ? `${formatCurrency(planPrice, planCurrency)} / ay` 
+                      : 'Ücretsiz Plan'}
+                  </p>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
-                   <div className="p-2 bg-primary/10 rounded-full text-primary">
-                     <Zap className="h-4 w-4" />
-                   </div>
-                   <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1">Token Kullanımı</p>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs font-medium">
-                          <span>{(usage?.tokens_used ?? 0).toLocaleString()}</span>
-                          <span className="text-muted-foreground">/ {(planFeatures?.chat.max_monthly_tokens || 0).toLocaleString()}</span>
-                        </div>
-                        <Progress value={calculatePercentage(usage?.tokens_used ?? 0, planFeatures?.chat.max_monthly_tokens || 0)} className="h-1.5" />
-                      </div>
-                   </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
-                   <div className="p-2 bg-primary/10 rounded-full text-primary">
-                     <Shield className="h-4 w-4" />
-                   </div>
-                   <div>
-                      <p className="text-xs text-muted-foreground">Güvenli Embed</p>
-                      <div className="mt-1">{planFeatures?.security?.secure_embed_enabled ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> : <InactiveBadge />}</div>
-                   </div>
-                </div>
-             </div>
-          </CardContent>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <Button variant="outline" className="gap-2" disabled>
+                  <RefreshCcw className="w-4 h-4" />
+                  Yenile
+                </Button>
+                <Button className="gap-2 shadow-lg" disabled>
+                  <ArrowUpRight className="w-4 h-4" />
+                  Planı Yükselt
+                </Button>
+              </div>
+            </div>
+          </div>
         </Card>
 
-        {/* Detailed Limits */}
+        {/* Quick Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            icon={LayoutDashboard}
+            label="Chatbot Sayısı"
+            value={usage?.chatbots_count ?? 0}
+            max={planLimits?.max_chatbots ?? 1}
+            showProgress
+            gradient="from-violet-500/10 to-violet-500/5"
+          />
+          <StatCard
+            icon={FileText}
+            label="Aylık Kaynak Ekleme"
+            value={usage?.ingestions_used ?? 0}
+            max={planLimits?.max_monthly_ingestions ?? 0}
+            showProgress
+            gradient="from-emerald-500/10 to-emerald-500/5"
+          />
+          <StatCard
+            icon={Zap}
+            label="Aylık AI Token"
+            value={(usage?.tokens_used ?? 0).toLocaleString()}
+            max={(planFeatures?.chat.max_monthly_tokens || 0).toLocaleString()}
+            showProgress
+            gradient="from-amber-500/10 to-amber-500/5"
+          />
+          <StatCard
+            icon={HardDrive}
+            label="Depolama Alanı"
+            value={`${usage?.storage_used_mb ?? 0} MB`}
+            max={`${planFeatures?.files.total_storage_mb ?? 0} MB`}
+            showProgress
+            gradient="from-blue-500/10 to-blue-500/5"
+          />
+        </div>
+
+        {/* Detailed Sections */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* Files & Storage */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <HardDrive className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Dosya ve Depolama</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-               <div className="space-y-2 py-2 border-b last:border-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Toplam Depolama Kullanımı</span>
-                    <span className="font-medium">{usage?.storage_used_mb ?? 0} / {planFeatures?.files.total_storage_mb ?? 0} MB</span>
-                  </div>
-                  <Progress value={calculatePercentage(usage?.storage_used_mb ?? 0, planFeatures?.files.total_storage_mb ?? 0)} className="h-2" />
-               </div>
-               <div className="space-y-2 py-2 border-b last:border-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Toplam Yüklenen Dosya</span>
-                    <span className="font-medium">{usage?.files_count ?? 0} / {planFeatures?.files.max_files_total ?? 0} adet</span>
-                  </div>
-                  <Progress value={calculatePercentage(usage?.files_count ?? 0, planFeatures?.files.max_files_total ?? 0)} className="h-2" />
-               </div>
-               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                  <span className="text-sm">Maks. Dosya Boyutu</span>
-                  <span className="font-medium">{planFeatures?.files.max_size_mb} MB</span>
-               </div>
-               <div className="space-y-2 py-2 border-b last:border-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Bot Başına Dosya</span>
-                    <span className="font-medium">{usage?.max_files_count_in_one_bot ?? 0} / {planFeatures?.files.max_files_per_bot} adet</span>
-                  </div>
-                  <Progress value={calculatePercentage(usage?.max_files_count_in_one_bot ?? 0, planFeatures?.files.max_files_per_bot ?? 0)} className="h-2" />
-               </div>
-               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                  <span className="text-sm">OCR (Görsel Tarama)</span>
-                  {planFeatures?.files.ocr_enabled 
-                    ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> 
-                    : <InactiveBadge />}
-               </div>
-            </CardContent>
-          </Card>
+          <SectionCard 
+            icon={Database} 
+            title="Dosya ve Depolama"
+            description="Veri depolama limitleri ve kullanımı"
+          >
+            <div className="divide-y divide-border/50">
+              <FeatureRow
+                label="Toplam Depolama"
+                showProgress
+                current={usage?.storage_used_mb ?? 0}
+                max={planFeatures?.files.total_storage_mb ?? 0}
+              />
+              <FeatureRow
+                label="Yüklenen Dosya"
+                showProgress
+                current={usage?.files_count ?? 0}
+                max={planFeatures?.files.max_files_total ?? 0}
+              />
+              <FeatureRow
+                label="Maks. Dosya Boyutu"
+                value={`${planFeatures?.files.max_size_mb} MB`}
+              />
+              <FeatureRow
+                label="Bot Başına Dosya"
+                showProgress
+                current={usage?.max_files_count_in_one_bot ?? 0}
+                max={planFeatures?.files.max_files_per_bot ?? 0}
+              />
+              <FeatureRow
+                label="OCR (Görsel Tarama)"
+                enabled={planFeatures?.files.ocr_enabled}
+              />
+            </div>
+          </SectionCard>
 
           {/* Web Scraping */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Web Tarama</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                  <span className="text-sm">Toplam Taranan URL</span>
-                  <span className="font-medium">{usage?.urls_count ?? 0} adet</span>
-               </div>
-               <div className="space-y-2 py-2 border-b last:border-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Bot Başına URL</span>
-                    <span className="font-medium">{usage?.max_urls_count_in_one_bot ?? 0} / {planFeatures?.scraping.max_urls_per_bot} adet</span>
+          <SectionCard 
+            icon={Globe} 
+            title="Web İçerik Kaynakları"
+            description="URL tarama limitleri ve özellikleri"
+          >
+            <div className="divide-y divide-border/50">
+              <FeatureRow
+                label="Tüm Botlardaki URL Sayısı"
+                value={`${usage?.urls_count ?? 0} adet`}
+              />
+              <div className="py-3 border-b border-border/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Bot Başına URL Limiti</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-xs text-muted-foreground/60 cursor-help">ⓘ</span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[250px]">
+                        <p className="text-xs">
+                          Her bot için ekleyebileceğiniz ana URL + alt sayfa tarama sonucu eklenen URL'lerin toplam limiti.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <Progress value={calculatePercentage(usage?.max_urls_count_in_one_bot ?? 0, planFeatures?.scraping.max_urls_per_bot ?? 0)} className="h-2" />
-               </div>
-               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                  <span className="text-sm">Alt Sayfa Tarama (Crawler)</span>
-                  <span className="font-medium">{planFeatures?.scraping.max_pages_per_crawl} sayfa</span>
-               </div>
-               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                  <span className="text-sm">Dinamik (JS) Tarama</span>
-                  {planFeatures?.scraping.dynamic_enabled 
-                    ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> 
-                    : <InactiveBadge />}
-               </div>
-               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                  <span className="text-sm">Kaynak Yenileme</span>
-                  {planFeatures?.refresh?.enabled 
-                    ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge> 
-                    : <InactiveBadge />}
-               </div>
-               {planFeatures?.refresh?.enabled && (
-                 <div className="space-y-2 py-2 border-b last:border-0">
-                   <div className="flex justify-between items-center">
-                     <span className="text-sm">Aylık Yenileme Hakkı</span>
-                     <span className="font-medium">{usage?.refresh_count ?? 0} / {planFeatures?.refresh?.max_monthly ?? 0} kullanıldı</span>
-                   </div>
-                   <Progress value={calculatePercentage(usage?.refresh_count ?? 0, planFeatures?.refresh?.max_monthly ?? 0)} className="h-2" />
-                 </div>
-               )}
-            </CardContent>
-          </Card>
+                  <span className="text-sm font-medium">
+                    {usage?.max_urls_count_in_one_bot ?? 0} / {(planFeatures?.scraping.max_urls_per_bot ?? 0) + (planFeatures?.scraping.max_pages_per_crawl ?? 0)}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <Progress 
+                    value={
+                      ((usage?.max_urls_count_in_one_bot ?? 0) / 
+                      ((planFeatures?.scraping.max_urls_per_bot ?? 0) + (planFeatures?.scraping.max_pages_per_crawl ?? 0))) * 100
+                    } 
+                    className="h-1.5" 
+                  />
+                </div>
+              </div>
+              <FeatureRow
+                label="Dinamik Site Tarama (JavaScript)"
+                enabled={planFeatures?.scraping.dynamic_enabled}
+              />
+              <FeatureRow
+                label="İçerik Yenileme"
+                enabled={planFeatures?.refresh?.enabled}
+              />
+              {planFeatures?.refresh?.enabled && (
+                <FeatureRow
+                  label="Aylık Yenileme Hakkı"
+                  showProgress
+                  current={usage?.refresh_count ?? 0}
+                  max={planFeatures?.refresh?.max_monthly ?? 0}
+                />
+              )}
+            </div>
+          </SectionCard>
 
-          {/* AI & Chat */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Cpu className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Yapay Zeka Modelleri</CardTitle>
+          {/* AI Models */}
+          <SectionCard 
+            icon={Cpu} 
+            title="Yapay Zeka Modelleri"
+            description="AI model erişimi ve token limitleri"
+          >
+            <div className="divide-y divide-border/50">
+              <FeatureRow
+                label="Aylık Token Kullanımı"
+                showProgress
+                current={usage?.tokens_used ?? 0}
+                max={planFeatures?.chat.max_monthly_tokens ?? 0}
+              />
+              <div className="py-3 border-b border-border/50">
+                <div className="flex items-start justify-between">
+                  <span className="text-sm text-muted-foreground mt-1">Erişilebilir Modeller</span>
+                  <div className="flex flex-wrap gap-1.5 justify-end max-w-[200px]">
+                    {planFeatures?.chat.allowed_models.map(m => (
+                      <Badge 
+                        key={m} 
+                        variant="outline" 
+                        className="text-xs bg-background/50"
+                      >
+                        {m}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-               <div className="space-y-2 py-2 border-b last:border-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Aylık Token Kullanımı</span>
-                    <span className="font-medium">{(usage?.tokens_used ?? 0).toLocaleString()} / {(planFeatures?.chat.max_monthly_tokens || 0).toLocaleString()}</span>
-                  </div>
-                  <Progress value={calculatePercentage(usage?.tokens_used ?? 0, planFeatures?.chat.max_monthly_tokens || 0)} className="h-2" />
-               </div>
-               <div className="flex justify-between items-start py-2 border-b last:border-0">
-                  <span className="text-sm mt-1">Erişilebilir Modeller</span>
-                  <div className="flex flex-wrap gap-1 justify-end max-w-[180px]">
-                     {planFeatures?.chat.allowed_models.map(m => (
-                       <Badge key={m} variant="outline" className="text-xs">{m}</Badge>
-                     ))}
-                  </div>
-               </div>
-               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                  <span className="text-sm">RAG Bağlamı (Context)</span>
-                  <span className="font-medium">{planFeatures?.chat.rag.max_context_tokens} token</span>
-               </div>
-            </CardContent>
-          </Card>
+              <FeatureRow
+                label="RAG Bağlamı"
+                value={`${planFeatures?.chat.rag.max_context_tokens} token`}
+              />
+            </div>
+          </SectionCard>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <LayoutDashboard className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Marka ve Özelleştirme</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b last:border-0">
-                <span className="text-sm">‘Powered by Botla’ kaldırma</span>
-                {planFeatures?.branding?.can_hide_branding
-                  ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge>
-                  : <InactiveBadge />}
-              </div>
-              <div className="flex justify-between items-center py-2 border-b last:border-0">
-                <span className="text-sm">Özel Branding (Logo/Bağlantı)</span>
-                {planFeatures?.branding?.can_custom_branding
-                  ? <Badge variant="default" className="bg-green-600"><Check className="h-3 w-3 mr-1"/> Aktif</Badge>
-                  : <InactiveBadge />}
-              </div>
-            </CardContent>
-          </Card>
-
-           {/* System Usage */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <LayoutDashboard className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Sistem Kullanımı</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-               <div className="space-y-2 py-2 border-b last:border-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Aylık Kaynak Ekleme</span>
-                    <span className="text-muted-foreground">
-                      {usage?.ingestions_used ?? 0} / {planLimits?.max_monthly_ingestions ?? 0} kullanıldı
-                    </span>
-                  </div>
-                  <Progress value={calculatePercentage(usage?.ingestions_used ?? 0, planLimits?.max_monthly_ingestions ?? 0)} className="h-2" />
-               </div>
-               <div className="space-y-2 py-2 border-b last:border-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Aylık Embedding Token Kullanımı</span>
-                    <span className="text-muted-foreground">
-                      {(usage?.ingestion_embedding_tokens ?? 0).toLocaleString()} / {(planLimits?.max_monthly_embedding_tokens ?? 0).toLocaleString()}
-                    </span>
-                  </div>
-                  <Progress value={calculatePercentage(usage?.ingestion_embedding_tokens ?? 0, planLimits?.max_monthly_embedding_tokens ?? 0)} className="h-2" />
-               </div>
-               <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>API Hız Limiti (Dakikalık)</span>
-                    <span className="text-muted-foreground">
-                       {rateLimit.remaining ?? 0} / {rateLimit.limit ?? 0} kalan
-                    </span>
-                  </div>
-                  <Progress value={rateLimitPercentage} className="h-2" />
-                  <p className="text-xs text-muted-foreground">
-                    Dakikalık API istek limitinizin %{Math.round(rateLimitPercentage)} kadarını kullandınız.
-                  </p>
-               </div>
-            </CardContent>
-          </Card>
-
+          {/* Security & Branding */}
+          <SectionCard 
+            icon={Shield} 
+            title="Güvenlik ve Branding"
+            description="Embed güvenliği ve marka özelleştirmeleri"
+          >
+            <div className="divide-y divide-border/50">
+              <FeatureRow
+                label="Güvenli Embed (Domain Kilidi)"
+                enabled={planFeatures?.security?.secure_embed_enabled}
+              />
+              <FeatureRow
+                label="'Powered by Botla' Kaldırma"
+                enabled={planFeatures?.branding?.can_hide_branding}
+              />
+              <FeatureRow
+                label="Özel Branding (Logo/Link)"
+                enabled={planFeatures?.branding?.can_custom_branding}
+              />
+            </div>
+          </SectionCard>
         </div>
+
+        {/* System Usage Section */}
+        <SectionCard 
+          icon={Clock} 
+          title="Sistem Kullanımı"
+          description="API limitleri ve kaynak ekleme kotaları"
+          gradient="from-background to-muted/30"
+        >
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <FileText className="w-4 h-4 text-primary" />
+                Aylık Kaynak Ekleme
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Kullanılan</span>
+                  <span className="font-medium">
+                    {usage?.ingestions_used ?? 0} / {planLimits?.max_monthly_ingestions ?? 0}
+                  </span>
+                </div>
+                <Progress 
+                  value={planLimits?.max_monthly_ingestions 
+                    ? ((usage?.ingestions_used ?? 0) / planLimits.max_monthly_ingestions) * 100 
+                    : 0} 
+                  className="h-2" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Database className="w-4 h-4 text-primary" />
+                Embedding Token
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Kullanılan</span>
+                  <span className="font-medium">
+                    {(usage?.ingestion_embedding_tokens ?? 0).toLocaleString()} / {(planLimits?.max_monthly_embedding_tokens ?? 0).toLocaleString()}
+                  </span>
+                </div>
+                <Progress 
+                  value={planLimits?.max_monthly_embedding_tokens 
+                    ? ((usage?.ingestion_embedding_tokens ?? 0) / planLimits.max_monthly_embedding_tokens) * 100 
+                    : 0} 
+                  className="h-2" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Zap className="w-4 h-4 text-primary" />
+                API Hız Limiti (Dakika)
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Kalan</span>
+                  <span className="font-medium">
+                    {rateLimit.remaining ?? 0} / {rateLimit.limit ?? 0}
+                  </span>
+                </div>
+                <Progress value={rateLimitPercentage} className="h-2" />
+                <p className="text-xs text-muted-foreground">
+                  %{Math.round(rateLimitPercentage)} kullanıldı
+                </p>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
       </div>
-    </div>
     </TooltipProvider>
   )
 }

@@ -67,38 +67,41 @@ export default function PlaygroundConsole() {
   const clearLogs = () => setLogs([])
 
   return (
-    <div className={`absolute bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-xl text-slate-300 transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) z-30 border-t border-slate-800/50 ${isExpanded ? 'h-80 shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)]' : 'h-11'}`}>
+    <div 
+      className={`shrink-0 bg-slate-950/95 lg:bg-slate-950/90 backdrop-blur-xl text-slate-300 transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) z-30 border-t border-slate-800/50 rounded-b-2xl absolute bottom-0 left-0 right-0 ${isExpanded ? 'h-64 sm:h-80 shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.5)]' : 'h-10 lg:h-11'}`}
+      data-testid="playground-console-container"
+    >
       {/* Header */}
       <div 
-        className="flex items-center justify-between px-6 h-11 cursor-pointer hover:bg-slate-800/30 transition-colors group"
+        className="flex items-center justify-between px-3 lg:px-6 h-10 lg:h-11 cursor-pointer hover:bg-slate-800/30 transition-colors group"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           <div className={`p-1 rounded bg-slate-800 transition-colors ${isExpanded ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'}`}>
-            <Terminal className="w-3.5 h-3.5" />
+            <Terminal className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
           </div>
-          <span className="text-[11px] font-mono font-bold tracking-[0.1em] uppercase text-slate-400 group-hover:text-slate-200 transition-colors">
+          <span className="text-[9px] lg:text-[11px] font-mono font-bold tracking-[0.1em] uppercase text-slate-400 group-hover:text-slate-200 transition-colors truncate">
             Event Debug Console
           </span>
           {logs.length > 0 && !isExpanded && (
-            <div className="flex items-center gap-1.5 ml-2 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] text-emerald-400 font-bold">{logs.length}</span>
+            <div className="flex items-center gap-1 ml-1 lg:ml-2 bg-emerald-500/10 px-1.5 lg:px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="flex h-1 w-1 lg:h-1.5 lg:w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[9px] lg:text-[10px] text-emerald-400 font-bold">{logs.length}</span>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 lg:gap-4">
           {isExpanded && (
             <button 
               onClick={(e) => { e.stopPropagation(); clearLogs(); }}
               className="p-1.5 hover:bg-slate-800 hover:text-red-400 rounded-md transition-all text-slate-500"
               title="Konsolu Temizle"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
             </button>
           )}
           <div className="text-slate-500 group-hover:text-slate-300 transition-colors">
-            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            {isExpanded ? <ChevronDown className="w-3.5 h-3.5 lg:w-4 lg:h-4" /> : <ChevronUp className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
           </div>
         </div>
       </div>
@@ -107,7 +110,7 @@ export default function PlaygroundConsole() {
       {isExpanded && (
         <div 
           ref={scrollRef}
-          className="p-6 h-[calc(100%-44px)] overflow-y-auto font-mono text-[11px] leading-relaxed space-y-3 selection:bg-emerald-500/30 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
+          className="p-4 lg:p-6 h-[calc(100%-40px)] lg:h-[calc(100%-44px)] overflow-y-auto font-mono text-[10px] lg:text-[11px] leading-relaxed space-y-3 selection:bg-emerald-500/30 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
         >
           {logs.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-3">

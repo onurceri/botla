@@ -72,6 +72,7 @@ export function mount() {
   const botName = params.get('bot-name') || undefined
   const botIcon = params.get('bot-icon') || undefined
   const panelHeight = params.get('panel-height') || undefined
+  const panelWidth = params.get('panel-width') || undefined
   const panelBg = params.get('panel-bg-color') || undefined
   const inputBg = params.get('input-bg-color') || undefined
   const inputText = params.get('input-text-color') || undefined
@@ -84,6 +85,7 @@ export function mount() {
   // Playground preview params
   const positionStrategyRaw = params.get('position-strategy') || undefined
   const positionStrategy = positionStrategyRaw === 'absolute' ? 'absolute' : 'fixed'
+  const previewMode = params.get('preview-mode') === '1' || params.get('preview-mode') === 'true'
   
   // Parse suggestions from JSON if provided
   let suggestionsOverride: string[] | undefined
@@ -106,7 +108,7 @@ export function mount() {
   const root = document.createElement('div')
   shadow.appendChild(root)
   
-  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride }
+  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, previewMode }
   
   render(<WidgetApp {...props} />, root)
 
@@ -136,11 +138,14 @@ export function mount() {
         inputText: newConfig['input-text-color'] || inputText,
         bubbleRadius: newConfig['bubble-radius'] || bubbleRadius,
         sendButtonColor: newConfig['send-button-color'] || sendButtonColor,
+        panelHeight: newConfig['panel-height'] || panelHeight,
+        panelWidth: newConfig['panel-width'] || panelWidth,
         useOverrides: true, // Always override in playground
         autoOpen: newConfig['auto-open'] === '1',
         sessionIdOverride: newConfig['session-id'] || sessionIdOverride,
         hideBrandingOverride: newConfig['hide-branding'] === '1',
         positionStrategy: (newConfig['position-strategy'] || positionStrategy) as "fixed" | "absolute",
+        previewMode: newConfig['preview-mode'] === '1',
       }
       
       if (newConfig['suggestions']) {

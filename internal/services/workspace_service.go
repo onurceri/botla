@@ -128,3 +128,31 @@ func (s *WorkspaceService) GetWorkspace(ctx context.Context, id string) (*models
 	}
 	return &ws, nil
 }
+
+// CheckAccess checks if user has access to the workspace via organization membership
+func (s *WorkspaceService) CheckAccess(ctx context.Context, userID, workspaceID string) (*models.Workspace, error) {
+	// 1. Get workspace
+	ws, err := s.GetWorkspace(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	if ws == nil {
+		return nil, nil // Workspace not found
+	}
+
+	// 2. Check organization membership directly
+	var role string
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT role FROM memberships 
+		WHERE user_id = $1 AND organization_id = $2
+	`, userID, ws.OrganizationID).Scan(&role)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Not a member
+		}
+		return nil, err
+	}
+
+	return ws, nil
+}

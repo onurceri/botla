@@ -232,7 +232,7 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 		return nil
 	}
 
-	// Check discovery mode - default to auto for backward compatibility
+	// Check discovery mode - default to auto
 	discoveryMode := bot.DiscoveryMode
 	if discoveryMode == "" {
 		discoveryMode = DiscoveryModeAuto

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup, within } from '@testing-library/react'
+import { describe, it, expect, afterEach } from 'vitest'
+import { render, cleanup, within } from '@testing-library/react'
 import IngestionProgress, { ProcessingSource } from '../IngestionProgress'
 
 // Cleanup after each test to prevent element accumulation

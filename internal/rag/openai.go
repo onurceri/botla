@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -48,31 +46,7 @@ func NewOpenAIClient(cfg *config.Config) (*OpenAIClient, error) {
 	}, nil
 }
 
-// NewOpenAIClientFromEnv creates an OpenAI client from environment variables (backward compatibility)
-func NewOpenAIClientFromEnv() (*OpenAIClient, error) {
-	k := os.Getenv("OPENAI_API_KEY")
-	if k == "" {
-		return nil, errors.New("OPENAI_API_KEY is empty")
-	}
-	b := os.Getenv("OPENAI_API_BASE")
-	if b == "" {
-		b = "https://api.openai.com"
-	}
-	to := 30 * time.Second
-	if v := os.Getenv("OPENAI_TIMEOUT_MS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			to = time.Duration(n) * time.Millisecond
-		}
-	}
 
-	defModel := config.DefaultChatbotModel()
-	return &OpenAIClient{
-		apiKey:       k,
-		http:         &http.Client{Timeout: to},
-		base:         b,
-		defaultModel: defModel,
-	}, nil
-}
 
 // Embeddings
 type embeddingRequest struct {

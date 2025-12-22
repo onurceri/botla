@@ -16,10 +16,12 @@ type VectorStore interface {
 
 // ChatbotHandlers handles chatbot-related HTTP endpoints
 type ChatbotHandlers struct {
-	DB             *sql.DB
-	Cfg            *config.Config
-	VectorStore    VectorStore
-	ChatbotService *services.ChatbotService
+	DB               *sql.DB
+	Cfg              *config.Config
+	VectorStore      VectorStore
+	ChatbotService   *services.ChatbotService
+	OrgService       *services.OrganizationService
+	WorkspaceService *services.WorkspaceService
 }
 
 type createChatbotRequest struct {

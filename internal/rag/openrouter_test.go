@@ -8,18 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/internal/models"
 )
 
-func TestNewOpenRouterClientFromEnv(t *testing.T) {
-	// Clear envs first
-	t.Setenv("OPENROUTER_API_KEY", "")
-	t.Setenv("OPENAI_API_KEY", "")
-	t.Setenv("OPENROUTER_API_BASE", "")
-	t.Setenv("OPENROUTER_TIMEOUT_MS", "")
-
+func TestNewOpenRouterClient(t *testing.T) {
 	t.Run("MissingKeys", func(t *testing.T) {
-		client, err := NewOpenRouterClientFromEnv()
+		cfg := &config.Config{}
+		client, err := NewOpenRouterClient(cfg)
 		if err == nil {
 			t.Error("Expected error when no keys are set, got nil")
 		}
@@ -29,8 +25,10 @@ func TestNewOpenRouterClientFromEnv(t *testing.T) {
 	})
 
 	t.Run("OpenRouterKey", func(t *testing.T) {
-		t.Setenv("OPENROUTER_API_KEY", "sk-or-test")
-		client, err := NewOpenRouterClientFromEnv()
+		cfg := &config.Config{
+			OPENROUTER_API_KEY: "sk-or-test",
+		}
+		client, err := NewOpenRouterClient(cfg)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -43,9 +41,10 @@ func TestNewOpenRouterClientFromEnv(t *testing.T) {
 	})
 
 	t.Run("FallbackOpenAIKey", func(t *testing.T) {
-		t.Setenv("OPENROUTER_API_KEY", "")
-		t.Setenv("OPENAI_API_KEY", "sk-openai-test")
-		client, err := NewOpenRouterClientFromEnv()
+		cfg := &config.Config{
+			OPENAI_API_KEY: "sk-openai-test",
+		}
+		client, err := NewOpenRouterClient(cfg)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -55,9 +54,11 @@ func TestNewOpenRouterClientFromEnv(t *testing.T) {
 	})
 
 	t.Run("CustomBaseURL", func(t *testing.T) {
-		t.Setenv("OPENROUTER_API_KEY", "test")
-		t.Setenv("OPENROUTER_API_BASE", "https://custom.api/v1")
-		client, err := NewOpenRouterClientFromEnv()
+		cfg := &config.Config{
+			OPENROUTER_API_KEY:  "test",
+			OPENROUTER_API_BASE: "https://custom.api/v1",
+		}
+		client, err := NewOpenRouterClient(cfg)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -67,9 +68,11 @@ func TestNewOpenRouterClientFromEnv(t *testing.T) {
 	})
 
 	t.Run("CustomTimeout", func(t *testing.T) {
-		t.Setenv("OPENROUTER_API_KEY", "test")
-		t.Setenv("OPENROUTER_TIMEOUT_MS", "5000")
-		client, err := NewOpenRouterClientFromEnv()
+		cfg := &config.Config{
+			OPENROUTER_API_KEY:    "test",
+			OPENROUTER_TIMEOUT_MS: 5000,
+		}
+		client, err := NewOpenRouterClient(cfg)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}

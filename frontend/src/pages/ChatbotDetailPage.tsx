@@ -23,7 +23,8 @@ function ChatbotDetailContent() {
     name, setName,
     description, setDescription,
     validate,
-    buildPayload
+    buildPayload,
+    isLoading: isChatbotLoading
   } = useChatbotContext()
 
   const [isCreating, setIsCreating] = useState(false)
@@ -113,8 +114,27 @@ function ChatbotDetailContent() {
     }
   }
 
+  if (isChatbotLoading && !isNew) {
+    return (
+      <div className="space-y-6 pb-20 lg:pb-0">
+        <div className="flex justify-between items-center h-16">
+           <div className="space-y-2">
+             <div className="h-8 w-48 bg-muted animate-pulse rounded-md" />
+             <div className="h-4 w-64 bg-muted animate-pulse rounded-md" />
+           </div>
+           <div className="flex gap-2">
+             <div className="h-10 w-24 bg-muted animate-pulse rounded-md" />
+             <div className="h-10 w-24 bg-muted animate-pulse rounded-md" />
+           </div>
+        </div>
+        <div className="h-12 w-full bg-muted animate-pulse rounded-xl" />
+        <div className="h-96 w-full bg-muted animate-pulse rounded-xl" />
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6 pb-20 lg:pb-0">
+    <div className="space-y-4 lg:space-y-6 pb-20 lg:pb-0">
       <HeaderActions
         isNew={isNew}
         name={name}
@@ -133,7 +153,7 @@ function ChatbotDetailContent() {
           onDescriptionChange={setDescription}
         />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 lg:space-y-6">
           <ChatbotTabBar />
           <div className="w-full min-w-0">
             <Outlet />

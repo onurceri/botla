@@ -36,7 +36,10 @@ func (h *UsageHandlers) GetUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usage, err := h.getUserUsage(r.Context(), u.ID)
+	// Check for workspace context from header (same as chatbot list)
+	wsID, _ := middleware.WorkspaceIDFromContext(r.Context())
+
+	usage, err := h.getUserUsage(r.Context(), u.ID, wsID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -50,7 +53,20 @@ func (h *UsageHandlers) GetUsage(w http.ResponseWriter, r *http.Request) {
 }
 
 // getUserUsage retrieves all usage statistics for a user
-func (h *UsageHandlers) getUserUsage(ctx context.Context, userID string) (models.Usage, error) {
+func (h *UsageHandlers) getUserUsage(ctx context.Context, userID string, workspaceID string) (models.Usage, error) {
+	var chatbotsCount int
+	var err error
+
+	// Count chatbots based on workspace context (to match dashboard)
+	if workspaceID != "" {
+		chatbotsCount, err = db.CountChatbotsByWorkspace(ctx, h.DB, workspaceID)
+	} else {
+		chatbotsCount, err = db.CountChatbotsByUserID(ctx, h.DB, userID)
+	}
+	if err != nil {
+		return models.Usage{}, err
+	}
+
 	filesCount, err := db.GetFileCountByUserID(ctx, h.DB, userID)
 	if err != nil {
 		return models.Usage{}, err
@@ -85,6 +101,7 @@ func (h *UsageHandlers) getUserUsage(ctx context.Context, userID string) (models
 	}
 
 	return models.Usage{
+		ChatbotsCount:            chatbotsCount,
 		FilesCount:               filesCount,
 		MaxFilesCountInOneBot:    maxFilesBot,
 		StorageUsedMB:            storageUsedMB,

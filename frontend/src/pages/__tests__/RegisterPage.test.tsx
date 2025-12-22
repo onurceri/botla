@@ -28,6 +28,8 @@ describe('RegisterPage', () => {
     const postSpy = vi.spyOn(api, 'post')
       .mockResolvedValueOnce({ data: {} } as any) // register
       .mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any) // login
+    
+    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { completed: true } } as any) // onboarding status
 
     render(
       <ToastProvider>

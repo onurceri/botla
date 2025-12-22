@@ -1,5 +1,4 @@
-import { Input } from '@/components/ui/input'
-import { ChevronDown, ChevronRight, Layout } from 'lucide-react'
+import { ChevronDown, Layout } from 'lucide-react'
 
 type Props = {
   isExpanded: boolean

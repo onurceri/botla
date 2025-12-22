@@ -6,12 +6,17 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/models"
 )
 
 func TestSearchContext_Empty(t *testing.T) {
-	s, metas, err := SearchContext(nil, "", 0, 0, 0)
-	if err != nil || s != "" || metas != nil {
-		t.Fatalf("unexpected for empty input")
+	s, err := SearchContextTiered(nil, "", 0, 0, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if s.Tier != TierLow {
+		t.Fatalf("expected TierLow for empty input, got %s", s.Tier)
 	}
 }
 
@@ -32,23 +37,26 @@ func TestSearchContext_ThresholdAndMaxTokens(t *testing.T) {
 	t.Setenv("QDRANT_URL", srv.URL)
 	t.Setenv("RAG_TOPK", "5")
 	t.Setenv("RAG_MAX_CONTEXT_TOKENS", "5")
-	body, used, err := SearchContext([]float32{0.1}, "cb", 0, 0, 0.2)
+
+	// Use MediumThreshold 0.2 to filter out 0.1 score item
+	cfg := &models.ThresholdConfig{MediumThreshold: 0.2, HighThreshold: 0.95}
+
+	res, err := SearchContextTiered([]float32{0.1}, "cb", 0, 0, cfg)
 	if err != nil {
 		t.Fatalf("search err: %v", err)
 	}
-	if body == "" {
+	if res.ContextText == "" {
 		t.Fatalf("empty body")
 	}
-	if len(used) == 0 {
+	if len(res.Chunks) == 0 {
 		t.Fatalf("no used metas")
 	}
 }
 
 func TestSearchContext_MissingQdrant(t *testing.T) {
 	t.Setenv("QDRANT_URL", "")
-	// should handle missing qdrant gracefully if SearchContext is called
-	// (though SearchContext checks err != nil from NewQdrantClient)
-	_, _, err := SearchContext([]float32{0.1}, "cb", 0, 0, 0)
+	// should handle missing qdrant gracefully (return error from NewQdrantClient)
+	_, err := SearchContextTiered([]float32{0.1}, "cb", 0, 0, nil)
 	if err == nil {
 		t.Fatalf("expected error when qdrant url missing")
 	}
@@ -68,15 +76,17 @@ func TestSearchContext_AllBelowThreshold(t *testing.T) {
 	}))
 	defer srv.Close()
 	t.Setenv("QDRANT_URL", srv.URL)
-	body, metas, err := SearchContext([]float32{0.1}, "cb", 0, 0, 0.2)
+
+	cfg := &models.ThresholdConfig{MediumThreshold: 0.2, HighThreshold: 0.8}
+	res, err := SearchContextTiered([]float32{0.1}, "cb", 0, 0, cfg)
 	if err != nil {
 		t.Fatalf("search err: %v", err)
 	}
-	if body != "" {
+	if res.ContextText != "" {
 		t.Fatalf("expected empty body when all below threshold")
 	}
-	if metas == nil || len(metas) != 2 {
-		t.Fatalf("metas should include raw hits")
+	if res.Tier != TierLow {
+		t.Fatalf("expected TierLow, got %s", res.Tier)
 	}
 }
 
@@ -97,14 +107,15 @@ func TestSearchContext_ThresholdZero(t *testing.T) {
 	t.Setenv("QDRANT_URL", srv.URL)
 
 	// Threshold 0.0 should include the 0.0 score item
-	body, metas, err := SearchContext([]float32{0.1}, "cb", 5, 1000, 0.0)
+	cfg := &models.ThresholdConfig{MediumThreshold: 0.0, HighThreshold: 0.5}
+	res, err := SearchContextTiered([]float32{0.1}, "cb", 5, 1000, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(metas) != 2 {
-		t.Errorf("expected 2 items, got %d", len(metas))
+	if len(res.Chunks) != 2 {
+		t.Errorf("expected 2 items, got %d", len(res.Chunks))
 	}
-	if !strings.Contains(body, "ZeroScore") {
+	if !strings.Contains(res.ContextText, "ZeroScore") {
 		t.Errorf("expected ZeroScore text in body")
 	}
 }
@@ -125,17 +136,21 @@ func TestSearchContext_ThresholdOne(t *testing.T) {
 	t.Setenv("QDRANT_URL", srv.URL)
 
 	// Threshold 1.0 should exclude 0.99
-	body, metas, err := SearchContext([]float32{0.1}, "cb", 5, 1000, 1.0)
+	cfg := &models.ThresholdConfig{MediumThreshold: 1.0, HighThreshold: 1.0}
+	res, err := SearchContextTiered([]float32{0.1}, "cb", 5, 1000, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Existing behavior: even if filtered, raw hits are returned in metas.
+	// Existing behavior: even if filtered, raw hits are returned in AllChunks.
 	// But body should be empty.
-	if len(metas) != 1 {
-		t.Errorf("expected 1 raw item in metas, got %d", len(metas))
+	if len(res.AllChunks) != 1 {
+		t.Errorf("expected 1 raw item in AllChunks, got %d", len(res.AllChunks))
 	}
-	if body != "" {
-		t.Errorf("expected empty body")
+	if res.ContextText != "" {
+		t.Errorf("expected empty body, got %q", res.ContextText)
+	}
+	if res.Tier != TierLow {
+		t.Errorf("expected TierLow, got %s", res.Tier)
 	}
 }
 
@@ -155,14 +170,15 @@ func TestSearchContext_Separator(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("QDRANT_URL", srv.URL)
 
-	body, _, err := SearchContext([]float32{0.1}, "cb", 5, 1000, 0.5)
+	cfg := &models.ThresholdConfig{MediumThreshold: 0.5, HighThreshold: 0.8}
+	res, err := SearchContextTiered([]float32{0.1}, "cb", 5, 1000, cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	// The implementation sorts by score descending.
 	// 0.9 (First) -> 0.8 (Second)
 	// Output should be First + "\n---\n" + Second
-	if !strings.Contains(body, "First\n---\nSecond") {
-		t.Errorf("expected separator between chunks. Got: %q", body)
+	if !strings.Contains(res.ContextText, "First\n---\nSecond") {
+		t.Errorf("expected separator between chunks. Got: %q", res.ContextText)
 	}
 }

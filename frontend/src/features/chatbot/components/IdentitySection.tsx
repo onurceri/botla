@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { ChevronDown, ChevronRight, User } from 'lucide-react'
+import { ChevronDown, User } from 'lucide-react'
 
 const WELCOME_MESSAGE_MAX_LENGTH = 200
 
