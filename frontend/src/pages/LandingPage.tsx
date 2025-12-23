@@ -772,6 +772,11 @@ export default function LandingPage() {
 
   // Dynamically load chatbot widget for landing page demo
   useEffect(() => {
+    // Check if user is authenticated - don't show widget for logged in users
+    const token = window.localStorage.getItem('botla_token')
+    const isAuthenticated = token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
+    if (isAuthenticated) return
+
     const chatbotId = import.meta.env.VITE_LANDING_CHATBOT_ID
     const widgetUrl = import.meta.env.VITE_WIDGET_SCRIPT_URL
 
@@ -795,8 +800,8 @@ export default function LandingPage() {
       // Cleanup on unmount
       script.remove()
       // Also remove widget container if present
-      const widgetContainer = document.getElementById('chatbot-widget-container')
-      if (widgetContainer) widgetContainer.remove()
+      const widgetHost = document.getElementById('chatbot-widget-host')
+      if (widgetHost) widgetHost.remove()
     }
   }, [])
 
