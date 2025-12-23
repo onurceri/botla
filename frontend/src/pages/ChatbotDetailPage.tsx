@@ -9,6 +9,7 @@ import { useOrganization } from '@/features/organization/context/OrganizationCon
 import { ChatbotProvider, useChatbotContext } from '@/features/chatbot/context/ChatbotContext'
 import { useToastErrors } from '@/features/chatbot/hooks/useToastErrors'
 import { getTurkishErrorMessage } from '@/lib/errorMessages'
+import { useCreateChatbot, useDeleteChatbot } from '@/hooks/mutations/useChatbotMutations'
 
 function ChatbotDetailContent() {
   const { id = '' } = useParams()
@@ -29,8 +30,8 @@ function ChatbotDetailContent() {
     isLoading: isChatbotLoading,
   } = useChatbotContext()
 
-  const [isCreating, setIsCreating] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const { mutateAsync: createChatbot, isPending: isCreating } = useCreateChatbot()
+  const { mutateAsync: deleteChatbot, isPending: isDeleting } = useDeleteChatbot()
 
   // Test Chat State
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>(
@@ -75,33 +76,26 @@ function ChatbotDetailContent() {
       return
     }
 
-    setIsCreating(true)
     const payload = buildPayload()
-
     try {
-      const { data } = await api.post('/api/v1/chatbots', payload)
+      const { data } = await createChatbot(payload)
       toast('Chatbot başarıyla oluşturuldu.', 'success')
       navigate(`/dashboard/chatbots/${data.id}`)
     } catch (error: any) {
       console.error(error)
       toasts.error(getTurkishErrorMessage(error, 'Bir hata oluştu. Lütfen tekrar deneyin.'))
-    } finally {
-      setIsCreating(false)
     }
   }
 
   const handleDelete = async () => {
     if (!confirm('Bu chatbotu silmek istediğinize emin misiniz?')) return
 
-    setIsDeleting(true)
     try {
-      await api.delete(`/api/v1/chatbots/${id}`)
+      await deleteChatbot(id)
       toast('Chatbot silindi.', 'success')
       navigate('/dashboard/chatbots')
     } catch (error: any) {
       toasts.error(getTurkishErrorMessage(error, 'Silme işlemi başarısız oldu.'))
-    } finally {
-      setIsDeleting(false)
     }
   }
 

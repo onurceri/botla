@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Bot, MoreHorizontal, Trash2 } from 'lucide-react'
-import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -13,10 +12,12 @@ import {
 } from '@/components/ui/card'
 import { useOrganization } from '@/features/organization/context/OrganizationContext'
 import { useChatbots } from '@/hooks/queries/useChatbots'
+import { useDeleteChatbot } from '@/hooks/mutations/useChatbotMutations'
 
 const ChatbotsPage = () => {
   const { currentWorkspace, isLoading: isOrgLoading } = useOrganization()
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null)
+  const { mutateAsync: deleteChatbot } = useDeleteChatbot()
 
   // Use React Query for chatbots list
   const {
@@ -55,10 +56,10 @@ const ChatbotsPage = () => {
   }
 
   const handleDelete = async (id: string | number) => {
+    if (!confirm('Bu chatbotu silmek istediğinize emin misiniz?')) return
+
     try {
-      await api.delete(`/api/v1/chatbots/${id}`)
-      // Note: In a full migration, we'd use a mutation hook here that invalidates the chatbots query
-      // For now, we'll rely on manual refetch or optimistic update
+      await deleteChatbot(id)
     } catch (err) {
       console.error(err)
     } finally {

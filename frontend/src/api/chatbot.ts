@@ -54,3 +54,7 @@ export const updateChatbot = async (id: string, payload: unknown) => {
   const { data } = await api.put(`/api/v1/chatbots/${id}`, payload)
   return data
 }
+export const deleteChatbot = async (id: string | number) => {
+  const { data } = await api.delete(`/api/v1/chatbots/${id}`)
+  return data
+}

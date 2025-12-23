@@ -16,7 +16,10 @@ import {
   updateHandoff,
   updateRefresh,
   updateScrapingConfig,
+  deleteChatbot,
+  createChatbot,
 } from '@/api/chatbot'
+import { CHATBOTS_QUERY_KEY } from '../queries/useChatbots'
 import { CHATBOT_QUERY_KEY } from '../queries/useChatbot'
 import { SOURCES_QUERY_KEY } from '../queries/useSources'
 
@@ -160,5 +163,25 @@ export function useUpdateScrapingConfig(chatbotId: string) {
   return useMutation({
     mutationFn: (payload: any) => updateScrapingConfig(chatbotId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) }),
+  })
+}
+
+export function useDeleteChatbot() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string | number) => deleteChatbot(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHATBOTS_QUERY_KEY })
+    },
+  })
+}
+
+export function useCreateChatbot() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => createChatbot(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CHATBOTS_QUERY_KEY })
+    },
   })
 }
