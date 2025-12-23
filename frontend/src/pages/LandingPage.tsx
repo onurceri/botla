@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 
 // --- Components ---
 
-const Navbar = () => {
+const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   const [isOpen, setIsOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
@@ -81,21 +81,29 @@ const Navbar = () => {
                 href={link.href}
                 onClick={(e) => handleScroll(e, link.href)}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
+                >
                 {link.name}
               </a>
             ))}
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Link to="/login">
-              <Button variant="ghost" className="font-medium">
-                Giriş Yap
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button className="font-semibold shadow-sm">Ücretsiz Dene</Button>
-            </Link>
+            {authenticated ? (
+              <Link to="/dashboard">
+                <Button className="font-semibold shadow-sm">Dashboard'a Git</Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" className="font-medium">
+                    Giriş Yap
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button className="font-semibold shadow-sm">Ücretsiz Dene</Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -128,14 +136,22 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="pt-4 flex flex-col gap-3">
-                <Link to="/login" onClick={() => setIsOpen(false)}>
-                  <Button variant="outline" className="w-full justify-center">
-                    Giriş Yap
-                  </Button>
-                </Link>
-                <Link to="/register" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full justify-center">Ücretsiz Dene</Button>
-                </Link>
+                {authenticated ? (
+                  <Link to="/dashboard" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full justify-center">Dashboard'a Git</Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link to="/login" onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full justify-center">
+                        Giriş Yap
+                      </Button>
+                    </Link>
+                    <Link to="/register" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full justify-center">Ücretsiz Dene</Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
@@ -145,7 +161,7 @@ const Navbar = () => {
   )
 }
 
-const Hero = () => {
+const Hero = ({ authenticated }: { authenticated: boolean }) => {
   const [heroSrc, setHeroSrc] = useState('/assets/landing-hero.png')
   const [useVideo, setUseVideo] = useState(true)
 
@@ -180,9 +196,9 @@ const Hero = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center mb-10">
-              <Link to="/register">
+              <Link to={authenticated ? "/dashboard" : "/register"}>
                 <Button size="lg" className="h-12 px-6 text-base font-semibold shadow-sm">
-                  Hemen Başla
+                  {authenticated ? "Dashboard'a Dön" : "Hemen Başla"}
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
@@ -384,12 +400,15 @@ const PricingCard = ({ title, price, features, recommended, cta }: any) => (
   </div>
 )
 
-const Pricing = () => {
+const Pricing = ({ authenticated }: { authenticated: boolean }) => {
   const plans = [
     {
       title: 'Başlangıç (Free)',
       price: '0 TL',
-      cta: { text: 'Ücretsiz Başla', href: '/register' },
+      cta: {
+        text: authenticated ? "Dashboard'a Git" : 'Ücretsiz Başla',
+        href: authenticated ? '/dashboard' : '/register',
+      },
       features: [
         { text: '1 Adet Chatbot', included: true },
         { text: 'Aylık 100.000 Token', included: true },
@@ -405,7 +424,10 @@ const Pricing = () => {
       title: 'Profesyonel (Pro)',
       price: '199 TL',
       recommended: true,
-      cta: { text: "Pro'ya Geç", href: '/register' },
+      cta: {
+        text: authenticated ? "Dashboard'a Git" : "Pro'ya Geç",
+        href: authenticated ? '/dashboard' : '/register',
+      },
       features: [
         { text: '10 Adet Chatbot', included: true },
         { text: 'Aylık 1.000.000 Token', included: true },
@@ -668,7 +690,7 @@ const FAQ = () => {
   )
 }
 
-const Footer = () => (
+const Footer = ({ authenticated }: { authenticated: boolean }) => (
   <footer className="bg-foreground text-background py-16 border-t border-border">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="grid md:grid-cols-12 gap-12">
@@ -698,16 +720,26 @@ const Footer = () => (
                 Fiyatlandırma
               </a>
             </li>
-            <li>
-              <Link to="/login" className="hover:text-background transition-colors">
-                Giriş Yap
-              </Link>
-            </li>
-            <li>
-              <Link to="/register" className="hover:text-background transition-colors">
-                Kayıt Ol
-              </Link>
-            </li>
+            {authenticated ? (
+              <li>
+                <Link to="/dashboard" className="hover:text-background transition-colors">
+                  Dashboard
+                </Link>
+              </li>
+            ) : (
+              <>
+                <li>
+                  <Link to="/login" className="hover:text-background transition-colors">
+                    Giriş Yap
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/register" className="hover:text-background transition-colors">
+                    Kayıt Ol
+                  </Link>
+                </li>
+              </>
+            )}
           </ul>
         </div>
 
@@ -757,6 +789,15 @@ const Footer = () => (
 )
 
 export default function LandingPage() {
+  const [authenticated, setAuthenticated] = useState(false)
+
+  useEffect(() => {
+    const token = window.localStorage.getItem('botla_token')
+    const isValid =
+      token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
+    setAuthenticated(isValid)
+  }, [])
+
   useEffect(() => {
     const hash = window.location.hash
     if (!hash) return
@@ -807,15 +848,15 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-primary/20 text-foreground">
-      <Navbar />
+      <Navbar authenticated={authenticated} />
       <main>
-        <Hero />
+        <Hero authenticated={authenticated} />
         <Features />
         <HowItWorks />
-        <Pricing />
+        <Pricing authenticated={authenticated} />
         <FAQ />
       </main>
-      <Footer />
+      <Footer authenticated={authenticated} />
     </div>
   )
 }
