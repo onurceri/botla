@@ -2,7 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '@/api/client'
 import { useToastErrors } from './useToastErrors'
-import { AUTO_SAVE_DEFAULT_FALLBACK, AUTO_SAVE_RETRY_SUFFIX, getTurkishErrorMessage } from '@/lib/errorMessages'
+import {
+  AUTO_SAVE_DEFAULT_FALLBACK,
+  AUTO_SAVE_RETRY_SUFFIX,
+  getTurkishErrorMessage,
+} from '@/lib/errorMessages'
 
 type AutoSaveState = {
   isSaving: boolean
@@ -104,11 +108,11 @@ export function useAutoSave({
 
       try {
         if (saveFn) {
-           await saveFn(id, payloadRef.current)
+          await saveFn(id, payloadRef.current)
         } else {
-           await api.put(`/api/v1/chatbots/${id}`, payloadRef.current, {
-             signal: abortRef.current.signal,
-           })
+          await api.put(`/api/v1/chatbots/${id}`, payloadRef.current, {
+            signal: abortRef.current.signal,
+          })
         }
 
         retryCountRef.current = 0
@@ -165,7 +169,7 @@ export function useAutoSave({
         onError?.(errorMsg)
       }
     },
-    [id, onSuccess, onError, maxRetries, retryDelayMs, toasts, saveFn]
+    [id, onSuccess, onError, maxRetries, retryDelayMs, toasts, saveFn],
   )
 
   // Store save function in ref to avoid stale closures and prevent effect re-runs

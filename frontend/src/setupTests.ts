@@ -31,7 +31,7 @@ const createUnexpectedHttpCallError = (method: string, args: unknown[]) => {
     }
   })
   return new Error(
-    `Unexpected ${method} call in tests: ${prettyArgs.join(' ')}. Mock the call in the test.`
+    `Unexpected ${method} call in tests: ${prettyArgs.join(' ')}. Mock the call in the test.`,
   )
 }
 
@@ -115,8 +115,14 @@ vi.mock('@widget/widgetApp', () => {
     if (!open) {
       return React.createElement(
         'button',
-        { onClick: () => { setOpen(true); setUnread(0) }, 'aria-label': 'Sohbeti aç' },
-        unread > 0 ? React.createElement('span', null, '1') : null
+        {
+          onClick: () => {
+            setOpen(true)
+            setUnread(0)
+          },
+          'aria-label': 'Sohbeti aç',
+        },
+        unread > 0 ? React.createElement('span', null, '1') : null,
       )
     }
 
@@ -128,10 +134,12 @@ vi.mock('@widget/widgetApp', () => {
         placeholder: 'Mesaj yazın...',
         value: input,
         onChange: (e: any) => setInput(e.currentTarget.value),
-        onKeyDown: (e: any) => { if (e.key === 'Enter') send() },
+        onKeyDown: (e: any) => {
+          if (e.key === 'Enter') send()
+        },
         disabled,
       }),
-      ...messages.map((t, i) => React.createElement('div', { key: i }, t))
+      ...messages.map((t, i) => React.createElement('div', { key: i }, t)),
     )
   }
   return { WidgetApp }

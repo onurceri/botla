@@ -69,8 +69,6 @@ func NewOpenRouterClient(cfg *config.Config) (*OpenRouterClient, error) {
 	}, nil
 }
 
-
-
 func (c *OpenRouterClient) getHTTPClient() *http.Client {
 	if GlobalHTTPClient != nil {
 		return GlobalHTTPClient

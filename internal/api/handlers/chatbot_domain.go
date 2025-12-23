@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // UpdateBasicInfo handles PUT /chatbots/{id}/basic-info
@@ -205,35 +203,5 @@ func (h *ChatbotHandlers) UpdateScrapingConfig(w http.ResponseWriter, r *http.Re
 // Helper to get chatbot from context and verify ownership
 // Returns chatbot, botID, and bool indicating success (if false, response is already written)
 func (h *ChatbotHandlers) getChatbotFromContext(w http.ResponseWriter, r *http.Request) (*models.Chatbot, string, bool) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return nil, "", false
-	}
-
-	botID, ok := parseBotIDFromPath(r.URL.Path)
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		return nil, "", false
-	}
-	if botID == "new" {
-		w.WriteHeader(http.StatusBadRequest)
-		return nil, "", false
-	}
-
-	c, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return nil, "", false
-	}
-	if c == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return nil, "", false
-	}
-	if c.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return nil, "", false
-	}
-
-	return c, botID, true
+	return getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 }

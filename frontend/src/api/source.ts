@@ -76,7 +76,10 @@ export interface BulkCreateResponse {
 }
 
 // Discover URLs from a sitemap
-export const discoverSitemap = async (chatbotId: string, sitemapUrl: string): Promise<DiscoverSitemapResponse> => {
+export const discoverSitemap = async (
+  chatbotId: string,
+  sitemapUrl: string,
+): Promise<DiscoverSitemapResponse> => {
   const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/sitemap/discover`, {
     sitemap_url: sitemapUrl,
   })
@@ -84,7 +87,10 @@ export const discoverSitemap = async (chatbotId: string, sitemapUrl: string): Pr
 }
 
 // Bulk create URL sources
-export const bulkCreateSources = async (chatbotId: string, urls: string[]): Promise<BulkCreateResponse> => {
+export const bulkCreateSources = async (
+  chatbotId: string,
+  urls: string[],
+): Promise<BulkCreateResponse> => {
   const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/sources/bulk`, {
     urls,
   })
@@ -122,10 +128,10 @@ export interface ClearResponse {
 export const listPendingURLs = async (
   chatbotId: string,
   page = 1,
-  perPage = 20
+  perPage = 20,
 ): Promise<ListPendingURLsResponse> => {
   const { data } = await api.get(
-    `/api/v1/chatbots/${chatbotId}/pending-urls?page=${page}&per_page=${perPage}`
+    `/api/v1/chatbots/${chatbotId}/pending-urls?page=${page}&per_page=${perPage}`,
   )
   return data as ListPendingURLsResponse
 }
@@ -133,7 +139,7 @@ export const listPendingURLs = async (
 // Approve pending URLs (create sources from them)
 export const approvePendingURLs = async (
   chatbotId: string,
-  urlIds: string[]
+  urlIds: string[],
 ): Promise<ApproveResponse> => {
   const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/pending-urls/approve`, {
     url_ids: urlIds,
@@ -144,7 +150,7 @@ export const approvePendingURLs = async (
 // Reject pending URLs
 export const rejectPendingURLs = async (
   chatbotId: string,
-  urlIds: string[]
+  urlIds: string[],
 ): Promise<RejectResponse> => {
   const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/pending-urls/reject`, {
     url_ids: urlIds,
@@ -174,7 +180,11 @@ export interface GetChunksResponse {
   next_cursor: string | null
 }
 
-export const getSourceChunks = async (sourceId: string, limit = 20, offset?: string): Promise<GetChunksResponse> => {
+export const getSourceChunks = async (
+  sourceId: string,
+  limit = 20,
+  offset?: string,
+): Promise<GetChunksResponse> => {
   const q = offset ? `?offset=${offset}&limit=${limit}` : `?limit=${limit}`
   const { data } = await api.get(`/api/v1/sources/${sourceId}/chunks${q}`)
   return data as GetChunksResponse

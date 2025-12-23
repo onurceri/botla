@@ -65,82 +65,12 @@ func (h *SourcesHandlers) logWarn(event string, data map[string]any) {
 	}
 }
 
-// parseChatbotIDFromPath extracts chatbot ID from /api/v1/chatbots/:id/sources
-func parseChatbotIDFromPath(p string) (string, bool) {
-	const prefix = "/api/v1/chatbots/"
-	if !strings.HasPrefix(p, prefix) {
-		return "", false
-	}
-	rest := strings.TrimPrefix(p, prefix)
-	parts := strings.Split(rest, "/")
-	if len(parts) != 2 || parts[1] != "sources" || strings.TrimSpace(parts[0]) == "" {
-		return "", false
-	}
-	return parts[0], true
-}
-
-// parseSourceIDFromPath extracts source ID from /api/v1/sources/:id
-func parseSourceIDFromPath(p string) (string, bool) {
-	const prefix = "/api/v1/sources/"
-	if !strings.HasPrefix(p, prefix) {
-		return "", false
-	}
-	sourceID := strings.TrimPrefix(p, prefix)
-	// Ensure no trailing paths like /refresh
-	if strings.Contains(sourceID, "/") || sourceID == "" {
-		return "", false
-	}
-	return sourceID, true
-}
-
-// parseRefreshSourceIDFromPath extracts source ID from /api/v1/sources/:id/refresh
-func parseRefreshSourceIDFromPath(p string) (string, bool) {
-	const prefix = "/api/v1/sources/"
-	const suffix = "/refresh"
-	if !strings.HasPrefix(p, prefix) || !strings.HasSuffix(p, suffix) {
-		return "", false
-	}
-	sourceID := strings.TrimSuffix(strings.TrimPrefix(p, prefix), suffix)
-	if sourceID == "" {
-		return "", false
-	}
-	return sourceID, true
-}
-
 // isPDFContentType checks if content type or filename indicates PDF
 func isPDFContentType(ct, name string) bool {
 	if ct == "application/pdf" {
 		return true
 	}
 	return strings.HasSuffix(name, ".pdf")
-}
-
-// parseSitemapDiscoverPath extracts chatbot ID from /api/v1/chatbots/:id/sitemap/discover
-func parseSitemapDiscoverPath(p string) (string, bool) {
-	const prefix = "/api/v1/chatbots/"
-	const suffix = "/sitemap/discover"
-	if !strings.HasPrefix(p, prefix) || !strings.HasSuffix(p, suffix) {
-		return "", false
-	}
-	chatbotID := strings.TrimSuffix(strings.TrimPrefix(p, prefix), suffix)
-	if chatbotID == "" || strings.Contains(chatbotID, "/") {
-		return "", false
-	}
-	return chatbotID, true
-}
-
-// parseBulkSourcesPath extracts chatbot ID from /api/v1/chatbots/:id/sources/bulk
-func parseBulkSourcesPath(p string) (string, bool) {
-	const prefix = "/api/v1/chatbots/"
-	const suffix = "/sources/bulk"
-	if !strings.HasPrefix(p, prefix) || !strings.HasSuffix(p, suffix) {
-		return "", false
-	}
-	chatbotID := strings.TrimSuffix(strings.TrimPrefix(p, prefix), suffix)
-	if chatbotID == "" || strings.Contains(chatbotID, "/") {
-		return "", false
-	}
-	return chatbotID, true
 }
 
 // writeJSON writes a JSON response

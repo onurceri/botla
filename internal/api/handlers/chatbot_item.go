@@ -15,34 +15,8 @@ import (
 
 // ByID handles GET/PUT/DELETE for a specific chatbot
 func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	botID, ok := parseBotIDFromPath(r.URL.Path)
+	c, botID, ok := h.getChatbotFromContext(w, r)
 	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if botID == "new" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	c, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil {
-		log.Printf("[ERROR] ByID GetChatbotByID failed: botID=%s, err=%v", botID, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if c == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if c.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
@@ -52,10 +26,15 @@ func (h *ChatbotHandlers) ByID(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		h.updateChatbot(w, r, c, botID)
 	case http.MethodDelete:
-		h.deleteChatbot(w, r, botID, userID)
+		h.deleteChatbot(w, r, botID, userIDFromContext(r))
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func userIDFromContext(r *http.Request) string {
+	userID, _ := middleware.UserIDFromContext(r.Context())
+	return userID
 }
 
 // getChatbot returns a single chatbot
@@ -88,7 +67,6 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		_ = json.NewEncoder(w).Encode(updated)
 		return
 	}
-
 
 	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
 		log.Printf("[ERROR] UpdateChatbot failed: %v", err)
@@ -215,5 +193,3 @@ func (h *ChatbotHandlers) deleteChatbot(w http.ResponseWriter, r *http.Request, 
 
 	w.WriteHeader(http.StatusNoContent)
 }
-
-

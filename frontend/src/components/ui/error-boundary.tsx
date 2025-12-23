@@ -42,9 +42,9 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="text-xs font-mono bg-background/10 p-2 rounded">
               {this.state.error?.message}
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="w-fit mt-2"
               onClick={() => this.setState({ hasError: false, error: null })}
             >

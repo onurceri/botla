@@ -7,9 +7,12 @@ import { useParams } from 'react-router-dom'
 
 export default function GuardrailsTab() {
   const {
-    fallbackMessages, setFallbackMessages,
-    topicRestrictions, setTopicRestrictions,
-    thresholdConfig, setThresholdConfig,
+    fallbackMessages,
+    setFallbackMessages,
+    topicRestrictions,
+    setTopicRestrictions,
+    thresholdConfig,
+    setThresholdConfig,
     planConfig,
     buildGuardrailsPayload,
   } = useChatbotContext()
@@ -41,7 +44,6 @@ export default function GuardrailsTab() {
         setFallbackMessages={setFallbackMessages}
         topicRestrictions={topicRestrictions}
         setTopicRestrictions={setTopicRestrictions}
-        
         canCustomizeThresholds={planConfig?.guardrails?.can_customize_thresholds}
         canUseSmartFallback={planConfig?.guardrails?.can_use_smart_fallback}
         canUseEscalateFallback={planConfig?.guardrails?.can_use_escalate_fallback}

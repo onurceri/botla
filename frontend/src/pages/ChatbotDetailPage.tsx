@@ -18,20 +18,24 @@ function ChatbotDetailContent() {
   const { toast } = useToast()
   const toasts = useToastErrors()
   const { currentWorkspace, isLoading: isOrgLoading } = useOrganization()
-  
+
   const {
-    name, setName,
-    description, setDescription,
+    name,
+    setName,
+    description,
+    setDescription,
     validate,
     buildPayload,
-    isLoading: isChatbotLoading
+    isLoading: isChatbotLoading,
   } = useChatbotContext()
 
   const [isCreating, setIsCreating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Test Chat State
-  const [chatHistory, setChatHistory] = useState<{role: 'user' | 'assistant', content: string}[]>([])
+  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>(
+    [],
+  )
 
   // Redirect for legacy query params and old tab routes
   useEffect(() => {
@@ -39,20 +43,20 @@ function ChatbotDetailContent() {
       const u = new URL(window.location.href)
       const tab = u.searchParams.get('tab')
       if (tab && !location.pathname.includes(tab)) {
-         navigate(tab, { replace: true })
+        navigate(tab, { replace: true })
       }
-      
+
       // Redirect old routes to new 8-tab structure
       const pathTab = location.pathname.split('/').pop()
       const redirectMap: Record<string, string> = {
-        'overview': 'settings',
-        'guardrails': 'security',
-        'handoff': 'security',
-        'intelligence': 'sources',
-        'suggestions': 'design',
-        'connect': 'deploy',
-        'analytics': 'insights',
-        'requests': 'insights',
+        overview: 'settings',
+        guardrails: 'security',
+        handoff: 'security',
+        intelligence: 'sources',
+        suggestions: 'design',
+        connect: 'deploy',
+        analytics: 'insights',
+        requests: 'insights',
       }
       if (pathTab && redirectMap[pathTab]) {
         navigate(redirectMap[pathTab], { replace: true })
@@ -88,7 +92,7 @@ function ChatbotDetailContent() {
 
   const handleDelete = async () => {
     if (!confirm('Bu chatbotu silmek istediğinize emin misiniz?')) return
-    
+
     setIsDeleting(true)
     try {
       await api.delete(`/api/v1/chatbots/${id}`)
@@ -104,13 +108,13 @@ function ChatbotDetailContent() {
   const handleTestChat = async (message: string) => {
     if (!id) return
     try {
-      const { data } = await api.post(`/api/v1/chatbots/${id}/chat`, { 
-        message, 
-        session_id: 'test-smoke-session' 
+      const { data } = await api.post(`/api/v1/chatbots/${id}/chat`, {
+        message,
+        session_id: 'test-smoke-session',
       })
-      setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }])
+      setChatHistory((prev) => [...prev, { role: 'assistant', content: data.response }])
     } catch {
-      setChatHistory(prev => [...prev, { role: 'assistant', content: 'Bir hata oluştu.' }])
+      setChatHistory((prev) => [...prev, { role: 'assistant', content: 'Bir hata oluştu.' }])
     }
   }
 
@@ -118,14 +122,14 @@ function ChatbotDetailContent() {
     return (
       <div className="space-y-6 pb-20 lg:pb-0">
         <div className="flex justify-between items-center h-16">
-           <div className="space-y-2">
-             <div className="h-8 w-48 bg-muted animate-pulse rounded-md" />
-             <div className="h-4 w-64 bg-muted animate-pulse rounded-md" />
-           </div>
-           <div className="flex gap-2">
-             <div className="h-10 w-24 bg-muted animate-pulse rounded-md" />
-             <div className="h-10 w-24 bg-muted animate-pulse rounded-md" />
-           </div>
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-muted animate-pulse rounded-md" />
+            <div className="h-4 w-64 bg-muted animate-pulse rounded-md" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-24 bg-muted animate-pulse rounded-md" />
+            <div className="h-10 w-24 bg-muted animate-pulse rounded-md" />
+          </div>
         </div>
         <div className="h-12 w-full bg-muted animate-pulse rounded-xl" />
         <div className="h-96 w-full bg-muted animate-pulse rounded-xl" />
@@ -164,7 +168,9 @@ function ChatbotDetailContent() {
       {import.meta.env.MODE === 'test' && (
         <div className="hidden">
           <button aria-label="Test Chat Send" onClick={() => handleTestChat('Merhaba')}></button>
-          <div data-testid="chat-last-assistant">{chatHistory.filter(m => m.role === 'assistant').slice(-1)[0]?.content || ''}</div>
+          <div data-testid="chat-last-assistant">
+            {chatHistory.filter((m) => m.role === 'assistant').slice(-1)[0]?.content || ''}
+          </div>
         </div>
       )}
     </div>

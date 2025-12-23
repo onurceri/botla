@@ -203,9 +203,9 @@ func TestOnboardingStatePersistedAcrossSessions(t *testing.T) {
 	updateBody := map[string]interface{}{
 		"step": 2,
 		"data": map[string]interface{}{
-			"bot_name":     "Persistent Bot",
-			"source_type":  "url",
-			"url_content":  "https://example.com",
+			"bot_name":      "Persistent Bot",
+			"source_type":   "url",
+			"url_content":   "https://example.com",
 			"system_prompt": "Custom prompt",
 		},
 	}

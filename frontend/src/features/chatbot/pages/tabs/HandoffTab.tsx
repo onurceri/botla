@@ -7,9 +7,12 @@ import { useUpdateHandoff } from '@/hooks/mutations/useChatbotMutations'
 
 export default function HandoffTab() {
   const {
-    handoffEnabled, setHandoffEnabled,
-    handoffType, setHandoffType,
-    handoffConfig, setHandoffConfig,
+    handoffEnabled,
+    setHandoffEnabled,
+    handoffType,
+    setHandoffType,
+    handoffConfig,
+    setHandoffConfig,
     planConfig,
     buildHandoffPayload,
   } = useChatbotContext()
@@ -30,7 +33,8 @@ export default function HandoffTab() {
           <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
         </div>
         <p className="text-muted-foreground">
-          Botun cevap veremediği veya kullanıcının talep ettiği durumlarda konuşmayı insana yönlendirin.
+          Botun cevap veremediği veya kullanıcının talep ettiği durumlarda konuşmayı insana
+          yönlendirin.
         </p>
       </div>
 

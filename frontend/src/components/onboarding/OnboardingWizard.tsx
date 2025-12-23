@@ -1,17 +1,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Bot, 
-  Upload, 
-  Palette, 
-  Rocket, 
-  ArrowRight, 
+import {
+  Bot,
+  Upload,
+  Palette,
+  Rocket,
+  ArrowRight,
   ArrowLeft,
   CheckCircle2,
   Sparkles,
   FileText,
   Globe,
-  Type
+  Type,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,26 +32,26 @@ const steps: OnboardingStep[] = [
     id: 1,
     title: 'Botunuzu Adlandırın',
     subtitle: 'Chatbotunuza benzersiz bir isim verin',
-    icon: Bot
+    icon: Bot,
   },
   {
     id: 2,
     title: 'Bilgi Kaynağı Ekleyin',
     subtitle: 'Botunuzun öğreneceği içeriği yükleyin',
-    icon: Upload
+    icon: Upload,
   },
   {
     id: 3,
     title: 'Kişiliğini Belirleyin',
     subtitle: 'Botunuzun nasıl konuşacağını ayarlayın',
-    icon: Palette
+    icon: Palette,
   },
   {
     id: 4,
     title: 'Hazır!',
     subtitle: 'Botunuz kullanıma hazır',
-    icon: Rocket
-  }
+    icon: Rocket,
+  },
 ]
 
 type SourceType = 'text' | 'url' | 'file'
@@ -64,7 +64,7 @@ const OnboardingWizard = () => {
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Form States
   const [botName, setBotName] = useState('')
   const [sourceType, setSourceType] = useState<SourceType>('text')
@@ -72,7 +72,7 @@ const OnboardingWizard = () => {
   const [urlContent, setUrlContent] = useState('')
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [systemPrompt, setSystemPrompt] = useState(
-    'Sen yardımsever ve samimi bir müşteri destek asistanısın. Kısa ve öz cevaplar ver.'
+    'Sen yardımsever ve samimi bir müşteri destek asistanısın. Kısa ve öz cevaplar ver.',
   )
   const [welcomeMessage, setWelcomeMessage] = useState('Merhaba! Size nasıl yardımcı olabilirim?')
   const [createdBotId, setCreatedBotId] = useState<string | null>(null)
@@ -102,7 +102,7 @@ const OnboardingWizard = () => {
     const loadOnboardingState = async () => {
       try {
         const state = await onboardingApi.getOnboardingState()
-        
+
         // If onboarding is already completed or skipped, redirect to dashboard
         if (state.completed || state.skipped) {
           navigate('/dashboard')
@@ -140,7 +140,7 @@ const OnboardingWizard = () => {
         url_content: urlContent,
         system_prompt: systemPrompt,
         welcome_message: welcomeMessage,
-        created_bot_id: createdBotId || undefined
+        created_bot_id: createdBotId || undefined,
       }
 
       try {
@@ -152,7 +152,16 @@ const OnboardingWizard = () => {
 
     const timer = setTimeout(saveState, 500) // Debounce state saving
     return () => clearTimeout(timer)
-  }, [currentStep, botName, sourceType, textContent, urlContent, systemPrompt, welcomeMessage, createdBotId])
+  }, [
+    currentStep,
+    botName,
+    sourceType,
+    textContent,
+    urlContent,
+    systemPrompt,
+    welcomeMessage,
+    createdBotId,
+  ])
 
   const canProceed = useCallback(() => {
     switch (currentStep) {
@@ -186,9 +195,9 @@ const OnboardingWizard = () => {
         const { data: chatbot } = await api.post('/api/v1/chatbots', {
           name: botName,
           system_prompt: systemPrompt,
-          welcome_message: welcomeMessage
+          welcome_message: welcomeMessage,
         })
-        
+
         setCreatedBotId(chatbot.id)
 
         // Add source based on type using FormData (backend expects multipart/form-data)
@@ -197,21 +206,21 @@ const OnboardingWizard = () => {
           formData.append('source_type', 'text')
           formData.append('text', textContent)
           await api.post(`/api/v1/chatbots/${chatbot.id}/sources`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
           })
         } else if (sourceType === 'url' && urlContent.trim()) {
           const formData = new FormData()
           formData.append('source_type', 'url')
           formData.append('source_url', urlContent)
           await api.post(`/api/v1/chatbots/${chatbot.id}/sources`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
           })
         } else if (sourceType === 'file' && pdfFile) {
           const formData = new FormData()
           formData.append('source_type', 'pdf')
           formData.append('file', pdfFile)
           await api.post(`/api/v1/chatbots/${chatbot.id}/sources`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
           })
         }
 
@@ -228,11 +237,11 @@ const OnboardingWizard = () => {
       return
     }
 
-    setCurrentStep(prev => Math.min(prev + 1, 4))
+    setCurrentStep((prev) => Math.min(prev + 1, 4))
   }
 
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1))
+    setCurrentStep((prev) => Math.max(prev - 1, 1))
   }
 
   const handleFinish = async () => {
@@ -259,14 +268,16 @@ const OnboardingWizard = () => {
         return (
           <div className="space-y-6 animate-fade-up">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl 
-                            bg-primary/10 mb-4">
+              <div
+                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl 
+                            bg-primary/10 mb-4"
+              >
                 <Bot className="w-8 h-8 text-primary" />
               </div>
               <h2 className="heading-md text-foreground mb-2">Botunuza İsim Verin</h2>
               <p className="body-sm">Bu isim dashboard'da ve widget'ta görünecektir</p>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground" htmlFor="botName">
                 Bot Adı
@@ -288,8 +299,10 @@ const OnboardingWizard = () => {
         return (
           <div className="space-y-6 animate-fade-up">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl 
-                            bg-primary/10 mb-4">
+              <div
+                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl 
+                            bg-primary/10 mb-4"
+              >
                 <Upload className="w-8 h-8 text-primary" />
               </div>
               <h2 className="heading-md text-foreground mb-2">Bilgi Kaynağı Ekleyin</h2>
@@ -301,15 +314,17 @@ const OnboardingWizard = () => {
               {[
                 { type: 'text' as const, icon: Type, label: 'Metin' },
                 { type: 'url' as const, icon: Globe, label: 'URL' },
-                { type: 'file' as const, icon: FileText, label: 'PDF' }
+                { type: 'file' as const, icon: FileText, label: 'PDF' },
               ].map(({ type, icon: Icon, label }) => (
                 <button
                   key={type}
                   onClick={() => setSourceType(type)}
                   className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer
-                    ${sourceType === type 
-                      ? 'border-primary bg-primary/5 text-foreground' 
-                      : 'border-border/50 bg-white/50 text-muted-foreground hover:border-border'}
+                    ${
+                      sourceType === type
+                        ? 'border-primary bg-primary/5 text-foreground'
+                        : 'border-border/50 bg-white/50 text-muted-foreground hover:border-border'
+                    }
                   `}
                 >
                   <Icon className="w-6 h-6 mx-auto mb-2" />
@@ -368,7 +383,7 @@ const OnboardingWizard = () => {
                   className="hidden"
                   id="pdf-upload"
                 />
-                
+
                 {!pdfFile ? (
                   <label
                     htmlFor="pdf-upload"
@@ -406,7 +421,7 @@ const OnboardingWizard = () => {
                     </Button>
                   </div>
                 )}
-                
+
                 <p className="text-xs text-muted-foreground">
                   PDF dosyası yükleyerek botunuzun bu içeriği öğrenmesini sağlayın
                 </p>
@@ -419,8 +434,10 @@ const OnboardingWizard = () => {
         return (
           <div className="space-y-6 animate-fade-up">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl 
-                            bg-primary/10 mb-4">
+              <div
+                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl 
+                            bg-primary/10 mb-4"
+              >
                 <Palette className="w-8 h-8 text-primary" />
               </div>
               <h2 className="heading-md text-foreground mb-2">Kişiliğini Belirleyin</h2>
@@ -462,16 +479,18 @@ const OnboardingWizard = () => {
       case 4:
         return (
           <div className="text-center animate-fade-up">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full 
-                          bg-success/10 mb-6">
+            <div
+              className="inline-flex items-center justify-center w-20 h-20 rounded-full 
+                          bg-success/10 mb-6"
+            >
               <CheckCircle2 className="w-10 h-10 text-success" />
             </div>
             <h2 className="heading-md text-foreground mb-3">Tebrikler! 🎉</h2>
             <p className="body-lg mb-8">
-              <span className="font-semibold text-foreground">{botName}</span> başarıyla oluşturuldu 
+              <span className="font-semibold text-foreground">{botName}</span> başarıyla oluşturuldu
               ve kullanıma hazır.
             </p>
-            
+
             <div className="glass-panel p-6 text-left mb-6">
               <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
@@ -479,22 +498,28 @@ const OnboardingWizard = () => {
               </h3>
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">1</span>
+                  <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">
+                    1
+                  </span>
                   <span>Playground'da botunuzu test edin</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">2</span>
+                  <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">
+                    2
+                  </span>
                   <span>Daha fazla kaynak ekleyerek bilgi tabanını genişletin</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">3</span>
+                  <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">
+                    3
+                  </span>
                   <span>Web sitenize embed kodu ile entegre edin</span>
                 </li>
               </ul>
             </div>
           </div>
         )
-      
+
       default:
         return null
     }
@@ -505,7 +530,10 @@ const OnboardingWizard = () => {
       {/* Animated Background */}
       <div className="absolute inset-0 gradient-mesh opacity-50" />
       <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-accent/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
+      <div
+        className="absolute bottom-20 right-20 w-96 h-96 bg-accent/30 rounded-full blur-3xl animate-float"
+        style={{ animationDelay: '-3s' }}
+      />
 
       <div className="relative z-10 w-full max-w-xl">
         {/* Progress Header */}
@@ -526,9 +554,11 @@ const OnboardingWizard = () => {
               <div key={step.id} className="flex items-center">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
-                    ${currentStep >= step.id 
-                      ? 'bg-primary text-white' 
-                      : 'bg-muted text-muted-foreground'}
+                    ${
+                      currentStep >= step.id
+                        ? 'bg-primary text-white'
+                        : 'bg-muted text-muted-foreground'
+                    }
                     ${currentStep === step.id ? 'ring-4 ring-primary/20' : ''}
                   `}
                 >
@@ -539,9 +569,11 @@ const OnboardingWizard = () => {
                   )}
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-16 sm:w-24 h-1 mx-2 rounded-full transition-colors duration-300
+                  <div
+                    className={`w-16 sm:w-24 h-1 mx-2 rounded-full transition-colors duration-300
                     ${currentStep > step.id ? 'bg-primary' : 'bg-muted'}
-                  `} />
+                  `}
+                  />
                 )}
               </div>
             ))}
@@ -562,11 +594,7 @@ const OnboardingWizard = () => {
           {/* Navigation Buttons */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/50">
             {currentStep > 1 && currentStep < 4 ? (
-              <Button
-                variant="ghost"
-                onClick={handleBack}
-                className="gap-2"
-              >
+              <Button variant="ghost" onClick={handleBack} className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
                 Geri
               </Button>

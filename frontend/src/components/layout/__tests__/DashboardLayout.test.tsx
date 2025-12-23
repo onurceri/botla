@@ -12,7 +12,7 @@ vi.mock('@/api/client', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
-  }
+  },
 }))
 
 // Mock organization api
@@ -30,7 +30,7 @@ vi.mock('@/api/plan', () => ({
   getPlan: vi.fn().mockResolvedValue({
     limits: { max_chatbots: 5, max_messages: 1000 },
     features: { secure_embed: true },
-    available_models: ['gpt-4o-mini']
+    available_models: ['gpt-4o-mini'],
   }),
 }))
 
@@ -47,30 +47,30 @@ describe('DashboardLayout', () => {
 
     // Default mock for me
     vi.mocked(api.get).mockResolvedValue({
-        data: { full_name: 'Test User', email: 'test@example.com' }
+      data: { full_name: 'Test User', email: 'test@example.com' },
     })
   })
 
-  const renderWithProviders = (_: React.ReactNode, { initialEntries = ["/"] } = {}) => {
+  const renderWithProviders = (_: React.ReactNode, { initialEntries = ['/'] } = {}) => {
     const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } }
+      defaultOptions: { queries: { retry: false } },
     })
     return render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={initialEntries}>
           <ToastProvider>
             <OrganizationProvider>
-                 <Routes>
-                    <Route path="/" element={<DashboardLayout />}>
-                        <Route index element={<div>Dashboard Content</div>} />
-                         <Route path="chatbots" element={<div>Chatbots Content</div>} />
-                    </Route>
-                     <Route path="/login" element={<h1>Login Page</h1>} />
-                 </Routes>
+              <Routes>
+                <Route path="/" element={<DashboardLayout />}>
+                  <Route index element={<div>Dashboard Content</div>} />
+                  <Route path="chatbots" element={<div>Chatbots Content</div>} />
+                </Route>
+                <Route path="/login" element={<h1>Login Page</h1>} />
+              </Routes>
             </OrganizationProvider>
           </ToastProvider>
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     )
   }
 
@@ -86,7 +86,7 @@ describe('DashboardLayout', () => {
   })
 
   it('logs out and navigates to login', async () => {
-     vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
+    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
       if (key === 'botla_token') return 'tok'
       return null
     })
@@ -96,17 +96,17 @@ describe('DashboardLayout', () => {
 
     const logoutBtns = screen.getAllByRole('button', { name: /Çıkış Yap/i })
     logoutBtns[0].click()
-    
+
     expect(removeSpy).toHaveBeenCalledWith('botla_token')
     expect(removeSpy).toHaveBeenCalledWith('botla_refresh_token')
-    
+
     expect(await screen.findByText('Login Page')).toBeInTheDocument()
   })
 
   it('opens mobile menu overlay and closes on click', async () => {
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue('pinned')
     const { container } = renderWithProviders(null)
-    
+
     const headers = container.querySelectorAll('header')
     const header = headers[0]
     const menuBtn = header.querySelector('button') as HTMLButtonElement
@@ -122,8 +122,8 @@ describe('DashboardLayout', () => {
 
   it('shows breadcrumb label for Chatbots route', async () => {
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue('pinned')
-    
-    renderWithProviders(null, { initialEntries: ["/chatbots"] })
+
+    renderWithProviders(null, { initialEntries: ['/chatbots'] })
 
     const banners = screen.getAllByRole('banner')
     expect(banners.length).toBeGreaterThan(0)

@@ -1,14 +1,21 @@
 import { usePlan, useProfile } from '@/hooks/queries/useProfile'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 
 const ProfilePage = () => {
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: plan, isLoading: planLoading } = usePlan()
-  
+
   const loading = profileLoading || planLoading
-  
+
   const fullName = profile?.full_name || ''
   const email = profile?.email || ''
   const userPlan = plan?.code || 'free'
@@ -43,11 +50,15 @@ const ProfilePage = () => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Ad Soyad</label>
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Ad Soyad
+              </label>
               <Input value={fullName} disabled className="bg-muted/50" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Email Adresi</label>
+              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Email Adresi
+              </label>
               <Input value={email} disabled className="bg-muted/50" />
             </div>
           </div>

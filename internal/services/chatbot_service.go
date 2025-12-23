@@ -34,50 +34,51 @@ func NewChatbotService(db *sql.DB, log *logger.Logger) *ChatbotService {
 
 // ChatbotUpdateRequest contains all updatable chatbot fields.
 type ChatbotUpdateRequest struct {
-	Name                 string                   `json:"name,omitempty"`
-	Description          *string                  `json:"description,omitempty"`
-	CustomInstruction    *string                  `json:"custom_instruction,omitempty"`
-	Language             *string                  `json:"language,omitempty"`
-	Model                *string                  `json:"model,omitempty"`
-	Temperature          *float64                 `json:"temperature,omitempty"`
-	MaxTokens            *int                     `json:"max_tokens,omitempty"`
-	ThemeColor           *string                  `json:"theme_color,omitempty"`
-	WelcomeMessage       *string                  `json:"welcome_message,omitempty"`
-	Position             *string                  `json:"position,omitempty"`
-	BotMessageColor      *string                  `json:"bot_message_color,omitempty"`
-	UserMessageColor     *string                  `json:"user_message_color,omitempty"`
-	BotMessageTextColor  *string                  `json:"bot_message_text_color,omitempty"`
-	UserMessageTextColor *string                  `json:"user_message_text_color,omitempty"`
-	ChatFontFamily       *string                  `json:"chat_font_family,omitempty"`
-	ChatHeaderColor      *string                  `json:"chat_header_color,omitempty"`
-	ChatHeaderTextColor  *string                  `json:"chat_header_text_color,omitempty"`
-	ChatBackgroundColor  *string                  `json:"chat_background_color,omitempty"`
-	BubbleRadius         *string                  `json:"bubble_radius,omitempty"`
-	InputBackgroundColor *string                  `json:"input_background_color,omitempty"`
-	InputTextColor       *string                  `json:"input_text_color,omitempty"`
-	SendButtonColor      *string                  `json:"send_button_color,omitempty"`
-	BotIcon              *string                  `json:"bot_icon,omitempty"`
-	BotDisplayName       *string                  `json:"bot_display_name,omitempty"`
-	SecureEmbedEnabled   *bool                    `json:"secure_embed_enabled,omitempty"`
-	AllowedDomains       []string                 `json:"allowed_domains,omitempty"`
-	EmbedSecret          *string                  `json:"embed_secret,omitempty"`
-	SuggestedQuestions   *[]string                `json:"suggested_questions,omitempty"`
-	SuggestionsEnabled   *bool                    `json:"suggestions_enabled,omitempty"`
-	IncludePaths         *[]string                `json:"include_paths,omitempty"`
-	ExcludePaths         *[]string                `json:"exclude_paths,omitempty"`
-	SelectorWhitelist    *[]string                `json:"selector_whitelist,omitempty"`
-	DiscoveryMode        *string                  `json:"discovery_mode,omitempty"`
-	RefreshPolicy        *string                  `json:"refresh_policy,omitempty"`
-	RefreshFrequency     *string                  `json:"refresh_frequency,omitempty"`
-	HideBranding         *bool                    `json:"hide_branding,omitempty"`
-	CustomBranding       *models.CustomBranding   `json:"custom_branding,omitempty"`
-	ConfidenceThreshold  *float64                 `json:"confidence_threshold,omitempty"`
-	FallbackMessages     *models.FallbackMessages `json:"fallback_messages,omitempty"`
-	TopicRestrictions    *models.TopicConfig      `json:"topic_restrictions,omitempty"`
-	ThresholdConfig      *models.ThresholdConfig  `json:"threshold_config,omitempty"`
-	HandoffEnabled       *bool                    `json:"handoff_enabled,omitempty"`
-	HandoffType          *string                  `json:"handoff_type,omitempty"`
-	HandoffConfig        *models.HandoffConfig    `json:"handoff_config,omitempty"`
+	Name                   string                   `json:"name,omitempty"`
+	Description            *string                  `json:"description,omitempty"`
+	CustomInstruction      *string                  `json:"custom_instruction,omitempty"`
+	Language               *string                  `json:"language,omitempty"`
+	Model                  *string                  `json:"model,omitempty"`
+	Temperature            *float64                 `json:"temperature,omitempty"`
+	MaxTokens              *int                     `json:"max_tokens,omitempty"`
+	ThemeColor             *string                  `json:"theme_color,omitempty"`
+	WelcomeMessage         *string                  `json:"welcome_message,omitempty"`
+	Position               *string                  `json:"position,omitempty"`
+	BotMessageColor        *string                  `json:"bot_message_color,omitempty"`
+	UserMessageColor       *string                  `json:"user_message_color,omitempty"`
+	BotMessageTextColor    *string                  `json:"bot_message_text_color,omitempty"`
+	UserMessageTextColor   *string                  `json:"user_message_text_color,omitempty"`
+	ChatFontFamily         *string                  `json:"chat_font_family,omitempty"`
+	ChatHeaderColor        *string                  `json:"chat_header_color,omitempty"`
+	ChatHeaderTextColor    *string                  `json:"chat_header_text_color,omitempty"`
+	ChatBackgroundColor    *string                  `json:"chat_background_color,omitempty"`
+	BubbleRadius           *string                  `json:"bubble_radius,omitempty"`
+	InputBackgroundColor   *string                  `json:"input_background_color,omitempty"`
+	InputTextColor         *string                  `json:"input_text_color,omitempty"`
+	SendButtonColor        *string                  `json:"send_button_color,omitempty"`
+	BotIcon                *string                  `json:"bot_icon,omitempty"`
+	BotDisplayName         *string                  `json:"bot_display_name,omitempty"`
+	SecureEmbedEnabled     *bool                    `json:"secure_embed_enabled,omitempty"`
+	AllowedDomains         []string                 `json:"allowed_domains,omitempty"`
+	EmbedSecret            *string                  `json:"embed_secret,omitempty"`
+	SuggestedQuestions     *[]string                `json:"suggested_questions,omitempty"`
+	SuggestionsEnabled     *bool                    `json:"suggestions_enabled,omitempty"`
+	IncludePaths           *[]string                `json:"include_paths,omitempty"`
+	ExcludePaths           *[]string                `json:"exclude_paths,omitempty"`
+	SelectorWhitelist      *[]string                `json:"selector_whitelist,omitempty"`
+	DiscoveryMode          *string                  `json:"discovery_mode,omitempty"`
+	RefreshPolicy          *string                  `json:"refresh_policy,omitempty"`
+	RefreshFrequency       *string                  `json:"refresh_frequency,omitempty"`
+	HideBranding           *bool                    `json:"hide_branding,omitempty"`
+	CustomBranding         *models.CustomBranding   `json:"custom_branding,omitempty"`
+	ConfidenceThreshold    *float64                 `json:"confidence_threshold,omitempty"`
+	FallbackMessages       *models.FallbackMessages `json:"fallback_messages,omitempty"`
+	TopicRestrictions      *models.TopicConfig      `json:"topic_restrictions,omitempty"`
+	ClearTopicRestrictions bool                     `json:"-"`
+	ThresholdConfig        *models.ThresholdConfig  `json:"threshold_config,omitempty"`
+	HandoffEnabled         *bool                    `json:"handoff_enabled,omitempty"`
+	HandoffType            *string                  `json:"handoff_type,omitempty"`
+	HandoffConfig          *models.HandoffConfig    `json:"handoff_config,omitempty"`
 }
 
 // Update validates and applies updates to a chatbot.
@@ -95,6 +96,7 @@ func (s *ChatbotService) Update(ctx context.Context, chatbot *models.Chatbot, re
 		HandoffEnabled:      req.HandoffEnabled,
 		TopicRestrictions:   req.TopicRestrictions,
 		ChatBackgroundColor: req.ChatBackgroundColor,
+		MaxTokens:           req.MaxTokens,
 	}
 
 	if err := s.Validator.ValidateUpdate(ctx, valReq, chatbot.UserID); err != nil {
@@ -232,12 +234,18 @@ type GuardrailsRequest struct {
 }
 
 func (s *ChatbotService) UpdateGuardrails(ctx context.Context, bot *models.Chatbot, req GuardrailsRequest) (*models.Chatbot, *validation.FeatureError) {
-	return s.Update(ctx, bot, ChatbotUpdateRequest{
+	updateReq := ChatbotUpdateRequest{
 		ConfidenceThreshold: req.ConfidenceThreshold,
 		FallbackMessages:    req.FallbackMessages,
 		TopicRestrictions:   req.TopicRestrictions,
 		ThresholdConfig:     req.ThresholdConfig,
-	})
+	}
+
+	if req.TopicRestrictions == nil {
+		updateReq.ClearTopicRestrictions = true
+	}
+
+	return s.Update(ctx, bot, updateReq)
 }
 
 type HandoffRequest struct {
@@ -416,6 +424,8 @@ func (s *ChatbotService) applyUpdates(c *models.Chatbot, req ChatbotUpdateReques
 	}
 	if req.TopicRestrictions != nil {
 		c.TopicRestrictions = req.TopicRestrictions
+	} else if req.ClearTopicRestrictions {
+		c.TopicRestrictions = nil
 	}
 	if req.ThresholdConfig != nil {
 		c.ThresholdConfig = req.ThresholdConfig

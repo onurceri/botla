@@ -8,27 +8,35 @@ export const api = axios.create({
 
 let refreshPromise: Promise<void> | null = null
 let isRedirecting = false
-export const _resetRedirecting = () => { isRedirecting = false }
+export const _resetRedirecting = () => {
+  isRedirecting = false
+}
 
 // Helper to check if a stored value is valid (not undefined, null, or "undefined" string)
 const isValidToken = (token: string | null | undefined): token is string => {
-  return token !== null && token !== undefined && token !== 'undefined' && token !== 'null' && token.length > 0
+  return (
+    token !== null &&
+    token !== undefined &&
+    token !== 'undefined' &&
+    token !== 'null' &&
+    token.length > 0
+  )
 }
 
 // Clear tokens and redirect to login (only once)
 const handleSessionExpired = () => {
   if (isRedirecting) return
   isRedirecting = true
-  
+
   const storage = typeof window !== 'undefined' ? window.localStorage : null
   storage?.removeItem('botla_token')
   storage?.removeItem('botla_refresh_token')
-  
+
   // Dispatch event for app-level handling (e.g., showing toast)
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('session-expired'))
   }
-  
+
   if (!import.meta.env.VITE_E2E) {
     if (typeof window !== 'undefined') {
       // Small delay to allow toast to show before redirect
@@ -65,7 +73,7 @@ api.interceptors.response.use(
   },
   async (err) => {
     const originalRequest = err.config
-    
+
     // Capture rate limits from error responses too
     if (err.response?.headers) {
       rateLimitStore.updateFromHeaders(err.response.headers)
@@ -81,7 +89,7 @@ api.interceptors.response.use(
       try {
         const storage = typeof window !== 'undefined' ? window.localStorage : null
         const refreshToken = storage?.getItem('botla_refresh_token')
-        
+
         // Check for valid refresh token
         if (!isValidToken(refreshToken)) {
           throw new Error('No refresh token')
@@ -120,5 +128,3 @@ api.interceptors.response.use(
     return Promise.reject(err)
   },
 )
-
-

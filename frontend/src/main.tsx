@@ -27,4 +27,3 @@ createRoot(document.getElementById('root') as HTMLElement).render(
     </PostHogProvider>
   </StrictMode>,
 )
-

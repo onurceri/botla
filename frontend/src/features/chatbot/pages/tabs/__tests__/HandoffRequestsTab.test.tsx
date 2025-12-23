@@ -18,14 +18,16 @@ vi.mock('@/api/handoff', () => ({
 
 // Mock components that might cause issues
 vi.mock('markdown-to-jsx', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="markdown">{children}</div>
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="markdown">{children}</div>
+  ),
 }))
 
 describe('HandoffRequestsTab', () => {
   const mockPlanConfig = {
     guardrails: {
-      can_use_escalate_fallback: true
-    }
+      can_use_escalate_fallback: true,
+    },
   }
 
   const mockRequests = [
@@ -36,8 +38,8 @@ describe('HandoffRequestsTab', () => {
       user_email: 'test@example.com',
       status: 'pending',
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
+      updated_at: new Date().toISOString(),
+    },
   ]
 
   const mockDetail = {
@@ -47,15 +49,15 @@ describe('HandoffRequestsTab', () => {
         id: 'msg-1',
         role: 'user',
         content: '**Hello** markdown',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       },
       {
         id: 'msg-2',
         role: 'assistant',
         content: '*Hi* there',
-        created_at: new Date().toISOString()
-      }
-    ]
+        created_at: new Date().toISOString(),
+      },
+    ],
   }
 
   beforeEach(() => {
@@ -66,20 +68,24 @@ describe('HandoffRequestsTab', () => {
 
   const renderComponent = (planConfig = mockPlanConfig) => {
     return render(
-      <ChatbotContext.Provider value={{ 
-        planConfig: planConfig as any,
-        isLoading: false,
-        error: null,
-        refreshChatbot: vi.fn()
-      } as any}>
+      <ChatbotContext.Provider
+        value={
+          {
+            planConfig: planConfig as any,
+            isLoading: false,
+            error: null,
+            refreshChatbot: vi.fn(),
+          } as any
+        }
+      >
         <HandoffRequestsTab />
-      </ChatbotContext.Provider>
+      </ChatbotContext.Provider>,
     )
   }
 
   it('renders requests list', async () => {
     renderComponent()
-    
+
     await waitFor(() => {
       expect(screen.getByText('test@example.com')).toBeInTheDocument()
     })
@@ -87,7 +93,7 @@ describe('HandoffRequestsTab', () => {
 
   it('opens detail and renders markdown messages', async () => {
     renderComponent()
-    
+
     await waitFor(() => {
       expect(screen.getAllByText('test@example.com')[0]).toBeInTheDocument()
     })
@@ -111,8 +117,8 @@ describe('HandoffRequestsTab', () => {
   it('shows upgrade message when feature is not available', () => {
     renderComponent({
       guardrails: {
-        can_use_escalate_fallback: false
-      }
+        can_use_escalate_fallback: false,
+      },
     })
 
     expect(screen.getByText('Bu Özellik Planınızda Mevcut Değil')).toBeInTheDocument()

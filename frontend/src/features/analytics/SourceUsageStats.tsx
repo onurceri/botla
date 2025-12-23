@@ -3,15 +3,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { getSourceUsageStats } from '@/api/analytics'
-import { 
-  FileText, 
-  Globe, 
-  AlignLeft, 
-  ThumbsUp, 
-  ThumbsDown, 
-  Activity, 
+import {
+  FileText,
+  Globe,
+  AlignLeft,
+  ThumbsUp,
+  ThumbsDown,
+  Activity,
   Clock,
-  BarChart3
+  BarChart3,
 } from 'lucide-react'
 
 interface SourceStat {
@@ -46,10 +46,14 @@ export function SourceUsageStats({ chatbotId }: { chatbotId: string }) {
 
   const getIconForType = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'pdf': return <FileText className="h-4 w-4" />
-      case 'url': return <Globe className="h-4 w-4" />
-      case 'text': return <AlignLeft className="h-4 w-4" />
-      default: return <FileText className="h-4 w-4" />
+      case 'pdf':
+        return <FileText className="h-4 w-4" />
+      case 'url':
+        return <Globe className="h-4 w-4" />
+      case 'text':
+        return <AlignLeft className="h-4 w-4" />
+      default:
+        return <FileText className="h-4 w-4" />
     }
   }
 
@@ -59,42 +63,47 @@ export function SourceUsageStats({ chatbotId }: { chatbotId: string }) {
   }
 
   if (loading) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="h-20 bg-muted/50" />
-              <CardContent className="h-32" />
-            </Card>
-          ))}
-        </div>
-      )
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader className="h-20 bg-muted/50" />
+            <CardContent className="h-32" />
+          </Card>
+        ))}
+      </div>
+    )
   }
 
   if (stats.length === 0) {
-      return (
-        <Card className="bg-muted/30 border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <BarChart3 className="h-10 w-10 text-muted-foreground/50 mb-3" />
-                <h3 className="font-medium text-muted-foreground">Henüz veri yok</h3>
-                <p className="text-sm text-muted-foreground/80 mt-1">
-                  Botunuz kaynakları kullandıkça burada istatistikler görünecektir.
-                </p>
-            </CardContent>
-        </Card>
-      )
+    return (
+      <Card className="bg-muted/30 border-dashed">
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <BarChart3 className="h-10 w-10 text-muted-foreground/50 mb-3" />
+          <h3 className="font-medium text-muted-foreground">Henüz veri yok</h3>
+          <p className="text-sm text-muted-foreground/80 mt-1">
+            Botunuz kaynakları kullandıkça burada istatistikler görünecektir.
+          </p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium tracking-tight">Kaynak Performansı</h3>
-        <Badge variant="outline" className="text-muted-foreground font-normal">Son 30 Gün</Badge>
+        <Badge variant="outline" className="text-muted-foreground font-normal">
+          Son 30 Gün
+        </Badge>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.source_id} className="overflow-hidden hover:shadow-md transition-all duration-300 group">
+          <Card
+            key={stat.source_id}
+            className="overflow-hidden hover:shadow-md transition-all duration-300 group"
+          >
             <CardHeader className="p-4 bg-muted/30 pb-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
@@ -111,7 +120,10 @@ export function SourceUsageStats({ chatbotId }: { chatbotId: string }) {
                   </div>
                 </div>
                 {stat.times_used > 10 && (
-                  <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-0 text-[10px] px-1.5">
+                  <Badge
+                    variant="secondary"
+                    className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-0 text-[10px] px-1.5"
+                  >
                     Popüler
                   </Badge>
                 )}
@@ -126,7 +138,10 @@ export function SourceUsageStats({ chatbotId }: { chatbotId: string }) {
                 <div className="text-right">
                   <div className="text-sm font-medium flex items-center justify-end gap-1 text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    {new Date(stat.last_used).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                    {new Date(stat.last_used).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
                   </div>
                   <div className="text-[10px] text-muted-foreground/80">Son Erişim</div>
                 </div>

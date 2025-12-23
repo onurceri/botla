@@ -22,30 +22,30 @@ func TestMockChatFlow(t *testing.T) {
 	mockLLM := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
-	
+
 	// Setup Mux with mocks
 	mux := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
 	// 1. Setup Mock Expectations
-	
+
 	// Query embedding mock
 	mockLLM.On("CreateEmbedding", mock.Anything, "Hello bot").Return([]float32{0.1, 0.2}, nil).Once()
-	
+
 	// Vector Search mock
 	mockVC.On("SearchSimilar", mock.Anything, []float32{0.1, 0.2}, mock.Anything, 3).Return([]rag.SearchResult{
 		{
-			ID: "chunk-1",
+			ID:    "chunk-1",
 			Score: 0.9,
 			Payload: rag.EmbeddingPayload{
 				OriginalText: "This is some mock knowledge context.",
-				SourceID: "src-1",
-				SourceType: "text",
+				SourceID:     "src-1",
+				SourceType:   "text",
 			},
 		},
 	}, nil).Once()
-	
+
 	// LLM Completion mock
 	mockLLM.On("CreateCompletionWithTools", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&rag.ChatResponseWithTools{
 		Choices: []struct {
@@ -60,7 +60,7 @@ func TestMockChatFlow(t *testing.T) {
 	}, nil).Once()
 
 	token := authToken(t, ts.URL, "mockchat@example.com")
-	
+
 	// 2. Create Chatbot
 	create := map[string]any{"name": "Mock Chat Bot"}
 	cbj, _ := json.Marshal(create)
@@ -74,7 +74,7 @@ func TestMockChatFlow(t *testing.T) {
 
 	// 3. Chat
 	chatReq := map[string]string{
-		"message": "Hello bot",
+		"message":    "Hello bot",
 		"session_id": "s-mock-1",
 	}
 	crb, _ := json.Marshal(chatReq)
@@ -82,16 +82,16 @@ func TestMockChatFlow(t *testing.T) {
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
 	resCh, _ := http.DefaultClient.Do(reqCh)
-	
+
 	assert.Equal(t, http.StatusOK, resCh.StatusCode)
-	
+
 	var chatResp map[string]any
 	json.NewDecoder(resCh.Body).Decode(&chatResp)
 	resCh.Body.Close()
-	
+
 	assert.Equal(t, "I am a mock assistant answering based on context.", chatResp["response"])
 	assert.Equal(t, float64(50), chatResp["tokens_used"])
-	
+
 	mockLLM.AssertExpectations(t)
 	mockVC.AssertExpectations(t)
 }

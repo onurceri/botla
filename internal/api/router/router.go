@@ -44,13 +44,13 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 		OrgService:       orgSvc,
 		WorkspaceService: workspaceSvc,
 	}
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, QdrantClient: qdClient, Log: log}
-	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
-	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log}
-	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: toolNameGenerator}
-	hoh := &handlers.HandoffHandlers{DB: pool, Log: log}
+	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, QdrantClient: qdClient, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: toolNameGenerator, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc}
-	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log}
+	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}

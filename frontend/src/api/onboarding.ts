@@ -22,7 +22,10 @@ export const getOnboardingState = async (): Promise<OnboardingState> => {
   return data
 }
 
-export const updateOnboardingState = async (step: number, onboardingData: OnboardingData): Promise<void> => {
+export const updateOnboardingState = async (
+  step: number,
+  onboardingData: OnboardingData,
+): Promise<void> => {
   await api.put('/api/v1/me/onboarding', { step, data: onboardingData })
 }
 

@@ -57,8 +57,6 @@ func NewOpenAIClient(cfg *config.Config) (*OpenAIClient, error) {
 	}, nil
 }
 
-
-
 // Embeddings
 type embeddingRequest struct {
 	Model string `json:"model"`

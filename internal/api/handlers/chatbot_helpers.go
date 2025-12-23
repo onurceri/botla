@@ -6,22 +6,6 @@ import (
 
 // --- Helper functions ---
 
-// parseBotIDFromPath extracts bot ID from /api/v1/chatbots/:id
-func parseBotIDFromPath(path string) (string, bool) {
-	const prefix = "/api/v1/chatbots/"
-	if !strings.HasPrefix(path, prefix) {
-		return "", false
-	}
-	botID := strings.TrimPrefix(path, prefix)
-	if idx := strings.Index(botID, "/"); idx != -1 {
-		botID = botID[:idx]
-	}
-	if botID == "" {
-		return "", false
-	}
-	return botID, true
-}
-
 // normalizeSuggestions deduplicates and truncates suggestions
 func normalizeSuggestions(in []string) []string {
 	if len(in) == 0 {

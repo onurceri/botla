@@ -168,5 +168,3 @@ func SearchContextTiered(ctx context.Context, vc VectorClient, queryEmbedding []
 		AverageScore: avgScore,
 	}, nil
 }
-
-

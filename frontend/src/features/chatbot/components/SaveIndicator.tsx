@@ -17,7 +17,9 @@ export function SaveIndicator({ isSaving, lastSavedAt, error }: Props) {
         ) : (
           <AlertCircle className="w-4 h-4" />
         )}
-        <span>{isRetrying ? SAVE_INDICATOR_MESSAGES.retrying : SAVE_INDICATOR_MESSAGES.failed}</span>
+        <span>
+          {isRetrying ? SAVE_INDICATOR_MESSAGES.retrying : SAVE_INDICATOR_MESSAGES.failed}
+        </span>
       </span>
     )
   }

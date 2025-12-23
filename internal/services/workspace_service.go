@@ -146,7 +146,7 @@ func (s *WorkspaceService) CheckAccess(ctx context.Context, userID, workspaceID 
 		SELECT role FROM memberships 
 		WHERE user_id = $1 AND organization_id = $2
 	`, userID, ws.OrganizationID).Scan(&role)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // Not a member

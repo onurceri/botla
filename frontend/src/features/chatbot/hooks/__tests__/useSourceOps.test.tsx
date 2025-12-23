@@ -10,7 +10,9 @@ describe('useSourceOps', () => {
   })
 
   it('pollStatus clears on error (catch branch)', async () => {
-    const getStatus = vi.spyOn(sourceApi, 'getSourceStatus').mockRejectedValueOnce(new Error('fail'))
+    const getStatus = vi
+      .spyOn(sourceApi, 'getSourceStatus')
+      .mockRejectedValueOnce(new Error('fail'))
 
     const wrapper = ({ children }: any) => <ToastProvider>{children}</ToastProvider>
     const { result } = renderHook(() => useSourceOps('bot-1', false), { wrapper })

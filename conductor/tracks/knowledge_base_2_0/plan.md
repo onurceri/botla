@@ -55,7 +55,7 @@
 
 ## Phase 4: Polish & Integration
 
-- [ ] Task: E2E Testing of Inspection Flow
+- [x] Task: E2E Testing of Inspection Flow [8904ab4]
     - **Goal:** Verify the full loop: Add Source -> View Chunks.
     - **Implementation:**
         - Write a Playwright test that adds a test URL/Text, waits for processing, and then opens the Chunk Inspector to verify content exists.

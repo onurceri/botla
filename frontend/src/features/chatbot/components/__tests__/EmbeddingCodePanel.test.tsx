@@ -23,7 +23,7 @@ describe('EmbeddingCodePanel', () => {
         onSecretChange={onSecret}
         onSecretRefresh={onRefresh}
         onSecretClear={() => {}}
-      />
+      />,
     )
 
     // Switch component has role="switch" instead of "checkbox"
@@ -47,12 +47,14 @@ describe('EmbeddingCodePanel', () => {
         onSecretChange={() => {}}
         onSecretRefresh={() => {}}
         onSecretClear={() => {}}
-      />
+      />,
     )
     const copyBtns = screen.getAllByRole('button', { name: /Kopyala/i })
     const copyBtn = copyBtns[copyBtns.length - 1]
     fireEvent.click(copyBtn)
-    expect(writeText).toHaveBeenCalledWith('<script src="https://widget.botla.app/widget.js" data-bot="abc"></script>')
+    expect(writeText).toHaveBeenCalledWith(
+      '<script src="https://widget.botla.app/widget.js" data-bot="abc"></script>',
+    )
   })
 
   it('updates domains input', async () => {
@@ -69,7 +71,7 @@ describe('EmbeddingCodePanel', () => {
         onSecretChange={() => {}}
         onSecretRefresh={() => {}}
         onSecretClear={() => {}}
-      />
+      />,
     )
     const domainsInput = screen.getByPlaceholderText('ornek.com, digersite.com') as HTMLInputElement
     fireEvent.change(domainsInput, { target: { value: 'a.com, b.com' } })
@@ -89,7 +91,7 @@ describe('EmbeddingCodePanel', () => {
         onSecretChange={() => {}}
         onSecretRefresh={() => {}}
         onSecretClear={() => {}}
-      />
+      />,
     )
     // Advanced section toggle should be visible
     const advancedBtns = screen.getAllByText(/Gelişmiş: Token Doğrulama/i)

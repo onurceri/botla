@@ -5,17 +5,21 @@ import path from 'path'
 
 test('Widget branding options', async ({ page }) => {
   // Mock API with custom branding
-  await page.route('http://api.test/api/v1/public/chatbots/bot1', async route => {
+  await page.route('http://api.test/api/v1/public/chatbots/bot1', async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({
-        id: 'bot1', theme_color: '#3b82f6', welcome_message: 'Merhaba!',
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'bot1',
+        theme_color: '#3b82f6',
+        welcome_message: 'Merhaba!',
         hide_branding: true,
         custom_branding: {
           logo_url: 'http://example.com/logo.png',
           text: 'Custom Power',
-          link: 'http://example.com'
-        }
-      })
+          link: 'http://example.com',
+        },
+      }),
     })
   })
 
@@ -25,7 +29,9 @@ test('Widget branding options', async ({ page }) => {
   const code = fs.readFileSync(widgetPath, 'utf-8')
 
   await page.goto('about:blank')
-  await page.addScriptTag({ content: `window.__CBW_PARAMS={"chatbot-id":"bot1","api-base":"http://api.test","auto-open":"1"}` })
+  await page.addScriptTag({
+    content: `window.__CBW_PARAMS={"chatbot-id":"bot1","api-base":"http://api.test","auto-open":"1"}`,
+  })
   await page.addScriptTag({ content: code })
 
   const host = await page.waitForSelector('#chatbot-widget-host', { state: 'attached' })
@@ -38,9 +44,9 @@ test('Widget branding options', async ({ page }) => {
   const brand = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-brand'))
   expect(await brand.asElement()!.isVisible()).toBeTruthy()
 
-  const text = await brand.evaluate(el => el?.textContent)
+  const text = await brand.evaluate((el) => el?.textContent)
   expect(text).toContain('Custom Power')
 
-  const img = await brand.evaluate(el => el?.querySelector('img')?.src)
+  const img = await brand.evaluate((el) => el?.querySelector('img')?.src)
   expect(img).toBe('http://example.com/logo.png')
 })

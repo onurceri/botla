@@ -18,42 +18,11 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	sourceID, ok := parseRefreshSourceIDFromPath(r.URL.Path)
+	s, c, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService, "/refresh")
 	if !ok {
-		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	s, err := db.GetSourceByID(r.Context(), h.DB, sourceID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if s == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Verify ownership
-	c, err := db.GetChatbotByID(r.Context(), h.DB, s.ChatbotID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if c == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if c.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
+	userID, _ := middleware.UserIDFromContext(r.Context())
 
 	base := api.BaseLang(c.LanguageCode)
 	cfg := api.ConfigFromBase(base)

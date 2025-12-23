@@ -14,7 +14,7 @@ describe('RegisterPage', () => {
         <MemoryRouter>
           <RegisterPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     const submit = screen.getAllByRole('button', { name: 'Kayıt Ol' })[0]
@@ -25,10 +25,11 @@ describe('RegisterPage', () => {
   it('submits successfully and shows success toast', async () => {
     const user = userEvent.setup()
     // Mock both register and login calls
-    const postSpy = vi.spyOn(api, 'post')
+    const postSpy = vi
+      .spyOn(api, 'post')
       .mockResolvedValueOnce({ data: {} } as any) // register
       .mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any) // login
-    
+
     vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { completed: true } } as any) // onboarding status
 
     render(
@@ -36,7 +37,7 @@ describe('RegisterPage', () => {
         <MemoryRouter>
           <RegisterPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     await user.type(screen.getByLabelText('Ad Soyad'), 'Onur Ceri')
@@ -44,10 +45,17 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Şifre'), 'secret')
 
     await user.click(screen.getAllByRole('button', { name: 'Kayıt Ol' })[0])
-    
+
     await waitFor(() => {
-      expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/register', { full_name: 'Onur Ceri', email: 'onur@example.com', password: 'secret' })
-      expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/login', { email: 'onur@example.com', password: 'secret' })
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/register', {
+        full_name: 'Onur Ceri',
+        email: 'onur@example.com',
+        password: 'secret',
+      })
+      expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/login', {
+        email: 'onur@example.com',
+        password: 'secret',
+      })
     })
     expect(screen.getByText('Hesabınız oluşturuldu! Hadi başlayalım.')).toBeInTheDocument()
   })
@@ -61,7 +69,7 @@ describe('RegisterPage', () => {
         <MemoryRouter>
           <RegisterPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     await user.type(screen.getByLabelText('Ad Soyad'), 'Test')
@@ -69,13 +77,11 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Şifre'), '12345678')
     const submit = screen.getAllByRole('button', { name: 'Kayıt Ol' })[0]
     await user.click(submit)
-    
+
     // Wait for API call and button to be re-enabled after error
     await waitFor(() => {
       expect(postSpy).toHaveBeenCalled()
       expect(submit).not.toBeDisabled()
     })
   })
-
-  
 })

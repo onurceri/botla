@@ -9,13 +9,14 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // HandoffHandlers handles handoff-related HTTP endpoints
 type HandoffHandlers struct {
-	DB  *sql.DB
-	Log *logger.Logger
+	DB               *sql.DB
+	Log              *logger.Logger
+	WorkspaceService *services.WorkspaceService
+	OrgService       *services.OrganizationService
 }
 
 // publicHandoffRequest represents a handoff request from the widget
@@ -102,29 +103,8 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 
 // ListHandoffRequests handles GET /api/chatbots/:id/handoff-requests
 func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	// Extract chatbot ID from path
-	parts := strings.Split(r.URL.Path, "/")
-	// /api/v1/chatbots/:id/handoff-requests
-	if len(parts) < 5 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	botID := parts[4]
-
-	// Verify ownership
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil || bot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if bot.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
+	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	if !ok {
 		return
 	}
 
@@ -143,9 +123,8 @@ func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Req
 
 // UpdateHandoffRequest handles PATCH /api/chatbots/:id/handoff-requests/:requestId
 func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
+	_, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	if !ok {
 		return
 	}
 
@@ -155,19 +134,7 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	botID := parts[4]
 	requestID := parts[6]
-
-	// Verify ownership
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil || bot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if bot.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
 
 	// Parse request
 	var req handoffStatusUpdate
@@ -257,9 +224,8 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 // GetHandoffRequestDetail handles GET /api/v1/chatbots/:id/handoff-requests/:requestId
 // Returns the handoff request with full conversation history
 func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
+	_, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	if !ok {
 		return
 	}
 
@@ -269,19 +235,7 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	botID := parts[4]
 	requestID := parts[6]
-
-	// Verify ownership
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil || bot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if bot.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
 
 	// Get request with messages
 	detail, err := db.GetHandoffRequestWithMessages(r.Context(), h.DB, requestID)

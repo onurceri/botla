@@ -2,7 +2,12 @@ import { useState, useRef } from 'react'
 import { useToast } from '@/components/ui/toast'
 import { getTurkishErrorMessage } from '@/lib/errorMessages'
 
-export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFileSizeMB = 50 }: {
+export function useSourceUpload({
+  onUploadPDF,
+  onUploadURL,
+  onUploadText,
+  maxFileSizeMB = 50,
+}: {
   onUploadPDF: (file: File) => Promise<void>
   onUploadURL: (url: string) => Promise<void>
   onUploadText: (text: string) => Promise<void>
@@ -18,7 +23,9 @@ export function useSourceUpload({ onUploadPDF, onUploadURL, onUploadText, maxFil
     try {
       const parsed = new URL(u)
       return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

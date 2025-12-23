@@ -83,7 +83,7 @@ func getTestDSN(schema string) string {
 		port = "5432"
 	}
 	dbName := os.Getenv("DB_NAME")
-	if dbName == "" {
+	if dbName == "" || dbName == "botla_dev" {
 		dbName = DefaultTestDBName
 	}
 	user := os.Getenv("DB_USER")

@@ -1,38 +1,38 @@
 import { useState } from 'react'
 
-type CustomBranding = {
+export type CustomBranding = {
   logo_url?: string
   text?: string
   link?: string
 }
 
-type FallbackMessages = {
+export type FallbackMessages = {
   no_info_found?: string
   error_message?: string
   handoff_message?: string
 }
 
-type TopicConfig = {
+export type TopicConfig = {
   allowed_topics?: string[]
   blocked_topics?: string[]
   blocked_message?: string
 }
 
-type HandoffConfig = {
+export type HandoffConfig = {
   email_to?: string
   email_subject?: string
 }
 
-type ThresholdConfig = {
+export type ThresholdConfig = {
   high_threshold: number
   medium_threshold: number
   fallback_mode: 'smart' | 'static' | 'escalate'
   show_confidence_warning: boolean
 }
 
-const DEFAULT_THRESHOLD_CONFIG: ThresholdConfig = {
-  high_threshold: 0.50,
-  medium_threshold: 0.30,
+export const DEFAULT_THRESHOLD_CONFIG: ThresholdConfig = {
+  high_threshold: 0.5,
+  medium_threshold: 0.3,
   fallback_mode: 'smart',
   show_confidence_warning: true,
 }
@@ -72,7 +72,9 @@ export function useChatbotForm() {
   const [selectorWhitelist, setSelectorWhitelist] = useState<string[]>([])
   const [discoveryMode, setDiscoveryMode] = useState<'auto' | 'pending' | 'disabled'>('auto')
   const [refreshPolicy, setRefreshPolicy] = useState<'manual' | 'auto'>('manual')
-  const [refreshFrequency, setRefreshFrequency] = useState<'daily' | 'weekly' | 'monthly' | null>(null)
+  const [refreshFrequency, setRefreshFrequency] = useState<'daily' | 'weekly' | 'monthly' | null>(
+    null,
+  )
   const [nextRefreshAt, setNextRefreshAt] = useState<string | null>(null)
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null)
   const [hideBranding, setHideBranding] = useState(false)
@@ -114,7 +116,9 @@ export function useChatbotForm() {
     setSecureEmbedEnabled(!!data.secure_embed_enabled)
     setSuggestionsEnabled(!!data.suggestions_enabled)
     setSuggestedQuestions(Array.isArray(data.suggested_questions) ? data.suggested_questions : [])
-    setAllSuggestedQuestions(Array.isArray(data.all_suggested_questions) ? data.all_suggested_questions : [])
+    setAllSuggestedQuestions(
+      Array.isArray(data.all_suggested_questions) ? data.all_suggested_questions : [],
+    )
     setIncludePaths(Array.isArray(data.include_paths) ? data.include_paths : [])
     setExcludePaths(Array.isArray(data.exclude_paths) ? data.exclude_paths : [])
     setSelectorWhitelist(Array.isArray(data.selector_whitelist) ? data.selector_whitelist : [])
@@ -263,44 +267,80 @@ export function useChatbotForm() {
   }
 
   return {
-    name, setName,
-    description, setDescription,
-    customInstruction, setCustomInstruction,
-    temperature, setTemperature,
-    maxTokens, setMaxTokens,
-    themeColor, setThemeColor,
-    welcomeMessage, setWelcomeMessage,
-    position, setPosition,
-    botMessageColor, setBotMessageColor,
-    userMessageColor, setUserMessageColor,
-    botMessageTextColor, setBotMessageTextColor,
-    userMessageTextColor, setUserMessageTextColor,
-    chatFontFamily, setChatFontFamily,
-    chatHeaderColor, setChatHeaderColor,
-    chatHeaderTextColor, setChatHeaderTextColor,
-    chatBackgroundColor, setChatBackgroundColor,
-    bubbleRadius, setBubbleRadius,
-    inputBackgroundColor, setInputBackgroundColor,
-    inputTextColor, setInputTextColor,
-    sendButtonColor, setSendButtonColor,
-    botIcon, setBotIcon,
-    botDisplayName, setBotDisplayName,
-    secureEmbedEnabled, setSecureEmbedEnabled,
-    allowedDomains, setAllowedDomains,
-    embedSecret, setEmbedSecret,
-    suggestionsEnabled, setSuggestionsEnabled,
-    suggestedQuestions, setSuggestedQuestions,
-    allSuggestedQuestions, setAllSuggestedQuestions,
-    includePaths, setIncludePaths,
-    excludePaths, setExcludePaths,
-    selectorWhitelist, setSelectorWhitelist,
-    discoveryMode, setDiscoveryMode,
-    refreshPolicy, setRefreshPolicy,
-    refreshFrequency, setRefreshFrequency,
+    name,
+    setName,
+    description,
+    setDescription,
+    customInstruction,
+    setCustomInstruction,
+    temperature,
+    setTemperature,
+    maxTokens,
+    setMaxTokens,
+    themeColor,
+    setThemeColor,
+    welcomeMessage,
+    setWelcomeMessage,
+    position,
+    setPosition,
+    botMessageColor,
+    setBotMessageColor,
+    userMessageColor,
+    setUserMessageColor,
+    botMessageTextColor,
+    setBotMessageTextColor,
+    userMessageTextColor,
+    setUserMessageTextColor,
+    chatFontFamily,
+    setChatFontFamily,
+    chatHeaderColor,
+    setChatHeaderColor,
+    chatHeaderTextColor,
+    setChatHeaderTextColor,
+    chatBackgroundColor,
+    setChatBackgroundColor,
+    bubbleRadius,
+    setBubbleRadius,
+    inputBackgroundColor,
+    setInputBackgroundColor,
+    inputTextColor,
+    setInputTextColor,
+    sendButtonColor,
+    setSendButtonColor,
+    botIcon,
+    setBotIcon,
+    botDisplayName,
+    setBotDisplayName,
+    secureEmbedEnabled,
+    setSecureEmbedEnabled,
+    allowedDomains,
+    setAllowedDomains,
+    embedSecret,
+    setEmbedSecret,
+    suggestionsEnabled,
+    setSuggestionsEnabled,
+    suggestedQuestions,
+    setSuggestedQuestions,
+    allSuggestedQuestions,
+    setAllSuggestedQuestions,
+    includePaths,
+    setIncludePaths,
+    excludePaths,
+    setExcludePaths,
+    selectorWhitelist,
+    setSelectorWhitelist,
+    discoveryMode,
+    setDiscoveryMode,
+    refreshPolicy,
+    setRefreshPolicy,
+    refreshFrequency,
+    setRefreshFrequency,
     nextRefreshAt,
     lastRefreshAt,
-    hideBranding, setHideBranding,
-    customBranding, setCustomBranding,
+    hideBranding,
+    setHideBranding,
+    customBranding,
+    setCustomBranding,
     buildOverviewPayload,
     buildGuardrailsPayload,
     buildHandoffPayload,
@@ -311,13 +351,21 @@ export function useChatbotForm() {
     setFromServer,
     validate,
     buildPayload,
-    model, setModel,
-    confidenceThreshold, setConfidenceThreshold,
-    thresholdConfig, setThresholdConfig,
-    fallbackMessages, setFallbackMessages,
-    topicRestrictions, setTopicRestrictions,
-    handoffEnabled, setHandoffEnabled,
-    handoffType, setHandoffType,
-    handoffConfig, setHandoffConfig,
+    model,
+    setModel,
+    confidenceThreshold,
+    setConfidenceThreshold,
+    thresholdConfig,
+    setThresholdConfig,
+    fallbackMessages,
+    setFallbackMessages,
+    topicRestrictions,
+    setTopicRestrictions,
+    handoffEnabled,
+    setHandoffEnabled,
+    handoffType,
+    setHandoffType,
+    handoffConfig,
+    setHandoffConfig,
   }
 }

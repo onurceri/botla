@@ -17,7 +17,7 @@ describe('HeaderActions', () => {
         isCreating={false}
         onDelete={() => {}}
         onCreate={onCreate}
-      />
+      />,
     )
     expect(screen.getByText('Yeni Chatbot')).toBeInTheDocument()
     const createButton = screen.getByRole('button', { name: /Oluştur/i })
@@ -28,12 +28,7 @@ describe('HeaderActions', () => {
   it('renders name and delete button without create for existing chatbot', () => {
     const onDelete = vi.fn()
     render(
-      <HeaderActions
-        isNew={false}
-        name="Destek Botu"
-        isDeleting={false}
-        onDelete={onDelete}
-      />
+      <HeaderActions isNew={false} name="Destek Botu" isDeleting={false} onDelete={onDelete} />,
     )
     expect(screen.getByText('Destek Botu')).toBeInTheDocument()
     const deleteButton = screen.getByLabelText('Sil')

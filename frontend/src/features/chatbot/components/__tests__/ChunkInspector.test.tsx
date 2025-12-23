@@ -7,7 +7,7 @@ import * as sourceApi from '@/api/source'
 
 // Mock the API
 vi.mock('@/api/source', () => ({
-  getSourceChunks: vi.fn()
+  getSourceChunks: vi.fn(),
 }))
 
 const queryClient = new QueryClient({
@@ -31,8 +31,8 @@ describe('ChunkInspector', () => {
         source_id: 'src-1',
         original_text: 'This is the first chunk of text content.',
         chunk_index: 0,
-        created_at: new Date().toISOString()
-      }
+        created_at: new Date().toISOString(),
+      },
     },
     {
       id: 'chunk-2',
@@ -41,9 +41,9 @@ describe('ChunkInspector', () => {
         source_id: 'src-1',
         original_text: 'This is the second chunk with some more details.',
         chunk_index: 1,
-        created_at: new Date().toISOString()
-      }
-    }
+        created_at: new Date().toISOString(),
+      },
+    },
   ]
 
   beforeEach(() => {
@@ -57,7 +57,7 @@ describe('ChunkInspector', () => {
     render(
       <Wrapper>
         <ChunkInspector sourceId="src-1" open={false} onOpenChange={vi.fn()} />
-      </Wrapper>
+      </Wrapper>,
     )
     expect(screen.queryByText('Kaynak Parçaları')).not.toBeInTheDocument()
   })
@@ -65,21 +65,23 @@ describe('ChunkInspector', () => {
   it('fetches and displays chunks when open', async () => {
     vi.mocked(sourceApi.getSourceChunks).mockResolvedValue({
       chunks: mockChunks,
-      next_cursor: null
+      next_cursor: null,
     })
 
     render(
       <Wrapper>
         <ChunkInspector sourceId="src-1" open={true} onOpenChange={vi.fn()} />
-      </Wrapper>
+      </Wrapper>,
     )
 
     expect(screen.getByText('Kaynak Parçaları')).toBeInTheDocument()
-    
+
     // Wait for chunks to load
     await waitFor(() => {
       expect(screen.getByText('This is the first chunk of text content.')).toBeInTheDocument()
-      expect(screen.getByText('This is the second chunk with some more details.')).toBeInTheDocument()
+      expect(
+        screen.getByText('This is the second chunk with some more details.'),
+      ).toBeInTheDocument()
     })
 
     expect(screen.getByText('#0')).toBeInTheDocument()
@@ -89,13 +91,13 @@ describe('ChunkInspector', () => {
   it('handles empty state', async () => {
     vi.mocked(sourceApi.getSourceChunks).mockResolvedValue({
       chunks: [],
-      next_cursor: null
+      next_cursor: null,
     })
 
     render(
       <Wrapper>
         <ChunkInspector sourceId="src-1" open={true} onOpenChange={vi.fn()} />
-      </Wrapper>
+      </Wrapper>,
     )
 
     await waitFor(() => {
@@ -106,14 +108,14 @@ describe('ChunkInspector', () => {
   it('filters chunks via search', async () => {
     vi.mocked(sourceApi.getSourceChunks).mockResolvedValue({
       chunks: mockChunks,
-      next_cursor: null
+      next_cursor: null,
     })
 
     const user = userEvent.setup()
     render(
       <Wrapper>
         <ChunkInspector sourceId="src-1" open={true} onOpenChange={vi.fn()} />
-      </Wrapper>
+      </Wrapper>,
     )
 
     await waitFor(() => {
@@ -126,48 +128,52 @@ describe('ChunkInspector', () => {
     await user.type(searchInput, 'second')
 
     await waitFor(() => {
-        expect(screen.queryByText('This is the first chunk of text content.')).not.toBeInTheDocument()
-        
-        // Check for highlighted text
-        const highlighted = screen.getByText('second', { selector: 'span' })
-        expect(highlighted).toBeInTheDocument()
-        expect(highlighted.className).toContain('bg-yellow-200') // or whatever class is used
-        
-        // Check surrounding text presence (might be split)
-        expect(screen.getByText(/This is the/, { selector: 'p' })).toBeInTheDocument()
-        expect(screen.getByText(/chunk with some more details/, { selector: 'p' })).toBeInTheDocument()
+      expect(screen.queryByText('This is the first chunk of text content.')).not.toBeInTheDocument()
+
+      // Check for highlighted text
+      const highlighted = screen.getByText('second', { selector: 'span' })
+      expect(highlighted).toBeInTheDocument()
+      expect(highlighted.className).toContain('bg-yellow-200') // or whatever class is used
+
+      // Check surrounding text presence (might be split)
+      expect(screen.getByText(/This is the/, { selector: 'p' })).toBeInTheDocument()
+      expect(
+        screen.getByText(/chunk with some more details/, { selector: 'p' }),
+      ).toBeInTheDocument()
     })
   })
 
   it('loads more pages when "Load More" is clicked', async () => {
     // Ensure we start fresh with unique ID to avoid cache
     const uniqueId = 'src-load-more'
-    
+
     vi.mocked(sourceApi.getSourceChunks)
       .mockResolvedValueOnce({
         chunks: [mockChunks[0]],
-        next_cursor: 'page-2'
+        next_cursor: 'page-2',
       })
       .mockResolvedValueOnce({
         chunks: [mockChunks[1]],
-        next_cursor: null
+        next_cursor: null,
       })
 
     const user = userEvent.setup()
     render(
       <Wrapper>
         <ChunkInspector sourceId={uniqueId} open={true} onOpenChange={vi.fn()} />
-      </Wrapper>
+      </Wrapper>,
     )
 
     // First page loaded
     await waitFor(() => {
       expect(screen.getByText('This is the first chunk of text content.')).toBeInTheDocument()
     })
-    
+
     // Use waitFor to ensure stable state
     await waitFor(() => {
-        expect(screen.queryByText('This is the second chunk with some more details.')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('This is the second chunk with some more details.'),
+      ).not.toBeInTheDocument()
     })
 
     // Click load more
@@ -176,7 +182,9 @@ describe('ChunkInspector', () => {
 
     // Second page loaded
     await waitFor(() => {
-      expect(screen.getByText('This is the second chunk with some more details.')).toBeInTheDocument()
+      expect(
+        screen.getByText('This is the second chunk with some more details.'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -186,7 +194,7 @@ describe('ChunkInspector', () => {
     render(
       <Wrapper>
         <ChunkInspector sourceId="src-1" open={true} onOpenChange={vi.fn()} />
-      </Wrapper>
+      </Wrapper>,
     )
 
     await waitFor(() => {

@@ -10,64 +10,6 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
-// TestParseSitemapDiscoverPath tests sitemap discover path extraction
-func TestParseSitemapDiscoverPath(t *testing.T) {
-	tests := []struct {
-		path     string
-		expected string
-		ok       bool
-	}{
-		{"/api/v1/chatbots/abc123/sitemap/discover", "abc123", true},
-		{"/api/v1/chatbots/xyz789/sitemap/discover", "xyz789", true},
-		{"/api/v1/chatbots//sitemap/discover", "", false},        // Empty ID
-		{"/api/v1/chatbots/abc/123/sitemap/discover", "", false}, // ID contains /
-		{"/api/v1/chatbots/abc123/sitemap", "", false},           // Missing /discover
-		{"/api/v1/chatbots/abc123/sources", "", false},           // Wrong endpoint
-		{"/wrong/path/abc123/sitemap/discover", "", false},       // Wrong prefix
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.path, func(t *testing.T) {
-			id, ok := parseSitemapDiscoverPath(tt.path)
-			if ok != tt.ok {
-				t.Errorf("parseSitemapDiscoverPath(%q) ok = %v, want %v", tt.path, ok, tt.ok)
-			}
-			if id != tt.expected {
-				t.Errorf("parseSitemapDiscoverPath(%q) = %q, want %q", tt.path, id, tt.expected)
-			}
-		})
-	}
-}
-
-// TestParseBulkSourcesPath tests bulk sources path extraction
-func TestParseBulkSourcesPath(t *testing.T) {
-	tests := []struct {
-		path     string
-		expected string
-		ok       bool
-	}{
-		{"/api/v1/chatbots/abc123/sources/bulk", "abc123", true},
-		{"/api/v1/chatbots/xyz789/sources/bulk", "xyz789", true},
-		{"/api/v1/chatbots//sources/bulk", "", false},        // Empty ID
-		{"/api/v1/chatbots/abc/123/sources/bulk", "", false}, // ID contains /
-		{"/api/v1/chatbots/abc123/sources", "", false},       // Missing /bulk
-		{"/api/v1/chatbots/abc123/sitemap", "", false},       // Wrong endpoint
-		{"/wrong/path/abc123/sources/bulk", "", false},       // Wrong prefix
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.path, func(t *testing.T) {
-			id, ok := parseBulkSourcesPath(tt.path)
-			if ok != tt.ok {
-				t.Errorf("parseBulkSourcesPath(%q) ok = %v, want %v", tt.path, ok, tt.ok)
-			}
-			if id != tt.expected {
-				t.Errorf("parseBulkSourcesPath(%q) = %q, want %q", tt.path, id, tt.expected)
-			}
-		})
-	}
-}
-
 // TestDiscoverSitemap_Unauthorized tests unauthenticated sitemap discovery
 func TestDiscoverSitemap_Unauthorized(t *testing.T) {
 	h := &SourcesHandlers{}

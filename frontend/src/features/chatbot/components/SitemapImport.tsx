@@ -1,5 +1,14 @@
 import { useState, useCallback } from 'react'
-import { Map, Search, CheckSquare, Square, AlertCircle, Loader2, ChevronDown, ChevronRight } from 'lucide-react'
+import {
+  Map,
+  Search,
+  CheckSquare,
+  Square,
+  AlertCircle,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -33,7 +42,7 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
       const result = await discoverSitemap(chatbotId, sitemapUrl.trim())
       setDiscoveredUrls(result.urls)
       // Select all by default
-      setSelectedUrls(new Set(result.urls.map(u => u.loc)))
+      setSelectedUrls(new Set(result.urls.map((u) => u.loc)))
     } catch (err: any) {
       setError(getTurkishErrorMessage(err, 'Sitemap okunamadı'))
     } finally {
@@ -42,7 +51,7 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
   }, [chatbotId, sitemapUrl])
 
   const handleSelectAll = useCallback(() => {
-    setSelectedUrls(new Set(discoveredUrls.map(u => u.loc)))
+    setSelectedUrls(new Set(discoveredUrls.map((u) => u.loc)))
   }, [discoveredUrls])
 
   const handleSelectNone = useCallback(() => {
@@ -53,23 +62,23 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
     // Select URLs with lastmod within the last 30 days
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    
-    const recentUrls = discoveredUrls.filter(u => {
+
+    const recentUrls = discoveredUrls.filter((u) => {
       if (!u.lastmod) return false
       const date = new Date(u.lastmod)
       return date >= thirtyDaysAgo
     })
-    
+
     if (recentUrls.length === 0) {
       // If no recent URLs, select all
-      setSelectedUrls(new Set(discoveredUrls.map(u => u.loc)))
+      setSelectedUrls(new Set(discoveredUrls.map((u) => u.loc)))
     } else {
-      setSelectedUrls(new Set(recentUrls.map(u => u.loc)))
+      setSelectedUrls(new Set(recentUrls.map((u) => u.loc)))
     }
   }, [discoveredUrls])
 
   const toggleUrl = useCallback((url: string) => {
-    setSelectedUrls(prev => {
+    setSelectedUrls((prev) => {
       const next = new Set(prev)
       if (next.has(url)) {
         next.delete(url)
@@ -88,11 +97,11 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
 
     try {
       const result = await bulkCreateSources(chatbotId, Array.from(selectedUrls))
-      
+
       if (result.errors?.length > 0) {
         setError(`${result.created_count} URL eklendi, ${result.errors.length} hata oluştu`)
       }
-      
+
       // Clear state and notify parent
       setDiscoveredUrls([])
       setSelectedUrls(new Set())
@@ -113,7 +122,7 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
       return date.toLocaleDateString('tr-TR', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
       })
     } catch {
       return dateStr
@@ -123,7 +132,7 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
   return (
     <div className="mt-4 border border-border/60 rounded-xl bg-gradient-to-b from-white/40 to-white/20 backdrop-blur overflow-hidden">
       {/* Collapsible Header */}
-      <button 
+      <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between p-3.5 hover:bg-white/40 transition-all duration-200"
@@ -134,7 +143,10 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
           </div>
           <span className="text-sm font-medium text-foreground">Sitemap'ten İçe Aktar</span>
           {discoveredUrls.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium bg-amber-100 text-amber-600 border-0">
+            <Badge
+              variant="secondary"
+              className="text-[10px] px-1.5 py-0 h-4 font-medium bg-amber-100 text-amber-600 border-0"
+            >
               {discoveredUrls.length} URL
             </Badge>
           )}
@@ -143,10 +155,11 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
           <span className="text-xs text-muted-foreground hidden sm:inline">
             {isExpanded ? 'Gizle' : 'XML Sitemap içe aktar'}
           </span>
-          {isExpanded 
-            ? <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform" /> 
-            : <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform" />
-          }
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform" />
+          )}
         </div>
       </button>
 
@@ -240,9 +253,9 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
                     type="button"
                     onClick={() => toggleUrl(url.loc)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/80 transition-colors",
-                      index !== discoveredUrls.length - 1 && "border-b border-border/30",
-                      selectedUrls.has(url.loc) && "bg-amber-50/50"
+                      'w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-white/80 transition-colors',
+                      index !== discoveredUrls.length - 1 && 'border-b border-border/30',
+                      selectedUrls.has(url.loc) && 'bg-amber-50/50',
                     )}
                   >
                     {selectedUrls.has(url.loc) ? (
@@ -257,7 +270,10 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {url.priority !== undefined && url.priority > 0 && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground border-border/40">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground border-border/40"
+                        >
                           {url.priority.toFixed(1)}
                         </Badge>
                       )}
@@ -283,9 +299,7 @@ const SitemapImport = ({ chatbotId, onImportComplete }: SitemapImportProps) => {
                       İçe Aktarılıyor...
                     </>
                   ) : (
-                    <>
-                      {selectedUrls.size} URL Ekle
-                    </>
+                    <>{selectedUrls.size} URL Ekle</>
                   )}
                 </Button>
               </div>

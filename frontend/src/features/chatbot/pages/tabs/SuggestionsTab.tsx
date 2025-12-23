@@ -10,8 +10,10 @@ import { useRegenerateSuggestions } from '@/hooks/mutations/useChatbotMutations'
 export default function SuggestionsTab() {
   const { id: chatbotId } = useParams()
   const {
-    suggestionsEnabled, setSuggestionsEnabled,
-    suggestedQuestions, setSuggestedQuestions,
+    suggestionsEnabled,
+    setSuggestionsEnabled,
+    suggestedQuestions,
+    setSuggestedQuestions,
     allSuggestedQuestions,
     buildSuggestionsPayload,
   } = useChatbotContext()
@@ -38,8 +40,8 @@ export default function SuggestionsTab() {
             Kullanıcıların sohbeti başlatmasını kolaylaştıracak hazır sorular ekleyin.
           </p>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="sm"
           onClick={handleRegenerate}
           disabled={regenerate.isPending}
@@ -50,7 +52,7 @@ export default function SuggestionsTab() {
         </Button>
       </div>
 
-      <SuggestionsPanel 
+      <SuggestionsPanel
         suggestionsEnabled={suggestionsEnabled}
         setSuggestionsEnabled={setSuggestionsEnabled}
         suggestedQuestions={suggestedQuestions}

@@ -37,8 +37,15 @@ export const createAction = async (chatbotId: string, action: CreateActionReques
   return data
 }
 
-export const updateAction = async (chatbotId: string, actionId: string, action: Partial<CreateActionRequest>) => {
-  const { data } = await api.put<Action>(`/api/v1/chatbots/${chatbotId}/actions/${actionId}`, action)
+export const updateAction = async (
+  chatbotId: string,
+  actionId: string,
+  action: Partial<CreateActionRequest>,
+) => {
+  const { data } = await api.put<Action>(
+    `/api/v1/chatbots/${chatbotId}/actions/${actionId}`,
+    action,
+  )
   return data
 }
 
@@ -60,8 +67,11 @@ export interface ActionLog {
 }
 
 export const getActionLogs = async (chatbotId: string, page = 1, limit = 20) => {
-  const { data } = await api.get<{ logs: ActionLog[], page: number, limit: number }>(`/api/v1/chatbots/${chatbotId}/actions/logs`, {
-    params: { page, limit }
-  })
+  const { data } = await api.get<{ logs: ActionLog[]; page: number; limit: number }>(
+    `/api/v1/chatbots/${chatbotId}/actions/logs`,
+    {
+      params: { page, limit },
+    },
+  )
   return data
 }

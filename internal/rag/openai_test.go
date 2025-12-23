@@ -11,8 +11,6 @@ import (
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
-
-
 func TestCreateEmbedding_Success(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "k")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +27,7 @@ func TestCreateEmbedding_Success(t *testing.T) {
 	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: srv.URL,
 	}
 	c, _ := NewOpenAIClient(cfg)
@@ -55,7 +53,7 @@ func TestCreateEmbeddingsBatch_Success(t *testing.T) {
 	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: srv.URL,
 	}
 	c, _ := NewOpenAIClient(cfg)
@@ -73,7 +71,7 @@ func TestCreateEmbedding_RetryFailure(t *testing.T) {
 	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: srv.URL,
 	}
 	c, _ := NewOpenAIClient(cfg)
@@ -96,7 +94,7 @@ func TestCreateCompletion_NoChoices(t *testing.T) {
 	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: srv.URL,
 	}
 	c, _ := NewOpenAIClient(cfg)
@@ -129,7 +127,7 @@ func TestCreateCompletion_Success(t *testing.T) {
 	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: srv.URL,
 	}
 	c, _ := NewOpenAIClient(cfg)
@@ -158,9 +156,9 @@ func TestCreateCompletionWithTools_IncludesErrorBody(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	
+
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: srv.URL,
 	}
 	c, _ := NewOpenAIClient(cfg)

@@ -4,14 +4,14 @@ import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { 
-  HardDrive, 
-  Globe, 
-  Cpu, 
-  Zap, 
-  Shield, 
-  Check, 
-  X, 
+import {
+  HardDrive,
+  Globe,
+  Cpu,
+  Zap,
+  Shield,
+  Check,
+  X,
   LayoutDashboard,
   CreditCard,
   Sparkles,
@@ -19,7 +19,7 @@ import {
   FileText,
   ArrowUpRight,
   Clock,
-  Database
+  Database,
 } from 'lucide-react'
 import { usePlan, useUsage } from '@/hooks/queries/useProfile'
 import { useRateLimit } from '@/hooks/useRateLimit'
@@ -81,19 +81,19 @@ interface Usage {
 
 // Skeleton component for loading state
 const Skeleton = ({ className }: { className?: string }) => (
-  <div className={cn("animate-pulse rounded-md bg-muted/60", className)} />
+  <div className={cn('animate-pulse rounded-md bg-muted/60', className)} />
 )
 
 // Modern stat card component
-const StatCard = ({ 
-  icon: Icon, 
-  label, 
-  value, 
-  max, 
+const StatCard = ({
+  icon: Icon,
+  label,
+  value,
+  max,
   subtext,
   showProgress = false,
-  gradient = "from-primary/10 to-primary/5"
-}: { 
+  gradient = 'from-primary/10 to-primary/5',
+}: {
   icon: React.ElementType
   label: string
   value: string | number
@@ -102,23 +102,26 @@ const StatCard = ({
   showProgress?: boolean
   gradient?: string
 }) => {
-  const percentage = showProgress && typeof value === 'number' && typeof max === 'number' && max > 0
-    ? Math.min(100, Math.max(0, (value / max) * 100))
-    : 0
+  const percentage =
+    showProgress && typeof value === 'number' && typeof max === 'number' && max > 0
+      ? Math.min(100, Math.max(0, (value / max) * 100))
+      : 0
 
   return (
-    <div className={cn(
-      "relative overflow-hidden rounded-2xl border border-border/50 p-5",
-      "bg-gradient-to-br backdrop-blur-sm",
-      "transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20",
-      "group",
-      gradient
-    )}>
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-2xl border border-border/50 p-5',
+        'bg-gradient-to-br backdrop-blur-sm',
+        'transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20',
+        'group',
+        gradient,
+      )}
+    >
       {/* Background decoration */}
       <div className="absolute right-0 top-0 -mr-4 -mt-4 opacity-[0.07] group-hover:opacity-[0.12] transition-opacity">
         <Icon className="w-24 h-24" />
       </div>
-      
+
       <div className="relative z-10">
         <div className="flex items-center gap-3 mb-3">
           <div className="p-2.5 rounded-xl bg-background/80 shadow-sm border border-border/50">
@@ -126,24 +129,20 @@ const StatCard = ({
           </div>
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
         </div>
-        
+
         <div className="space-y-2">
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-bold tracking-tight">{value}</span>
-            {max !== undefined && (
-              <span className="text-sm text-muted-foreground">/ {max}</span>
-            )}
+            {max !== undefined && <span className="text-sm text-muted-foreground">/ {max}</span>}
           </div>
-          
+
           {showProgress && (
             <div className="space-y-1.5">
               <Progress value={percentage} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                %{Math.round(percentage)} kullanıldı
-              </p>
+              <p className="text-xs text-muted-foreground">%{Math.round(percentage)} kullanıldı</p>
             </div>
           )}
-          
+
           {subtext && !showProgress && (
             <div className="text-sm text-muted-foreground">{subtext}</div>
           )}
@@ -154,15 +153,15 @@ const StatCard = ({
 }
 
 // Feature row component
-const FeatureRow = ({ 
-  label, 
-  value, 
+const FeatureRow = ({
+  label,
+  value,
   enabled,
   showProgress = false,
   current,
   max,
-  className
-}: { 
+  className,
+}: {
   label: string
   value?: string | number
   enabled?: boolean
@@ -171,12 +170,13 @@ const FeatureRow = ({
   max?: number
   className?: string
 }) => {
-  const percentage = showProgress && current !== undefined && max !== undefined && max > 0
-    ? Math.min(100, Math.max(0, (current / max) * 100))
-    : 0
+  const percentage =
+    showProgress && current !== undefined && max !== undefined && max > 0
+      ? Math.min(100, Math.max(0, (current / max) * 100))
+      : 0
 
   return (
-    <div className={cn("py-3 border-b border-border/50 last:border-0", className)}>
+    <div className={cn('py-3 border-b border-border/50 last:border-0', className)}>
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{label}</span>
         {enabled !== undefined ? (
@@ -189,7 +189,10 @@ const FeatureRow = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span tabIndex={0} className="inline-flex cursor-help">
-                  <Badge variant="secondary" className="bg-muted text-muted-foreground border-border hover:bg-muted">
+                  <Badge
+                    variant="secondary"
+                    className="bg-muted text-muted-foreground border-border hover:bg-muted"
+                  >
                     <X className="w-3 h-3 mr-1" />
                     Pasif
                   </Badge>
@@ -218,24 +221,26 @@ const FeatureRow = ({
 }
 
 // Section card component
-const SectionCard = ({ 
-  icon: Icon, 
-  title, 
+const SectionCard = ({
+  icon: Icon,
+  title,
   description,
   children,
-  gradient = "from-background to-muted/20"
-}: { 
+  gradient = 'from-background to-muted/20',
+}: {
   icon: React.ElementType
   title: string
   description?: string
   children: React.ReactNode
   gradient?: string
 }) => (
-  <Card className={cn(
-    "overflow-hidden border-border/50 shadow-sm",
-    "bg-gradient-to-br transition-all duration-300 hover:shadow-md",
-    gradient
-  )}>
+  <Card
+    className={cn(
+      'overflow-hidden border-border/50 shadow-sm',
+      'bg-gradient-to-br transition-all duration-300 hover:shadow-md',
+      gradient,
+    )}
+  >
     <CardHeader className="pb-4">
       <div className="flex items-center gap-3">
         <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
@@ -243,15 +248,11 @@ const SectionCard = ({
         </div>
         <div>
           <CardTitle className="text-lg">{title}</CardTitle>
-          {description && (
-            <CardDescription className="mt-0.5">{description}</CardDescription>
-          )}
+          {description && <CardDescription className="mt-0.5">{description}</CardDescription>}
         </div>
       </div>
     </CardHeader>
-    <CardContent className="pt-0">
-      {children}
-    </CardContent>
+    <CardContent className="pt-0">{children}</CardContent>
   </Card>
 )
 
@@ -259,7 +260,7 @@ const PlanPage = () => {
   const { data: planData, isLoading: planLoading } = usePlan()
   const { data: usageData, isLoading: usageLoading } = useUsage()
   const rateLimit = useRateLimit()
-  
+
   const userPlan = planData?.code || 'free'
   const planPrice = planData?.price || 0
   const planCurrency = planData?.currency || 'TRY'
@@ -272,9 +273,10 @@ const PlanPage = () => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency }).format(amount)
   }
 
-  const rateLimitPercentage = rateLimit.limit && rateLimit.remaining !== null
-    ? ((rateLimit.limit - rateLimit.remaining) / rateLimit.limit) * 100
-    : 0
+  const rateLimitPercentage =
+    rateLimit.limit && rateLimit.remaining !== null
+      ? ((rateLimit.limit - rateLimit.remaining) / rateLimit.limit) * 100
+      : 0
 
   // Loading skeleton
   if (loading) {
@@ -297,14 +299,14 @@ const PlanPage = () => {
 
           {/* Stats Grid Skeleton */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map(i => (
+            {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-36 rounded-2xl" />
             ))}
           </div>
 
           {/* Section Cards Skeleton */}
           <div className="grid gap-6 md:grid-cols-2">
-            {[1, 2, 3, 4].map(i => (
+            {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-64 rounded-xl" />
             ))}
           </div>
@@ -323,8 +325,12 @@ const PlanPage = () => {
               <CreditCard className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Plan ve Faturalandırma</h1>
-              <p className="text-muted-foreground">Mevcut planınızı ve kullanım detaylarınızı görüntüleyin.</p>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                Plan ve Faturalandırma
+              </h1>
+              <p className="text-muted-foreground">
+                Mevcut planınızı ve kullanım detaylarınızı görüntüleyin.
+              </p>
             </div>
           </div>
         </div>
@@ -334,7 +340,7 @@ const PlanPage = () => {
           {/* Background decorations */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl -ml-24 -mb-24" />
-          
+
           <div className="relative z-10">
             <div className="p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
               <div className="flex items-center gap-4">
@@ -347,13 +353,13 @@ const PlanPage = () => {
                     <PlanBadge plan={userPlan as PlanTier} size="md" />
                   </div>
                   <p className="text-lg text-muted-foreground">
-                    {planPrice > 0 
-                      ? `${formatCurrency(planPrice, planCurrency)} / ay` 
+                    {planPrice > 0
+                      ? `${formatCurrency(planPrice, planCurrency)} / ay`
                       : 'Ücretsiz Plan'}
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                 <Button variant="outline" className="gap-2" disabled>
                   <RefreshCcw className="w-4 h-4" />
@@ -407,8 +413,8 @@ const PlanPage = () => {
         {/* Detailed Sections */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* Files & Storage */}
-          <SectionCard 
-            icon={Database} 
+          <SectionCard
+            icon={Database}
             title="Dosya ve Depolama"
             description="Veri depolama limitleri ve kullanımı"
           >
@@ -435,16 +441,13 @@ const PlanPage = () => {
                 current={usage?.max_files_count_in_one_bot ?? 0}
                 max={planFeatures?.files.max_files_per_bot ?? 0}
               />
-              <FeatureRow
-                label="OCR (Görsel Tarama)"
-                enabled={planFeatures?.files.ocr_enabled}
-              />
+              <FeatureRow label="OCR (Görsel Tarama)" enabled={planFeatures?.files.ocr_enabled} />
             </div>
           </SectionCard>
 
           {/* Web Scraping */}
-          <SectionCard 
-            icon={Globe} 
+          <SectionCard
+            icon={Globe}
             title="Web İçerik Kaynakları"
             description="URL tarama limitleri ve özellikleri"
           >
@@ -463,22 +466,27 @@ const PlanPage = () => {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[250px]">
                         <p className="text-xs">
-                          Her bot için ekleyebileceğiniz ana URL + alt sayfa tarama sonucu eklenen URL'lerin toplam limiti.
+                          Her bot için ekleyebileceğiniz ana URL + alt sayfa tarama sonucu eklenen
+                          URL'lerin toplam limiti.
                         </p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
                   <span className="text-sm font-medium">
-                    {usage?.max_urls_count_in_one_bot ?? 0} / {(planFeatures?.scraping.max_urls_per_bot ?? 0) + (planFeatures?.scraping.max_pages_per_crawl ?? 0)}
+                    {usage?.max_urls_count_in_one_bot ?? 0} /{' '}
+                    {(planFeatures?.scraping.max_urls_per_bot ?? 0) +
+                      (planFeatures?.scraping.max_pages_per_crawl ?? 0)}
                   </span>
                 </div>
                 <div className="mt-2">
-                  <Progress 
+                  <Progress
                     value={
-                      ((usage?.max_urls_count_in_one_bot ?? 0) / 
-                      ((planFeatures?.scraping.max_urls_per_bot ?? 0) + (planFeatures?.scraping.max_pages_per_crawl ?? 0))) * 100
-                    } 
-                    className="h-1.5" 
+                      ((usage?.max_urls_count_in_one_bot ?? 0) /
+                        ((planFeatures?.scraping.max_urls_per_bot ?? 0) +
+                          (planFeatures?.scraping.max_pages_per_crawl ?? 0))) *
+                      100
+                    }
+                    className="h-1.5"
                   />
                 </div>
               </div>
@@ -486,10 +494,7 @@ const PlanPage = () => {
                 label="Dinamik Site Tarama (JavaScript)"
                 enabled={planFeatures?.scraping.dynamic_enabled}
               />
-              <FeatureRow
-                label="İçerik Yenileme"
-                enabled={planFeatures?.refresh?.enabled}
-              />
+              <FeatureRow label="İçerik Yenileme" enabled={planFeatures?.refresh?.enabled} />
               {planFeatures?.refresh?.enabled && (
                 <FeatureRow
                   label="Aylık Yenileme Hakkı"
@@ -502,8 +507,8 @@ const PlanPage = () => {
           </SectionCard>
 
           {/* AI Models */}
-          <SectionCard 
-            icon={Cpu} 
+          <SectionCard
+            icon={Cpu}
             title="Yapay Zeka Modelleri"
             description="AI model erişimi ve token limitleri"
           >
@@ -518,12 +523,8 @@ const PlanPage = () => {
                 <div className="flex items-start justify-between">
                   <span className="text-sm text-muted-foreground mt-1">Erişilebilir Modeller</span>
                   <div className="flex flex-wrap gap-1.5 justify-end max-w-[200px]">
-                    {planFeatures?.chat.allowed_models.map(m => (
-                      <Badge 
-                        key={m} 
-                        variant="outline" 
-                        className="text-xs bg-background/50"
-                      >
+                    {planFeatures?.chat.allowed_models.map((m) => (
+                      <Badge key={m} variant="outline" className="text-xs bg-background/50">
                         {m}
                       </Badge>
                     ))}
@@ -538,8 +539,8 @@ const PlanPage = () => {
           </SectionCard>
 
           {/* Security & Branding */}
-          <SectionCard 
-            icon={Shield} 
+          <SectionCard
+            icon={Shield}
             title="Güvenlik ve Branding"
             description="Embed güvenliği ve marka özelleştirmeleri"
           >
@@ -561,8 +562,8 @@ const PlanPage = () => {
         </div>
 
         {/* System Usage Section */}
-        <SectionCard 
-          icon={Clock} 
+        <SectionCard
+          icon={Clock}
           title="Sistem Kullanımı"
           description="API limitleri ve kaynak ekleme kotaları"
           gradient="from-background to-muted/30"
@@ -580,11 +581,13 @@ const PlanPage = () => {
                     {usage?.ingestions_used ?? 0} / {planLimits?.max_monthly_ingestions ?? 0}
                   </span>
                 </div>
-                <Progress 
-                  value={planLimits?.max_monthly_ingestions 
-                    ? ((usage?.ingestions_used ?? 0) / planLimits.max_monthly_ingestions) * 100 
-                    : 0} 
-                  className="h-2" 
+                <Progress
+                  value={
+                    planLimits?.max_monthly_ingestions
+                      ? ((usage?.ingestions_used ?? 0) / planLimits.max_monthly_ingestions) * 100
+                      : 0
+                  }
+                  className="h-2"
                 />
               </div>
             </div>
@@ -598,14 +601,19 @@ const PlanPage = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Kullanılan</span>
                   <span className="font-medium">
-                    {(usage?.ingestion_embedding_tokens ?? 0).toLocaleString()} / {(planLimits?.max_monthly_embedding_tokens ?? 0).toLocaleString()}
+                    {(usage?.ingestion_embedding_tokens ?? 0).toLocaleString()} /{' '}
+                    {(planLimits?.max_monthly_embedding_tokens ?? 0).toLocaleString()}
                   </span>
                 </div>
-                <Progress 
-                  value={planLimits?.max_monthly_embedding_tokens 
-                    ? ((usage?.ingestion_embedding_tokens ?? 0) / planLimits.max_monthly_embedding_tokens) * 100 
-                    : 0} 
-                  className="h-2" 
+                <Progress
+                  value={
+                    planLimits?.max_monthly_embedding_tokens
+                      ? ((usage?.ingestion_embedding_tokens ?? 0) /
+                          planLimits.max_monthly_embedding_tokens) *
+                        100
+                      : 0
+                  }
+                  className="h-2"
                 />
               </div>
             </div>

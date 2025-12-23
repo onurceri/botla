@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { QueryWrapper } from "@/test-utils"
+import { QueryWrapper } from '@/test-utils'
 import { render, screen, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -17,13 +17,13 @@ describe('ChatbotDetailPage validate & delete branches', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter initialEntries={["/chatbots/new"]}>
-          <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter initialEntries={['/chatbots/new']}>
+            <Routes>
+              <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
     const createBtn = await screen.findByRole('button', { name: 'Oluştur' })
     await user.click(createBtn)
@@ -34,8 +34,10 @@ describe('ChatbotDetailPage validate & delete branches', () => {
   it('does not delete when confirm is cancelled', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
-      if (url.includes('/api/v1/me')) return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
-      if (url.includes('/api/v1/chatbots/xyz')) return Promise.resolve({ data: { id: 'xyz', name: 'Bot' } } as any)
+      if (url.includes('/api/v1/me'))
+        return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
+      if (url.includes('/api/v1/chatbots/xyz'))
+        return Promise.resolve({ data: { id: 'xyz', name: 'Bot' } } as any)
       if (url.includes('/api/v1/chatbots/xyz/sources')) return Promise.resolve({ data: [] } as any)
       return Promise.resolve({ data: {} } as any)
     })
@@ -44,13 +46,13 @@ describe('ChatbotDetailPage validate & delete branches', () => {
     const utils = render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter initialEntries={["/chatbots/xyz"]}>
-          <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter initialEntries={['/chatbots/xyz']}>
+            <Routes>
+              <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
     const view = within(utils.container)
     const deleteBtn = await view.findByLabelText('Sil')
@@ -61,8 +63,10 @@ describe('ChatbotDetailPage validate & delete branches', () => {
   it('shows error toast when delete fails', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
-      if (url.includes('/api/v1/me')) return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
-      if (url.includes('/api/v1/chatbots/xyz')) return Promise.resolve({ data: { id: 'xyz', name: 'Bot' } } as any)
+      if (url.includes('/api/v1/me'))
+        return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
+      if (url.includes('/api/v1/chatbots/xyz'))
+        return Promise.resolve({ data: { id: 'xyz', name: 'Bot' } } as any)
       if (url.includes('/api/v1/chatbots/xyz/sources')) return Promise.resolve({ data: [] } as any)
       return Promise.resolve({ data: {} } as any)
     })
@@ -71,13 +75,13 @@ describe('ChatbotDetailPage validate & delete branches', () => {
     const utils2 = render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter initialEntries={["/chatbots/xyz"]}>
-          <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter initialEntries={['/chatbots/xyz']}>
+            <Routes>
+              <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
     const view2 = within(utils2.container)
     const deleteBtn = await view2.findByLabelText('Sil')

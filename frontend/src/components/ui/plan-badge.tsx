@@ -1,6 +1,6 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Crown, Sparkles } from "lucide-react"
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+import { Crown, Sparkles } from 'lucide-react'
 
 export type PlanTier = 'free' | 'pro' | 'ultra'
 
@@ -32,21 +32,15 @@ const planConfig = {
  * A reusable badge component for displaying plan tiers (PRO, ULTRA, FREE)
  * Uses the project's Amber color palette for consistency across the app.
  */
-function PlanBadge({ 
-  plan, 
-  showIcon = true, 
-  size = 'sm',
-  className, 
-  ...props 
-}: PlanBadgeProps) {
+function PlanBadge({ plan, showIcon = true, size = 'sm', className, ...props }: PlanBadgeProps) {
   const config = planConfig[plan]
   const Icon = config.icon
-  
+
   const sizeClasses = {
     sm: 'px-1.5 py-0.5 text-[10px] gap-1',
     md: 'px-2.5 py-0.5 text-xs gap-1.5',
   }
-  
+
   const iconSizes = {
     sm: 'h-2.5 w-2.5',
     md: 'h-3 w-3',
@@ -55,10 +49,10 @@ function PlanBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full font-bold tracking-wide transition-colors",
+        'inline-flex items-center rounded-full font-bold tracking-wide transition-colors',
         sizeClasses[size],
         config.className,
-        className
+        className,
       )}
       {...props}
     >

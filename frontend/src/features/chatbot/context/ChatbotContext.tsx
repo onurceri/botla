@@ -16,7 +16,11 @@ export interface ModelInfo {
 interface ChatbotContextType extends ChatbotFormReturn {
   planConfig: {
     branding?: { can_hide_branding?: boolean; can_custom_branding?: boolean }
-    scraping?: { max_pages_per_crawl?: number; max_urls_per_bot?: number; dynamic_enabled?: boolean }
+    scraping?: {
+      max_pages_per_crawl?: number
+      max_urls_per_bot?: number
+      dynamic_enabled?: boolean
+    }
     security?: { secure_embed_enabled?: boolean }
     guardrails?: {
       can_customize_thresholds?: boolean
@@ -28,6 +32,8 @@ interface ChatbotContextType extends ChatbotFormReturn {
     chat?: {
       allowed_models: string[]
       max_monthly_tokens: number
+      min_response_token_limit?: number
+      max_response_token_limit?: number
       rag: { top_k: number; max_context_tokens: number }
     }
     files?: {
@@ -50,14 +56,14 @@ interface ChatbotContextType extends ChatbotFormReturn {
 
 export const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined)
 
-export function ChatbotProvider({ 
-  children, 
-  chatbotId, 
-  isNew 
-}: { 
+export function ChatbotProvider({
+  children,
+  chatbotId,
+  isNew,
+}: {
   children: ReactNode
   chatbotId?: string
-  isNew: boolean 
+  isNew: boolean
 }) {
   const form = useChatbotForm()
   const [planConfig, setPlanConfig] = useState<ChatbotContextType['planConfig']>({})
@@ -91,7 +97,11 @@ export function ChatbotProvider({
 
   // Enforce plan restrictions
   useEffect(() => {
-    if (planConfig?.guardrails && !planConfig.guardrails.can_use_escalate_fallback && form.handoffEnabled) {
+    if (
+      planConfig?.guardrails &&
+      !planConfig.guardrails.can_use_escalate_fallback &&
+      form.handoffEnabled
+    ) {
       form.setHandoffEnabled(false)
     }
   }, [planConfig, form.handoffEnabled, form.setHandoffEnabled])

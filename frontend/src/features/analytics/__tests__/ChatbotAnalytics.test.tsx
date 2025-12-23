@@ -7,15 +7,17 @@ import * as analyticsApi from '@/api/analytics'
 vi.mock('@/api/analytics', () => ({
   getChatbotAnalyticsOverview: vi.fn(),
   getChatbotAnalyticsTrends: vi.fn(),
-  getSourceUsageStats: vi.fn()
+  getSourceUsageStats: vi.fn(),
 }))
 
 // Mock ResponsiveContainer to avoid sizing issues in tests
 vi.mock('recharts', async (importOriginal) => {
-  const original = await importOriginal() as any
+  const original = (await importOriginal()) as any
   return {
     ...original,
-    ResponsiveContainer: ({ children }: any) => <div style={{ width: 800, height: 300 }}>{children}</div>
+    ResponsiveContainer: ({ children }: any) => (
+      <div style={{ width: 800, height: 300 }}>{children}</div>
+    ),
   }
 })
 
@@ -24,18 +26,18 @@ describe('ChatbotAnalytics', () => {
     total_conversations: 120,
     total_messages: 450,
     total_tokens_used: 15000,
-    avg_positive_feedback: 0.95
+    avg_positive_feedback: 0.95,
   }
 
   const mockTrends = [
     { date: '2023-01-01', total_conversations: 10, total_messages: 40 },
-    { date: '2023-01-02', total_conversations: 15, total_messages: 55 }
+    { date: '2023-01-02', total_conversations: 15, total_messages: 55 },
   ]
 
   it('renders loading state initially', () => {
     vi.mocked(analyticsApi.getChatbotAnalyticsOverview).mockResolvedValue({})
     vi.mocked(analyticsApi.getChatbotAnalyticsTrends).mockResolvedValue([])
-    
+
     const { container } = render(<ChatbotAnalytics chatbotId="123" />)
     const skeletons = container.querySelectorAll('.animate-pulse')
     expect(skeletons.length).toBeGreaterThan(0)
@@ -53,12 +55,15 @@ describe('ChatbotAnalytics', () => {
     })
 
     // Wait for stats to appear
-    await waitFor(() => {
-        expect(screen.getByText('120')).toBeInTheDocument() 
-    }, { timeout: 3000 })
-    
-    expect(screen.getByText('450')).toBeInTheDocument() 
-    expect(screen.getByText('15,000')).toBeInTheDocument() 
-    expect(screen.getByText(/95%/)).toBeInTheDocument() 
+    await waitFor(
+      () => {
+        expect(screen.getByText('120')).toBeInTheDocument()
+      },
+      { timeout: 3000 },
+    )
+
+    expect(screen.getByText('450')).toBeInTheDocument()
+    expect(screen.getByText('15,000')).toBeInTheDocument()
+    expect(screen.getByText(/95%/)).toBeInTheDocument()
   })
 })

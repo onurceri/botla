@@ -19,7 +19,7 @@ describe('useToastErrors', () => {
     render(
       <ToastProvider>
         <Demo />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     screen.getByText('success').click()
@@ -32,4 +32,3 @@ describe('useToastErrors', () => {
     expect(await screen.findByText('Bilgi!')).toBeInTheDocument()
   })
 })
-

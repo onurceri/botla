@@ -29,6 +29,7 @@ const defaultProps = {
   inputTextColor: '#000000',
   sendButtonColor: '#3b82f6',
   bubbleRadius: '1rem',
+  autoOpen: true,
 }
 
 describe('PlaygroundPreview', () => {
@@ -42,7 +43,7 @@ describe('PlaygroundPreview', () => {
 
   it('renders iframe with correct src', () => {
     const { container } = render(<PlaygroundPreview {...defaultProps} />)
-    
+
     const iframe = container.querySelector('iframe')
     expect(iframe).toBeInTheDocument()
     expect(iframe?.src).toContain('/preview.html')
@@ -50,30 +51,33 @@ describe('PlaygroundPreview', () => {
 
   it('iframe has correct attributes', () => {
     const { container } = render(<PlaygroundPreview {...defaultProps} />)
-    
+
     const iframe = container.querySelector('iframe')
     expect(iframe).toHaveAttribute('title', 'Chatbot Preview')
-    expect(iframe).toHaveAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups')
+    expect(iframe).toHaveAttribute(
+      'sandbox',
+      'allow-scripts allow-same-origin allow-forms allow-popups',
+    )
   })
 
   it('sends config via postMessage when iframe loads', async () => {
     const mockPostMessage = vi.fn()
-    
+
     const { container } = render(<PlaygroundPreview {...defaultProps} />)
     const iframe = container.querySelector('iframe') as HTMLIFrameElement
-    
+
     // Simulate iframe with contentWindow
     Object.defineProperty(iframe, 'contentWindow', {
       value: { postMessage: mockPostMessage },
       writable: true,
     })
-    
+
     // Trigger load event
     iframe.dispatchEvent(new Event('load'))
-    
+
     // Wait for setTimeout in handleIframeLoad
-    await new Promise(resolve => setTimeout(resolve, 150))
-    
+    await new Promise((resolve) => setTimeout(resolve, 150))
+
     expect(mockPostMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WIDGET_CONFIG',
@@ -81,35 +85,35 @@ describe('PlaygroundPreview', () => {
           'chatbot-id': '123',
           'session-id': 'test-session-id',
           'auto-open': '1',
-          'color': '#a78bfa',
-          'position': 'bottom-right',
+          color: '#a78bfa',
+          position: 'bottom-right',
         }),
       }),
-      '*'
+      '*',
     )
   })
 
   it('includes suggestions in config when enabled', async () => {
     const mockPostMessage = vi.fn()
     const suggestions = ['Nasıl çalışır?', 'Fiyatlar nedir?']
-    
+
     const { container } = render(
       <PlaygroundPreview
         {...defaultProps}
         suggestionsEnabled={true}
         suggestedQuestions={suggestions}
-      />
+      />,
     )
-    
+
     const iframe = container.querySelector('iframe') as HTMLIFrameElement
     Object.defineProperty(iframe, 'contentWindow', {
       value: { postMessage: mockPostMessage },
       writable: true,
     })
-    
+
     iframe.dispatchEvent(new Event('load'))
-    await new Promise(resolve => setTimeout(resolve, 150))
-    
+    await new Promise((resolve) => setTimeout(resolve, 150))
+
     expect(mockPostMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WIDGET_CONFIG',
@@ -117,31 +121,27 @@ describe('PlaygroundPreview', () => {
           suggestions: JSON.stringify(suggestions),
         }),
       }),
-      '*'
+      '*',
     )
   })
 
   it('includes branding config when provided', async () => {
     const mockPostMessage = vi.fn()
     const customBranding = { text: 'Custom Brand', link: 'https://example.com' }
-    
+
     const { container } = render(
-      <PlaygroundPreview
-        {...defaultProps}
-        hideBranding={true}
-        customBranding={customBranding}
-      />
+      <PlaygroundPreview {...defaultProps} hideBranding={true} customBranding={customBranding} />,
     )
-    
+
     const iframe = container.querySelector('iframe') as HTMLIFrameElement
     Object.defineProperty(iframe, 'contentWindow', {
       value: { postMessage: mockPostMessage },
       writable: true,
     })
-    
+
     iframe.dispatchEvent(new Event('load'))
-    await new Promise(resolve => setTimeout(resolve, 150))
-    
+    await new Promise((resolve) => setTimeout(resolve, 150))
+
     expect(mockPostMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WIDGET_CONFIG',
@@ -150,58 +150,57 @@ describe('PlaygroundPreview', () => {
           'custom-branding': JSON.stringify(customBranding),
         }),
       }),
-      '*'
+      '*',
     )
   })
 
   it('debounces config updates on prop changes', async () => {
     vi.useFakeTimers()
     const mockPostMessage = vi.fn()
-    
+
     const { container, rerender } = render(<PlaygroundPreview {...defaultProps} />)
     const iframe = container.querySelector('iframe') as HTMLIFrameElement
-    
+
     Object.defineProperty(iframe, 'contentWindow', {
       value: { postMessage: mockPostMessage },
       writable: true,
     })
-    
+
     // Trigger initial load
     iframe.dispatchEvent(new Event('load'))
     vi.advanceTimersByTime(150)
-    
+
     // Store initial call count (should be 1 from load)
     const initialCallCount = mockPostMessage.mock.calls.length
-    
+
     // Simulate rapid prop changes (like typing)
     rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="H" />)
     vi.advanceTimersByTime(50)
-    
+
     rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="He" />)
     vi.advanceTimersByTime(50)
-    
+
     rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="Hel" />)
     vi.advanceTimersByTime(50)
-    
+
     rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="Hell" />)
     vi.advanceTimersByTime(50)
-    
+
     rerender(<PlaygroundPreview {...defaultProps} welcomeMessage="Hello" />)
-    
+
     // Should not have sent any new messages yet (debounce in progress)
     expect(mockPostMessage.mock.calls.length).toBe(initialCallCount)
-    
+
     // Wait for debounce to complete (300ms)
     vi.advanceTimersByTime(350)
-    
+
     // Now should have sent exactly one update (not 5)
     expect(mockPostMessage.mock.calls.length).toBe(initialCallCount + 1)
-    
+
     // Verify the final message contains the last value
     const lastCall = mockPostMessage.mock.calls[mockPostMessage.mock.calls.length - 1]
     expect(lastCall[0].config['welcome']).toBe('Hello')
-    
+
     vi.useRealTimers()
   })
 })
-

@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { RefreshCw, CheckCircle2, AlertCircle, FileText, Globe, Type as TypeIcon } from 'lucide-react'
+import {
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Globe,
+  Type as TypeIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ProcessingSource {
@@ -57,12 +64,14 @@ const getStatusText = (status: string) => {
 
 function ProgressItem({ source }: { source: ProcessingSource }) {
   const [displayProgress, setDisplayProgress] = useState(0)
-  
+
   // Smooth progress animation
   useEffect(() => {
-    const target = source.progress ?? (source.status === 'completed' ? 100 : source.status === 'processing' ? 50 : 0)
+    const target =
+      source.progress ??
+      (source.status === 'completed' ? 100 : source.status === 'processing' ? 50 : 0)
     const interval = setInterval(() => {
-      setDisplayProgress(prev => {
+      setDisplayProgress((prev) => {
         if (prev < target) {
           return Math.min(prev + 2, target)
         }
@@ -73,23 +82,28 @@ function ProgressItem({ source }: { source: ProcessingSource }) {
   }, [source.progress, source.status])
 
   return (
-    <div 
+    <div
       className={cn(
-        "flex items-center gap-3 p-3 rounded-xl",
-        "bg-white/60 backdrop-blur-sm border border-border/40",
-        "animate-in slide-in-from-top-2 fade-in duration-300",
-        source.status === 'failed' && "border-red-200 bg-red-50/50"
+        'flex items-center gap-3 p-3 rounded-xl',
+        'bg-white/60 backdrop-blur-sm border border-border/40',
+        'animate-in slide-in-from-top-2 fade-in duration-300',
+        source.status === 'failed' && 'border-red-200 bg-red-50/50',
       )}
       data-testid="progress-item"
     >
       {/* Source Type Icon */}
-      <div className={cn(
-        "flex items-center justify-center w-8 h-8 rounded-lg shrink-0",
-        source.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
-        source.status === 'failed' ? "bg-red-100 text-red-600" :
-        source.status === 'processing' ? "bg-blue-100 text-blue-600" :
-        "bg-amber-100 text-amber-600"
-      )}>
+      <div
+        className={cn(
+          'flex items-center justify-center w-8 h-8 rounded-lg shrink-0',
+          source.status === 'completed'
+            ? 'bg-emerald-100 text-emerald-600'
+            : source.status === 'failed'
+              ? 'bg-red-100 text-red-600'
+              : source.status === 'processing'
+                ? 'bg-blue-100 text-blue-600'
+                : 'bg-amber-100 text-amber-600',
+        )}
+      >
         {getSourceIcon(source.source_type)}
       </div>
 
@@ -101,34 +115,39 @@ function ProgressItem({ source }: { source: ProcessingSource }) {
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
             {getStatusIcon(source.status)}
-            <span className={cn(
-              "text-xs font-medium",
-              source.status === 'completed' ? "text-emerald-600" :
-              source.status === 'failed' ? "text-red-600" :
-              source.status === 'processing' ? "text-blue-600" :
-              "text-amber-600"
-            )}>
+            <span
+              className={cn(
+                'text-xs font-medium',
+                source.status === 'completed'
+                  ? 'text-emerald-600'
+                  : source.status === 'failed'
+                    ? 'text-red-600'
+                    : source.status === 'processing'
+                      ? 'text-blue-600'
+                      : 'text-amber-600',
+              )}
+            >
               {getStatusText(source.status)}
             </span>
           </div>
         </div>
-        
+
         {/* Progress Bar */}
         {(source.status === 'processing' || source.status === 'queued') && (
           <div className="h-1.5 bg-muted/50 rounded-full overflow-hidden">
-            <div 
+            <div
               className={cn(
-                "h-full rounded-full transition-all duration-300 ease-out",
-                source.status === 'processing' 
-                  ? "bg-gradient-to-r from-blue-400 to-blue-600" 
-                  : "bg-amber-400"
+                'h-full rounded-full transition-all duration-300 ease-out',
+                source.status === 'processing'
+                  ? 'bg-gradient-to-r from-blue-400 to-blue-600'
+                  : 'bg-amber-400',
               )}
               style={{ width: `${displayProgress}%` }}
               data-testid="progress-bar"
             />
           </div>
         )}
-        
+
         {/* Error Message */}
         {source.status === 'failed' && source.error_message && (
           <p className="text-xs text-red-500 mt-1 truncate" title={source.error_message}>
@@ -141,28 +160,28 @@ function ProgressItem({ source }: { source: ProcessingSource }) {
 }
 
 export default function IngestionProgress({ sources, className }: IngestionProgressProps) {
-  const processingCount = sources.filter(s => s.status === 'processing' || s.status === 'queued').length
-  
+  const processingCount = sources.filter(
+    (s) => s.status === 'processing' || s.status === 'queued',
+  ).length
+
   if (sources.length === 0) return null
 
   return (
-    <div 
-      className={cn("space-y-3", className)}
-      data-testid="ingestion-progress"
-    >
+    <div className={cn('space-y-3', className)} data-testid="ingestion-progress">
       {/* Header */}
       {processingCount > 0 && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
           <span>
-            <span className="font-medium text-foreground">{processingCount}</span> kaynak işleniyor...
+            <span className="font-medium text-foreground">{processingCount}</span> kaynak
+            işleniyor...
           </span>
         </div>
       )}
 
       {/* Progress Items */}
       <div className="space-y-2">
-        {sources.map(source => (
+        {sources.map((source) => (
           <ProgressItem key={source.id} source={source} />
         ))}
       </div>

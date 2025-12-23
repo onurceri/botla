@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
 } from 'recharts'
-import { 
-  MessageSquare, 
-  Users, 
-  Zap, 
-  ArrowUpRight, 
+import {
+  MessageSquare,
+  Users,
+  Zap,
+  ArrowUpRight,
   Plus,
   Bot,
   ThumbsUp,
-  Activity
+  Activity,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,20 +31,28 @@ export const CustomTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="glass-card p-3 border border-border/50 shadow-xl rounded-lg bg-background/95 backdrop-blur-sm">
         <p className="text-sm font-medium mb-2 border-b border-border/50 pb-1">
-          {new Date(label).toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {new Date(label).toLocaleDateString('tr-TR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
         </p>
         <div className="space-y-1">
           {payload.map((entry: any) => (
             <div key={entry.name} className="flex items-center gap-2 text-sm">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
               <span className="text-muted-foreground capitalize">
-                {entry.name === 'conversations' ? 'Konuşma' : 
-                 entry.name === 'messages' ? 'Mesaj' : entry.name}
+                {entry.name === 'conversations'
+                  ? 'Konuşma'
+                  : entry.name === 'messages'
+                    ? 'Mesaj'
+                    : entry.name}
               </span>
               <span className="font-bold font-mono">{entry.value}</span>
             </div>
           ))}
-          
+
           {/* Additional data */}
           {(data.tokens > 0 || data.thumbs_up > 0 || data.thumbs_down > 0 || data.handoffs > 0) && (
             <div className="pt-2 mt-2 border-t border-border/50 space-y-1">
@@ -93,7 +101,7 @@ const DashboardPage = () => {
     totalTokens: 0,
     positiveFeedback: 0,
     negativeFeedback: 0,
-    activeBots: 0
+    activeBots: 0,
   })
   const [chartData, setChartData] = useState<any[]>([])
   const [recentBots, setRecentBots] = useState<any[]>([])
@@ -112,19 +120,34 @@ const DashboardPage = () => {
       try {
         // Fetch Analytics
         const analyticsRaw = await getAnalytics()
-        
+
         // Check if component is still mounted before setting state
         if (!isMounted) return
-        
+
         const analyticsData = Array.isArray(analyticsRaw) ? analyticsRaw : []
         setChartData(analyticsData)
 
         // Calculate totals from analytics
-        const totalConv = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.conversations ?? 0), 0)
-        const totalMsg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.messages ?? 0), 0)
-        const totalTok = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.tokens ?? 0), 0)
-        const totalPos = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.thumbs_up ?? 0), 0)
-        const totalNeg = analyticsData.reduce((acc: number, curr: any) => acc + (curr?.thumbs_down ?? 0), 0)
+        const totalConv = analyticsData.reduce(
+          (acc: number, curr: any) => acc + (curr?.conversations ?? 0),
+          0,
+        )
+        const totalMsg = analyticsData.reduce(
+          (acc: number, curr: any) => acc + (curr?.messages ?? 0),
+          0,
+        )
+        const totalTok = analyticsData.reduce(
+          (acc: number, curr: any) => acc + (curr?.tokens ?? 0),
+          0,
+        )
+        const totalPos = analyticsData.reduce(
+          (acc: number, curr: any) => acc + (curr?.thumbs_up ?? 0),
+          0,
+        )
+        const totalNeg = analyticsData.reduce(
+          (acc: number, curr: any) => acc + (curr?.thumbs_down ?? 0),
+          0,
+        )
 
         let bots: any[] = []
         try {
@@ -138,14 +161,14 @@ const DashboardPage = () => {
         if (!isMounted) return
 
         setRecentBots(bots.slice(0, 3))
-        
+
         setStats({
           totalConversations: totalConv,
           totalMessages: totalMsg,
           totalTokens: totalTok,
           positiveFeedback: totalPos,
           negativeFeedback: totalNeg,
-          activeBots: bots.length
+          activeBots: bots.length,
         })
       } catch (error) {
         // Ignore abort errors
@@ -178,7 +201,7 @@ const DashboardPage = () => {
           <div className="h-10 w-32 bg-muted rounded"></div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="h-32 bg-muted/50 border-0" />
           ))}
         </div>
@@ -198,7 +221,9 @@ const DashboardPage = () => {
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Dashboard
           </h1>
-          <p className="text-muted-foreground">Botlarınızın son 30 günlük performansına genel bakış.</p>
+          <p className="text-muted-foreground">
+            Botlarınızın son 30 günlük performansına genel bakış.
+          </p>
         </div>
         <Link to="/dashboard/chatbots/new">
           <Button className="gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-300">
@@ -214,7 +239,9 @@ const DashboardPage = () => {
             <Users className="w-24 h-24" />
           </div>
           <div className="p-6 pb-2 relative z-10 flex justify-between items-center">
-            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">Toplam Konuşma</h3>
+            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">
+              Toplam Konuşma
+            </h3>
             <div className="p-2 bg-blue-500/10 rounded-full text-blue-500">
               <Users className="h-4 w-4" />
             </div>
@@ -232,16 +259,16 @@ const DashboardPage = () => {
             <MessageSquare className="w-24 h-24" />
           </div>
           <div className="p-6 pb-2 relative z-10 flex justify-between items-center">
-            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">Toplam Mesaj</h3>
+            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">
+              Toplam Mesaj
+            </h3>
             <div className="p-2 bg-purple-500/10 rounded-full text-purple-500">
               <MessageSquare className="h-4 w-4" />
             </div>
           </div>
           <div className="p-6 pt-0 relative z-10">
             <div className="text-2xl font-bold tracking-tight">{stats.totalMessages}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Son 30 günde işlenen toplam mesaj
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Son 30 günde işlenen toplam mesaj</p>
           </div>
         </div>
 
@@ -250,13 +277,17 @@ const DashboardPage = () => {
             <Zap className="w-24 h-24" />
           </div>
           <div className="p-6 pb-2 relative z-10 flex justify-between items-center">
-            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">Harcanan Token</h3>
+            <h3 className="tracking-tight text-sm font-medium text-muted-foreground">
+              Harcanan Token
+            </h3>
             <div className="p-2 bg-amber-500/10 rounded-full text-amber-500">
               <Zap className="h-4 w-4" />
             </div>
           </div>
           <div className="p-6 pt-0 relative z-10">
-            <div className="text-2xl font-bold tracking-tight">{(stats.totalTokens / 1000).toFixed(1)}k</div>
+            <div className="text-2xl font-bold tracking-tight">
+              {(stats.totalTokens / 1000).toFixed(1)}k
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Son 30 günlük tahmini maliyet: ${((stats.totalTokens / 1000) * 0.002).toFixed(3)}
             </p>
@@ -275,9 +306,13 @@ const DashboardPage = () => {
           </div>
           <div className="p-6 pt-0 relative z-10">
             <div className="text-2xl font-bold tracking-tight">
-              {stats.positiveFeedback + stats.negativeFeedback > 0 
-                ? Math.round((stats.positiveFeedback / (stats.positiveFeedback + stats.negativeFeedback)) * 100)
-                : 0}%
+              {stats.positiveFeedback + stats.negativeFeedback > 0
+                ? Math.round(
+                    (stats.positiveFeedback / (stats.positiveFeedback + stats.negativeFeedback)) *
+                      100,
+                  )
+                : 0}
+              %
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Son 30 günde: {stats.positiveFeedback} olumlu, {stats.negativeFeedback} olumsuz
@@ -296,7 +331,15 @@ const DashboardPage = () => {
               <p className="text-sm text-muted-foreground">
                 {chartData.length > 0 ? (
                   <>
-                    {new Date(chartData[0].date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} - {new Date(chartData[chartData.length - 1].date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                    {new Date(chartData[0].date).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}{' '}
+                    -{' '}
+                    {new Date(chartData[chartData.length - 1].date).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
                   </>
                 ) : (
                   'Son 30 Gün'
@@ -310,35 +353,40 @@ const DashboardPage = () => {
               </div>
             )}
           </div>
-          
+
           <div className="min-w-0">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300} minWidth={0}>
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorConversations" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} strokeOpacity={0.5} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12} 
-                    tickLine={false} 
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                    vertical={false}
+                    strokeOpacity={0.5}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
                     axisLine={false}
                     tickFormatter={formatXAxisTick}
                     minTickGap={30}
                   />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12} 
-                    tickLine={false} 
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
                     axisLine={false}
                     tickFormatter={formatYAxisTick}
                   />
@@ -379,12 +427,12 @@ const DashboardPage = () => {
               Tümünü Gör
             </Link>
           </div>
-          
+
           <div className="space-y-4">
             {recentBots.length > 0 ? (
               recentBots.map((bot) => (
-                <Link 
-                  key={bot.id} 
+                <Link
+                  key={bot.id}
                   to={`/dashboard/chatbots/${bot.id}`}
                   className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group border border-border/50"
                 >
@@ -393,10 +441,10 @@ const DashboardPage = () => {
                       <Bot className="h-4 w-4" />
                     </div>
                     <div>
-                      <h4 className="font-medium text-sm group-hover:text-primary transition-colors">{bot.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {bot.model}
-                      </p>
+                      <h4 className="font-medium text-sm group-hover:text-primary transition-colors">
+                        {bot.name}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">{bot.model}</p>
                     </div>
                   </div>
                   <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -413,12 +461,12 @@ const DashboardPage = () => {
               </div>
             )}
           </div>
-          
+
           <div className="mt-6 pt-6 border-t border-border/50">
-             <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Toplam Aktif Bot</span>
-                <span className="font-bold">{stats.activeBots}</span>
-             </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Toplam Aktif Bot</span>
+              <span className="font-bold">{stats.activeBots}</span>
+            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
 import { readFileSync, writeFileSync } from 'fs'
-import { resolve } from 'path'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // Plugin to fix preview.html widget path for production
 function previewHtmlPlugin() {

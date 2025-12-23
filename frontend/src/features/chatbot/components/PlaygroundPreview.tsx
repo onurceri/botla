@@ -37,7 +37,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 /**
  * PlaygroundPreview - Embeds the actual widget via iframe with postMessage config updates
- * 
+ *
  * This component loads the widget in an isolated iframe and sends configuration
  * updates via postMessage. This ensures the preview matches the production widget exactly.
  */
@@ -129,12 +129,30 @@ export default function PlaygroundPreview(props: Props) {
 
     return config
   }, [
-    id, themeColor, chatHeaderColor, chatHeaderTextColor,
-    botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor,
-    inputBackgroundColor, inputTextColor, sendButtonColor,
-    chatFontFamily, position, botDisplayName, botIcon, chatBackgroundColor, bubbleRadius,
-    welcomeMessage, sessionId, suggestionsEnabled, suggestedQuestions,
-    hideBranding, customBranding, panelHeight
+    id,
+    themeColor,
+    chatHeaderColor,
+    chatHeaderTextColor,
+    botMessageColor,
+    botMessageTextColor,
+    userMessageColor,
+    userMessageTextColor,
+    inputBackgroundColor,
+    inputTextColor,
+    sendButtonColor,
+    chatFontFamily,
+    position,
+    botDisplayName,
+    botIcon,
+    chatBackgroundColor,
+    bubbleRadius,
+    welcomeMessage,
+    sessionId,
+    suggestionsEnabled,
+    suggestedQuestions,
+    hideBranding,
+    customBranding,
+    panelHeight,
   ])
 
   // Send config to iframe
@@ -143,10 +161,13 @@ export default function PlaygroundPreview(props: Props) {
     if (!iframe?.contentWindow) return
 
     const config = buildConfig()
-    iframe.contentWindow.postMessage({
-      type: 'WIDGET_CONFIG',
-      config,
-    }, '*')
+    iframe.contentWindow.postMessage(
+      {
+        type: 'WIDGET_CONFIG',
+        config,
+      },
+      '*',
+    )
   }, [buildConfig])
 
   // Send config when iframe loads
@@ -163,11 +184,11 @@ export default function PlaygroundPreview(props: Props) {
   // Debounce to avoid excessive updates during typing
   useEffect(() => {
     if (!configSentRef.current) return
-    
+
     const timeoutId = setTimeout(() => {
       sendConfig()
     }, 300) // 300ms debounce for live preview updates
-    
+
     return () => clearTimeout(timeoutId)
   }, [sendConfig, refreshKey])
 

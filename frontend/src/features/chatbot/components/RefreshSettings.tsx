@@ -19,11 +19,30 @@ export default function RefreshSettings({
   onRefreshPolicyChange,
   onRefreshFrequencyChange,
 }: RefreshSettingsProps) {
-  
-  const frequencyOptions: { value: 'daily' | 'weekly' | 'monthly'; label: string; icon: React.ReactNode; description: string }[] = [
-    { value: 'daily', label: 'Günlük', icon: <Clock className="w-4 h-4" />, description: 'Her gün gece yarısı' },
-    { value: 'weekly', label: 'Haftalık', icon: <CalendarDays className="w-4 h-4" />, description: 'Her Pazar gece yarısı' },
-    { value: 'monthly', label: 'Aylık', icon: <Calendar className="w-4 h-4" />, description: 'Her ayın 1\'i' },
+  const frequencyOptions: {
+    value: 'daily' | 'weekly' | 'monthly'
+    label: string
+    icon: React.ReactNode
+    description: string
+  }[] = [
+    {
+      value: 'daily',
+      label: 'Günlük',
+      icon: <Clock className="w-4 h-4" />,
+      description: 'Her gün gece yarısı',
+    },
+    {
+      value: 'weekly',
+      label: 'Haftalık',
+      icon: <CalendarDays className="w-4 h-4" />,
+      description: 'Her Pazar gece yarısı',
+    },
+    {
+      value: 'monthly',
+      label: 'Aylık',
+      icon: <Calendar className="w-4 h-4" />,
+      description: "Her ayın 1'i",
+    },
   ]
 
   const formatDate = (dateStr: string | null): string => {
@@ -67,7 +86,9 @@ export default function RefreshSettings({
                   : 'border-gray-200 bg-white hover:border-gray-300 text-gray-600'
               }`}
             >
-              <RefreshCw className={`w-5 h-5 mb-2 ${refreshPolicy === 'manual' ? 'text-blue-500' : 'text-gray-400'}`} />
+              <RefreshCw
+                className={`w-5 h-5 mb-2 ${refreshPolicy === 'manual' ? 'text-blue-500' : 'text-gray-400'}`}
+              />
               <span className="font-medium text-sm">Manuel</span>
               <span className="text-xs text-gray-500 mt-1">Sadece elle tetikleme</span>
             </button>
@@ -86,7 +107,9 @@ export default function RefreshSettings({
                   : 'border-gray-200 bg-white hover:border-gray-300 text-gray-600'
               }`}
             >
-              <Clock className={`w-5 h-5 mb-2 ${refreshPolicy === 'auto' ? 'text-blue-500' : 'text-gray-400'}`} />
+              <Clock
+                className={`w-5 h-5 mb-2 ${refreshPolicy === 'auto' ? 'text-blue-500' : 'text-gray-400'}`}
+              />
               <span className="font-medium text-sm">Otomatik</span>
               <span className="text-xs text-gray-500 mt-1">Zamana bağlı yenileme</span>
             </button>
@@ -109,7 +132,9 @@ export default function RefreshSettings({
                       : 'border-gray-200 bg-white hover:border-gray-300 text-gray-600'
                   }`}
                 >
-                  <div className={`mb-1 ${refreshFrequency === option.value ? 'text-blue-500' : 'text-gray-400'}`}>
+                  <div
+                    className={`mb-1 ${refreshFrequency === option.value ? 'text-blue-500' : 'text-gray-400'}`}
+                  >
                     {option.icon}
                   </div>
                   <span className="font-medium text-sm">{option.label}</span>
@@ -141,8 +166,8 @@ export default function RefreshSettings({
         <div className="flex items-start gap-2 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
           <RefreshCw className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-blue-700">
-            Otomatik yenileme, URL kaynaklarınızın içeriğini belirtilen aralıklarda kontrol eder 
-            ve değişiklik varsa güncellenmiş içeriği chatbot'unuza aktarır. Aylık yenileme limitiniz 
+            Otomatik yenileme, URL kaynaklarınızın içeriğini belirtilen aralıklarda kontrol eder ve
+            değişiklik varsa güncellenmiş içeriği chatbot'unuza aktarır. Aylık yenileme limitiniz
             planınıza göre belirlenir.
           </p>
         </div>

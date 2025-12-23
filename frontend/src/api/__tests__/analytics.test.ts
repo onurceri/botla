@@ -11,4 +11,3 @@ describe('api/analytics', () => {
     expect(data).toEqual(payload)
   })
 })
-

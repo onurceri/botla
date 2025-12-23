@@ -18,8 +18,10 @@ import (
 )
 
 type ChatHandlers struct {
-	DB          *sql.DB
-	ChatService *services.ChatService
+	DB               *sql.DB
+	ChatService      *services.ChatService
+	WorkspaceService *services.WorkspaceService
+	OrgService       *services.OrganizationService
 }
 
 type chatRequest struct {
@@ -39,36 +41,17 @@ type chatResponse struct {
 }
 
 func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	const prefix = "/api/v1/chatbots/"
-	path := r.URL.Path
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, "/chat") {
-		w.WriteHeader(http.StatusNotFound)
+
+	cbot, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	if !ok {
 		return
 	}
 
-	botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
-	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if cbot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if cbot.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
+	userID, _ := middleware.UserIDFromContext(r.Context())
 
 	// Get plan and check limits (keep in handler for early rejection)
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)

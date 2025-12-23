@@ -8,7 +8,12 @@ type Props = {
   onDescriptionChange: (v: string) => void
 }
 
-export default function NewChatbotForm({ name, description, onNameChange, onDescriptionChange }: Props) {
+export default function NewChatbotForm({
+  name,
+  description,
+  onNameChange,
+  onDescriptionChange,
+}: Props) {
   return (
     <Card>
       <CardHeader>
@@ -18,14 +23,21 @@ export default function NewChatbotForm({ name, description, onNameChange, onDesc
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium">Bot İsmi</label>
-          <Input value={name} onChange={(e) => onNameChange(e.target.value)} placeholder="Örn: Müşteri Temsilcisi" />
+          <Input
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder="Örn: Müşteri Temsilcisi"
+          />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">Açıklama (Opsiyonel)</label>
-          <Input value={description} onChange={(e) => onDescriptionChange(e.target.value)} placeholder="Botun amacı nedir?" />
+          <Input
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            placeholder="Botun amacı nedir?"
+          />
         </div>
       </CardContent>
     </Card>
   )
 }
-

@@ -53,7 +53,8 @@ func updateProPlanConfig(t *testing.T, te *TestEnv) {
     "can_customize_messages": true,
     "can_customize_thresholds": true,
     "can_use_smart_fallback": true,
-    "can_use_escalate_fallback": true
+    "can_use_escalate_fallback": true,
+    "handoff_enabled": true
   },
   "security": {
       "secure_embed_enabled": true
@@ -406,6 +407,13 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 		t.Skip("pdf support not enabled; build with -tags fitz to run this test")
 	}
 
+	// Check if OCR is supported by checking ExtractPDFWithOCRCompat error
+	ocrText, err := pdf.ExtractPDFWithOCRCompat("nonexistent.pdf", "en")
+	if err != nil && strings.Contains(err.Error(), "ocr unavailable") {
+		t.Skip("OCR not enabled; build with -tags ocr,fitz to run this test")
+	}
+	_ = ocrText
+
 	oai, qd := setupStubs(t)
 	defer oai.Close()
 	defer qd.Close()
@@ -441,7 +449,9 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 	var body strings.Builder
 	mw := multipart.NewWriter(&body)
 	fw, _ := mw.CreateFormFile("file", "image-only.pdf")
-	fw.Write([]byte("%PDF-1.4\nstub"))
+	// Minimal valid PDF structure
+	pdfContent := "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 20 >>\nstream\nBT /F1 12 Tf ET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000101 00000 n\n0000000190 00000 n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n260\n%%EOF"
+	fw.Write([]byte(pdfContent))
 	mw.WriteField("source_type", "pdf")
 	mw.Close()
 

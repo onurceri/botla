@@ -10,43 +10,20 @@ import (
 
 // ChatbotSources routes GET/POST requests for chatbot sources
 func (h *SourcesHandlers) ChatbotSources(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	chatbotID, ok := parseChatbotIDFromPath(r.URL.Path)
+	bot, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if chatbotID == "new" {
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	c, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil {
-		h.logError("chatbot_fetch_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID, "path": r.URL.Path})
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if c == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if c.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
+	userID, _ := middleware.UserIDFromContext(r.Context())
 
 	switch r.Method {
 	case http.MethodGet:
 		h.listSources(w, r, chatbotID)
 	case http.MethodPost:
-		h.createSource(w, r, chatbotID, userID)
+		h.createSource(w, r, bot, userID)
 	default:
+		w.Header().Set("Allow", "GET, POST")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }

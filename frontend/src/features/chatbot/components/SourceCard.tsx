@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { 
-  CheckCircle2, 
-  RefreshCw, 
-  AlertCircle, 
-  Trash2, 
-  FileText, 
-  Globe, 
+import {
+  CheckCircle2,
+  RefreshCw,
+  AlertCircle,
+  Trash2,
+  FileText,
+  Globe,
   Type as TypeIcon,
   Database,
-  Clock
+  Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from '@/components/ui/alert-dialog'
 import ChunkInspector from './ChunkInspector'
 
 export interface Source {
@@ -85,21 +85,21 @@ const getStatusConfig = (status: string) => {
         icon: <CheckCircle2 className="w-4 h-4" />,
         label: 'Tamamlandı',
         className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        iconBg: 'bg-emerald-500/10 text-emerald-600'
+        iconBg: 'bg-emerald-500/10 text-emerald-600',
       }
     case 'processing':
       return {
         icon: <RefreshCw className="w-4 h-4 animate-spin" />,
         label: 'İşleniyor',
         className: 'bg-blue-100 text-blue-700 border-blue-200',
-        iconBg: 'bg-blue-500/10 text-blue-600'
+        iconBg: 'bg-blue-500/10 text-blue-600',
       }
     case 'failed':
       return {
         icon: <AlertCircle className="w-4 h-4" />,
         label: 'Başarısız',
         className: 'bg-red-100 text-red-700 border-red-200',
-        iconBg: 'bg-red-500/10 text-red-600'
+        iconBg: 'bg-red-500/10 text-red-600',
       }
     case 'queued':
     case 'pending':
@@ -108,17 +108,17 @@ const getStatusConfig = (status: string) => {
         icon: <Clock className="w-4 h-4 animate-pulse" />,
         label: 'Beklemede',
         className: 'bg-amber-100 text-amber-700 border-amber-200',
-        iconBg: 'bg-amber-500/10 text-amber-600'
+        iconBg: 'bg-amber-500/10 text-amber-600',
       }
   }
 }
 
-export default function SourceCard({ 
-  source, 
-  userPlan, 
-  onDelete, 
-  onRefresh, 
-  isRefreshing 
+export default function SourceCard({
+  source,
+  userPlan,
+  onDelete,
+  onRefresh,
+  isRefreshing,
 }: SourceCardProps) {
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const canRefresh = userPlan !== 'free'
@@ -128,20 +128,16 @@ export default function SourceCard({
 
   return (
     <>
-      <ChunkInspector 
-        sourceId={source.id} 
-        open={inspectorOpen} 
-        onOpenChange={setInspectorOpen} 
-      />
+      <ChunkInspector sourceId={source.id} open={inspectorOpen} onOpenChange={setInspectorOpen} />
 
-      <div 
+      <div
         className={cn(
-          "group relative rounded-2xl border border-border/60 p-5",
-          "bg-white/80 backdrop-blur-xl shadow-sm",
-          "md:hover:shadow-lg md:hover:shadow-primary/5 md:hover:border-primary/20",
-          "md:hover:scale-[1.02]",
-          "transition-all duration-300 ease-out",
-          isProcessing && "ring-2 ring-blue-500/20 ring-offset-2"
+          'group relative rounded-2xl border border-border/60 p-5',
+          'bg-white/80 backdrop-blur-xl shadow-sm',
+          'md:hover:shadow-lg md:hover:shadow-primary/5 md:hover:border-primary/20',
+          'md:hover:scale-[1.02]',
+          'transition-all duration-300 ease-out',
+          isProcessing && 'ring-2 ring-blue-500/20 ring-offset-2',
         )}
         data-testid="source-card"
       >
@@ -150,12 +146,12 @@ export default function SourceCard({
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span 
+                <span
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                    "border shadow-sm",
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                    'border shadow-sm',
                     statusConfig.className,
-                    source.status === 'failed' && source.error_message && 'cursor-help'
+                    source.status === 'failed' && source.error_message && 'cursor-help',
                   )}
                 >
                   {statusConfig.icon}
@@ -173,11 +169,13 @@ export default function SourceCard({
 
         {/* Header: Icon + Type */}
         <div className="flex items-start gap-4">
-          <div className={cn(
-            "flex items-center justify-center w-12 h-12 rounded-xl shrink-0",
-            "transition-colors duration-300",
-            statusConfig.iconBg
-          )}>
+          <div
+            className={cn(
+              'flex items-center justify-center w-12 h-12 rounded-xl shrink-0',
+              'transition-colors duration-300',
+              statusConfig.iconBg,
+            )}
+          >
             {getSourceIcon(source.source_type)}
           </div>
 
@@ -185,10 +183,7 @@ export default function SourceCard({
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1">
               {getSourceTypeLabel(source.source_type)}
             </p>
-            <h3 
-              className="font-semibold text-foreground truncate pr-4"
-              title={sourceName}
-            >
+            <h3 className="font-semibold text-foreground truncate pr-4" title={sourceName}>
               {sourceName}
             </h3>
           </div>
@@ -223,10 +218,12 @@ export default function SourceCard({
         </div>
 
         {/* Action Buttons */}
-        <div className={cn(
-          "mt-4 pt-4 border-t border-border/50 flex items-center justify-between gap-2",
-          "md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
-        )}>
+        <div
+          className={cn(
+            'mt-4 pt-4 border-t border-border/50 flex items-center justify-between gap-2',
+            'md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200',
+          )}
+        >
           <Button
             variant="ghost"
             size="sm"
@@ -252,7 +249,7 @@ export default function SourceCard({
                         disabled={!canRefresh || isProcessing || isRefreshing}
                         onClick={() => onRefresh(source.id)}
                       >
-                        <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+                        <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -278,9 +275,12 @@ export default function SourceCard({
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Bu kaynağı silmek istediğinizden emin misiniz?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    Bu kaynağı silmek istediğinizden emin misiniz?
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    "{sourceName}" kaynağı ve tüm ilişkili veri parçaları silinecektir. Bu işlem geri alınamaz.
+                    "{sourceName}" kaynağı ve tüm ilişkili veri parçaları silinecektir. Bu işlem
+                    geri alınamaz.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

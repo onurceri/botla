@@ -5,19 +5,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/processing"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // PendingURLsHandlers handles pending URL operations
 type PendingURLsHandlers struct {
-	DB    *sql.DB
-	Queue *processing.SourceQueue
-	Log   *logger.Logger
+	DB               *sql.DB
+	Queue            *processing.SourceQueue
+	Log              *logger.Logger
+	WorkspaceService *services.WorkspaceService
+	OrgService       *services.OrganizationService
 }
 
 // PendingURLResponse represents a pending URL in the response
@@ -63,22 +64,8 @@ func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	chatbotID := extractChatbotIDFromPendingURLPath(r.URL.Path)
-	if chatbotID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_chatbot_id"})
-		return
-	}
-
-	// Verify ownership
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-		return
-	}
-
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil || bot == nil || bot.UserID != userID {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "chatbot_not_found"})
 		return
 	}
 
@@ -138,22 +125,8 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 		return
 	}
 
-	chatbotID := extractChatbotIDFromPendingURLPath(r.URL.Path)
-	if chatbotID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_chatbot_id"})
-		return
-	}
-
-	// Verify ownership
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-		return
-	}
-
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil || bot == nil || bot.UserID != userID {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "chatbot_not_found"})
 		return
 	}
 
@@ -214,22 +187,8 @@ func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	chatbotID := extractChatbotIDFromPendingURLPath(r.URL.Path)
-	if chatbotID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_chatbot_id"})
-		return
-	}
-
-	// Verify ownership
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-		return
-	}
-
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil || bot == nil || bot.UserID != userID {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "chatbot_not_found"})
 		return
 	}
 
@@ -265,22 +224,8 @@ func (h *PendingURLsHandlers) ClearPendingURLs(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	chatbotID := extractChatbotIDFromPendingURLPath(r.URL.Path)
-	if chatbotID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_chatbot_id"})
-		return
-	}
-
-	// Verify ownership
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
-		return
-	}
-
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil || bot == nil || bot.UserID != userID {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "chatbot_not_found"})
 		return
 	}
 
@@ -295,21 +240,6 @@ func (h *PendingURLsHandlers) ClearPendingURLs(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, ClearResponse{
 		ClearedCount: clearedCount,
 	})
-}
-
-// extractChatbotIDFromPendingURLPath extracts chatbot ID from path like /api/v1/chatbots/{id}/pending-urls
-func extractChatbotIDFromPendingURLPath(path string) string {
-	// Expected path: /api/v1/chatbots/{id}/pending-urls or /api/v1/chatbots/{id}/pending-urls/approve etc.
-	const prefix = "/api/v1/chatbots/"
-	if !strings.HasPrefix(path, prefix) {
-		return ""
-	}
-	rest := strings.TrimPrefix(path, prefix)
-	parts := strings.Split(rest, "/")
-	if len(parts) < 1 {
-		return ""
-	}
-	return parts[0]
 }
 
 func (h *PendingURLsHandlers) logError(event string, err error) {
