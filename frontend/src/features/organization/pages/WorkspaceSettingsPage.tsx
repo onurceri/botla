@@ -30,7 +30,13 @@ export const WorkspaceSettingsPage: React.FC = () => {
     e.preventDefault()
     if (!currentOrganization || !currentWorkspace) return
     try {
-      await updateWorkspace(currentOrganization.id, currentWorkspace.id, name, slug, clientName || undefined)
+      await updateWorkspace(
+        currentOrganization.id,
+        currentWorkspace.id,
+        name,
+        slug,
+        clientName || undefined,
+      )
       toast('Çalışma alanı başarıyla güncellendi', 'success')
       await refreshWorkspaces()
     } catch (error) {
@@ -41,13 +47,17 @@ export const WorkspaceSettingsPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!currentOrganization || !currentWorkspace) return
-    
+
     if (workspaces.length <= 1) {
-      toast('En az bir çalışma alanı bulunmalıdır. Silmek için önce yeni bir çalışma alanı oluşturun.', 'error')
+      toast(
+        'En az bir çalışma alanı bulunmalıdır. Silmek için önce yeni bir çalışma alanı oluşturun.',
+        'error',
+      )
       return
     }
 
-    if (!confirm('Bu çalışma alanını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return
+    if (!confirm('Bu çalışma alanını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'))
+      return
     try {
       await deleteWorkspace(currentOrganization.id, currentWorkspace.id)
       toast('Çalışma alanı silindi', 'success')
@@ -71,7 +81,9 @@ export const WorkspaceSettingsPage: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Genel Bilgiler</CardTitle>
-          <CardDescription>Çalışma alanınızın adını ve URL kısaltmasını güncelleyin.</CardDescription>
+          <CardDescription>
+            Çalışma alanınızın adını ve URL kısaltmasını güncelleyin.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -85,7 +97,12 @@ export const WorkspaceSettingsPage: React.FC = () => {
             </div>
             <div className="grid w-full max-w-sm items-center gap-1.5">
               <Label htmlFor="clientName">Müşteri Adı (İsteğe Bağlı)</Label>
-              <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Örn. Acme Corp" />
+              <Input
+                id="clientName"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Örn. Acme Corp"
+              />
             </div>
             <Button type="submit">Değişiklikleri Kaydet</Button>
           </form>
@@ -96,7 +113,8 @@ export const WorkspaceSettingsPage: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-red-900">Kritik İşlemler</CardTitle>
           <CardDescription className="text-red-700">
-            Bu alandaki işlemler geri alınamaz ve kalıcı veri kaybına yol açabilir. Lütfen dikkatli olun.
+            Bu alandaki işlemler geri alınamaz ve kalıcı veri kaybına yol açabilir. Lütfen dikkatli
+            olun.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,15 +122,16 @@ export const WorkspaceSettingsPage: React.FC = () => {
             <div className="space-y-1">
               <p className="font-medium text-red-900">Çalışma Alanını Sil</p>
               <p className="text-sm text-red-700">
-                Bu çalışma alanını ve bağlı tüm verileri (chatbotlar, kaynaklar, konuşma geçmişleri) kalıcı olarak siler.
+                Bu çalışma alanını ve bağlı tüm verileri (chatbotlar, kaynaklar, konuşma geçmişleri)
+                kalıcı olarak siler.
               </p>
             </div>
-            <Button 
-              variant="destructive" 
-              onClick={handleDelete} 
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
               className="shrink-0"
               disabled={workspaces.length <= 1}
-              title={workspaces.length <= 1 ? "En az bir çalışma alanı kalmalıdır" : undefined}
+              title={workspaces.length <= 1 ? 'En az bir çalışma alanı kalmalıdır' : undefined}
             >
               Çalışma Alanını Sil
             </Button>

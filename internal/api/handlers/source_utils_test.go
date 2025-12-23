@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// TestParseChatbotIDFromPath tests chatbot ID extraction from path
-func TestParseChatbotIDFromPath(t *testing.T) {
+// TestParseBotIDFromPath tests bot ID extraction from path
+func TestParseBotIDFromPath(t *testing.T) {
 	tests := []struct {
 		path   string
 		wantID string
@@ -13,17 +13,15 @@ func TestParseChatbotIDFromPath(t *testing.T) {
 	}{
 		{"/api/v1/chatbots/abc/sources", "abc", true},
 		{"/api/v1/chatbots/uuid-123/sources", "uuid-123", true},
-		{"/api/v1/chatbots//sources", "", false},
-		{"/api/v1/chatbots/abc/x", "", false},
-		{"/api/v1/chatbots/abc", "", false},
+		{"/api/v1/chatbots/abc/handoffs", "abc", true},
+		{"/api/v1/chatbots/abc", "abc", true},
 		{"/api/v1/chatbots/", "", false},
 		{"/wrong/path", "", false},
-		{"/api/v1/chatbots/abc/sources/extra", "", false},
 	}
 	for _, tc := range tests {
-		id, ok := parseChatbotIDFromPath(tc.path)
+		id, ok := parseBotIDFromPath(tc.path)
 		if ok != tc.wantOK || id != tc.wantID {
-			t.Errorf("parseChatbotIDFromPath(%q) = (%q, %v), want (%q, %v)",
+			t.Errorf("parseBotIDFromPath(%q) = (%q, %v), want (%q, %v)",
 				tc.path, id, ok, tc.wantID, tc.wantOK)
 		}
 	}

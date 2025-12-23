@@ -105,6 +105,7 @@ func (s *ChatService) buildMessages(ctx context.Context, cc *chatContext) {
 		strings.TrimSpace(cc.Bot.CustomInstruction),
 		capabilities,
 		cc.LangConfig.Name,
+		cc.Bot.TopicRestrictions,
 	)
 
 	// Start with system message
@@ -146,6 +147,13 @@ func (s *ChatService) appendUserMessageWithContext(cc *chatContext) {
 	var content string
 	if strings.TrimSpace(contextText) != "" {
 		content = RAGContextIntroEN + contextText + "\n\nQuestion:\n" + cc.Request.Message
+	} else if cc.SearchResult.Tier == rag.TierLow && len(cc.Actions) > 0 {
+		// Tool-only mode: No RAG context but custom actions available.
+		// Prevent LLM from using general knowledge - only allow tool usage.
+		content = "[IMPORTANT: You have NO knowledge sources available for this query. " +
+			"You may ONLY use the provided tools to help the user. " +
+			"If no tool can help with their request, politely say you don't have information on this topic. " +
+			"Do NOT make up facts or use general knowledge.]\n\n" + cc.Request.Message
 	} else {
 		content = cc.Request.Message
 	}
@@ -155,8 +163,12 @@ func (s *ChatService) appendUserMessageWithContext(cc *chatContext) {
 
 // executeAgenticLoop runs the LLM with tools for High/Medium tier responses.
 // For Low tier (no relevant context), this is skipped and fallback handles the response.
+// Exception: If custom actions are defined, we still run the loop to allow tool usage.
 func (s *ChatService) executeAgenticLoop(ctx context.Context, cc *chatContext) error {
-	if cc.SearchResult.Tier == rag.TierLow && len(cc.Tools) == 0 {
+	// Skip agentic loop for Low tier when no custom actions are defined.
+	// Built-in tools (list_sources) alone don't justify running the LLM loop.
+	// This ensures the fallback logic handles the "no sources" case properly.
+	if cc.SearchResult.Tier == rag.TierLow && len(cc.Actions) == 0 {
 		return nil
 	}
 

@@ -20,28 +20,36 @@ type Props = {
 }
 
 export default function BrandingSettings({
-  isExpanded, 
-  onToggle, 
-  hideBranding, 
-  setHideBranding, 
-  customBranding, 
+  isExpanded,
+  onToggle,
+  hideBranding,
+  setHideBranding,
+  customBranding,
   setCustomBranding,
   canHideBranding,
-  canCustomBranding
+  canCustomBranding,
 }: Props) {
   const [logoError, setLogoError] = useState(false)
-  
+
   return (
-    <div className={`transition-all duration-300 border border-slate-200/60 rounded-2xl overflow-hidden ${isExpanded ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]' : 'bg-white/40 hover:bg-white/60'}`}>
-      <button 
+    <div
+      className={`transition-all duration-300 border border-slate-200/60 rounded-2xl overflow-hidden ${isExpanded ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]' : 'bg-white/40 hover:bg-white/60'}`}
+    >
+      <button
         onClick={onToggle}
         className="w-full flex items-center justify-between p-4 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>
+          <div
+            className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}
+          >
             <Tag className="w-4 h-4" />
           </div>
-          <span className={`text-[13px] font-bold tracking-tight ${isExpanded ? 'text-slate-900' : 'text-slate-600'}`}>Branding Ayarları</span>
+          <span
+            className={`text-[13px] font-bold tracking-tight ${isExpanded ? 'text-slate-900' : 'text-slate-600'}`}
+          >
+            Branding Ayarları
+          </span>
         </div>
         <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
           <ChevronDown className="w-4 h-4 text-slate-300" />
@@ -51,7 +59,7 @@ export default function BrandingSettings({
       {isExpanded && (
         <div className="px-4 pb-5 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="h-px bg-slate-100 -mx-4 mb-4" />
-          
+
           {/* Hide Branding Toggle */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -67,9 +75,7 @@ export default function BrandingSettings({
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {!canHideBranding && (
-                  <Lock className="w-3.5 h-3.5 text-slate-300" />
-                )}
+                {!canHideBranding && <Lock className="w-3.5 h-3.5 text-slate-300" />}
                 <button
                   type="button"
                   onClick={() => {
@@ -80,7 +86,9 @@ export default function BrandingSettings({
                   }}
                   disabled={!canHideBranding}
                   className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 ${
-                    hideBranding ? 'bg-primary shadow-[0_2px_8px_rgba(245,158,11,0.3)]' : 'bg-slate-200'
+                    hideBranding
+                      ? 'bg-primary shadow-[0_2px_8px_rgba(245,158,11,0.3)]'
+                      : 'bg-slate-200'
                   } ${!canHideBranding ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'}`}
                 >
                   <span
@@ -97,7 +105,9 @@ export default function BrandingSettings({
           </div>
 
           {/* Custom Branding Section */}
-          <div className={`space-y-4 pt-4 border-t border-slate-100 transition-opacity duration-300 ${!hideBranding ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+          <div
+            className={`space-y-4 pt-4 border-t border-slate-100 transition-opacity duration-300 ${!hideBranding ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -111,7 +121,7 @@ export default function BrandingSettings({
                 )}
               </div>
             </div>
-            
+
             {!hideBranding && (
               <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
@@ -120,12 +130,17 @@ export default function BrandingSettings({
                 </p>
               </div>
             )}
-            
+
             {hideBranding && canCustomBranding ? (
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="brand-logo" className="text-[11px] font-semibold text-slate-700 ml-1">Logo URL</label>
-                  <Input 
+                  <label
+                    htmlFor="brand-logo"
+                    className="text-[11px] font-semibold text-slate-700 ml-1"
+                  >
+                    Logo URL
+                  </label>
+                  <Input
                     id="brand-logo"
                     placeholder="https://site.com/logo.png"
                     value={customBranding?.logo_url || ''}
@@ -144,22 +159,36 @@ export default function BrandingSettings({
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label htmlFor="brand-text" className="text-[11px] font-semibold text-slate-700 ml-1">Metin</label>
-                    <Input 
+                    <label
+                      htmlFor="brand-text"
+                      className="text-[11px] font-semibold text-slate-700 ml-1"
+                    >
+                      Metin
+                    </label>
+                    <Input
                       id="brand-text"
                       placeholder="Powered by Şirket"
                       value={customBranding?.text || ''}
-                      onChange={(e) => setCustomBranding({ ...(customBranding || {}), text: e.target.value })}
+                      onChange={(e) =>
+                        setCustomBranding({ ...(customBranding || {}), text: e.target.value })
+                      }
                       className="bg-slate-50/50 border-slate-200/60 rounded-xl h-9 text-xs focus:bg-white transition-all"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label htmlFor="brand-link" className="text-[11px] font-semibold text-slate-700 ml-1">Link</label>
-                    <Input 
+                    <label
+                      htmlFor="brand-link"
+                      className="text-[11px] font-semibold text-slate-700 ml-1"
+                    >
+                      Link
+                    </label>
+                    <Input
                       id="brand-link"
                       placeholder="https://sirket.com"
                       value={customBranding?.link || ''}
-                      onChange={(e) => setCustomBranding({ ...(customBranding || {}), link: e.target.value })}
+                      onChange={(e) =>
+                        setCustomBranding({ ...(customBranding || {}), link: e.target.value })
+                      }
                       className="bg-slate-50/50 border-slate-200/60 rounded-xl h-9 text-xs focus:bg-white transition-all"
                     />
                   </div>
@@ -172,7 +201,9 @@ export default function BrandingSettings({
                 </div>
                 <div>
                   <p className="text-[12px] font-bold text-slate-900">Enterprise Özelliği</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Kendi logonuzu ve linkinizi eklemek için Enterprise plana yükseltin.</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Kendi logonuzu ve linkinizi eklemek için Enterprise plana yükseltin.
+                  </p>
                 </div>
               </div>
             ) : null}

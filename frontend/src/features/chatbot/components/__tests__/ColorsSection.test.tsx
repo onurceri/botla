@@ -47,7 +47,7 @@ describe('ColorsSection', () => {
         {...defaultProps}
         setChatHeaderColor={setHeader}
         setUserMessageTextColor={setUserText}
-      />
+      />,
     )
     const headerColor = screen.getByLabelText('Header') as HTMLInputElement
     fireEvent.change(headerColor, { target: { value: '#000000' } })
@@ -57,10 +57,10 @@ describe('ColorsSection', () => {
     // H4 is inside the container div
     const userMessageHeader = screen.getByText('Kullanıcı Mesajları')
     const userMessageSection = userMessageHeader.parentElement!
-    
+
     // Within that section, find the label "Yazı"
     const userText = within(userMessageSection).getByLabelText('Yazı') as HTMLInputElement
-    
+
     fireEvent.change(userText, { target: { value: '#333333' } })
     expect(setUserText).toHaveBeenCalledWith('#333333')
   })
@@ -69,41 +69,33 @@ describe('ColorsSection', () => {
     const user = userEvent.setup()
     const setFont = vi.fn()
     const setTheme = vi.fn()
-    render(
-      <ColorsSection
-        {...defaultProps}
-        setChatFontFamily={setFont}
-        setThemeColor={setTheme}
-      />
-    )
-    
+    render(<ColorsSection {...defaultProps} setChatFontFamily={setFont} setThemeColor={setTheme} />)
+
     // Debugging font selection - use last instance if multiple found
     const fontSelects = screen.getAllByLabelText('Yazı Tipi')
     const fontSelect = fontSelects[fontSelects.length - 1] as HTMLSelectElement
-    
+
     await user.selectOptions(fontSelect, 'Roboto, sans-serif')
     expect(setFont).toHaveBeenCalledWith('Roboto, sans-serif')
 
     const themeInputs = screen.getAllByLabelText('Varsayılan İkon Rengi')
     const themeInput = themeInputs[themeInputs.length - 1] as HTMLInputElement
-    
+
     fireEvent.change(themeInput, { target: { value: '#ff0000' } })
     expect(setTheme).toHaveBeenCalledWith('#ff0000')
   })
 
   it('renders labels and color pickers when expanded', () => {
-    const utils = render(
-      <ColorsSection {...defaultProps} />
-    )
+    const utils = render(<ColorsSection {...defaultProps} />)
     const headers = screen.getAllByText('Yazı ve Renkler')
     expect(headers.length).toBeGreaterThan(0)
-    
+
     // Check for new fields
     // Allow multiple instances if cleanup is flaky, but ensure at least one exists
     const genelHeaders = screen.getAllByText('Genel')
     expect(genelHeaders.length).toBeGreaterThanOrEqual(1)
     expect(genelHeaders[genelHeaders.length - 1]).toBeInTheDocument()
- 
+
     const fonts = screen.getAllByText('Yazı Tipi')
     expect(fonts[fonts.length - 1]).toBeInTheDocument()
 
@@ -118,9 +110,9 @@ describe('ColorsSection', () => {
     expect(screen.getByText('Bot Mesajları')).toBeInTheDocument()
     expect(screen.getByText('Kullanıcı Mesajları')).toBeInTheDocument()
     expect(screen.getByText('Giriş Alanı')).toBeInTheDocument()
-    
+
     const colorInputs = utils.container.querySelectorAll('input[type="color"]')
-    // 6 existing + 1 theme color + 3 input/send = 10? 
+    // 6 existing + 1 theme color + 3 input/send = 10?
     // ChatBg, Header, HeaderText, BotMsg, BotText, UserMsg, UserText, InputBg, InputText, SendBtn, ThemeColor.
     // 11 color inputs total.
     expect(colorInputs.length).toBeGreaterThanOrEqual(10)

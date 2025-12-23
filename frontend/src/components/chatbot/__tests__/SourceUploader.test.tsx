@@ -13,8 +13,12 @@ describe('SourceUploader', () => {
 
     render(
       <QueryWrapper>
-        <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </QueryWrapper>
+        <SourceUploader
+          onUploadPDF={onUploadPDF}
+          onUploadURL={onUploadURL}
+          onUploadText={onUploadText}
+        />
+      </QueryWrapper>,
     )
 
     await user.click(screen.getByText('PDF Yükle'))
@@ -48,8 +52,12 @@ describe('SourceUploader', () => {
     const onUploadText = vi.fn()
     render(
       <QueryWrapper>
-        <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </QueryWrapper>
+        <SourceUploader
+          onUploadPDF={onUploadPDF}
+          onUploadURL={onUploadURL}
+          onUploadText={onUploadText}
+        />
+      </QueryWrapper>,
     )
     const urlBtns = screen.getAllByText('Web Sitesi')
     await user.click(urlBtns[urlBtns.length - 1])
@@ -71,8 +79,12 @@ describe('SourceUploader', () => {
     const onUploadText = vi.fn()
     render(
       <QueryWrapper>
-        <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </QueryWrapper>
+        <SourceUploader
+          onUploadPDF={onUploadPDF}
+          onUploadURL={onUploadURL}
+          onUploadText={onUploadText}
+        />
+      </QueryWrapper>,
     )
     const urlBtns = screen.getAllByText('Web Sitesi')
     await user.click(urlBtns[urlBtns.length - 1])
@@ -88,12 +100,18 @@ describe('SourceUploader', () => {
   it('shows error toast when URL upload fails (unreachable)', async () => {
     const user = userEvent.setup()
     const onUploadPDF = vi.fn()
-    const onUploadURL = vi.fn().mockRejectedValue({ response: { data: { message: 'URL erişilemedi' } } })
+    const onUploadURL = vi
+      .fn()
+      .mockRejectedValue({ response: { data: { message: 'URL erişilemedi' } } })
     const onUploadText = vi.fn()
     render(
       <QueryWrapper>
-        <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={onUploadURL} onUploadText={onUploadText} />
-      </QueryWrapper>
+        <SourceUploader
+          onUploadPDF={onUploadPDF}
+          onUploadURL={onUploadURL}
+          onUploadText={onUploadText}
+        />
+      </QueryWrapper>,
     )
     const urlBtns = screen.getAllByText('Web Sitesi')
     await user.click(urlBtns[urlBtns.length - 1])
@@ -111,8 +129,12 @@ describe('SourceUploader', () => {
     const serverError = { response: { data: { message: 'Sunucu hatası' } } }
     render(
       <QueryWrapper>
-        <SourceUploader onUploadPDF={vi.fn().mockRejectedValueOnce(serverError)} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </QueryWrapper>
+        <SourceUploader
+          onUploadPDF={vi.fn().mockRejectedValueOnce(serverError)}
+          onUploadURL={vi.fn()}
+          onUploadText={vi.fn()}
+        />
+      </QueryWrapper>,
     )
     const pdfBtns = screen.getAllByText('PDF Yükle')
     await user.click(pdfBtns[pdfBtns.length - 1])
@@ -127,7 +149,7 @@ describe('SourceUploader', () => {
     render(
       <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </QueryWrapper>
+      </QueryWrapper>,
     )
     const pdfBtns1 = screen.getAllByText('PDF Yükle')
     await userEvent.click(pdfBtns1[pdfBtns1.length - 1])
@@ -143,7 +165,7 @@ describe('SourceUploader', () => {
     render(
       <QueryWrapper>
         <SourceUploader onUploadPDF={onUploadPDF} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </QueryWrapper>
+      </QueryWrapper>,
     )
     const pdfBtns2 = screen.getAllByText('PDF Yükle')
     await userEvent.click(pdfBtns2[pdfBtns2.length - 1])
@@ -160,13 +182,14 @@ describe('SourceUploader', () => {
     const utils = render(
       <QueryWrapper>
         <SourceUploader onUploadPDF={vi.fn()} onUploadURL={vi.fn()} onUploadText={vi.fn()} />
-      </QueryWrapper>
+      </QueryWrapper>,
     )
     const view = within(utils.container)
     const urlBtns = view.getAllByText('Web Sitesi')
     await user.click(urlBtns[urlBtns.length - 1])
     expect(view.getAllByPlaceholderText('https://example.com').length).toBeGreaterThan(0)
-    const closeBtn = utils.container.querySelector('button .lucide-x')?.parentElement as HTMLButtonElement
+    const closeBtn = utils.container.querySelector('button .lucide-x')
+      ?.parentElement as HTMLButtonElement
     await user.click(closeBtn)
     expect(view.queryAllByPlaceholderText('https://example.com').length).toBe(0)
   })

@@ -32,12 +32,22 @@ describe('PlanPage hidden limits', () => {
               min_readd_cooldown_minutes: 60,
             },
             features: {
-              files: { ocr_enabled: true, max_size_mb: 20, max_files_per_bot: 20, max_files_total: 100, total_storage_mb: 500 },
+              files: {
+                ocr_enabled: true,
+                max_size_mb: 20,
+                max_files_per_bot: 20,
+                max_files_total: 100,
+                total_storage_mb: 500,
+              },
               scraping: { dynamic_enabled: true, max_urls_per_bot: 10, max_pages_per_crawl: 10 },
-              chat: { allowed_models: ['gpt-4o'], max_monthly_tokens: 1000000, rag: { top_k: 5, max_context_tokens: 4000 } },
+              chat: {
+                allowed_models: ['gpt-4o'],
+                max_monthly_tokens: 1000000,
+                rag: { top_k: 5, max_context_tokens: 4000 },
+              },
               refresh: { enabled: true, max_monthly: 5 },
             },
-          }
+          },
         })
       }
       if (url.includes('/api/v1/me/usage')) {
@@ -52,7 +62,7 @@ describe('PlanPage hidden limits', () => {
             ingestions_used: 7,
             ingestion_embedding_tokens: 12345,
             refresh_count: 0,
-          }
+          },
         })
       }
       return Promise.resolve({ data: {} })
@@ -63,15 +73,17 @@ describe('PlanPage hidden limits', () => {
         <MemoryRouter>
           <PlanPage />
         </MemoryRouter>
-      </QueryWrapper>
+      </QueryWrapper>,
     )
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Plan ve Faturalandırma' })).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Aylık Kaynak Ekleme')).toBeInTheDocument()
-    expect(screen.getByText((t) => /7\s*\/\s*50\s*kullanıldı/.test(t))).toBeInTheDocument()
+    expect((await screen.findAllByText('Aylık Kaynak Ekleme'))[0]).toBeInTheDocument()
+    expect(await screen.findByText((content, element) => {
+      return /7\s*\/\s*50\s*kullanıldı/.test(element?.textContent || '');
+    })).toBeInTheDocument()
 
     expect(screen.getByText('Aylık Embedding Token Kullanımı')).toBeInTheDocument()
     expect(screen.getByText((t) => /12,345\s*\/\s*250,000/.test(t))).toBeInTheDocument()

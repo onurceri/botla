@@ -14,7 +14,9 @@ vi.mock('@/api/organization', () => ({
 }))
 
 vi.mock('@/api/workspace', () => ({
-  getWorkspaces: vi.fn().mockResolvedValue([{ id: 'ws1', name: 'Test Workspace', organization_id: 'org1' }]),
+  getWorkspaces: vi
+    .fn()
+    .mockResolvedValue([{ id: 'ws1', name: 'Test Workspace', organization_id: 'org1' }]),
   createWorkspace: vi.fn(),
   updateWorkspace: vi.fn(),
   deleteWorkspace: vi.fn(),
@@ -45,9 +47,7 @@ export function QueryWrapper({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <OrganizationProvider>
-          {children}
-        </OrganizationProvider>
+        <OrganizationProvider>{children}</OrganizationProvider>
       </ToastProvider>
     </QueryClientProvider>
   )
@@ -56,10 +56,7 @@ export function QueryWrapper({ children }: { children: ReactNode }) {
 /**
  * Custom render that includes QueryClientProvider
  */
-export function renderWithQuery(
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
-) {
+export function renderWithQuery(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
   return render(ui, { wrapper: QueryWrapper, ...options })
 }
 

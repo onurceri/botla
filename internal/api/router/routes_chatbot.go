@@ -61,5 +61,5 @@ func chatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *ha
 	// Chatbot management (Fallback)
 	mux.HandleFunc("/api/v1/chatbots/{id}", ch.ByID)
 
-	return middleware.AuthMiddleware(secret)(mux)
+	return middleware.AuthMiddleware(secret)(middleware.ExtractTenantContext()(mux))
 }

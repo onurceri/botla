@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { QueryWrapper } from "@/test-utils"
+import { QueryWrapper } from '@/test-utils'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -14,16 +14,18 @@ describe('ChatbotDetailPage save/delete', () => {
   })
   it('creates new chatbot on valid form and shows success toast', async () => {
     const user = userEvent.setup()
-    
+
     Object.defineProperty(window, 'localStorage', {
       value: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
-      writable: true
+      writable: true,
     })
-    
+
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
-       if (url.includes('/api/v1/organizations')) return Promise.resolve({ data: [{ id: 'org1', name: 'Test Org' }] } as any)
-       if (url.includes('/workspaces')) return Promise.resolve({ data: [{ id: 'ws1', name: 'Test WS' }] } as any)
-       return Promise.resolve({ data: {} } as any)
+      if (url.includes('/api/v1/organizations'))
+        return Promise.resolve({ data: [{ id: 'org1', name: 'Test Org' }] } as any)
+      if (url.includes('/workspaces'))
+        return Promise.resolve({ data: [{ id: 'ws1', name: 'Test WS' }] } as any)
+      return Promise.resolve({ data: {} } as any)
     })
 
     const postSpy = vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { id: '999' } } as any)
@@ -31,15 +33,15 @@ describe('ChatbotDetailPage save/delete', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter initialEntries={["/chatbots/new"]}>
-          <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
-            <Route path="/dashboard/chatbots" element={<div />} />
-            <Route path="/dashboard/chatbots/:id" element={<div />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter initialEntries={['/chatbots/new']}>
+            <Routes>
+              <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+              <Route path="/dashboard/chatbots" element={<div />} />
+              <Route path="/dashboard/chatbots/:id" element={<div />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
 
     const nameInput = screen.getByPlaceholderText('Örn: Müşteri Temsilcisi')
@@ -54,9 +56,11 @@ describe('ChatbotDetailPage save/delete', () => {
   it('deletes existing chatbot and shows success toast', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
-      if (url.includes('/api/v1/me')) return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
+      if (url.includes('/api/v1/me'))
+        return Promise.resolve({ data: { subscription_plan: 'pro' } } as any)
       if (url.includes('/api/v1/chatbots/123/sources')) return Promise.resolve({ data: [] } as any)
-      if (url.includes('/api/v1/chatbots/123')) return Promise.resolve({ data: { id: '123', name: 'Var Olan Bot' } } as any)
+      if (url.includes('/api/v1/chatbots/123'))
+        return Promise.resolve({ data: { id: '123', name: 'Var Olan Bot' } } as any)
       return Promise.resolve({ data: {} } as any)
     })
     vi.spyOn(window, 'confirm').mockReturnValue(true as any)
@@ -65,14 +69,14 @@ describe('ChatbotDetailPage save/delete', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter initialEntries={["/chatbots/123"]}>
-          <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
-            <Route path="/dashboard/chatbots" element={<div />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter initialEntries={['/chatbots/123']}>
+            <Routes>
+              <Route path="/chatbots/:id" element={<ChatbotDetailPage />} />
+              <Route path="/dashboard/chatbots" element={<div />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
 
     await screen.findByText('Var Olan Bot')

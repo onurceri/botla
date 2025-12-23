@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { QueryWrapper } from "@/test-utils"
+import { QueryWrapper } from '@/test-utils'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -10,7 +10,13 @@ import { api } from '@/api/client'
 
 vi.mock('@/api/source', () => ({
   listSources: vi.fn().mockResolvedValue([
-    { id: 'src1', source_type: 'text', original_filename: 'inline.txt', status: 'completed', chunk_count: 3 },
+    {
+      id: 'src1',
+      source_type: 'text',
+      original_filename: 'inline.txt',
+      status: 'completed',
+      chunk_count: 3,
+    },
   ]),
   deleteSource: vi.fn().mockResolvedValue(undefined),
   uploadPDFSource: vi.fn(),
@@ -29,24 +35,28 @@ describe('ChatbotDetailPage sources', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter initialEntries={["/chatbots/123"]}>
-          <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
-              <Route path="sources" element={<SourcesTab />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter initialEntries={['/chatbots/123']}>
+            <Routes>
+              <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+                <Route path="sources" element={<SourcesTab />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
 
-    const srcTabs = screen.getAllByRole('link', { name: /Veri Kaynakları/i })
+    const srcTabs = screen.getAllByRole('link', { name: /Kaynaklar/i })
     await user.click(srcTabs[srcTabs.length - 1])
-    const sourceCells = await screen.findAllByText('inline.txt')
-    const sourceCell = sourceCells.find(el => el.closest('tr'))!
-    const row = sourceCell.closest('tr') as HTMLTableRowElement
-    const delBtn = within(row).getByRole('button', { name: /Kaynağı Sil/i })
+    const sourceHeads = await screen.findAllByText('inline.txt')
+    const sourceCard = sourceHeads[0].closest('[data-testid="source-card"]')!
+    const delBtn = within(sourceCard as HTMLElement).getByRole('button', { name: /Kaynağı Sil/i })
     await user.click(delBtn)
+    
+    // Confirm delete in AlertDialog
+    const confirmBtn = await screen.findByRole('button', { name: 'Sil' })
+    await user.click(confirmBtn)
+
     const { deleteSource } = await import('@/api/source')
     expect(deleteSource).toHaveBeenCalledWith('src1')
   })
@@ -71,18 +81,18 @@ describe('ChatbotDetailPage sources', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter initialEntries={["/chatbots/123"]}>
-          <Routes>
-            <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
-              <Route path="sources" element={<SourcesTab />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter initialEntries={['/chatbots/123']}>
+            <Routes>
+              <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
+                <Route path="sources" element={<SourcesTab />} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
 
-    const srcTabs2 = screen.getAllByRole('link', { name: /Veri Kaynakları/i })
+    const srcTabs2 = await screen.findAllByRole('link', { name: /Kaynaklar/i })
     await user.click(srcTabs2[srcTabs2.length - 1])
     const textButtons = screen.getAllByText('Metin')
     await user.click(textButtons[textButtons.length - 1])

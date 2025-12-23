@@ -4,9 +4,7 @@ import { SaveIndicator } from '../SaveIndicator'
 
 describe('SaveIndicator', () => {
   it('renders nothing when there is no state', () => {
-    const { container } = render(
-      <SaveIndicator isSaving={false} lastSavedAt={null} error={null} />
-    )
+    const { container } = render(<SaveIndicator isSaving={false} lastSavedAt={null} error={null} />)
     expect(container.textContent).toBe('')
   })
 
@@ -16,24 +14,12 @@ describe('SaveIndicator', () => {
   })
 
   it('renders success state', () => {
-    render(
-      <SaveIndicator
-        isSaving={false}
-        lastSavedAt={new Date()}
-        error={null}
-      />
-    )
+    render(<SaveIndicator isSaving={false} lastSavedAt={new Date()} error={null} />)
     expect(screen.getByText('Kaydedildi')).toBeInTheDocument()
   })
 
   it('renders error state and retry text', () => {
-    render(
-      <SaveIndicator
-        isSaving={false}
-        lastSavedAt={null}
-        error="Hata - Tekrar deneniyor..."
-      />
-    )
+    render(<SaveIndicator isSaving={false} lastSavedAt={null} error="Hata - Tekrar deneniyor..." />)
     expect(screen.getByText('Tekrar deneniyor...')).toBeInTheDocument()
   })
 
@@ -43,7 +29,7 @@ describe('SaveIndicator', () => {
         isSaving={false}
         lastSavedAt={null}
         error="This model is not available on your plan"
-      />
+      />,
     )
     expect(screen.getByText('Kaydedilemedi')).toBeInTheDocument()
   })

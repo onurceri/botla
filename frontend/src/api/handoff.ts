@@ -33,14 +33,22 @@ export async function getHandoffRequests(chatbotId: string): Promise<HandoffRequ
   return res.data.requests || []
 }
 
-export async function getHandoffRequestDetail(chatbotId: string, requestId: string): Promise<HandoffRequestDetail> {
+export async function getHandoffRequestDetail(
+  chatbotId: string,
+  requestId: string,
+): Promise<HandoffRequestDetail> {
   const res = await api.get(`/api/v1/chatbots/${chatbotId}/handoff-requests/${requestId}`)
   return res.data
 }
 
-export async function updateHandoffStatus(chatbotId: string, requestId: string, status: string, assignedTo?: string): Promise<void> {
+export async function updateHandoffStatus(
+  chatbotId: string,
+  requestId: string,
+  status: string,
+  assignedTo?: string,
+): Promise<void> {
   await api.patch(`/api/v1/chatbots/${chatbotId}/handoff-requests/${requestId}`, {
     status,
-    assigned_to: assignedTo
+    assigned_to: assignedTo,
   })
 }

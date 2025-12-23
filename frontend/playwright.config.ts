@@ -5,16 +5,18 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: true,
   reporter: [['list']],
-  webServer: process.env.E2E_BASE_URL ? undefined : {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
-    timeout: 60_000,
-    env: {
-      ...(process.env.E2E_API_BASE ? { VITE_API_BASE_URL: process.env.E2E_API_BASE } : {}),
-      VITE_E2E: '1',
-    },
-  },
+  webServer: process.env.E2E_BASE_URL
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:5173',
+        reuseExistingServer: true,
+        timeout: 60_000,
+        env: {
+          ...(process.env.E2E_API_BASE ? { VITE_API_BASE_URL: process.env.E2E_API_BASE } : {}),
+          VITE_E2E: '1',
+        },
+      },
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
@@ -30,7 +32,5 @@ export default defineConfig({
       ],
     },
   },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  ],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 })

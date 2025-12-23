@@ -13,10 +13,10 @@ import (
 // This eliminates runtime parsing of provider prefixes (/, :)
 type AIModel struct {
 	ID         uuid.UUID `json:"id"`
-	Provider   string    `json:"provider"`      // Provider name (e.g., "openai", "anthropic")
-	ModelName  string    `json:"model_name"`    // Bare model name (e.g., "gpt-4o-mini")
-	APIModelID string    `json:"api_model_id"`  // Full API identifier (e.g., "openai/gpt-4o-mini")
-	Name       string    `json:"name"`          // Display name (e.g., "GPT-4o Mini")
+	Provider   string    `json:"provider"`     // Provider name (e.g., "openai", "anthropic")
+	ModelName  string    `json:"model_name"`   // Bare model name (e.g., "gpt-4o-mini")
+	APIModelID string    `json:"api_model_id"` // Full API identifier (e.g., "openai/gpt-4o-mini")
+	Name       string    `json:"name"`         // Display name (e.g., "GPT-4o Mini")
 	MaxTokens  int       `json:"max_tokens"`
 	IsActive   bool      `json:"is_active"`
 	CreatedAt  time.Time `json:"created_at"`
@@ -26,7 +26,7 @@ type AIModel struct {
 // ToModelInfo converts DB model to API response model
 func (m *AIModel) ToModelInfo() ModelInfo {
 	return ModelInfo{
-		ID:                m.ModelName,  // Use bare model name for API responses
+		ID:                m.ModelName, // Use bare model name for API responses
 		Name:              m.Name,
 		Provider:          m.Provider,
 		MaxTokens:         m.MaxTokens,

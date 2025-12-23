@@ -16,20 +16,22 @@ interface SourceUploaderProps {
   disabledModes?: ('pdf' | 'url' | 'text')[]
 }
 
-const SourceUploader = ({ 
-  onUploadPDF, 
-  onUploadURL, 
-  onUploadText, 
-  extraUrlSettings, 
-  maxFileSizeMB = 50, 
+const SourceUploader = ({
+  onUploadPDF,
+  onUploadURL,
+  onUploadText,
+  extraUrlSettings,
+  maxFileSizeMB = 50,
   maxTextLength = 400000, // ~400k characters default
   disabled = false,
-  disabledModes = []
+  disabledModes = [],
 }: SourceUploaderProps) => {
-  const { 
-    activeMode, setActiveMode,
+  const {
+    activeMode,
+    setActiveMode,
     loading,
-    inputValue, setInputValue,
+    inputValue,
+    setInputValue,
     fileInputRef,
     handleFileChange,
     handleSubmit,
@@ -78,7 +80,7 @@ const SourceUploader = ({
       {activeMode && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="relative p-6 rounded-2xl bg-white/60 backdrop-blur border border-border shadow-sm">
-            <button 
+            <button
               onClick={() => setActiveMode(null)}
               className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground"
             >
@@ -95,7 +97,7 @@ const SourceUploader = ({
                   className="hidden"
                   id="pdf-upload"
                 />
-                <label 
+                <label
                   htmlFor="pdf-upload"
                   className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-primary-foreground font-medium cursor-pointer hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
@@ -108,7 +110,7 @@ const SourceUploader = ({
             {activeMode === 'url' && (
               <div className="space-y-4">
                 <div className="flex gap-2">
-                  <Input 
+                  <Input
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder="https://example.com"
@@ -123,30 +125,95 @@ const SourceUploader = ({
             )}
 
             {activeMode === 'text' && (
-              <div className="space-y-2">
-                <textarea 
+              <div className="space-y-4">
+                {/* Header with info */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="font-medium">Metin İçeriği</span>
+                  <span>Maks. {maxTextLength.toLocaleString()} karakter</span>
+                </div>
+
+                {/* Large resizable textarea */}
+                <textarea
                   className={cn(
-                    "flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-                    inputValue.length > maxTextLength && "border-destructive focus-visible:ring-destructive"
+                    'flex min-h-[300px] max-h-[500px] w-full rounded-xl border border-input bg-white/80 backdrop-blur-sm px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 resize-y font-mono leading-relaxed',
+                    inputValue.length > maxTextLength &&
+                      'border-destructive focus-visible:ring-destructive/20 focus-visible:border-destructive',
                   )}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Metin içeriğini buraya yapıştırın..."
+                  placeholder="Metin içeriğinizi buraya yapıştırın...
+
+Örnekler:
+• Ürün açıklamaları
+• SSS (Sıkça Sorulan Sorular) 
+• Kullanım kılavuzları
+• Şirket bilgileri
+• Blog yazıları"
                 />
-                <div className="flex justify-between items-center">
-                  <span className={cn("text-xs", inputValue.length > maxTextLength ? "text-destructive font-medium" : "text-muted-foreground")}>
-                    {inputValue.length > maxTextLength 
-                      ? `${(inputValue.length - maxTextLength).toLocaleString()} karakter aşıldı` 
-                      : `${(maxTextLength - inputValue.length).toLocaleString()} karakter kaldı`
-                    }
-                  </span>
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={loading || inputValue.length > maxTextLength || inputValue.length === 0} 
-                    className="rounded-full"
-                  >
-                    {loading ? 'Ekleniyor...' : 'Ekle'}
-                  </Button>
+
+                {/* Progress bar */}
+                <div className="space-y-2">
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full rounded-full transition-all duration-300",
+                        inputValue.length > maxTextLength 
+                          ? "bg-red-500" 
+                          : inputValue.length > maxTextLength * 0.9
+                            ? "bg-amber-500"
+                            : "bg-primary"
+                      )}
+                      style={{ width: `${Math.min((inputValue.length / maxTextLength) * 100, 100)}%` }}
+                    />
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={cn(
+                          'text-xs font-medium',
+                          inputValue.length > maxTextLength
+                            ? 'text-destructive'
+                            : inputValue.length > maxTextLength * 0.9
+                              ? 'text-amber-600'
+                              : 'text-muted-foreground',
+                        )}
+                      >
+                        {inputValue.length.toLocaleString()} / {maxTextLength.toLocaleString()} karakter
+                      </span>
+                      {inputValue.length > 0 && inputValue.length <= maxTextLength && (
+                        <span className="text-xs text-emerald-600 font-medium">
+                          ✓ {(maxTextLength - inputValue.length).toLocaleString()} kaldı
+                        </span>
+                      )}
+                      {inputValue.length > maxTextLength && (
+                        <span className="text-xs text-destructive font-medium">
+                          ⚠ {(inputValue.length - maxTextLength).toLocaleString()} fazla
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {inputValue.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setInputValue('')}
+                          className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Temizle
+                        </Button>
+                      )}
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={
+                          loading || inputValue.length > maxTextLength || inputValue.length === 0
+                        }
+                        className="rounded-full h-9 px-5"
+                      >
+                        {loading ? 'Ekleniyor...' : 'Ekle'}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

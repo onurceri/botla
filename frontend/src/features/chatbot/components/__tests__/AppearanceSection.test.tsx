@@ -12,7 +12,7 @@ describe('AppearanceSection', () => {
         onToggle={onToggle}
         position="bottom-right"
         setPosition={setPosition}
-      />
+      />,
     )
     const posSelect = screen.getByLabelText('Konum') as HTMLSelectElement
     fireEvent.change(posSelect, { target: { value: 'bottom-left' } })

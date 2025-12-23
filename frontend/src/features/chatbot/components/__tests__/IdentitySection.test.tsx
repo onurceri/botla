@@ -18,7 +18,7 @@ describe('IdentitySection', () => {
         setBotIcon={setIcon}
         welcomeMessage="Selam"
         setWelcomeMessage={setWelcome}
-      />
+      />,
     )
     const nameInput = screen.getByLabelText('Bot Görünen Adı') as HTMLInputElement
     fireEvent.change(nameInput, { target: { value: 'Destek' } })
@@ -32,6 +32,13 @@ describe('IdentitySection', () => {
     const welcomeInput = screen.getByLabelText(/Karşılama Mesajı/) as HTMLTextAreaElement
     fireEvent.change(welcomeInput, { target: { value: 'Hoş Geldiniz' } })
     expect(setWelcome).toHaveBeenCalledWith('Hoş Geldiniz')
-    expect(screen.getByText(/karakter kaldı/i)).toBeInTheDocument()
+    expect(await screen.findByText((content, element) => {
+      const hasText = (node: Element) => node.textContent === '12/200';
+      const nodeHasText = hasText(element!);
+      const childrenDontHaveText = Array.from(element?.children || []).every(
+        child => !hasText(child)
+      );
+      return nodeHasText && childrenDontHaveText;
+    })).toBeInTheDocument()
   })
 })

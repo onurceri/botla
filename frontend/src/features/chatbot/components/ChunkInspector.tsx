@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { getSourceChunks } from '@/api/source'
@@ -21,37 +27,36 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
     }
   }, [open])
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError
-  } = useInfiniteQuery({
-    queryKey: ['sourceChunks', sourceId],
-    queryFn: ({ pageParam }) => getSourceChunks(sourceId, 20, pageParam as string | undefined),
-    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
-    initialPageParam: undefined as string | undefined,
-    enabled: open && !!sourceId,
-  })
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
+    useInfiniteQuery({
+      queryKey: ['sourceChunks', sourceId],
+      queryFn: ({ pageParam }) => getSourceChunks(sourceId, 20, pageParam as string | undefined),
+      getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
+      initialPageParam: undefined as string | undefined,
+      enabled: open && !!sourceId,
+    })
 
   const chunks = data?.pages.flatMap((page) => page.chunks) || []
-  
+
   // Client-side filtering for loaded chunks
-  const filteredChunks = chunks.filter(c => 
-    !search || c.payload.original_text.toLowerCase().includes(search.toLowerCase())
+  const filteredChunks = chunks.filter(
+    (c) => !search || c.payload.original_text.toLowerCase().includes(search.toLowerCase()),
   )
 
   const highlightText = (text: string, highlight: string) => {
     if (!highlight.trim()) return text
     const parts = text.split(new RegExp(`(${highlight})`, 'gi'))
-    return parts.map((part, i) => 
+    return parts.map((part, i) =>
       part.toLowerCase() === highlight.toLowerCase() ? (
-        <span key={i} className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground font-semibold px-0.5 rounded">{part}</span>
+        <span
+          key={i}
+          className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground font-semibold px-0.5 rounded"
+        >
+          {part}
+        </span>
       ) : (
         part
-      )
+      ),
     )
   }
 
@@ -63,14 +68,12 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
             <Database className="w-5 h-5 text-primary" />
             Kaynak Parçaları
           </DialogTitle>
-          <DialogDescription>
-            Bu kaynaktan çıkarılan metin parçalarını inceleyin.
-          </DialogDescription>
+          <DialogDescription>Bu kaynaktan çıkarılan metin parçalarını inceleyin.</DialogDescription>
           <div className="pt-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                placeholder="Yüklenen parçalarda ara..." 
+              <Input
+                placeholder="Yüklenen parçalarda ara..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -88,7 +91,9 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
           ) : isError ? (
             <div className="flex flex-col items-center justify-center h-full text-destructive gap-2">
               <span className="font-medium">Parçalar yüklenemedi.</span>
-              <Button variant="outline" onClick={() => window.location.reload()}>Tekrar Dene</Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Tekrar Dene
+              </Button>
             </div>
           ) : filteredChunks.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -97,7 +102,10 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
           ) : (
             <div className="space-y-4">
               {filteredChunks.map((chunk) => (
-                <div key={chunk.id} className="bg-muted/30 border border-border rounded-lg p-4 text-sm relative group hover:border-primary/50 transition-colors">
+                <div
+                  key={chunk.id}
+                  className="bg-muted/30 border border-border rounded-lg p-4 text-sm relative group hover:border-primary/50 transition-colors"
+                >
                   <div className="absolute top-3 right-3 text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded opacity-50 group-hover:opacity-100 transition-opacity">
                     #{chunk.payload.chunk_index}
                   </div>
@@ -109,12 +117,12 @@ export default function ChunkInspector({ sourceId, open, onOpenChange }: ChunkIn
                   </div>
                 </div>
               ))}
-              
+
               {hasNextPage && (
                 <div className="pt-4 flex justify-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => fetchNextPage()} 
+                  <Button
+                    variant="outline"
+                    onClick={() => fetchNextPage()}
                     disabled={isFetchingNextPage}
                     className="w-full"
                   >

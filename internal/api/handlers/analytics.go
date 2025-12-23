@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"strconv"
 
@@ -80,55 +79,8 @@ func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request)
 
 // GetChatbotAnalyticsOverview returns aggregated analytics for a specific chatbot
 func (h *AnalyticsHandlers) GetChatbotAnalyticsOverview(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 7 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	botID := parts[4]
-
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if bot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Access Check
-	allowed := false
-	switch {
-	case bot.WorkspaceID != nil && *bot.WorkspaceID != "":
-		// Check workspace access via Org membership
-		ws, err2 := h.WorkspaceService.GetWorkspace(r.Context(), *bot.WorkspaceID)
-		if err2 == nil && ws != nil {
-			mem, err3 := h.OrgService.CheckMembership(r.Context(), userID, ws.OrganizationID)
-			if err3 == nil && mem != nil {
-				allowed = true
-			}
-		}
-	case bot.OrganizationID != nil && *bot.OrganizationID != "":
-		// Check Org membership
-		mem, err2 := h.OrgService.CheckMembership(r.Context(), userID, *bot.OrganizationID)
-		if err2 == nil && mem != nil {
-			allowed = true
-		}
-	default:
-		// Personal bot
-		if bot.UserID == userID {
-			allowed = true
-		}
-	}
-
-	if !allowed {
-		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
@@ -149,55 +101,8 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsOverview(w http.ResponseWriter, r
 
 // GetChatbotAnalyticsTrends returns daily trends for a chatbot
 func (h *AnalyticsHandlers) GetChatbotAnalyticsTrends(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 7 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	botID := parts[4]
-
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if bot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Access Check
-	allowed := false
-	switch {
-	case bot.WorkspaceID != nil && *bot.WorkspaceID != "":
-		// Check workspace access via Org membership
-		ws, err2 := h.WorkspaceService.GetWorkspace(r.Context(), *bot.WorkspaceID)
-		if err2 == nil && ws != nil {
-			mem, err3 := h.OrgService.CheckMembership(r.Context(), userID, ws.OrganizationID)
-			if err3 == nil && mem != nil {
-				allowed = true
-			}
-		}
-	case bot.OrganizationID != nil && *bot.OrganizationID != "":
-		// Check Org membership
-		mem, err2 := h.OrgService.CheckMembership(r.Context(), userID, *bot.OrganizationID)
-		if err2 == nil && mem != nil {
-			allowed = true
-		}
-	default:
-		// Personal bot
-		if bot.UserID == userID {
-			allowed = true
-		}
-	}
-
-	if !allowed {
-		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
@@ -223,56 +128,8 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsTrends(w http.ResponseWriter, r *
 
 // GetSourceUsage returns source usage analytics for a chatbot
 func (h *AnalyticsHandlers) GetSourceUsage(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 7 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	botID := parts[4]
-
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if bot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Access Check
-	allowed := false
-	switch {
-	case bot.WorkspaceID != nil && *bot.WorkspaceID != "":
-		// Check workspace access via Org membership
-		ws, err2 := h.WorkspaceService.GetWorkspace(r.Context(), *bot.WorkspaceID)
-		if err2 == nil && ws != nil {
-			mem, err3 := h.OrgService.CheckMembership(r.Context(), userID, ws.OrganizationID)
-			if err3 == nil && mem != nil {
-				allowed = true
-			}
-		}
-	case bot.OrganizationID != nil && *bot.OrganizationID != "":
-		// Check Org membership
-		mem, err2 := h.OrgService.CheckMembership(r.Context(), userID, *bot.OrganizationID)
-		if err2 == nil && mem != nil {
-			allowed = true
-		}
-	default:
-		// Personal bot
-		if bot.UserID == userID {
-			allowed = true
-		}
-	}
-
-	if !allowed {
-		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 

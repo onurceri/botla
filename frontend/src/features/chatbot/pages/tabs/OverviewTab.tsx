@@ -18,11 +18,16 @@ import { useParams } from 'react-router-dom'
 
 export default function OverviewTab() {
   const {
-    name, setName,
-    customInstruction, setCustomInstruction,
-    model, setModel,
-    temperature, setTemperature,
-    maxTokens, setMaxTokens,
+    name,
+    setName,
+    customInstruction,
+    setCustomInstruction,
+    model,
+    setModel,
+    temperature,
+    setTemperature,
+    maxTokens,
+    setMaxTokens,
     availableModels,
   } = useChatbotContext()
 
@@ -30,22 +35,33 @@ export default function OverviewTab() {
   const { mutateAsync: updateBasicInfo } = useUpdateBasicInfo(id || '')
   const { mutateAsync: updateModelSettings } = useUpdateModelSettings(id || '')
 
-  const { isSaving: isBasicInfoSaving, lastSavedAt: basicInfoSavedAt, error: basicInfoError } = useAutoSave({
-    payload: { name, description: null, custom_instruction: customInstruction, language: 'tr-TR' }, 
+  const {
+    isSaving: isBasicInfoSaving,
+    lastSavedAt: basicInfoSavedAt,
+    error: basicInfoError,
+  } = useAutoSave({
+    payload: { name, description: null, custom_instruction: customInstruction, language: 'tr-TR' },
     saveFn: (_, payload) => updateBasicInfo(payload),
     enabled: !!name.trim(),
   })
 
-  const { isSaving: isModelSaving, lastSavedAt: modelSavedAt, error: modelError } = useAutoSave({
+  const {
+    isSaving: isModelSaving,
+    lastSavedAt: modelSavedAt,
+    error: modelError,
+  } = useAutoSave({
     payload: { model, temperature, max_tokens: maxTokens },
     saveFn: (_, payload) => updateModelSettings(payload),
     enabled: !!model,
   })
 
   const isSaving = isBasicInfoSaving || isModelSaving
-  const lastSavedAt = basicInfoSavedAt && modelSavedAt 
-    ? (basicInfoSavedAt > modelSavedAt ? basicInfoSavedAt : modelSavedAt) 
-    : (basicInfoSavedAt || modelSavedAt)
+  const lastSavedAt =
+    basicInfoSavedAt && modelSavedAt
+      ? basicInfoSavedAt > modelSavedAt
+        ? basicInfoSavedAt
+        : modelSavedAt
+      : basicInfoSavedAt || modelSavedAt
   const error = basicInfoError || modelError
 
   return (
@@ -69,9 +85,7 @@ export default function OverviewTab() {
               </div>
               <CardTitle>Kimlik</CardTitle>
             </div>
-            <CardDescription>
-              Botunuzun ismi ve özel talimatları.
-            </CardDescription>
+            <CardDescription>Botunuzun ismi ve özel talimatları.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
@@ -87,7 +101,9 @@ export default function OverviewTab() {
             <div className="space-y-2">
               <Label htmlFor="customInstruction" className="flex justify-between">
                 <span>Özel Talimatlar</span>
-                <span className="text-xs text-muted-foreground font-normal">{customInstruction.length} karakter</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {customInstruction.length} karakter
+                </span>
               </Label>
               <Textarea
                 id="customInstruction"
@@ -97,7 +113,8 @@ export default function OverviewTab() {
                 placeholder="Botunuza özel davranış kuralları ekleyin... Örn: Müşterilere resmi bir dil kullan, fiyat bilgisi verme..."
               />
               <p className="text-xs text-muted-foreground">
-                Botunuzun nasıl davranması gerektiğini, tonunu ve özel kurallarını buraya yazın. Dil ve kapsam kuralları otomatik eklenir.
+                Botunuzun nasıl davranması gerektiğini, tonunu ve özel kurallarını buraya yazın. Dil
+                ve kapsam kuralları otomatik eklenir.
               </p>
             </div>
           </CardContent>
@@ -111,9 +128,7 @@ export default function OverviewTab() {
               </div>
               <CardTitle>Model Ayarları</CardTitle>
             </div>
-            <CardDescription>
-              Yapay zeka modelini ve teknik parametreleri seçin.
-            </CardDescription>
+            <CardDescription>Yapay zeka modelini ve teknik parametreleri seçin.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="space-y-2">
@@ -123,16 +138,18 @@ export default function OverviewTab() {
                   <SelectValue placeholder="Model seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                {availableModels && availableModels.length > 0 ? (
-                  availableModels.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name}
+                  {availableModels && availableModels.length > 0 ? (
+                    availableModels.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="loading" disabled>
+                      Yükleniyor...
                     </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
-                )}
-              </SelectContent>
+                  )}
+                </SelectContent>
               </Select>
             </div>
 
@@ -163,25 +180,25 @@ export default function OverviewTab() {
               </div>
 
               <div className="space-y-4 pt-2">
-                 <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Gauge className="w-4 h-4 text-green-500" />
                     Maksimum Token
                   </Label>
                 </div>
-                 <div className="flex items-center gap-4">
-                    <Input
-                      type="number"
-                      min="1"
-                      max="8192"
-                      value={maxTokens}
-                      onChange={(e) => setMaxTokens(parseInt(e.target.value) || 512)}
-                      className="bg-background/50 h-11"
-                    />
-                 </div>
-                 <p className="text-xs text-muted-foreground">
-                   Her cevap için üretilecek maksimum kelime/token sayısı.
-                 </p>
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="8192"
+                    value={maxTokens}
+                    onChange={(e) => setMaxTokens(parseInt(e.target.value) || 512)}
+                    className="bg-background/50 h-11"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Her cevap için üretilecek maksimum kelime/token sayısı.
+                </p>
               </div>
             </div>
           </CardContent>

@@ -8,41 +8,85 @@ test.describe('E2E Smoke', () => {
     // Use the outer `isReal` variable from describe scope
     if (!isReal) {
       await page.route('**/api/v1/auth/register', async (route) => {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true }),
+        })
       })
       await page.route('**/api/v1/auth/login', async (route) => {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token: 't', refresh_token: 'rt' }) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ token: 't', refresh_token: 'rt' }),
+        })
       })
       await page.route('**/api/v1/chatbots', async (route) => {
         if (route.request().method() === 'GET') {
-          await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify([]),
+          })
         } else {
-          await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: botId }) })
+          await route.fulfill({
+            status: 201,
+            contentType: 'application/json',
+            body: JSON.stringify({ id: botId }),
+          })
         }
       })
       await page.route(`**/api/v1/chatbots/${botId}`, async (route) => {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: botId, name: 'E2E Bot' }) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ id: botId, name: 'E2E Bot' }),
+        })
       })
       await page.route(`**/api/v1/chatbots/${botId}/sources`, async (route) => {
-        await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 'src-1' }) })
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ id: 'src-1' }),
+        })
       })
       await page.route('**/api/v1/sources/src-1', async (route) => {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'src-1', status: 'completed', chunk_count: 3 }) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ id: 'src-1', status: 'completed', chunk_count: 3 }),
+        })
       })
       await page.route('**/api/v1/analytics', async (route) => {
         const today = new Date()
         const series = Array.from({ length: 7 }).map((_, i) => {
           const d = new Date(today)
           d.setDate(today.getDate() - (6 - i))
-          return { date: d.toISOString().slice(0, 10), messages: i, conversations: Math.floor(i / 2) }
+          return {
+            date: d.toISOString().slice(0, 10),
+            messages: i,
+            conversations: Math.floor(i / 2),
+          }
         })
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(series) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(series),
+        })
       })
       await page.route(`**/api/v1/chatbots/${botId}/chat`, async (route) => {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ response: 'Merhaba!' }) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ response: 'Merhaba!' }),
+        })
       })
       await page.route('**/api/v1/auth/me', async (route) => {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ plan: 'pro' }) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ plan: 'pro' }),
+        })
       })
     }
 
@@ -112,13 +156,18 @@ test.describe('E2E Smoke', () => {
     await input.press('Enter')
     if (isReal) {
       // Real backend may return fallback; assert any assistant message appears in widget
-      await expect(page.locator('.cbw-msg.assistant').filter({ hasText: /Merhaba|hata|bilgi/i })).toBeVisible({ timeout: 10000 })
+      await expect(
+        page.locator('.cbw-msg.assistant').filter({ hasText: /Merhaba|hata|bilgi/i }),
+      ).toBeVisible({ timeout: 10000 })
       // Navigate to Dashboard and confirm the bot appears in "Son Botlarınız"
       await page.goto('/')
 
       // Check if the bot appears in "Son Botlarınız" list
       // This confirms the bot was created and associated with the user correctly
-      const recentBotsCard = page.locator('div.col-span-3').filter({ has: page.getByText(/^Son Botlarınız$/) }).first()
+      const recentBotsCard = page
+        .locator('div.col-span-3')
+        .filter({ has: page.getByText(/^Son Botlarınız$/) })
+        .first()
       await expect(recentBotsCard).toBeVisible()
       await expect(recentBotsCard.getByText('E2E Bot')).toBeVisible()
     } else {

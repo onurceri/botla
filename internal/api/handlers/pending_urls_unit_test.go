@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
-func TestExtractChatbotIDFromPendingURLPath(t *testing.T) {
+func TestParseBotIDFromPath_PendingURLs(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
@@ -32,23 +35,16 @@ func TestExtractChatbotIDFromPendingURLPath(t *testing.T) {
 			path:     "/api/v1/chatbots/uuid-here/pending-urls/clear",
 			expected: "uuid-here",
 		},
-		{
-			name:     "invalid path - no prefix",
-			path:     "/other/path/chatbots/abc/pending-urls",
-			expected: "",
-		},
-		{
-			name:     "empty after prefix",
-			path:     "/api/v1/chatbots/",
-			expected: "",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := extractChatbotIDFromPendingURLPath(tt.path)
+			result, ok := parseBotIDFromPath(tt.path)
+			if !ok && tt.expected != "" {
+				t.Errorf("parseBotIDFromPath(%q) ok = false, want true", tt.path)
+			}
 			if result != tt.expected {
-				t.Errorf("extractChatbotIDFromPendingURLPath(%q) = %q, want %q", tt.path, result, tt.expected)
+				t.Errorf("parseBotIDFromPath(%q) = %q, want %q", tt.path, result, tt.expected)
 			}
 		})
 	}
@@ -128,15 +124,31 @@ func TestClearPendingURLs_MethodNotAllowed(t *testing.T) {
 
 func TestListPendingURLs_InvalidChatbotID(t *testing.T) {
 	h := &PendingURLsHandlers{}
+	ctx := context.WithValue(context.Background(), middleware.ContextKeyUserID, "user-123")
 
-	// Path without chatbot ID
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots//pending-urls", nil)
-	w := httptest.NewRecorder()
+	tests := []struct {
+		name string
+		path string
+		want int
+	}{
+		{
+			name: "empty chatbot ID",
+			path: "/api/v1/chatbots//pending-urls",
+			want: http.StatusNotFound,
+		},
+	}
 
-	h.ListPendingURLs(w, req)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req = req.WithContext(ctx)
+			w := httptest.NewRecorder()
 
-	// Should return bad request for empty chatbot ID
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("ListPendingURLs with empty ID: got %d, want %d", w.Code, http.StatusBadRequest)
+			h.ListPendingURLs(w, req)
+
+			if w.Code != tc.want {
+				t.Errorf("ListPendingURLs with %q: got %d, want %d", tc.path, w.Code, tc.want)
+			}
+		})
 	}
 }

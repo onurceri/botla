@@ -20,7 +20,7 @@ describe('LoginPage extra tests', () => {
         <MemoryRouter>
           <LoginPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
     const submit = screen.getByRole('button', { name: 'Giriş Yap' })
     await user.click(submit)
@@ -29,13 +29,15 @@ describe('LoginPage extra tests', () => {
 
   it('logs in successfully and re-enables button', async () => {
     const user = userEvent.setup()
-    const postSpy = vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any)
+    const postSpy = vi
+      .spyOn(api, 'post')
+      .mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any)
     render(
       <ToastProvider>
         <MemoryRouter>
           <LoginPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
     await user.type(screen.getByLabelText('Email'), 'e@e.com')
     await user.type(screen.getByLabelText('Şifre'), 'p')
@@ -56,12 +58,14 @@ describe('LoginPage extra tests', () => {
         <MemoryRouter>
           <LoginPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
     await user.type(screen.getByLabelText('Email'), 'e@e.com')
     await user.type(screen.getByLabelText('Şifre'), 'p')
     const submitBtns = screen.getAllByRole('button', { name: 'Giriş Yap' })
     await user.click(submitBtns[0])
-    expect(await screen.findByText('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.'),
+    ).toBeInTheDocument()
   })
 })

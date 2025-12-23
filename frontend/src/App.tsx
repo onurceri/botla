@@ -45,16 +45,16 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 // Component to handle session expiry notifications
 function SessionExpiryHandler() {
   const { toast } = useToast()
-  
+
   useEffect(() => {
     const handleSessionExpired = () => {
       toast('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.', 'error')
     }
-    
+
     window.addEventListener('session-expired', handleSessionExpired)
     return () => window.removeEventListener('session-expired', handleSessionExpired)
   }, [toast])
-  
+
   return null
 }
 
@@ -68,23 +68,29 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/onboarding" element={
-            <PrivateRoute>
-              <OnboardingPage />
-            </PrivateRoute>
-          } />
+          <Route
+            path="/onboarding"
+            element={
+              <PrivateRoute>
+                <OnboardingPage />
+              </PrivateRoute>
+            }
+          />
 
           {/* Protected Routes */}
-          <Route path="/dashboard" element={
-            <PrivateRoute>
-              <OrganizationProvider>
-                <DashboardLayout />
-              </OrganizationProvider>
-            </PrivateRoute>
-          }>
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <OrganizationProvider>
+                  <DashboardLayout />
+                </OrganizationProvider>
+              </PrivateRoute>
+            }
+          >
             <Route index element={<DashboardPage />} />
             <Route path="chatbots" element={<ChatbotsPage />} />
-            
+
             <Route path="chatbots/:id" element={<ChatbotDetailPage />}>
               <Route index element={<Navigate to="settings" replace />} />
               <Route path="settings" element={<SettingsTab />} />
@@ -96,13 +102,16 @@ function App() {
               <Route path="insights" element={<InsightsTab />} />
             </Route>
 
-            <Route path="settings" element={<Navigate to="/dashboard/settings/profile" replace />} />
+            <Route
+              path="settings"
+              element={<Navigate to="/dashboard/settings/profile" replace />}
+            />
             <Route path="settings/profile" element={<ProfilePage />} />
             <Route path="settings/organization" element={<OrganizationSettingsPage />} />
             <Route path="settings/workspace" element={<WorkspaceSettingsPage />} />
             <Route path="settings/plan" element={<PlanPage />} />
           </Route>
-          
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

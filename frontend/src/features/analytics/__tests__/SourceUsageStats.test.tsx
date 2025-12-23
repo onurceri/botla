@@ -5,7 +5,7 @@ import * as analyticsApi from '@/api/analytics'
 
 // Mock the API
 vi.mock('@/api/analytics', () => ({
-  getSourceUsageStats: vi.fn()
+  getSourceUsageStats: vi.fn(),
 }))
 
 describe('SourceUsageStats', () => {
@@ -18,7 +18,7 @@ describe('SourceUsageStats', () => {
       avg_relevance: 0.85,
       positive_feedback: 10,
       negative_feedback: 1,
-      last_used: '2023-01-01T12:00:00Z'
+      last_used: '2023-01-01T12:00:00Z',
     },
     {
       source_id: '2',
@@ -28,8 +28,8 @@ describe('SourceUsageStats', () => {
       avg_relevance: 0.92,
       positive_feedback: 30,
       negative_feedback: 0,
-      last_used: '2023-01-02T12:00:00Z'
-    }
+      last_used: '2023-01-02T12:00:00Z',
+    },
   ]
 
   it('renders loading state initially', () => {
@@ -43,7 +43,7 @@ describe('SourceUsageStats', () => {
   it('renders empty state when no data', async () => {
     vi.mocked(analyticsApi.getSourceUsageStats).mockResolvedValue([])
     render(<SourceUsageStats chatbotId="123" />)
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Henüz veri yok/i)).toBeInTheDocument()
     })
@@ -56,11 +56,11 @@ describe('SourceUsageStats', () => {
     await waitFor(() => {
       expect(screen.getByText('Test Source PDF')).toBeInTheDocument()
       expect(screen.getByText('Website Home')).toBeInTheDocument()
-      
+
       // Check for stats
       expect(screen.getByText('15')).toBeInTheDocument() // times used
       expect(screen.getByText('42')).toBeInTheDocument()
-      
+
       // Check for badges
       expect(screen.getByText('pdf')).toBeInTheDocument()
       expect(screen.getByText('url')).toBeInTheDocument()

@@ -10,44 +10,12 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // GetSourceStatusOrDelete handles GET/DELETE for individual sources
 func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	sourceID, ok := parseSourceIDFromPath(r.URL.Path)
+	s, _, _, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService, "")
 	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	s, err := db.GetSourceByID(r.Context(), h.DB, sourceID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if s == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	c, err := db.GetChatbotByID(r.Context(), h.DB, s.ChatbotID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if c == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if c.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 

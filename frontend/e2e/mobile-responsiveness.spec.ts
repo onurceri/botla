@@ -6,24 +6,48 @@ test.describe('Mobile Responsiveness', () => {
   test.beforeEach(async ({ page }) => {
     // Mock API
     await page.route('**/api/v1/auth/me', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ plan: 'pro' }) })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ plan: 'pro' }),
+      })
     })
     await page.route('**/api/v1/organizations', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'org-1', name: 'Test Org' }]) })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 'org-1', name: 'Test Org' }]),
+      })
     })
     await page.route('**/api/v1/organizations/org-1/workspaces', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'ws-1', name: 'Test WS' }]) })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: 'ws-1', name: 'Test WS' }]),
+      })
     })
     await page.route('**/api/v1/chatbots/1', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: '1', name: 'Test Bot' }) })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: '1', name: 'Test Bot' }),
+      })
     })
     // Mock analytics for dashboard
     await page.route('**/api/v1/analytics', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     })
     // Mock chatbots list
     await page.route('**/api/v1/chatbots', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      })
     })
   })
 

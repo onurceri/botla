@@ -286,6 +286,7 @@ func TestChat_ModelConfiguration(t *testing.T) {
 	t.Setenv("QDRANT_URL", stub.Server.URL)
 
 	// Mock keys to allow factory to pick them up
+	t.Setenv("OPENAI_API_KEY", "sk-openai-mock")
 	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-mock")
 	t.Setenv("GOOGLE_AI_API_KEY", "AIza-mock")
 	t.Setenv("OPENROUTER_API_KEY", "sk-or-mock")
@@ -305,7 +306,17 @@ func TestChat_ModelConfiguration(t *testing.T) {
 	checkModel := func(t *testing.T, modelName string) {
 		t.Helper()
 		// Create bot with specific model
-		create := map[string]any{"name": "Model Bot " + modelName, "model": modelName}
+		provider := "openai"
+		if strings.Contains(modelName, ":") {
+			parts := strings.Split(modelName, ":")
+			provider = parts[0]
+		}
+
+		create := map[string]any{
+			"name":           "Model Bot " + modelName,
+			"model":          modelName,
+			"model_provider": provider,
+		}
 		cbj, _ := json.Marshal(create)
 		reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 		reqC.Header.Set("Authorization", "Bearer "+token)

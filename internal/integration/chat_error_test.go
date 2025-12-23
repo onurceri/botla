@@ -42,7 +42,7 @@ func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
 	mockLLM := &rag.MockFullClient{}
 	mockLLM.On("CreateEmbedding", mock.Anything, mock.Anything).Return([]float32{0.1}, nil)
 	mockLLM.On("CreateCompletionWithTools", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("simulated openai error"))
-	
+
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{}, nil)

@@ -48,6 +48,7 @@ type ChatbotUpdateRequest struct {
 	HandoffEnabled      *bool                   `json:"handoff_enabled,omitempty"`
 	TopicRestrictions   *models.TopicConfig     `json:"topic_restrictions,omitempty"`
 	ChatBackgroundColor *string                 `json:"chat_background_color,omitempty"`
+	MaxTokens           *int                    `json:"max_tokens,omitempty"`
 }
 
 // ValidateUpdate checks all plan-based restrictions for a chatbot update.
@@ -91,6 +92,9 @@ func (v *ChatbotValidator) ValidateUpdate(ctx context.Context, req ChatbotUpdate
 	if err := v.validateColors(req); err != nil {
 		return err
 	}
+	if err := v.validateMaxTokens(req, plan); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -98,6 +102,40 @@ func (v *ChatbotValidator) ValidateUpdate(ctx context.Context, req ChatbotUpdate
 // =============================================================================
 // INDIVIDUAL VALIDATORS
 // =============================================================================
+
+func (v *ChatbotValidator) validateMaxTokens(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
+	if req.MaxTokens == nil {
+		return nil
+	}
+
+	val := *req.MaxTokens
+	minLimit := plan.Config.Chat.MinResponseTokenLimit
+	maxLimit := plan.Config.Chat.MaxResponseTokenLimit
+
+	// Default fallbacks if not set in plan (backward compatibility)
+	if minLimit <= 0 {
+		minLimit = 20
+	}
+	if maxLimit <= 0 {
+		maxLimit = 8192 // Default reasonable max
+	}
+
+	if val < minLimit {
+		return &FeatureError{
+			Feature:         "max_tokens",
+			Message:         "Value is below the minimum allowed limit for your plan",
+			UpgradeRequired: false,
+		}
+	}
+	if val > maxLimit {
+		return &FeatureError{
+			Feature:         "max_tokens",
+			Message:         "Value exceeds the maximum allowed limit for your plan",
+			UpgradeRequired: true,
+		}
+	}
+	return nil
+}
 
 func (v *ChatbotValidator) validateModel(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
 	if req.Model == nil {

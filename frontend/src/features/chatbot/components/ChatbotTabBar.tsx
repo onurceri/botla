@@ -1,7 +1,16 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { Settings, Shield, Database, Zap, Rocket, BarChart3, Terminal, MoreHorizontal } from 'lucide-react'
+import {
+  Settings,
+  Shield,
+  Database,
+  Zap,
+  Rocket,
+  BarChart3,
+  Terminal,
+  MoreHorizontal,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 
 interface TabItem {
   id: string
@@ -27,7 +36,7 @@ export function ChatbotTabBar() {
   const priorityTabs = tabs.slice(0, 4)
   const moreTabs = tabs.slice(4)
 
-  const isAnyMoreTabActive = moreTabs.some(tab => pathname.endsWith(tab.id))
+  const isAnyMoreTabActive = moreTabs.some((tab) => pathname.endsWith(tab.id))
 
   return (
     <>
@@ -39,10 +48,10 @@ export function ChatbotTabBar() {
             to={tab.id}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                 isActive
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50',
               )
             }
           >
@@ -66,24 +75,22 @@ export function ChatbotTabBar() {
               to={tab.id}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-lg transition-all duration-200 relative",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground active:text-foreground"
+                  'flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-lg transition-all duration-200 relative',
+                  isActive ? 'text-primary' : 'text-muted-foreground active:text-foreground',
                 )
               }
             >
               {({ isActive }) => (
                 <>
                   <div className="relative">
-                    <tab.icon className={cn("w-5 h-5", isActive && "scale-110")} />
+                    <tab.icon className={cn('w-5 h-5', isActive && 'scale-110')} />
                     {tab.badge !== undefined && tab.badge > 0 && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
                         {tab.badge > 9 ? '9+' : tab.badge}
                       </span>
                     )}
                   </div>
-                  <span className={cn("text-[10px] font-medium", isActive && "font-semibold")}>
+                  <span className={cn('text-[10px] font-medium', isActive && 'font-semibold')}>
                     {tab.label}
                   </span>
                   {isActive && (
@@ -98,16 +105,21 @@ export function ChatbotTabBar() {
           <button
             onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-lg transition-all duration-200 relative",
-              isMoreMenuOpen || isAnyMoreTabActive
-                ? "text-primary"
-                : "text-muted-foreground"
+              'flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-lg transition-all duration-200 relative',
+              isMoreMenuOpen || isAnyMoreTabActive ? 'text-primary' : 'text-muted-foreground',
             )}
           >
             <div className="relative">
-              <MoreHorizontal className={cn("w-5 h-5", (isMoreMenuOpen || isAnyMoreTabActive) && "scale-110")} />
+              <MoreHorizontal
+                className={cn('w-5 h-5', (isMoreMenuOpen || isAnyMoreTabActive) && 'scale-110')}
+              />
             </div>
-            <span className={cn("text-[10px] font-medium", (isMoreMenuOpen || isAnyMoreTabActive) && "font-semibold")}>
+            <span
+              className={cn(
+                'text-[10px] font-medium',
+                (isMoreMenuOpen || isAnyMoreTabActive) && 'font-semibold',
+              )}
+            >
               Daha Fazla
             </span>
             {isAnyMoreTabActive && !isMoreMenuOpen && (
@@ -133,10 +145,10 @@ export function ChatbotTabBar() {
                       onClick={() => setIsMoreMenuOpen(false)}
                       className={({ isActive }) =>
                         cn(
-                          "flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all duration-200",
+                          'flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all duration-200',
                           isActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-muted"
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-muted',
                         )
                       }
                     >

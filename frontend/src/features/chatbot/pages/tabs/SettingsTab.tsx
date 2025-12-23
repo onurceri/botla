@@ -4,71 +4,66 @@ import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
 import { useUpdateBasicInfo, useUpdateModelSettings } from '@/hooks/mutations/useChatbotMutations'
 import IdentityModelSection from './sections/IdentityModelSection'
-import GuardrailsSection from './sections/GuardrailsSection'
-import HandoffSection from './sections/HandoffSection'
+import { Settings2 } from 'lucide-react'
 
 export default function SettingsTab() {
   const { id = '' } = useParams()
-  const {
-    name, setName,
-    customInstruction, setCustomInstruction,
-    model, setModel,
-    temperature, setTemperature,
-    maxTokens, setMaxTokens,
-    availableModels,
-  } = useChatbotContext()
+  const { name, customInstruction, model, temperature, maxTokens } = useChatbotContext()
 
   const { mutateAsync: updateBasicInfo } = useUpdateBasicInfo(id)
   const { mutateAsync: updateModelSettings } = useUpdateModelSettings(id)
 
-  const { isSaving: isBasicInfoSaving, lastSavedAt: basicInfoSavedAt, error: basicInfoError } = useAutoSave({
+  const {
+    isSaving: isBasicInfoSaving,
+    lastSavedAt: basicInfoSavedAt,
+    error: basicInfoError,
+  } = useAutoSave({
     payload: { name, description: null, custom_instruction: customInstruction, language: 'tr-TR' },
     saveFn: (_, payload) => updateBasicInfo(payload),
     enabled: !!name.trim(),
   })
 
-  const { isSaving: isModelSaving, lastSavedAt: modelSavedAt, error: modelError } = useAutoSave({
+  const {
+    isSaving: isModelSaving,
+    lastSavedAt: modelSavedAt,
+    error: modelError,
+  } = useAutoSave({
     payload: { model, temperature, max_tokens: maxTokens },
     saveFn: (_, payload) => updateModelSettings(payload),
     enabled: !!model,
   })
 
   const isSaving = isBasicInfoSaving || isModelSaving
-  const lastSavedAt = basicInfoSavedAt && modelSavedAt
-    ? (basicInfoSavedAt > modelSavedAt ? basicInfoSavedAt : modelSavedAt)
-    : (basicInfoSavedAt || modelSavedAt)
+  const lastSavedAt =
+    basicInfoSavedAt && modelSavedAt
+      ? basicInfoSavedAt > modelSavedAt
+        ? basicInfoSavedAt
+        : modelSavedAt
+      : basicInfoSavedAt || modelSavedAt
   const error = basicInfoError || modelError
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Ayarlar</h2>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-slate-900/5 text-slate-900">
+              <Settings2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">Ayarlar</h2>
+              <p className="text-sm text-slate-500 font-medium">
+                Chatbot davranışlarını ve yeteneklerini yönetin
+              </p>
+            </div>
+          </div>
           <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
         </div>
-        <p className="text-muted-foreground">
-          Chatbotunuzun kimliğini, AI davranışlarını ve güvenlik kurallarını yapılandırın.
-        </p>
       </div>
 
+      {/* Main Content */}
       <div className="space-y-6">
-        <IdentityModelSection
-          name={name}
-          setName={setName}
-          customInstruction={customInstruction}
-          setCustomInstruction={setCustomInstruction}
-          model={model}
-          setModel={setModel}
-          temperature={temperature}
-          setTemperature={setTemperature}
-          maxTokens={maxTokens}
-          setMaxTokens={setMaxTokens}
-          availableModels={availableModels}
-        />
-
-        <GuardrailsSection chatbotId={id} />
-
-        <HandoffSection chatbotId={id} />
+        <IdentityModelSection />
       </div>
     </div>
   )

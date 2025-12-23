@@ -12,7 +12,10 @@ export interface ChatResponse {
   message_id?: string
 }
 
-export const sendChatMessage = async (chatbotId: string, message: ChatMessage): Promise<ChatResponse> => {
+export const sendChatMessage = async (
+  chatbotId: string,
+  message: ChatMessage,
+): Promise<ChatResponse> => {
   const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/chat`, message)
   return data
 }

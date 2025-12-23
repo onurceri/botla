@@ -6,7 +6,9 @@ describe('NewChatbotForm', () => {
   it('renders fields and triggers change handlers', () => {
     const onName = vi.fn()
     const onDesc = vi.fn()
-    render(<NewChatbotForm name="" description="" onNameChange={onName} onDescriptionChange={onDesc} />)
+    render(
+      <NewChatbotForm name="" description="" onNameChange={onName} onDescriptionChange={onDesc} />,
+    )
     const nameInput = screen.getByPlaceholderText('Örn: Müşteri Temsilcisi') as HTMLInputElement
     const descInput = screen.getByPlaceholderText('Botun amacı nedir?') as HTMLInputElement
     fireEvent.change(nameInput, { target: { value: 'Destek' } })
@@ -15,4 +17,3 @@ describe('NewChatbotForm', () => {
     expect(onDesc).toHaveBeenCalledWith('Müşteri destek')
   })
 })
-

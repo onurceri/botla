@@ -11,12 +11,14 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/internal/services"
 )
 
 type ActionHandlers struct {
 	DB                *sql.DB
 	ToolNameGenerator *rag.ToolNameGenerator
+	WorkspaceService  *services.WorkspaceService
+	OrgService        *services.OrganizationService
 }
 
 type createActionRequest struct {
@@ -29,31 +31,8 @@ type createActionRequest struct {
 }
 
 func (h *ActionHandlers) authorize(w http.ResponseWriter, r *http.Request) (string, *models.Chatbot, bool) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return "", nil, false
-	}
-	botID := r.PathValue("id")
-	if botID == "" {
-		w.WriteHeader(http.StatusNotFound)
-		return "", nil, false
-	}
-
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return "", nil, false
-	}
-	if bot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return "", nil, false
-	}
-	if bot.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return "", nil, false
-	}
-	return botID, bot, true
+	bot, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	return botID, bot, ok
 }
 
 func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request) {

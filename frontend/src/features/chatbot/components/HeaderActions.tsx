@@ -37,7 +37,7 @@ export default function HeaderActions({
           {isNew ? 'Asistanınızı yapılandırın' : 'Ayarlar ve Kaynaklar'}
         </p>
       </div>
-      
+
       <div className="flex items-center gap-2">
         {!isNew && (
           <Button

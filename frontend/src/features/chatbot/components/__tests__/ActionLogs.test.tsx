@@ -21,14 +21,14 @@ describe('ActionLogs', () => {
       response_payload: { a: 'ok' },
     },
     {
-        id: 'log-2',
-        chatbot_id: 'bot-1',
-        action_id: 'act-1',
-        status: 'failed',
-        duration_ms: 500,
-        created_at: '2023-10-27T10:05:00Z',
-        error_message: 'Network Error'
-    }
+      id: 'log-2',
+      chatbot_id: 'bot-1',
+      action_id: 'act-1',
+      status: 'failed',
+      duration_ms: 500,
+      created_at: '2023-10-27T10:05:00Z',
+      error_message: 'Network Error',
+    },
   ]
 
   beforeEach(() => {
@@ -39,15 +39,15 @@ describe('ActionLogs', () => {
     // Return a promise that doesn't resolve immediately to test loading state if needed
     // But since useEffect runs on mount, we might miss the initial true state if we await.
     // However, the button should be disabled.
-    (actionApi.getActionLogs as any).mockImplementation(() => new Promise(() => {})) // Never resolves
+    ;(actionApi.getActionLogs as any).mockImplementation(() => new Promise(() => {})) // Never resolves
     render(<ActionLogs chatbotId="bot-1" />)
-    
+
     const refreshBtn = screen.getByText('Yenile')
     expect(refreshBtn).toBeDisabled()
   })
 
   it('renders logs after fetch', async () => {
-    (actionApi.getActionLogs as any).mockResolvedValue({ logs: mockLogs, page: 1, limit: 20 })
+    ;(actionApi.getActionLogs as any).mockResolvedValue({ logs: mockLogs, page: 1, limit: 20 })
     render(<ActionLogs chatbotId="bot-1" />)
 
     await waitFor(() => {
@@ -58,11 +58,11 @@ describe('ActionLogs', () => {
   })
 
   it('opens details dialog when clicked', async () => {
-    (actionApi.getActionLogs as any).mockResolvedValue({ logs: mockLogs })
+    ;(actionApi.getActionLogs as any).mockResolvedValue({ logs: mockLogs })
     render(<ActionLogs chatbotId="bot-1" />)
 
     await waitFor(() => {
-        expect(screen.getByText('Başarılı')).toBeInTheDocument()
+      expect(screen.getByText('Başarılı')).toBeInTheDocument()
     })
 
     const buttons = screen.getAllByText('İncele')
@@ -74,11 +74,11 @@ describe('ActionLogs', () => {
   })
 
   it('shows empty state', async () => {
-    (actionApi.getActionLogs as any).mockResolvedValue({ logs: [] })
+    ;(actionApi.getActionLogs as any).mockResolvedValue({ logs: [] })
     render(<ActionLogs chatbotId="bot-1" />)
 
     await waitFor(() => {
-        expect(screen.getByText('Henüz bir kayıt yok.')).toBeInTheDocument()
+      expect(screen.getByText('Henüz bir kayıt yok.')).toBeInTheDocument()
     })
   })
 })

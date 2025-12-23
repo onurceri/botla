@@ -66,16 +66,18 @@ export const OrganizationSwitcher: React.FC = () => {
           selectOrganization(val)
         }}
       >
-        <SelectTrigger 
+        <SelectTrigger
           className={cn(
-            "w-[50px] md:w-[260px] px-2 md:px-3 transition-all duration-200",
-            !currentOrganization && "text-muted-foreground"
+            'w-[50px] md:w-[260px] px-2 md:px-3 transition-all duration-200',
+            !currentOrganization && 'text-muted-foreground',
           )}
         >
           {currentOrganization ? (
             <div className="flex items-center gap-2 overflow-hidden">
               <Avatar className="h-6 w-6 border border-border shrink-0">
-                <AvatarImage src={`https://avatar.vercel.sh/${currentOrganization.id}.png?text=${getInitials(currentOrganization.name)}`} />
+                <AvatarImage
+                  src={`https://avatar.vercel.sh/${currentOrganization.id}.png?text=${getInitials(currentOrganization.name)}`}
+                />
                 <AvatarFallback>{getInitials(currentOrganization.name)}</AvatarFallback>
               </Avatar>
               <span className="hidden md:block truncate text-sm font-medium">
@@ -102,13 +104,19 @@ export const OrganizationSwitcher: React.FC = () => {
               </SelectItem>
             ))}
             <SelectSeparator />
-            <SelectItem value="create-new" className="cursor-pointer text-muted-foreground focus:text-primary">
+            <SelectItem
+              value="create-new"
+              className="cursor-pointer text-muted-foreground focus:text-primary"
+            >
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 <span>Yeni Organizasyon</span>
               </div>
             </SelectItem>
-            <SelectItem value="settings" className="cursor-pointer text-muted-foreground focus:text-primary">
+            <SelectItem
+              value="settings"
+              className="cursor-pointer text-muted-foreground focus:text-primary"
+            >
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 <span>Ayarlar</span>
@@ -132,10 +140,10 @@ export const OrganizationSwitcher: React.FC = () => {
             }
           }}
         >
-          <SelectTrigger 
+          <SelectTrigger
             className={cn(
-              "w-[50px] md:w-[260px] px-2 md:px-3 transition-all duration-200",
-              (!currentWorkspace || currentWorkspace.id === 'none') && "text-muted-foreground"
+              'w-[50px] md:w-[260px] px-2 md:px-3 transition-all duration-200',
+              (!currentWorkspace || currentWorkspace.id === 'none') && 'text-muted-foreground',
             )}
           >
             {currentWorkspace ? (
@@ -143,9 +151,7 @@ export const OrganizationSwitcher: React.FC = () => {
                 <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
                   <Layers className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <span className="hidden md:block truncate text-sm">
-                  {currentWorkspace.name}
-                </span>
+                <span className="hidden md:block truncate text-sm">{currentWorkspace.name}</span>
               </div>
             ) : (
               <span className="hidden md:block">Çalışma Alanı</span>
@@ -160,9 +166,9 @@ export const OrganizationSwitcher: React.FC = () => {
                 <SelectItem key={ws.id} value={ws.id} className="cursor-pointer">
                   <div className="flex items-center gap-2">
                     <div className="h-5 w-5 rounded bg-muted flex items-center justify-center shrink-0">
-                       <span className="text-[10px] font-bold text-muted-foreground">
-                         {ws.name.substring(0,1).toUpperCase()}
-                       </span>
+                      <span className="text-[10px] font-bold text-muted-foreground">
+                        {ws.name.substring(0, 1).toUpperCase()}
+                      </span>
                     </div>
                     <span className="truncate">{ws.name}</span>
                   </div>
@@ -174,14 +180,20 @@ export const OrganizationSwitcher: React.FC = () => {
                 </div>
               )}
               <SelectSeparator />
-              <SelectItem value="create-new" className="cursor-pointer text-muted-foreground focus:text-primary">
+              <SelectItem
+                value="create-new"
+                className="cursor-pointer text-muted-foreground focus:text-primary"
+              >
                 <div className="flex items-center gap-2">
                   <Plus className="h-4 w-4" />
                   <span>Yeni Çalışma Alanı</span>
                 </div>
               </SelectItem>
               {currentWorkspace && (
-                <SelectItem value="settings" className="cursor-pointer text-muted-foreground focus:text-primary">
+                <SelectItem
+                  value="settings"
+                  className="cursor-pointer text-muted-foreground focus:text-primary"
+                >
                   <div className="flex items-center gap-2">
                     <Settings className="h-4 w-4" />
                     <span>Ayarlar</span>
@@ -193,15 +205,9 @@ export const OrganizationSwitcher: React.FC = () => {
         </Select>
       )}
 
-      <CreateOrganizationDialog
-        open={createOrgOpen}
-        onOpenChange={setCreateOrgOpen}
-      />
-      
-      <CreateWorkspaceDialog
-        open={createWsOpen}
-        onOpenChange={setCreateWsOpen}
-      />
+      <CreateOrganizationDialog open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
+
+      <CreateWorkspaceDialog open={createWsOpen} onOpenChange={setCreateWsOpen} />
     </div>
   )
 }

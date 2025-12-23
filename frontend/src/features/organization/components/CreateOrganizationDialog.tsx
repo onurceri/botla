@@ -33,7 +33,12 @@ export const CreateOrganizationDialog: React.FC<CreateOrganizationDialogProps> =
     setName(val)
     // Auto-generate slug from name if slug hasn't been manually edited
     // For simplicity, we'll just always suggest a slug based on name
-    setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+    setSlug(
+      val
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

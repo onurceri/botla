@@ -6,6 +6,7 @@ import (
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
@@ -420,6 +421,81 @@ func TestAppendUserMessageWithContext(t *testing.T) {
 		// Should just be the user message
 		if content != "Hello" {
 			t.Errorf("expected just message, got %q", content)
+		}
+	})
+
+	t.Run("adds restrictive prompt for low tier with custom actions", func(t *testing.T) {
+		cc := &chatContext{
+			Request: models.ChatRequest{Message: "What is the score?"},
+			SearchResult: &rag.TieredSearchResult{
+				Tier:        rag.TierLow,
+				ContextText: "",
+			},
+			Actions: []*models.ChatbotAction{
+				{ID: "act-1", Name: "get_score"},
+			},
+			Messages: []rag.ChatMessage{},
+		}
+
+		service.appendUserMessageWithContext(cc)
+
+		content := *cc.Messages[0].Content
+		if !contains(content, "[IMPORTANT: You have NO knowledge sources") {
+			t.Error("expected restrictive tool-only prompt for low tier with actions")
+		}
+		if !contains(content, "What is the score?") {
+			t.Error("expected user message in content")
+		}
+	})
+}
+
+// =============================================================================
+// EXECUTE AGENTIC LOOP TESTS
+// =============================================================================
+
+func TestExecuteAgenticLoop_SkipConditions(t *testing.T) {
+	service := &ChatService{
+		Factory: rag.NewClientFactory(&config.Config{}),
+	}
+
+	t.Run("skips loop for low tier with no custom actions", func(t *testing.T) {
+		cc := &chatContext{
+			SearchResult: &rag.TieredSearchResult{
+				Tier: rag.TierLow,
+			},
+			Actions: []*models.ChatbotAction{}, // No custom actions
+			Tools: []rag.Tool{
+				{Type: "function", Function: rag.ToolFunction{Name: "list_sources"}}, // Only built-in tool
+			},
+		}
+
+		err := service.executeAgenticLoop(context.Background(), cc)
+
+		if err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
+		if cc.Response != "" {
+			t.Error("should not set response in agent loop skip")
+		}
+	})
+
+	t.Run("does not skip loop for low tier with custom actions", func(t *testing.T) {
+		// This should try to perform LLM call, but we don't mock the client here
+		// so it'll fail at getToolsClient, which is enough to prove it didn't skip.
+		cc := &chatContext{
+			SearchResult: &rag.TieredSearchResult{
+				Tier: rag.TierLow,
+			},
+			Actions: []*models.ChatbotAction{
+				{ID: "act-1", Name: "get_weather"},
+			},
+			Bot: &models.Chatbot{Model: "gpt-4"},
+		}
+
+		err := service.executeAgenticLoop(context.Background(), cc)
+
+		if err == nil {
+			t.Error("expected error from missing factory/client, but loop was not skipped")
 		}
 	})
 }

@@ -19,7 +19,7 @@ describe('Toast component', () => {
     render(
       <ToastProvider>
         <AutoFire />
-      </ToastProvider>
+      </ToastProvider>,
     )
     expect(await screen.findByText('Mesaj')).toBeInTheDocument()
     await new Promise((r) => setTimeout(r, 600))
@@ -30,7 +30,7 @@ describe('Toast component', () => {
     render(
       <ToastProvider>
         <AutoFire />
-      </ToastProvider>
+      </ToastProvider>,
     )
     const toastText = await screen.findByText('Mesaj')
     const closeBtn = toastText.parentElement!.querySelector('button') as HTMLButtonElement

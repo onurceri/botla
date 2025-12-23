@@ -24,7 +24,7 @@ describe('LoginPage', () => {
         <MemoryRouter>
           <LoginPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     expect(screen.getByRole('heading', { name: 'Hoş Geldiniz' })).toBeInTheDocument()
@@ -42,7 +42,7 @@ describe('LoginPage', () => {
         <MemoryRouter>
           <LoginPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     const emailInput = screen.getByLabelText('Email')
@@ -66,7 +66,7 @@ describe('LoginPage', () => {
         <MemoryRouter>
           <LoginPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     const emailInput = screen.getByLabelText('Email')

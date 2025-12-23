@@ -66,7 +66,7 @@ func TestGenerateEmbeddings_RetryAndWarn(t *testing.T) {
 	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: oai.URL,
 	}
 	emb, _ := NewOpenAIClient(cfg)
@@ -101,7 +101,7 @@ func TestGenerateEmbeddingsForSource_UpsertError(t *testing.T) {
 	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	cfg := &config.Config{
-		OPENAI_API_KEY: "k",
+		OPENAI_API_KEY:  "k",
 		OPENAI_API_BASE: oai.URL,
 	}
 	emb, _ := NewOpenAIClient(cfg)
@@ -170,7 +170,7 @@ func TestGenerateEmbeddings_Batching(t *testing.T) {
 	}
 
 	cfg := &config.Config{
-		OPENAI_API_KEY: "dummy",
+		OPENAI_API_KEY:  "dummy",
 		OPENAI_API_BASE: oaiSrv.URL,
 	}
 	emb, _ := NewOpenAIClient(cfg)

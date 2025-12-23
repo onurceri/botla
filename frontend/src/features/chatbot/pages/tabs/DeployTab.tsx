@@ -9,9 +9,12 @@ import { useUpdateSecuritySettings } from '@/hooks/mutations/useChatbotMutations
 export default function DeployTab() {
   const { id = '' } = useParams()
   const {
-    secureEmbedEnabled, setSecureEmbedEnabled,
-    allowedDomains, setAllowedDomains,
-    embedSecret, setEmbedSecret,
+    secureEmbedEnabled,
+    setSecureEmbedEnabled,
+    allowedDomains,
+    setAllowedDomains,
+    embedSecret,
+    setEmbedSecret,
     planConfig,
     buildConnectPayload,
   } = useChatbotContext()
@@ -51,7 +54,9 @@ export default function DeployTab() {
         onToggleSecure={setSecureEmbedEnabled}
         onDomainsChange={setAllowedDomains}
         onSecretChange={setEmbedSecret}
-        onSecretRefresh={() => setEmbedSecret(Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2))}
+        onSecretRefresh={() =>
+          setEmbedSecret(Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2))
+        }
         onSecretClear={() => setEmbedSecret('')}
       />
     </div>

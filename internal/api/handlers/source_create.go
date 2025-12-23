@@ -16,18 +16,13 @@ import (
 )
 
 // createSource handles POST request to create a new source
-func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, chatbotID, userID string) {
+func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, userID string) {
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
 	if err != nil || plan == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil || bot == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	base := api.BaseLang(bot.LanguageCode)
 	cfg := api.ConfigFromBase(base)
 
@@ -49,11 +44,11 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, c
 
 	switch sourceType {
 	case "pdf":
-		h.handlePDFUpload(w, r, chatbotID, plan, cfg)
+		h.handlePDFUpload(w, r, bot.ID, plan, cfg)
 	case "url":
-		h.handleURLSource(w, r, chatbotID, plan, cfg)
+		h.handleURLSource(w, r, bot.ID, plan, cfg)
 	case "text":
-		h.handleTextSource(w, r, chatbotID, userID, plan, cfg)
+		h.handleTextSource(w, r, bot.ID, userID, plan, cfg)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 	}

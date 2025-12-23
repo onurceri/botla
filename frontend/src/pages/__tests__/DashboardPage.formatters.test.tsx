@@ -13,4 +13,3 @@ describe('Dashboard formatters', () => {
     expect(formatYAxisTick(0)).toBe('0')
   })
 })
-

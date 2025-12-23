@@ -25,7 +25,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { User, Shield, ShieldAlert, Crown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -95,9 +101,9 @@ export const OrganizationSettingsPage: React.FC = () => {
       const response = await getMembers(currentOrganization.id)
       setMembers(response.members)
       setCallerRole(response.caller_role)
-      
+
       // Find current user ID from members list using caller_role
-      const currentMember = response.members.find(m => m.role === response.caller_role)
+      const currentMember = response.members.find((m) => m.role === response.caller_role)
       if (currentMember) {
         setCurrentUserId(currentMember.user_id)
       }
@@ -126,7 +132,8 @@ export const OrganizationSettingsPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!currentOrganization) return
-    if (!confirm('Bu organizasyonu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return
+    if (!confirm('Bu organizasyonu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'))
+      return
     try {
       await deleteOrganization(currentOrganization.id)
       toast('Organizasyon silindi', 'success')
@@ -179,25 +186,34 @@ export const OrganizationSettingsPage: React.FC = () => {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'owner': return <Crown className="h-4 w-4 text-yellow-500" />
-      case 'admin': return <ShieldAlert className="h-4 w-4 text-blue-500" />
-      default: return <Shield className="h-4 w-4 text-gray-400" />
+      case 'owner':
+        return <Crown className="h-4 w-4 text-yellow-500" />
+      case 'admin':
+        return <ShieldAlert className="h-4 w-4 text-blue-500" />
+      default:
+        return <Shield className="h-4 w-4 text-gray-400" />
     }
   }
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'owner': return 'default'
-      case 'admin': return 'secondary'
-      default: return 'outline'
+      case 'owner':
+        return 'default'
+      case 'admin':
+        return 'secondary'
+      default:
+        return 'outline'
     }
   }
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'owner': return 'Sahip'
-      case 'admin': return 'Yönetici'
-      default: return 'Üye'
+      case 'owner':
+        return 'Sahip'
+      case 'admin':
+        return 'Yönetici'
+      default:
+        return 'Üye'
     }
   }
 
@@ -208,7 +224,9 @@ export const OrganizationSettingsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Organizasyon Ayarları</h1>
-          <p className="text-muted-foreground">Organizasyon tercihlerinizi ve üyelerinizi yönetin.</p>
+          <p className="text-muted-foreground">
+            Organizasyon tercihlerinizi ve üyelerinizi yönetin.
+          </p>
         </div>
         <Badge variant={getRoleBadgeVariant(callerRole)} className="flex items-center gap-1">
           {getRoleIcon(callerRole)}
@@ -227,7 +245,7 @@ export const OrganizationSettingsPage: React.FC = () => {
             <CardHeader>
               <CardTitle>Genel Bilgiler</CardTitle>
               <CardDescription>
-                {canUpdateOrg 
+                {canUpdateOrg
                   ? 'Organizasyonunuzun adını ve URL kısaltmasını güncelleyin.'
                   : 'Organizasyon bilgilerini görüntülüyorsunuz. Düzenleme için yönetici veya sahip yetkiniz olmalıdır.'}
               </CardDescription>
@@ -236,27 +254,25 @@ export const OrganizationSettingsPage: React.FC = () => {
               <form onSubmit={handleUpdate} className="space-y-4">
                 <div className="grid w-full max-w-sm items-center gap-1.5">
                   <Label htmlFor="name">Ad</Label>
-                  <Input 
-                    id="name" 
-                    value={name} 
-                    onChange={(e) => setName(e.target.value)} 
-                    required 
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
                     disabled={!canUpdateOrg}
                   />
                 </div>
                 <div className="grid w-full max-w-sm items-center gap-1.5">
                   <Label htmlFor="slug">URL Kısaltması</Label>
-                  <Input 
-                    id="slug" 
-                    value={slug} 
-                    onChange={(e) => setSlug(e.target.value)} 
-                    required 
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    required
                     disabled={!canUpdateOrg}
                   />
                 </div>
-                {canUpdateOrg && (
-                  <Button type="submit">Değişiklikleri Kaydet</Button>
-                )}
+                {canUpdateOrg && <Button type="submit">Değişiklikleri Kaydet</Button>}
               </form>
             </CardContent>
           </Card>
@@ -266,7 +282,8 @@ export const OrganizationSettingsPage: React.FC = () => {
               <CardHeader>
                 <CardTitle className="text-red-900">Kritik İşlemler</CardTitle>
                 <CardDescription className="text-red-700">
-                  Bu alandaki işlemler geri alınamaz ve kalıcı veri kaybına yol açabilir. Lütfen dikkatli olun.
+                  Bu alandaki işlemler geri alınamaz ve kalıcı veri kaybına yol açabilir. Lütfen
+                  dikkatli olun.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -274,7 +291,8 @@ export const OrganizationSettingsPage: React.FC = () => {
                   <div className="space-y-1">
                     <p className="font-medium text-red-900">Organizasyonu Sil</p>
                     <p className="text-sm text-red-700">
-                      Bu organizasyonu ve bağlı tüm verileri (chatbotlar, üyeler, ayarlar) kalıcı olarak siler.
+                      Bu organizasyonu ve bağlı tüm verileri (chatbotlar, üyeler, ayarlar) kalıcı
+                      olarak siler.
                     </p>
                   </div>
                   <Button variant="destructive" onClick={handleDelete} className="shrink-0">
@@ -292,7 +310,7 @@ export const OrganizationSettingsPage: React.FC = () => {
               <div>
                 <CardTitle>Üyeler</CardTitle>
                 <CardDescription>
-                  {canManageMembers 
+                  {canManageMembers
                     ? 'Bu organizasyona kimlerin erişebileceğini yönetin.'
                     : 'Organizasyon üyelerini görüntülüyorsunuz.'}
                 </CardDescription>
@@ -306,13 +324,19 @@ export const OrganizationSettingsPage: React.FC = () => {
                     <DialogHeader>
                       <DialogTitle>Yeni Üye Ekle</DialogTitle>
                       <DialogDescription>
-                        Eklemek istediğiniz kullanıcının e-posta adresini girin. Kullanıcının zaten bir hesabı olmalıdır.
+                        Eklemek istediğiniz kullanıcının e-posta adresini girin. Kullanıcının zaten
+                        bir hesabı olmalıdır.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
                         <Label htmlFor="email">E-posta</Label>
-                        <Input id="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="kullanici@ornek.com" />
+                        <Input
+                          id="email"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="kullanici@ornek.com"
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="role">Rol</Label>
@@ -323,9 +347,7 @@ export const OrganizationSettingsPage: React.FC = () => {
                           <SelectContent>
                             <SelectItem value="member">Üye</SelectItem>
                             <SelectItem value="admin">Yönetici</SelectItem>
-                            {callerRole === 'owner' && (
-                              <SelectItem value="owner">Sahip</SelectItem>
-                            )}
+                            {callerRole === 'owner' && <SelectItem value="owner">Sahip</SelectItem>}
                           </SelectContent>
                         </Select>
                       </div>
@@ -340,13 +362,18 @@ export const OrganizationSettingsPage: React.FC = () => {
             <CardContent>
               <div className="space-y-4">
                 {members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex items-center gap-4">
                       <Avatar>
                         <AvatarImage src={member.user.avatar_url || undefined} />
                         <AvatarFallback>
                           {member.user.full_name || member.user.email ? (
-                            (member.user.full_name || member.user.email || '').charAt(0).toUpperCase()
+                            (member.user.full_name || member.user.email || '')
+                              .charAt(0)
+                              .toUpperCase()
                           ) : (
                             <User className="h-4 w-4" />
                           )}
@@ -359,7 +386,10 @@ export const OrganizationSettingsPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {canChangeUserRole(member) ? (
-                        <Select value={member.role} onValueChange={(role) => handleUpdateRole(member.user_id, role)}>
+                        <Select
+                          value={member.role}
+                          onValueChange={(role) => handleUpdateRole(member.user_id, role)}
+                        >
                           <SelectTrigger className="w-[130px]">
                             <SelectValue />
                           </SelectTrigger>
@@ -375,13 +405,21 @@ export const OrganizationSettingsPage: React.FC = () => {
                           </SelectContent>
                         </Select>
                       ) : (
-                        <Badge variant={getRoleBadgeVariant(member.role)} className="flex items-center gap-1">
+                        <Badge
+                          variant={getRoleBadgeVariant(member.role)}
+                          className="flex items-center gap-1"
+                        >
                           {getRoleIcon(member.role)}
                           {getRoleLabel(member.role)}
                         </Badge>
                       )}
                       {canRemoveMember(member) && (
-                        <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.user_id)} className="text-red-500 hover:text-red-600">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveMember(member.user_id)}
+                          className="text-red-500 hover:text-red-600"
+                        >
                           Çıkar
                         </Button>
                       )}
@@ -389,7 +427,7 @@ export const OrganizationSettingsPage: React.FC = () => {
                   </div>
                 ))}
                 {members.length === 0 && !loadingMembers && (
-                    <p className="text-center text-muted-foreground py-4">Üye bulunamadı.</p>
+                  <p className="text-center text-muted-foreground py-4">Üye bulunamadı.</p>
                 )}
               </div>
             </CardContent>

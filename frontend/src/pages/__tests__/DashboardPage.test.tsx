@@ -49,18 +49,20 @@ describe('DashboardPage', () => {
       messages: (i + 1) * 2,
     }))
     vi.mocked(getAnalytics).mockResolvedValue(chart as any)
-    vi.mocked(api.get).mockResolvedValue({ data: [
-      { id: 1, name: 'Bot A', model: 'gpt-4o' },
-      { id: 2, name: 'Bot B', model: 'gpt-4.1' },
-      { id: 3, name: 'Bot C', model: 'gpt-3.5' },
-    ] } as any)
+    vi.mocked(api.get).mockResolvedValue({
+      data: [
+        { id: 1, name: 'Bot A', model: 'gpt-4o' },
+        { id: 2, name: 'Bot B', model: 'gpt-4.1' },
+        { id: 3, name: 'Bot C', model: 'gpt-3.5' },
+      ],
+    } as any)
 
     const { container } = render(
       <ToastProvider>
         <MemoryRouter>
           <DashboardPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     // Check for skeleton
@@ -88,7 +90,7 @@ describe('DashboardPage', () => {
         <MemoryRouter>
           <DashboardPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     await waitFor(() => {
@@ -107,19 +109,21 @@ describe('DashboardPage', () => {
       messages: 10,
     }))
     vi.mocked(getAnalytics).mockResolvedValue(chart as any)
-    vi.mocked(api.get).mockResolvedValue({ data: [
-      { id: 1, name: 'Bot A', model: 'gpt-4o' },
-      { id: 2, name: 'Bot B', model: 'gpt-4.1' },
-      { id: 3, name: 'Bot C', model: 'gpt-3.5' },
-      { id: 4, name: 'Bot D', model: 'gpt-4o-mini' },
-    ] } as any)
+    vi.mocked(api.get).mockResolvedValue({
+      data: [
+        { id: 1, name: 'Bot A', model: 'gpt-4o' },
+        { id: 2, name: 'Bot B', model: 'gpt-4.1' },
+        { id: 3, name: 'Bot C', model: 'gpt-3.5' },
+        { id: 4, name: 'Bot D', model: 'gpt-4o-mini' },
+      ],
+    } as any)
 
     render(
       <ToastProvider>
         <MemoryRouter>
           <DashboardPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     const rangeText = await screen.findByText((t) => t.includes('10') && t.includes('16'))
@@ -138,15 +142,15 @@ describe('DashboardPage', () => {
         <MemoryRouter>
           <DashboardPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     const header = await screen.findByText('Son 30 Gün')
     expect(header).toBeInTheDocument()
     expect(screen.getAllByText('Henüz aktivite yok').length).toBeGreaterThan(0)
-    
+
     await waitFor(() => {
-        expect(screen.getAllByText('Henüz chatbot oluşturulmadı').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Henüz chatbot oluşturulmadı').length).toBeGreaterThan(0)
     })
   })
 
@@ -163,11 +167,9 @@ describe('DashboardPage', () => {
         <MemoryRouter>
           <DashboardPage />
         </MemoryRouter>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
-    expect(
-      await screen.findByText((t) => /\b(10|11)\s*May\b/i.test(t))
-    ).toBeInTheDocument()
+    expect(await screen.findByText((t) => /\b(10|11)\s*May\b/i.test(t))).toBeInTheDocument()
   })
 })

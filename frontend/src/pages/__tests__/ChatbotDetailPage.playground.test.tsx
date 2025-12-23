@@ -10,16 +10,16 @@ import { QueryWrapper } from '@/test-utils'
 vi.mock('@/features/organization/context/OrganizationContext', () => ({
   useOrganization: () => ({
     currentWorkspace: { id: 'ws-1' },
-    isLoading: false
+    isLoading: false,
   }),
-  OrganizationProvider: ({ children }: any) => children
+  OrganizationProvider: ({ children }: any) => children,
 }))
 
 // Mock PlaygroundPreview to avoid iframe issues and use the mocked WidgetApp
 vi.mock('@/features/chatbot/components/PlaygroundPreview', async () => {
   const React = await import('react')
   const { api } = await import('@/api/client')
-  
+
   const FakeWidgetApp = () => {
     const [messages, setMessages] = React.useState<string[]>([])
     const [loading, setLoading] = React.useState(false)
@@ -30,21 +30,25 @@ vi.mock('@/features/chatbot/components/PlaygroundPreview', async () => {
       setLoading(true)
       try {
         const { data } = await api.post('/api/v1/chatbots/123/chat', { message: input })
-        setMessages(prev => [...prev, data.response])
-      } catch (e) { console.error(e) }
+        setMessages((prev) => [...prev, data.response])
+      } catch (e) {
+        console.error(e)
+      }
       setLoading(false)
       setInput('')
     }
 
     return (
       <div>
-        {messages.map((m, i) => <div key={i}>{m}</div>)}
-        <input 
-          placeholder="Mesaj yazın..." 
+        {messages.map((m, i) => (
+          <div key={i}>{m}</div>
+        ))}
+        <input
+          placeholder="Mesaj yazın..."
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
           disabled={loading}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
         />
         <div>Powered by Botla</div>
       </div>
@@ -52,7 +56,7 @@ vi.mock('@/features/chatbot/components/PlaygroundPreview', async () => {
   }
 
   return {
-    default: () => <FakeWidgetApp />
+    default: () => <FakeWidgetApp />,
   }
 })
 
@@ -64,17 +68,17 @@ describe('ChatbotDetailPage playground', () => {
 
     render(
       <QueryWrapper>
-        <MemoryRouter initialEntries={["/chatbots/123"]}>
+        <MemoryRouter initialEntries={['/chatbots/123']}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
               <Route path="playground" element={<PlaygroundTab />} />
             </Route>
           </Routes>
         </MemoryRouter>
-      </QueryWrapper>
+      </QueryWrapper>,
     )
 
-    const playTabs = screen.getAllByRole('link', { name: /Playground/i })
+    const playTabs = await screen.findAllByRole('link', { name: /Playground/i })
     await user.click(playTabs[playTabs.length - 1])
     const inputs = screen.getAllByPlaceholderText('Mesaj yazın...')
     const input = inputs[inputs.length - 1]
@@ -94,21 +98,23 @@ describe('ChatbotDetailPage playground', () => {
 
     render(
       <QueryWrapper>
-        <MemoryRouter initialEntries={["/chatbots/123"]}>
+        <MemoryRouter initialEntries={['/chatbots/123']}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
               <Route path="playground" element={<PlaygroundTab />} />
             </Route>
           </Routes>
         </MemoryRouter>
-      </QueryWrapper>
+      </QueryWrapper>,
     )
 
-    const playTabs2 = screen.getAllByRole('link', { name: /Playground/i })
+    const playTabs2 = await screen.findAllByRole('link', { name: /Playground/i })
     await user.click(playTabs2[playTabs2.length - 1])
     const poweredBy = await screen.findAllByText(/Powered by/i)
     const panel = poweredBy[poweredBy.length - 1]
-    const input = panel.parentElement!.querySelector('input[placeholder="Mesaj yazın..."]') as HTMLInputElement
+    const input = panel.parentElement!.querySelector(
+      'input[placeholder="Mesaj yazın..."]',
+    ) as HTMLInputElement
     await user.type(input, 'selam')
     input.focus()
     await user.keyboard('{Enter}')
@@ -122,22 +128,24 @@ describe('ChatbotDetailPage playground', () => {
     const user = userEvent.setup()
     vi.clearAllMocks()
     vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: '123', name: 'Bot' } } as any)
-    const postSpy = vi.spyOn(api, 'post').mockResolvedValue({ data: { response: 'Merhaba' } } as any)
+    const postSpy = vi
+      .spyOn(api, 'post')
+      .mockResolvedValue({ data: { response: 'Merhaba' } } as any)
 
     render(
       <QueryWrapper>
-        <MemoryRouter initialEntries={["/chatbots/123"]}>
+        <MemoryRouter initialEntries={['/chatbots/123']}>
           <Routes>
             <Route path="/chatbots/:id" element={<ChatbotDetailPage />}>
               <Route path="playground" element={<PlaygroundTab />} />
             </Route>
           </Routes>
         </MemoryRouter>
-      </QueryWrapper>
+      </QueryWrapper>,
     )
 
-    const playTabs = screen.getAllByRole('link', { name: /Playground/i })
-    await user.click(playTabs[playTabs.length - 1])
+    const playTabs3 = await screen.findAllByRole('link', { name: /Playground/i })
+    await user.click(playTabs3[playTabs3.length - 1])
     const inputs2 = screen.getAllByPlaceholderText('Mesaj yazın...')
     const input = inputs2[inputs2.length - 1]
     await user.type(input, '   ')

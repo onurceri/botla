@@ -3,7 +3,14 @@ import { Link } from 'react-router-dom'
 import { Plus, Bot, MoreHorizontal, Trash2 } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card'
 import { useOrganization } from '@/features/organization/context/OrganizationContext'
 import { useChatbots } from '@/hooks/queries/useChatbots'
 
@@ -12,7 +19,11 @@ const ChatbotsPage = () => {
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null)
 
   // Use React Query for chatbots list
-  const { data: bots = [], isLoading: botsLoading, error: botsError } = useChatbots(!!currentWorkspace && !isOrgLoading)
+  const {
+    data: bots = [],
+    isLoading: botsLoading,
+    error: botsError,
+  } = useChatbots(!!currentWorkspace && !isOrgLoading)
   // console.log('ChatbotsPage render:', { botsLoading, isOrgLoading, hasWorkspace: !!currentWorkspace, botsLength: bots.length })
 
   useEffect(() => {
@@ -88,7 +99,9 @@ const ChatbotsPage = () => {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
         <h2 className="text-2xl font-semibold">Çalışma Alanı Seçin</h2>
-        <p className="text-muted-foreground">Chatbotlarınızı görüntülemek için lütfen bir çalışma alanı seçin veya oluşturun.</p>
+        <p className="text-muted-foreground">
+          Chatbotlarınızı görüntülemek için lütfen bir çalışma alanı seçin veya oluşturun.
+        </p>
       </div>
     )
   }
@@ -109,7 +122,10 @@ const ChatbotsPage = () => {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {bots.map((bot: any) => (
-          <Card key={bot.id} className="group hover:shadow-xl hover:-translate-y-1 hover:border-primary/50 transition-all duration-300">
+          <Card
+            key={bot.id}
+            className="group hover:shadow-xl hover:-translate-y-1 hover:border-primary/50 transition-all duration-300"
+          >
             <CardHeader className="relative flex flex-row items-start justify-between space-y-0 pb-2">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10 group-hover:scale-110 transition-transform duration-300">
                 <Bot className="w-6 h-6" />
@@ -142,9 +158,9 @@ const ChatbotsPage = () => {
             <CardContent className="pt-4">
               <CardTitle className="text-xl mb-2">{bot.name}</CardTitle>
               <CardDescription className="line-clamp-2 min-h-[2.5rem]">
-                {bot.description || "Açıklama yok."}
+                {bot.description || 'Açıklama yok.'}
               </CardDescription>
-              
+
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                   {bot.model}
@@ -156,7 +172,10 @@ const ChatbotsPage = () => {
             </CardContent>
             <CardFooter className="pt-0">
               <Link to={`/dashboard/chatbots/${bot.id}`} className="w-full">
-                <Button variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all">
+                <Button
+                  variant="outline"
+                  className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all"
+                >
                   Yönet
                 </Button>
               </Link>
@@ -165,15 +184,16 @@ const ChatbotsPage = () => {
         ))}
 
         {/* Empty State / Create New Card */}
-        <Link to="/dashboard/chatbots/new" className="group relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-border bg-muted/30 p-8 text-center hover:border-primary/50 hover:bg-muted/50 transition-all duration-300">
+        <Link
+          to="/dashboard/chatbots/new"
+          className="group relative flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-border bg-muted/30 p-8 text-center hover:border-primary/50 hover:bg-muted/50 transition-all duration-300"
+        >
           <div className="rounded-full bg-muted p-4 group-hover:scale-110 transition-transform duration-300">
             <Plus className="h-8 w-8 text-muted-foreground group-hover:text-primary" />
           </div>
           <div className="space-y-1">
             <h3 className="font-semibold text-foreground">Yeni Chatbot Ekle</h3>
-            <p className="text-sm text-muted-foreground">
-              Özelleştirilmiş bir asistan oluşturun
-            </p>
+            <p className="text-sm text-muted-foreground">Özelleştirilmiş bir asistan oluşturun</p>
           </div>
         </Link>
       </div>

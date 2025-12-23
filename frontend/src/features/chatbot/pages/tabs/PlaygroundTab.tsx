@@ -11,7 +11,10 @@ import PlaygroundPreview from '../../components/PlaygroundPreview'
 import { Zap, Settings2, MessageSquare, RefreshCw, ChevronDown } from 'lucide-react'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
-import { useUpdateAppearance, useRegenerateSuggestions } from '@/hooks/mutations/useChatbotMutations'
+import {
+  useUpdateAppearance,
+  useRegenerateSuggestions,
+} from '@/hooks/mutations/useChatbotMutations'
 import { Button } from '@/components/ui/button'
 
 export default function PlaygroundTab() {
@@ -21,58 +24,96 @@ export default function PlaygroundTab() {
   const [previewRefreshKey] = useState(0)
 
   const {
-    botDisplayName, setBotDisplayName,
-    botIcon, setBotIcon,
-    welcomeMessage, setWelcomeMessage,
-    position, setPosition,
-    chatFontFamily, setChatFontFamily,
-    themeColor, setThemeColor,
-    chatBackgroundColor, setChatBackgroundColor,
-    chatHeaderColor, setChatHeaderColor,
-    chatHeaderTextColor, setChatHeaderTextColor,
-    botMessageColor, setBotMessageColor,
-    botMessageTextColor, setBotMessageTextColor,
-    userMessageColor, setUserMessageColor,
-    userMessageTextColor, setUserMessageTextColor,
-    inputBackgroundColor, setInputBackgroundColor,
-    inputTextColor, setInputTextColor,
-    sendButtonColor, setSendButtonColor,
-    bubbleRadius, setBubbleRadius,
-    hideBranding, setHideBranding,
-    customBranding, setCustomBranding,
+    botDisplayName,
+    setBotDisplayName,
+    botIcon,
+    setBotIcon,
+    welcomeMessage,
+    setWelcomeMessage,
+    position,
+    setPosition,
+    chatFontFamily,
+    setChatFontFamily,
+    themeColor,
+    setThemeColor,
+    chatBackgroundColor,
+    setChatBackgroundColor,
+    chatHeaderColor,
+    setChatHeaderColor,
+    chatHeaderTextColor,
+    setChatHeaderTextColor,
+    botMessageColor,
+    setBotMessageColor,
+    botMessageTextColor,
+    setBotMessageTextColor,
+    userMessageColor,
+    setUserMessageColor,
+    userMessageTextColor,
+    setUserMessageTextColor,
+    inputBackgroundColor,
+    setInputBackgroundColor,
+    inputTextColor,
+    setInputTextColor,
+    sendButtonColor,
+    setSendButtonColor,
+    bubbleRadius,
+    setBubbleRadius,
+    hideBranding,
+    setHideBranding,
+    customBranding,
+    setCustomBranding,
     planConfig,
-    suggestionsEnabled, setSuggestionsEnabled,
-    suggestedQuestions, setSuggestedQuestions,
+    suggestionsEnabled,
+    setSuggestionsEnabled,
+    suggestedQuestions,
+    setSuggestedQuestions,
     allSuggestedQuestions,
   } = useChatbotContext()
 
-  const appearancePayload = useMemo(() => ({
-    bot_display_name: botDisplayName,
-    bot_icon: botIcon,
-    welcome_message: welcomeMessage,
-    position,
-    chat_font_family: chatFontFamily,
-    theme_color: themeColor,
-    chat_background_color: chatBackgroundColor,
-    chat_header_color: chatHeaderColor,
-    chat_header_text_color: chatHeaderTextColor,
-    bot_message_color: botMessageColor,
-    bot_message_text_color: botMessageTextColor,
-    user_message_color: userMessageColor,
-    user_message_text_color: userMessageTextColor,
-    input_background_color: inputBackgroundColor,
-    input_text_color: inputTextColor,
-    send_button_color: sendButtonColor,
-    bubble_radius: bubbleRadius,
-    hide_branding: hideBranding,
-    custom_branding: hideBranding ? customBranding : null,
-  }), [
-    botDisplayName, botIcon, welcomeMessage, position, chatFontFamily,
-    themeColor, chatBackgroundColor, chatHeaderColor, chatHeaderTextColor,
-    botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor,
-    inputBackgroundColor, inputTextColor, sendButtonColor, bubbleRadius,
-    hideBranding, customBranding,
-  ])
+  const appearancePayload = useMemo(
+    () => ({
+      bot_display_name: botDisplayName,
+      bot_icon: botIcon,
+      welcome_message: welcomeMessage,
+      position,
+      chat_font_family: chatFontFamily,
+      theme_color: themeColor,
+      chat_background_color: chatBackgroundColor,
+      chat_header_color: chatHeaderColor,
+      chat_header_text_color: chatHeaderTextColor,
+      bot_message_color: botMessageColor,
+      bot_message_text_color: botMessageTextColor,
+      user_message_color: userMessageColor,
+      user_message_text_color: userMessageTextColor,
+      input_background_color: inputBackgroundColor,
+      input_text_color: inputTextColor,
+      send_button_color: sendButtonColor,
+      bubble_radius: bubbleRadius,
+      hide_branding: hideBranding,
+      custom_branding: hideBranding ? customBranding : null,
+    }),
+    [
+      botDisplayName,
+      botIcon,
+      welcomeMessage,
+      position,
+      chatFontFamily,
+      themeColor,
+      chatBackgroundColor,
+      chatHeaderColor,
+      chatHeaderTextColor,
+      botMessageColor,
+      botMessageTextColor,
+      userMessageColor,
+      userMessageTextColor,
+      inputBackgroundColor,
+      inputTextColor,
+      sendButtonColor,
+      bubbleRadius,
+      hideBranding,
+      customBranding,
+    ],
+  )
 
   const { mutateAsync: updateAppearance } = useUpdateAppearance(id)
   const regenerateSuggestions = useRegenerateSuggestions(id)
@@ -91,7 +132,9 @@ export default function PlaygroundTab() {
             <Zap className="w-4 h-4 fill-primary/20" />
           </div>
           <div className="hidden sm:block">
-            <h2 className="text-sm font-bold tracking-tight text-slate-900 uppercase opacity-60">Playground</h2>
+            <h2 className="text-sm font-bold tracking-tight text-slate-900 uppercase opacity-60">
+              Playground
+            </h2>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -101,7 +144,6 @@ export default function PlaygroundTab() {
 
       {/* Main Content - Two columns side by side */}
       <div className="flex-1 flex flex-col lg:flex-row gap-4 xl:gap-6 min-h-0">
-        
         {/* Left: Settings Sidebar */}
         <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col bg-slate-50/40 backdrop-blur-xl rounded-[24px] lg:rounded-[32px] border border-slate-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden">
           <div className="p-4 lg:p-5 border-b border-slate-200/60 bg-white/60 backdrop-blur-md flex items-center justify-between">
@@ -109,17 +151,21 @@ export default function PlaygroundTab() {
               <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                 <Settings2 className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Özelleştirme</span>
+              <span className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                Özelleştirme
+              </span>
             </div>
             <div className="sm:hidden">
               <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 lg:p-5 space-y-3 lg:space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-            <IdentitySection 
+            <IdentitySection
               isExpanded={expandedSection === 'identity'}
-              onToggle={() => setExpandedSection(expandedSection === 'identity' ? null : 'identity')}
+              onToggle={() =>
+                setExpandedSection(expandedSection === 'identity' ? null : 'identity')
+              }
               botDisplayName={botDisplayName}
               setBotDisplayName={setBotDisplayName}
               botIcon={botIcon}
@@ -128,14 +174,16 @@ export default function PlaygroundTab() {
               setWelcomeMessage={setWelcomeMessage}
             />
 
-            <AppearanceSection 
+            <AppearanceSection
               isExpanded={expandedSection === 'appearance'}
-              onToggle={() => setExpandedSection(expandedSection === 'appearance' ? null : 'appearance')}
+              onToggle={() =>
+                setExpandedSection(expandedSection === 'appearance' ? null : 'appearance')
+              }
               position={position}
               setPosition={setPosition}
             />
 
-            <ColorsSection 
+            <ColorsSection
               isExpanded={expandedSection === 'colors'}
               onToggle={() => setExpandedSection(expandedSection === 'colors' ? null : 'colors')}
               chatBackgroundColor={chatBackgroundColor}
@@ -167,27 +215,39 @@ export default function PlaygroundTab() {
             />
 
             {/* Suggestions Section */}
-            <div className={`transition-all duration-300 border border-slate-200/60 rounded-2xl overflow-hidden ${expandedSection === 'suggestions' ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]' : 'bg-white/40 hover:bg-white/60'}`}>
-              <button 
-                onClick={() => setExpandedSection(expandedSection === 'suggestions' ? null : 'suggestions')}
+            <div
+              className={`transition-all duration-300 border border-slate-200/60 rounded-2xl overflow-hidden ${expandedSection === 'suggestions' ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]' : 'bg-white/40 hover:bg-white/60'}`}
+            >
+              <button
+                onClick={() =>
+                  setExpandedSection(expandedSection === 'suggestions' ? null : 'suggestions')
+                }
                 className="w-full flex items-center justify-between p-4 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl transition-colors ${expandedSection === 'suggestions' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>
+                  <div
+                    className={`p-2 rounded-xl transition-colors ${expandedSection === 'suggestions' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}
+                  >
                     <MessageSquare className="w-4 h-4" />
                   </div>
-                  <span className={`text-[13px] font-bold tracking-tight ${expandedSection === 'suggestions' ? 'text-slate-900' : 'text-slate-600'}`}>Örnek Sorular</span>
+                  <span
+                    className={`text-[13px] font-bold tracking-tight ${expandedSection === 'suggestions' ? 'text-slate-900' : 'text-slate-600'}`}
+                  >
+                    Örnek Sorular
+                  </span>
                 </div>
-                <div className={`transition-transform duration-300 ${expandedSection === 'suggestions' ? 'rotate-180' : ''}`}>
+                <div
+                  className={`transition-transform duration-300 ${expandedSection === 'suggestions' ? 'rotate-180' : ''}`}
+                >
                   <ChevronDown className="w-4 h-4 text-slate-300" />
                 </div>
               </button>
-              
+
               {expandedSection === 'suggestions' && (
                 <div className="px-4 pb-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="h-px bg-slate-100 -mx-4 mb-4" />
-                  
-                  <SuggestionsPanel 
+
+                  <SuggestionsPanel
                     suggestionsEnabled={suggestionsEnabled}
                     setSuggestionsEnabled={setSuggestionsEnabled}
                     suggestedQuestions={suggestedQuestions}
@@ -197,15 +257,19 @@ export default function PlaygroundTab() {
 
                   {suggestionsEnabled && (
                     <div className="pt-2 border-t border-slate-100">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => regenerateSuggestions.mutate()}
                         disabled={regenerateSuggestions.isPending}
                         className="w-full h-9 text-[11px] font-bold text-primary hover:text-primary hover:bg-primary/5 gap-2 rounded-xl transition-all border border-primary/10 hover:border-primary/20"
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${regenerateSuggestions.isPending ? 'animate-spin' : ''}`} />
-                        {regenerateSuggestions.isPending ? 'Soruları Yeniden Üret' : 'AI ile Soruları Yenile'}
+                        <RefreshCw
+                          className={`w-3.5 h-3.5 ${regenerateSuggestions.isPending ? 'animate-spin' : ''}`}
+                        />
+                        {regenerateSuggestions.isPending
+                          ? 'Soruları Yeniden Üret'
+                          : 'AI ile Soruları Yenile'}
                       </Button>
                     </div>
                   )}
@@ -215,7 +279,9 @@ export default function PlaygroundTab() {
 
             <BrandingSettings
               isExpanded={expandedSection === 'branding'}
-              onToggle={() => setExpandedSection(expandedSection === 'branding' ? null : 'branding')}
+              onToggle={() =>
+                setExpandedSection(expandedSection === 'branding' ? null : 'branding')
+              }
               hideBranding={hideBranding}
               setHideBranding={setHideBranding}
               customBranding={customBranding}

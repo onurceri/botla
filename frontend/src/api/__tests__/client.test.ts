@@ -27,13 +27,18 @@ describe('axios refresh interceptor', () => {
       data: { token: 'newAccess', refresh_token: 'newRefresh' },
     } as any)
 
-    const originalRequest: any = { url: '/api/v1/chatbots', headers: {}, method: 'get', _retry: false }
+    const originalRequest: any = {
+      url: '/api/v1/chatbots',
+      headers: {},
+      method: 'get',
+      _retry: false,
+    }
     const error: any = { response: { status: 401 }, config: originalRequest }
 
     const handlers = (api as any).interceptors.response.handlers
     const handler = handlers[handlers.length - 1].rejected
     vi.spyOn(api, 'request').mockResolvedValueOnce({} as any)
-    await handler(error).catch(() => { })
+    await handler(error).catch(() => {})
 
     expect(postSpy).toHaveBeenCalled()
     expect(window.localStorage.setItem).toHaveBeenCalledWith('botla_token', 'newAccess')
@@ -44,12 +49,10 @@ describe('axios refresh interceptor', () => {
 
   it('coalesces concurrent 401 refresh into a single request', async () => {
     window.localStorage.setItem('botla_refresh_token', 'rtok')
-    const postSpy = vi
-      .spyOn(axios, 'post')
-      .mockImplementationOnce(async () => {
-        await new Promise((r) => setTimeout(r, 10))
-        return { data: { token: 'newAccess', refresh_token: 'newRefresh' } } as any
-      })
+    const postSpy = vi.spyOn(axios, 'post').mockImplementationOnce(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+      return { data: { token: 'newAccess', refresh_token: 'newRefresh' } } as any
+    })
 
     const handlers = (api as any).interceptors.response.handlers
     const handler = handlers[handlers.length - 1].rejected
@@ -60,8 +63,8 @@ describe('axios refresh interceptor', () => {
     const err2: any = { response: { status: 401 }, config: req2 }
 
     vi.spyOn(api, 'request').mockResolvedValue({} as any)
-    const p1 = handler(err1).catch(() => { })
-    const p2 = handler(err2).catch(() => { })
+    const p1 = handler(err1).catch(() => {})
+    const p2 = handler(err2).catch(() => {})
     await Promise.all([p1, p2])
 
     expect(postSpy).toHaveBeenCalledTimes(1)
@@ -76,7 +79,7 @@ describe('axios refresh interceptor', () => {
     const handler = handlers[handlers.length - 1].rejected
     const req: any = { url: '/x', headers: {}, method: 'get', _retry: true }
     const err: any = { response: { status: 401 }, config: req }
-    await handler(err).catch(() => { })
+    await handler(err).catch(() => {})
     expect(postSpy).not.toHaveBeenCalled()
   })
 
@@ -92,18 +95,18 @@ describe('axios refresh interceptor', () => {
     const handler = handlers[handlers.length - 1].rejected
     const req: any = { url: '/x', headers: {}, method: 'get', _retry: false }
     const err: any = { response: { status: 401 }, config: req }
-    
-    const p = handler(err).catch(() => { })
-    
+
+    const p = handler(err).catch(() => {})
+
     // Fast-forward time for the 100ms delay in handleSessionExpired
     vi.advanceTimersByTime(200)
     await p
 
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_token')
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_refresh_token')
-    
+
     await vi.waitFor(() => {
-        expect(replaceMock).toHaveBeenCalledWith('/login')
+      expect(replaceMock).toHaveBeenCalledWith('/login')
     })
     getLoc.mockRestore()
     vi.useRealTimers()

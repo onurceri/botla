@@ -7,17 +7,17 @@ import (
 )
 
 type User struct {
-	ID                  string           `json:"id"`
-	Email               string           `json:"email"`
-	FullName            *string          `json:"full_name"`
-	AvatarURL           *string          `json:"avatar_url"`
-	PlanID              *string          `json:"plan_id"`
-	PreferredLanguageID *string          `json:"preferred_language_id"`
-	CreatedAt           time.Time        `json:"created_at"`
-	OnboardingCompleted bool             `json:"onboarding_completed"`
-	OnboardingStep      int              `json:"onboarding_step"`
-	OnboardingSkipped   bool             `json:"onboarding_skipped"`
-	OnboardingData      *OnboardingData  `json:"onboarding_data,omitempty"`
+	ID                  string          `json:"id"`
+	Email               string          `json:"email"`
+	FullName            *string         `json:"full_name"`
+	AvatarURL           *string         `json:"avatar_url"`
+	PlanID              *string         `json:"plan_id"`
+	PreferredLanguageID *string         `json:"preferred_language_id"`
+	CreatedAt           time.Time       `json:"created_at"`
+	OnboardingCompleted bool            `json:"onboarding_completed"`
+	OnboardingStep      int             `json:"onboarding_step"`
+	OnboardingSkipped   bool            `json:"onboarding_skipped"`
+	OnboardingData      *OnboardingData `json:"onboarding_data,omitempty"`
 }
 
 type OnboardingData struct {

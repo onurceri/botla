@@ -1,14 +1,5 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-} from 'react'
-import {
-  	getOrganizations,
-	Organization,
-} from '@/api/organization'
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { getOrganizations, Organization } from '@/api/organization'
 import { getWorkspaces, Workspace } from '@/api/workspace'
 import { useToast } from '@/components/ui/toast'
 
@@ -24,38 +15,31 @@ interface OrganizationContextType {
   refreshWorkspaces: () => Promise<void>
 }
 
-const OrganizationContext = createContext<OrganizationContextType | undefined>(
-  undefined,
-)
+const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined)
 
-export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast()
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [currentOrganization, setCurrentOrganization] =
-    useState<Organization | null>(null)
+  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null)
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
-  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(
-    null,
-  )
+  const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const loadOrganizations = useCallback(async () => {
     try {
       const orgs = (await getOrganizations()) || []
       setOrganizations(orgs)
-      
+
       // Auto-select first org if none selected
       if (!currentOrganization && orgs.length > 0) {
         // Try to recover from local storage
         const storage = typeof window !== 'undefined' ? window.localStorage : null
         const savedOrgId = storage?.getItem('botla_last_org_id')
-        const targetOrg = orgs.find(o => o.id === savedOrgId) || orgs[0]
+        const targetOrg = orgs.find((o) => o.id === savedOrgId) || orgs[0]
         await selectOrganization(targetOrg.id, orgs)
       } else if (currentOrganization) {
         // Refresh current org data
-        const updatedCurrent = orgs.find(o => o.id === currentOrganization.id)
+        const updatedCurrent = orgs.find((o) => o.id === currentOrganization.id)
         if (updatedCurrent) setCurrentOrganization(updatedCurrent)
       }
     } catch (error) {
@@ -73,19 +57,19 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
     setCurrentOrganization(org)
     const storage = typeof window !== 'undefined' ? window.localStorage : null
     storage?.setItem('botla_last_org_id', orgId)
-    
+
     // Reset workspace when switching orgs
     setCurrentWorkspace(null)
     setWorkspaces([])
-    
+
     // Load workspaces for this org
     try {
       const ws = (await getWorkspaces(orgId)) || []
       setWorkspaces(ws)
-      
+
       // Auto-select first workspace or recover from local storage
       const savedWsId = storage?.getItem(`botla_last_ws_id_${orgId}`)
-      const targetWs = ws.find(w => w.id === savedWsId) || ws[0]
+      const targetWs = ws.find((w) => w.id === savedWsId) || ws[0]
       if (targetWs) {
         selectWorkspace(targetWs.id, ws, orgId)
       }
@@ -145,9 +129,7 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useOrganization = () => {
   const context = useContext(OrganizationContext)
   if (context === undefined) {
-    throw new Error(
-      'useOrganization must be used within an OrganizationProvider',
-    )
+    throw new Error('useOrganization must be used within an OrganizationProvider')
   }
   return context
 }

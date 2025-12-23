@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
-import { uploadPDFSource, uploadTextSource, uploadURLSource, getSourceStatus, listSources, deleteSource } from '../source'
+import {
+  uploadPDFSource,
+  uploadTextSource,
+  uploadURLSource,
+  getSourceStatus,
+  listSources,
+  deleteSource,
+} from '../source'
 import { api } from '../client'
 
 describe('api/source', () => {
@@ -36,9 +43,15 @@ describe('api/source', () => {
   })
 
   it('getSourceStatus fetches by id', async () => {
-    const get = vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: 's1', status: 'ready' } } as any)
+    const get = vi
+      .spyOn(api, 'get')
+      .mockResolvedValueOnce({ data: { id: 's1', status: 'ready' } } as any)
     const data = await getSourceStatus('s1')
-    expect(data).toEqual({ data: { id: 's1', status: 'ready' }, etag: undefined, notModified: false })
+    expect(data).toEqual({
+      data: { id: 's1', status: 'ready' },
+      etag: undefined,
+      notModified: false,
+    })
     expect(get).toHaveBeenCalledWith('/api/v1/sources/s1')
   })
 

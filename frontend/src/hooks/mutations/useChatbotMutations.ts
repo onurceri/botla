@@ -1,5 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { uploadPDFSource, uploadURLSource, uploadTextSource, deleteSource, refreshSource } from '@/api/source'
+import {
+  uploadPDFSource,
+  uploadURLSource,
+  uploadTextSource,
+  deleteSource,
+  refreshSource,
+} from '@/api/source'
 import { api } from '@/api/client'
 import {
   updateBasicInfo,
@@ -9,7 +15,7 @@ import {
   updateGuardrails,
   updateHandoff,
   updateRefresh,
-  updateScrapingConfig
+  updateScrapingConfig,
 } from '@/api/chatbot'
 import { CHATBOT_QUERY_KEY } from '../queries/useChatbot'
 import { SOURCES_QUERY_KEY } from '../queries/useSources'
@@ -70,7 +76,7 @@ export function useRegenerateSuggestions(chatbotId: string) {
     mutationFn: async () => {
       await api.post(`/api/v1/chatbots/${chatbotId}/suggestions/regenerate`)
       // Wait for backend processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 2000))
     },
     onSuccess: () => {
       // Invalidate chatbot to refetch suggestions

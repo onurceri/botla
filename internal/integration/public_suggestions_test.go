@@ -17,7 +17,10 @@ import (
 )
 
 func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
-	te, _ := SetupTestEnv()
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup env: %v", err)
+	}
 	defer TeardownTestEnv(te)
 
 	mockVC := &rag.MockVectorClient{}

@@ -48,9 +48,10 @@ func SetupTestEnv() (*TestEnv, error) {
 	if os.Getenv("DB_PORT") == "" {
 		_ = os.Setenv("DB_PORT", "5432")
 	}
-	if os.Getenv("DB_NAME") == "" {
-		_ = os.Setenv("DB_NAME", "botla_test")
-	}
+
+	// Always use test database for integration tests
+	_ = os.Setenv("DB_NAME", "botla_test")
+
 	if os.Getenv("DB_USER") == "" {
 		_ = os.Setenv("DB_USER", "botla")
 	}
@@ -59,9 +60,6 @@ func SetupTestEnv() (*TestEnv, error) {
 	}
 	if os.Getenv("DB_SCHEMA") == "" {
 		_ = os.Setenv("DB_SCHEMA", "test")
-	}
-	if os.Getenv("DB_NAME") != "botla_test" {
-		return nil, fmt.Errorf("tests must use botla_test database, got %s", os.Getenv("DB_NAME"))
 	}
 	if os.Getenv("DB_SCHEMA") != "test" {
 		return nil, fmt.Errorf("tests must use test schema, got %s", os.Getenv("DB_SCHEMA"))

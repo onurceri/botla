@@ -29,10 +29,12 @@ frontend/
 ## Dev Environment Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - npm 9+
 
 ### Install Dependencies
+
 ```bash
 cd frontend
 npm install
@@ -54,6 +56,7 @@ npm run preview
 ## Testing Instructions
 
 ### Run Tests
+
 ```bash
 # Run unit tests with Vitest
 npm run test
@@ -72,12 +75,14 @@ npm run e2e:ci
 ```
 
 ### Test Structure
+
 - Unit tests: `**/__tests__/*.test.ts(x)` using Vitest + Testing Library
 - E2E tests: `e2e/*.spec.ts` using Playwright
 - Test mocking: Uses `vi.mock()` for API mocking
 - Test utilities: `@testing-library/react`, `@testing-library/user-event`
 
 ### Running Specific Tests
+
 ```bash
 # Run specific test file
 npx vitest run src/pages/__tests__/LoginPage.test.tsx
@@ -92,6 +97,7 @@ npx vitest
 ## Code Style Guidelines
 
 ### Linting & Formatting
+
 ```bash
 # Run ESLint
 npm run lint
@@ -110,12 +116,14 @@ npm run ci
 ```
 
 ### TypeScript Configuration
+
 - Strict mode enabled
 - Path aliases: `@/*` → `src/*`, `@widget/*` → `../widget/src/*`
 - Target: ES2020
 - No unused locals/parameters
 
 ### Prettier Configuration
+
 ```json
 {
   "printWidth": 100,
@@ -127,6 +135,7 @@ npm run ci
 ```
 
 ### Conventions
+
 - **Components**: Functional components with TypeScript interfaces for props
 - **State management**: React Query (`@tanstack/react-query`) for server state
 - **Routing**: React Router v7 (`react-router-dom`)
@@ -137,6 +146,7 @@ npm run ci
 - **Feature organization**: Group related components in `src/features/<feature>/`
 
 ### Component Guidelines
+
 ```typescript
 // Prefer explicit interface definitions
 interface ComponentProps {
@@ -151,6 +161,7 @@ export function Component({ title, onAction }: ComponentProps) {
 ```
 
 ### Naming Conventions
+
 - Files: PascalCase for components (`ChatbotDetailPage.tsx`)
 - Test files: `ComponentName.test.tsx` or `ComponentName.<scenario>.test.tsx`
 - API modules: camelCase (`chatbot.ts`, `source.ts`)
@@ -159,11 +170,13 @@ export function Component({ title, onAction }: ComponentProps) {
 ## API Integration
 
 ### Client Setup
+
 - Base URL configured via `VITE_API_URL` environment variable
 - Axios instance with interceptors in `src/api/client.ts`
 - JWT token handling with automatic refresh
 
 ### Environment Variables
+
 ```bash
 # .env.development
 VITE_API_URL=http://localhost:8080
@@ -175,12 +188,14 @@ VITE_API_URL=https://api.botla.app
 ## UI Component Library
 
 Using Radix UI primitives with custom styling:
+
 - `@radix-ui/react-slot` - Slot component for composition
 - `@radix-ui/react-switch` - Toggle switches
 - `@radix-ui/react-tabs` - Tab navigation
 - `@radix-ui/react-tooltip` - Tooltips
 
 Helper utilities:
+
 - `class-variance-authority` (CVA) - Variant management
 - `clsx` + `tailwind-merge` - Class name merging
 

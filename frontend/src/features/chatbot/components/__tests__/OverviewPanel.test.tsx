@@ -7,19 +7,25 @@ import { useChatbotForm } from '../../hooks/useChatbotForm'
 // Mock context wrapper
 const mockAvailableModels: ModelInfo[] = [
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', max_tokens: 128000, supported_features: [] },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', max_tokens: 128000, supported_features: [] },
+  {
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o Mini',
+    provider: 'openai',
+    max_tokens: 128000,
+    supported_features: [],
+  },
 ]
 
 const MockChatbotProvider = ({ children }: { children: React.ReactNode }) => {
   const form = useChatbotForm()
   return (
-    <ChatbotContext.Provider 
-      value={{ 
-        ...form, 
-        planConfig: {}, 
-        userPlan: 'free', 
+    <ChatbotContext.Provider
+      value={{
+        ...form,
+        planConfig: {},
+        userPlan: 'free',
         availableModels: mockAvailableModels,
-        isLoading: false 
+        isLoading: false,
       }}
     >
       {children}
@@ -49,7 +55,7 @@ describe('OverviewPanel', () => {
           maxTokens={1024}
           setMaxTokens={setMaxTokens}
         />
-      </MockChatbotProvider>
+      </MockChatbotProvider>,
     )
 
     expect(screen.getByText(/Kimlik/i)).toBeInTheDocument()
@@ -57,7 +63,9 @@ describe('OverviewPanel', () => {
     fireEvent.change(nameInput, { target: { value: 'Destek Botu' } })
     expect(setName).toHaveBeenCalledWith('Destek Botu')
 
-    const promptTextarea = screen.getByPlaceholderText('Botunuza özel davranış kuralları ekleyin...') as HTMLTextAreaElement
+    const promptTextarea = screen.getByPlaceholderText(
+      'Botunuza özel davranış kuralları ekleyin...',
+    ) as HTMLTextAreaElement
     fireEvent.change(promptTextarea, { target: { value: 'Yeni talimat' } })
     expect(setCustomInstruction).toHaveBeenCalledWith('Yeni talimat')
   })
@@ -77,11 +85,11 @@ describe('OverviewPanel', () => {
           maxTokens={512}
           setMaxTokens={vi.fn()}
         />
-      </MockChatbotProvider>
+      </MockChatbotProvider>,
     )
 
     // Check that model options are rendered from context
-    expect(screen.getByText('GPT-4o')).toBeInTheDocument()
-    expect(screen.getByText('GPT-4o Mini')).toBeInTheDocument()
+    expect(screen.getAllByText('GPT-4o')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('GPT-4o Mini')[0]).toBeInTheDocument()
   })
 })

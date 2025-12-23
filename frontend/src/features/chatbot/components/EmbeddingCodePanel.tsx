@@ -4,19 +4,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { PlanBadge } from '@/components/ui/plan-badge'
-import { 
-  Code2, 
-  Copy, 
+import {
+  Code2,
+  Copy,
   Check,
-  Shield, 
-  Globe, 
-  Key, 
+  Shield,
+  Globe,
+  Key,
   ChevronDown,
   ChevronUp,
   Info,
   RefreshCw,
   Lock,
-  Trash2
+  Trash2,
 } from 'lucide-react'
 
 type Props = {
@@ -47,7 +47,8 @@ export default function EmbeddingCodePanel({
   const [copied, setCopied] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
-  const widgetScriptUrl = import.meta.env.VITE_WIDGET_SCRIPT_URL || 'https://widget.botla.app/widget.js'
+  const widgetScriptUrl =
+    import.meta.env.VITE_WIDGET_SCRIPT_URL || 'https://widget.botla.app/widget.js'
   const embedCode = `<script src="${widgetScriptUrl}" data-bot="${id}"></script>`
 
   const handleCopy = () => {
@@ -68,7 +69,9 @@ export default function EmbeddingCodePanel({
             <div>
               <CardTitle className="text-lg">Kodu Web Sitenize Ekleyin</CardTitle>
               <CardDescription>
-                Bu kodu sitenizin <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;body&gt;</code> etiketinin kapanışından hemen önce yapıştırın.
+                Bu kodu sitenizin{' '}
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;body&gt;</code>{' '}
+                etiketinin kapanışından hemen önce yapıştırın.
               </CardDescription>
             </div>
           </div>
@@ -80,8 +83,8 @@ export default function EmbeddingCodePanel({
                 <Code2 className="h-3.5 w-3.5" />
                 HTML
               </div>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="ghost"
                 className="h-7 gap-1.5 text-xs"
                 onClick={handleCopy}
@@ -121,15 +124,17 @@ export default function EmbeddingCodePanel({
                 </CardDescription>
               </div>
             </div>
-            
+
             {secureEmbedPlanEnabled && (
               <div className="flex items-center gap-3">
-                <span className={`text-sm font-medium ${secureEmbedEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span
+                  className={`text-sm font-medium ${secureEmbedEnabled ? 'text-primary' : 'text-muted-foreground'}`}
+                >
                   {secureEmbedEnabled ? 'Aktif' : 'Pasif'}
                 </span>
-                <Switch 
+                <Switch
                   id="secure-embed-toggle"
-                  checked={secureEmbedEnabled} 
+                  checked={secureEmbedEnabled}
                   onCheckedChange={onToggleSecure}
                   aria-label="Güvenli Embed"
                 />
@@ -137,19 +142,20 @@ export default function EmbeddingCodePanel({
             )}
           </div>
         </CardHeader>
-        
+
         <CardContent className="pt-5 space-y-5">
           {!secureEmbedPlanEnabled && (
             <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-xl border border-border">
               <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Güvenli embed (izinli alan adı ve token doğrulama) özellikleri ücretli planlarda aktif edilir.
+                  Güvenli embed (izinli alan adı ve token doğrulama) özellikleri ücretli planlarda
+                  aktif edilir.
                 </p>
               </div>
             </div>
           )}
-          
+
           {secureEmbedPlanEnabled && secureEmbedEnabled && (
             <>
               {/* Domain Restriction */}
@@ -161,10 +167,10 @@ export default function EmbeddingCodePanel({
                 <p className="text-xs text-muted-foreground">
                   Widget'ın çalışmasına izin verilen domainleri belirtin.
                 </p>
-                <Input 
-                  value={allowedDomains} 
-                  onChange={(e) => onDomainsChange(e.target.value)} 
-                  placeholder="ornek.com, digersite.com" 
+                <Input
+                  value={allowedDomains}
+                  onChange={(e) => onDomainsChange(e.target.value)}
+                  placeholder="ornek.com, digersite.com"
                   className="bg-background"
                 />
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -191,29 +197,30 @@ export default function EmbeddingCodePanel({
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   )}
                 </button>
-                
+
                 {advancedOpen && (
                   <div className="p-4 space-y-4 border-t border-border">
                     <div className="p-3 bg-muted/30 rounded-lg border border-border">
                       <p className="text-xs text-muted-foreground flex items-start gap-2">
                         <Lock className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                        Bu yöntem, sunucunuzun her oturum için benzersiz bir token oluşturmasını gerektirir. 
-                        Sadece yazılım geliştirme bilginiz varsa veya geliştirici ekibiniz varsa kullanın.
+                        Bu yöntem, sunucunuzun her oturum için benzersiz bir token oluşturmasını
+                        gerektirir. Sadece yazılım geliştirme bilginiz varsa veya geliştirici
+                        ekibiniz varsa kullanın.
                       </p>
                     </div>
-                    
+
                     <div className="space-y-3">
                       <label className="text-sm font-medium">Embed Secret</label>
-                      <Input 
-                        value={embedSecret} 
-                        onChange={(e) => onSecretChange(e.target.value)} 
+                      <Input
+                        value={embedSecret}
+                        onChange={(e) => onSecretChange(e.target.value)}
                         placeholder="Gizli anahtar henüz oluşturulmadı"
                         className="bg-background font-mono text-sm"
                         readOnly
                       />
                       <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={onSecretRefresh}
                           className="gap-2"
@@ -222,8 +229,8 @@ export default function EmbeddingCodePanel({
                           Yenile
                         </Button>
                         {embedSecret && (
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             onClick={onSecretClear}
                             className="gap-2 text-destructive border-destructive/30 hover:text-destructive hover:bg-destructive/10"
@@ -238,8 +245,10 @@ export default function EmbeddingCodePanel({
                           <p className="text-sm text-muted-foreground flex items-start gap-2">
                             <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-foreground" />
                             <span>
-                              <strong className="text-foreground">Token doğrulaması aktif.</strong><br />
-                              Sadece alan adı kısıtlaması kullanmak istiyorsanız, yukarıdaki "Temizle" butonuna tıklayın.
+                              <strong className="text-foreground">Token doğrulaması aktif.</strong>
+                              <br />
+                              Sadece alan adı kısıtlaması kullanmak istiyorsanız, yukarıdaki
+                              "Temizle" butonuna tıklayın.
                             </span>
                           </p>
                         </div>

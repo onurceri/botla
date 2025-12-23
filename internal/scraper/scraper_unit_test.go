@@ -15,10 +15,10 @@ func TestScrapeURL_Unit(t *testing.T) {
 			_, _ = w.Write([]byte(`<html><body><h1>Hello World</h1><p>This is test content.</p></body></html>`))
 		}))
 		defer srv.Close()
-		
+
 		task := ScrapingTask{URL: srv.URL}
 		content, err := ScrapeURLWithFallback(task, DefaultCollectorConfig(), false, nil)
-		
+
 		assert.NoError(t, err)
 		assert.Contains(t, content, "Hello World")
 		assert.Contains(t, content, "This is test content.")
@@ -29,10 +29,10 @@ func TestScrapeURL_Unit(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 		}))
 		defer srv.Close()
-		
+
 		task := ScrapingTask{URL: srv.URL}
 		_, err := ScrapeURLWithFallback(task, DefaultCollectorConfig(), false, nil)
-		
+
 		assert.Error(t, err)
 	})
 }

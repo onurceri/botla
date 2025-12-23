@@ -4,20 +4,38 @@ import fs from 'fs'
 import path from 'path'
 
 test('Widget embed secure: auto-open shows input', async ({ page }) => {
-  await page.route('http://api.test/api/v1/public/chatbots/bot1', async route => {
+  await page.route('http://api.test/api/v1/public/chatbots/bot1', async (route) => {
     await route.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({
-        id: 'bot1', theme_color: '#3b82f6', welcome_message: 'Merhaba!', position: 'bottom-right',
-        bot_message_color: '#3b82f6', user_message_color: '#f3f4f6', bot_message_text_color: '#ffffff', user_message_text_color: '#1f2937',
-        chat_font_family: 'Inter, sans-serif', chat_header_color: '#3b82f6', chat_header_text_color: '#ffffff'
-      })
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'bot1',
+        theme_color: '#3b82f6',
+        welcome_message: 'Merhaba!',
+        position: 'bottom-right',
+        bot_message_color: '#3b82f6',
+        user_message_color: '#f3f4f6',
+        bot_message_text_color: '#ffffff',
+        user_message_text_color: '#1f2937',
+        chat_font_family: 'Inter, sans-serif',
+        chat_header_color: '#3b82f6',
+        chat_header_text_color: '#ffffff',
+      }),
     })
   })
-  await page.route('http://api.test/api/v1/public/chatbots/bot1/chat', async route => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ response: 'OK', tokens_used: 1, sources_used: [] }) })
+  await page.route('http://api.test/api/v1/public/chatbots/bot1/chat', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ response: 'OK', tokens_used: 1, sources_used: [] }),
+    })
   })
-  await page.route('http://token.test/emit', async route => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ embed_token: 'EMBED' }) })
+  await page.route('http://token.test/emit', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ embed_token: 'EMBED' }),
+    })
   })
 
   const __filename = fileURLToPath(import.meta.url)
@@ -27,7 +45,9 @@ test('Widget embed secure: auto-open shows input', async ({ page }) => {
 
   await page.goto('about:blank')
   await page.addScriptTag({ content: `window.getCaptchaToken = async () => 'CAP'` })
-  await page.addScriptTag({ content: `window.__CBW_PARAMS={"chatbot-id":"bot1","api-base":"http://api.test","embed-token-url":"http://token.test/emit","captcha-site-key":"site","auto-open":"1"}` })
+  await page.addScriptTag({
+    content: `window.__CBW_PARAMS={"chatbot-id":"bot1","api-base":"http://api.test","embed-token-url":"http://token.test/emit","captcha-site-key":"site","auto-open":"1"}`,
+  })
   await page.addScriptTag({ content: code })
 
   const host = await page.waitForSelector('#chatbot-widget-host', { state: 'attached' })
@@ -43,8 +63,10 @@ test('Widget embed secure: auto-open shows input', async ({ page }) => {
   } else {
     // If not open, click bubble
     const bubble = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-bubble'))
-    await (bubble.asElement()!)?.click()
-    const input2 = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-input-field'))
+    await bubble.asElement()!?.click()
+    const input2 = await host.evaluateHandle((el) =>
+      el.shadowRoot!.querySelector('.cbw-input-field'),
+    )
     expect(await input2.asElement()!.isVisible()).toBeTruthy()
   }
 })

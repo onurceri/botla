@@ -1,12 +1,30 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Markdown from 'markdown-to-jsx'
-import { getHandoffRequests, getHandoffRequestDetail, updateHandoffStatus, HandoffRequest, HandoffRequestDetail } from '@/api/handoff'
+import {
+  getHandoffRequests,
+  getHandoffRequestDetail,
+  updateHandoffStatus,
+  HandoffRequest,
+  HandoffRequestDetail,
+} from '@/api/handoff'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Inbox, Mail, Clock, Check, Copy, User, Bot, Loader2, Shield } from 'lucide-react'
 import { useChatbotContext } from '../../context/ChatbotContext'
 
@@ -17,7 +35,7 @@ function formatRelativeTime(date: Date): string {
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
-  
+
   if (diffMins < 1) return 'az önce'
   if (diffMins < 60) return `${diffMins} dakika önce`
   if (diffHours < 24) return `${diffHours} saat önce`
@@ -25,7 +43,10 @@ function formatRelativeTime(date: Date): string {
   return date.toLocaleDateString('tr-TR')
 }
 
-const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+const statusLabels: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'outline' }
+> = {
   pending: { label: 'Bekliyor', variant: 'default' },
   assigned: { label: 'Atandı', variant: 'secondary' },
   resolved: { label: 'Çözüldü', variant: 'outline' },
@@ -64,17 +85,16 @@ export default function HandoffRequestsTab() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center space-y-6">
         <div className="p-6 bg-amber-500/10 rounded-full">
-            <Shield className="w-12 h-12 text-amber-600" />
+          <Shield className="w-12 h-12 text-amber-600" />
         </div>
         <div className="max-w-md space-y-2">
-            <h3 className="text-xl font-bold text-foreground">Bu Özellik Planınızda Mevcut Değil</h3>
-            <p className="text-muted-foreground">
-                İnsan desteği taleplerini görüntülemek ve yönetmek için Enterprise plana geçiş yapmanız gerekmektedir.
-            </p>
+          <h3 className="text-xl font-bold text-foreground">Bu Özellik Planınızda Mevcut Değil</h3>
+          <p className="text-muted-foreground">
+            İnsan desteği taleplerini görüntülemek ve yönetmek için Enterprise plana geçiş yapmanız
+            gerekmektedir.
+          </p>
         </div>
-        <Button className="bg-amber-600 hover:bg-amber-700 text-white">
-            Planı Yükselt
-        </Button>
+        <Button className="bg-amber-600 hover:bg-amber-700 text-white">Planı Yükselt</Button>
       </div>
     )
   }
@@ -99,8 +119,18 @@ export default function HandoffRequestsTab() {
     try {
       await updateHandoffStatus(chatbotId, selectedRequest.request.id, status)
       // Update local state
-      setSelectedRequest(prev => prev ? { ...prev, request: { ...prev.request, status: status as HandoffRequest['status'] } } : null)
-      setRequests(prev => prev.map(r => r.id === selectedRequest.request.id ? { ...r, status: status as HandoffRequest['status'] } : r))
+      setSelectedRequest((prev) =>
+        prev
+          ? { ...prev, request: { ...prev.request, status: status as HandoffRequest['status'] } }
+          : null,
+      )
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === selectedRequest.request.id
+            ? { ...r, status: status as HandoffRequest['status'] }
+            : r,
+        ),
+      )
     } catch (e) {
       console.error('Failed to update status', e)
     } finally {
@@ -144,8 +174,8 @@ export default function HandoffRequestsTab() {
       ) : (
         <div className="grid gap-4">
           {requests.map((request) => (
-            <div 
-              key={request.id} 
+            <div
+              key={request.id}
               className="glass-card rounded-xl border border-border/50 cursor-pointer hover:shadow-md transition-all duration-300 p-4"
               onClick={() => openDetail(request)}
             >
@@ -213,11 +243,15 @@ export default function HandoffRequestsTab() {
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">E-posta adresi henüz paylaşılmamış</p>
+                    <p className="text-sm text-muted-foreground">
+                      E-posta adresi henüz paylaşılmamış
+                    </p>
                   )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    <span>Talep: {new Date(selectedRequest.request.created_at).toLocaleString('tr-TR')}</span>
+                    <span>
+                      Talep: {new Date(selectedRequest.request.created_at).toLocaleString('tr-TR')}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -228,8 +262,8 @@ export default function HandoffRequestsTab() {
                   <CardTitle className="text-sm font-medium">Durum</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Select 
-                    value={selectedRequest.request.status} 
+                  <Select
+                    value={selectedRequest.request.status}
                     onValueChange={handleStatusChange}
                     disabled={updating}
                   >
@@ -264,7 +298,7 @@ export default function HandoffRequestsTab() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                    {(!selectedRequest.messages || selectedRequest.messages.length === 0) ? (
+                    {!selectedRequest.messages || selectedRequest.messages.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">
                         Konuşma geçmişi bulunamadı
                       </p>
@@ -274,7 +308,9 @@ export default function HandoffRequestsTab() {
                           key={msg.id}
                           className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                         >
-                          <div className={`p-1.5 rounded-full h-fit ${msg.role === 'user' ? 'bg-primary/10' : 'bg-muted'}`}>
+                          <div
+                            className={`p-1.5 rounded-full h-fit ${msg.role === 'user' ? 'bg-primary/10' : 'bg-muted'}`}
+                          >
                             {msg.role === 'user' ? (
                               <User className="h-3.5 w-3.5 text-primary" />
                             ) : (
@@ -292,7 +328,10 @@ export default function HandoffRequestsTab() {
                               <Markdown>{msg.content}</Markdown>
                             </div>
                             <p className="text-xs opacity-60 mt-1">
-                              {new Date(msg.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                              {new Date(msg.created_at).toLocaleTimeString('tr-TR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </p>
                           </div>
                         </div>

@@ -5,9 +5,7 @@ import (
 	"net/http"
 
 	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // DiscoverSitemap handles POST /api/v1/chatbots/:id/sitemap/discover
@@ -18,32 +16,8 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	// Extract chatbot ID from path: /api/v1/chatbots/:id/sitemap/discover
-	chatbotID, ok := parseSitemapDiscoverPath(r.URL.Path)
+	chatbot, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	// Verify chatbot ownership
-	chatbot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil {
-		h.logError("chatbot_fetch_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID})
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if chatbot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if chatbot.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 	base := api.BaseLang(chatbot.LanguageCode)
@@ -53,13 +27,13 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 	var req struct {
 		SitemapURL string `json:"sitemap_url"`
 	}
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
 		return
 	}
 
 	// Validate sitemap URL
-	if err = scraper.ValidateSitemapURL(req.SitemapURL); err != nil {
+	if err := scraper.ValidateSitemapURL(req.SitemapURL); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

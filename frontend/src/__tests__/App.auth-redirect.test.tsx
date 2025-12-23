@@ -6,7 +6,7 @@ describe('App unauth redirect', () => {
   it('redirects to login when not authenticated and no E2E', async () => {
     // Force VITE_E2E to false for this test
     vi.stubEnv('VITE_E2E', '')
-    
+
     Object.defineProperty(window, 'localStorage', {
       value: {
         getItem: vi.fn().mockReturnValue(null),
@@ -15,13 +15,13 @@ describe('App unauth redirect', () => {
       },
       writable: true,
     })
-    
+
     window.history.pushState({}, 'Test page', '/dashboard')
     render(<App />, { wrapper: QueryWrapper })
-    
+
     // Use findByRole to wait for redirect and render
     expect(await screen.findByRole('heading', { name: 'Hoş Geldiniz' })).toBeInTheDocument()
-    
+
     vi.unstubAllEnvs()
   })
 })

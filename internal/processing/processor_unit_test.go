@@ -20,13 +20,13 @@ func TestTextProcessor_Unit(t *testing.T) {
 	mockStorage := &storage.MockStorageService{}
 	mockOAI := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
-	
+
 	p := NewTextProcessor(db, mockStorage, mockOAI, mockVC, nil)
-	
+
 	t.Run("Process Successful", func(t *testing.T) {
 		filePath := "test.txt"
 		content := "This is a test content for embedding."
-		
+
 		// Insert test data
 		_, _ = db.Exec(`INSERT INTO plans (id, name, code, config) VALUES ('p1', 'Free', 'free', '{}'::jsonb) ON CONFLICT DO NOTHING`)
 		_, _ = db.Exec(`INSERT INTO users (id, email, password_hash, plan_id) VALUES ('u1', 'test@test.com', 'h', 'p1')`)
@@ -41,21 +41,21 @@ func TestTextProcessor_Unit(t *testing.T) {
 		}
 		bot := &models.Chatbot{ID: "bot-1"}
 		plan := &models.Plan{Config: models.PlanConfig{}}
-		
+
 		// Mock Storage
 		mockStorage.On("DownloadFile", ctx, filePath).Return(io.NopCloser(strings.NewReader(content)), nil).Once()
-		
+
 		// Mock Metadata Extraction
 		mockOAI.On("CreateCompletion", mock.Anything, mock.Anything).Return(&models.CompletionResult{
 			Content: `{"capability_summary": "test", "suggested_questions": ["q1"]}`,
 		}, nil).Once()
-		
+
 		// Mock Embedding
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Once()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-		
+
 		result := p.Process(ctx, source, bot, "en", plan)
-		
+
 		assert.NoError(t, result.Error)
 		assert.Greater(t, result.ChunkCount, 0)
 		mockStorage.AssertExpectations(t)
@@ -69,7 +69,7 @@ func TestURLProcessor_Unit(t *testing.T) {
 	// For this track, we'll focus on the interface injection part.
 	mockOAI := &rag.MockLLMClient{}
 	mockVC := &rag.MockVectorClient{}
-	
+
 	p := NewURLProcessor(nil, mockOAI, mockVC, nil)
 	assert.NotNil(t, p.OpenAIClient)
 	assert.NotNil(t, p.VectorClient)

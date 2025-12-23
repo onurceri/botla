@@ -16,3 +16,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Stability, Resiliency, and Cost-Efficient Testing
 *Link: [./conductor/tracks/stability_and_testing_20251222/](./conductor/tracks/stability_and_testing_20251222/)*
+
+---
+
+## [ ] Track: House Cleaning Audit & Roadmap
+*Link: [./conductor/tracks/house_cleaning_20251222/](./conductor/tracks/house_cleaning_20251222/)*

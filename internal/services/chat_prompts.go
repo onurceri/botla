@@ -1,6 +1,10 @@
 package services
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/onurceri/botla-co/internal/models"
+)
 
 // =============================================================================
 // LLM PROMPTS - ALWAYS IN ENGLISH
@@ -84,7 +88,7 @@ func BuildLanguageDirective(langName string) string {
 // BuildSystemPrompt creates a complete system prompt with base rules,
 // custom instructions, capabilities, and language enforcement.
 // botName is used in the identity section of the prompt.
-func BuildSystemPrompt(botName string, customInstruction string, capabilities string, langName string) string {
+func BuildSystemPrompt(botName string, customInstruction string, capabilities string, langName string, topicRestrictions *models.TopicConfig) string {
 	// Bot name appears twice in the template (intro and identity section)
 	base := fmt.Sprintf(BaseSystemPrompt, botName, botName)
 
@@ -98,6 +102,38 @@ func BuildSystemPrompt(botName string, customInstruction string, capabilities st
 		base += CapabilityInstructionEN + capabilities
 	}
 
+	// Add Topic Restrictions
+	if topicRestrictions != nil {
+		hasAllowed := len(topicRestrictions.AllowedTopics) > 0
+		hasBlocked := len(topicRestrictions.BlockedTopics) > 0
+
+		if hasAllowed || hasBlocked {
+			base += "\n\n### STRICT TOPIC RESTRICTIONS / GUARDRAILS:\n"
+
+			if hasAllowed {
+				base += "You are STRICTLY LIMITED to discussing ONLY the following topics:\n"
+				for _, topic := range topicRestrictions.AllowedTopics {
+					base += fmt.Sprintf("- %s\n", topic)
+				}
+				// Explicitly mention greeting exception
+				base += "- (You may still answer casual greetings like 'Hello' or 'How are you')\n"
+
+				msg := "I'm sorry, I can only help with specific topics."
+				if topicRestrictions.BlockedMessage != "" {
+					msg = topicRestrictions.BlockedMessage
+				}
+				base += fmt.Sprintf("For ANY other topic (including asking for general information, recipes, code, etc. not listed above), you MUST refuse to answer and say exactly: \"%s\"\n", msg)
+			}
+
+			if hasBlocked {
+				base += "You are STRICTLY FORBIDDEN from discussing the following topics:\n"
+				for _, topic := range topicRestrictions.BlockedTopics {
+					base += fmt.Sprintf("- %s\n", topic)
+				}
+			}
+		}
+	}
+
 	// Add language directive
 	base += BuildLanguageDirective(langName)
 
@@ -106,6 +142,7 @@ func BuildSystemPrompt(botName string, customInstruction string, capabilities st
 
 // RestrictedFallbackPromptTemplate is a stricter version used when no RAG context is available.
 // This prevents the bot from using general LLM knowledge to answer factual questions.
+// %s placeholder is for bot name.
 const RestrictedFallbackPromptTemplate = `You are a customer support assistant named "%s".
 
 STRICT RULES - FOLLOW EXACTLY:

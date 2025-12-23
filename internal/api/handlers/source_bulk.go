@@ -20,34 +20,11 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	userID, ok := middleware.UserIDFromContext(r.Context())
-	if !ok || userID == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	// Extract chatbot ID from path: /api/v1/chatbots/:id/sources/bulk
-	chatbotID, ok := parseBulkSourcesPath(r.URL.Path)
+	chatbot, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
-		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	// Verify chatbot ownership
-	chatbot, err := db.GetChatbotByID(r.Context(), h.DB, chatbotID)
-	if err != nil {
-		h.logError("chatbot_fetch_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID})
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if chatbot == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if chatbot.UserID != userID {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
+	userID, _ := middleware.UserIDFromContext(r.Context())
 	base := api.BaseLang(chatbot.LanguageCode)
 	cfg := api.ConfigFromBase(base)
 

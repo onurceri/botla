@@ -8,4 +8,3 @@ export function useToastErrors() {
     info: (message: string) => toast(message, 'info'),
   }
 }
-

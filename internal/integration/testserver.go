@@ -98,15 +98,15 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// Add ExtractTenantContext to support X-Workspace-ID header
 	mux.Handle("/api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
 	memStore := storage.NewMemoryStorage()
-	
+
 	// Use real clients if mocks are nil
-	var actualLLM rag.LLMClient = llm
+	var actualLLM = llm
 	if actualLLM == nil {
 		if c, err := rag.NewOpenAIClient(cfg); err == nil {
 			actualLLM = c
 		}
 	}
-	var actualVC rag.VectorClient = vc
+	var actualVC = vc
 	if actualVC == nil {
 		if c, err := rag.NewQdrantClientFromEnv(); err == nil {
 			actualVC = c

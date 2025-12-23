@@ -12,13 +12,13 @@ const modes: { value: DiscoveryMode; label: string; description: string; icon: t
   {
     value: 'auto',
     label: 'Otomatik',
-    description: 'Keşfedilen URL\'ler otomatik olarak kaynak olarak eklenir.',
+    description: "Keşfedilen URL'ler otomatik olarak kaynak olarak eklenir.",
     icon: Zap,
   },
   {
     value: 'pending',
     label: 'Onay Bekle',
-    description: 'Keşfedilen URL\'ler size sunulur ve onayınızı bekler.',
+    description: "Keşfedilen URL'ler size sunulur ve onayınızı bekler.",
     icon: Clock,
   },
   {
@@ -29,7 +29,10 @@ const modes: { value: DiscoveryMode; label: string; description: string; icon: t
   },
 ]
 
-export default function DiscoveryModeSection({ discoveryMode, setDiscoveryMode }: DiscoveryModeSectionProps) {
+export default function DiscoveryModeSection({
+  discoveryMode,
+  setDiscoveryMode,
+}: DiscoveryModeSectionProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -51,9 +54,10 @@ export default function DiscoveryModeSection({ discoveryMode, setDiscoveryMode }
               className={`
                 flex items-start gap-3 p-4 rounded-xl cursor-pointer transition-all
                 border-2
-                ${isSelected 
-                  ? 'border-primary bg-primary/5' 
-                  : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                ${
+                  isSelected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/50'
                 }
               `}
             >
@@ -65,22 +69,26 @@ export default function DiscoveryModeSection({ discoveryMode, setDiscoveryMode }
                 onChange={() => setDiscoveryMode(mode.value)}
                 className="sr-only"
               />
-              <div className={`
+              <div
+                className={`
                 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5
                 ${isSelected ? 'border-primary' : 'border-muted-foreground'}
-              `}>
+              `}
+              >
                 {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <Icon className={`w-4 h-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <span className={`font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                  <Icon
+                    className={`w-4 h-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}
+                  />
+                  <span
+                    className={`font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}
+                  >
                     {mode.label}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {mode.description}
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">{mode.description}</p>
               </div>
             </label>
           )
@@ -89,4 +97,3 @@ export default function DiscoveryModeSection({ discoveryMode, setDiscoveryMode }
     </Card>
   )
 }
-

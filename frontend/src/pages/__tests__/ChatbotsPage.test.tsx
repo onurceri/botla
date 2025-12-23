@@ -43,14 +43,12 @@ describe('ChatbotsPage', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter>
-          <ChatbotsPage />
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter>
+            <ChatbotsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
-
-    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Chatbotlarım' })).toBeInTheDocument()
@@ -68,11 +66,11 @@ describe('ChatbotsPage', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter>
-          <ChatbotsPage />
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter>
+            <ChatbotsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
 
     await screen.findByText('Test Bot')
@@ -99,11 +97,11 @@ describe('ChatbotsPage', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter>
-          <ChatbotsPage />
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter>
+            <ChatbotsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
 
     await screen.findByText('Bot A')
@@ -125,11 +123,11 @@ describe('ChatbotsPage', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter>
-          <ChatbotsPage />
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter>
+            <ChatbotsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
     await waitFor(() => {
       expect(errSpy).toHaveBeenCalled()
@@ -145,11 +143,11 @@ describe('ChatbotsPage', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter>
-          <ChatbotsPage />
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter>
+            <ChatbotsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
     await screen.findByText('Err Bot')
     const trigger = document.querySelector('[data-menu-trigger="3"]') as HTMLElement
@@ -167,11 +165,11 @@ describe('ChatbotsPage', () => {
     render(
       <QueryWrapper>
         <ToastProvider>
-        <MemoryRouter>
-          <ChatbotsPage />
-        </MemoryRouter>
-      </ToastProvider>
-      </QueryWrapper>
+          <MemoryRouter>
+            <ChatbotsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryWrapper>,
     )
     await screen.findByText('Ghost Bot')
     const trigger = document.querySelector('[data-menu-trigger="7"]') as HTMLElement

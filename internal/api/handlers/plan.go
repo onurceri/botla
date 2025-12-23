@@ -194,6 +194,13 @@ func applyConfigDefaults(config *models.PlanConfig, planCode string) {
 	if config.Files.MaxTextLength == 0 {
 		config.Files.MaxTextLength = 400000
 	}
+
+	if config.Chat.MinResponseTokenLimit == 0 {
+		config.Chat.MinResponseTokenLimit = 20
+	}
+	if config.Chat.MaxResponseTokenLimit == 0 {
+		config.Chat.MaxResponseTokenLimit = 8192
+	}
 }
 
 // nullStringPtr converts sql.NullString to *string

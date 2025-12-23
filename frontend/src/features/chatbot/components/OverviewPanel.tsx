@@ -15,12 +15,17 @@ type Props = {
   setMaxTokens: (v: number) => void
 }
 
-export default function OverviewPanel({ 
-  name, setName, 
-  customInstruction, setCustomInstruction,
-  model, setModel,
-  temperature, setTemperature,
-  maxTokens, setMaxTokens
+export default function OverviewPanel({
+  name,
+  setName,
+  customInstruction,
+  setCustomInstruction,
+  model,
+  setModel,
+  temperature,
+  setTemperature,
+  maxTokens,
+  setMaxTokens,
 }: Props) {
   // Get available models from context (fetched from backend)
   const { availableModels } = useChatbotContext()
@@ -39,13 +44,15 @@ export default function OverviewPanel({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Özel Talimatlar</label>
-            <textarea 
+            <textarea
               className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               value={customInstruction}
               onChange={(e) => setCustomInstruction(e.target.value)}
               placeholder="Botunuza özel davranış kuralları ekleyin..."
             />
-            <div className="flex justify-end text-xs text-muted-foreground">{customInstruction.length} karakter</div>
+            <div className="flex justify-end text-xs text-muted-foreground">
+              {customInstruction.length} karakter
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -74,10 +81,12 @@ export default function OverviewPanel({
               )}
             </select>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Yaratıcılık (Temperature): {temperature}</label>
+              <label className="text-sm font-medium">
+                Yaratıcılık (Temperature): {temperature}
+              </label>
               <input
                 type="range"
                 min="0"
@@ -88,21 +97,20 @@ export default function OverviewPanel({
                 onChange={(e) => setTemperature(parseFloat(e.target.value))}
               />
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Maksimum Token</label>
-              <Input 
-                type="number" 
-                min="1" 
-                max="4096" 
-                value={maxTokens} 
-                onChange={(e) => setMaxTokens(parseInt(e.target.value) || 512)} 
+              <Input
+                type="number"
+                min="1"
+                max="4096"
+                value={maxTokens}
+                onChange={(e) => setMaxTokens(parseInt(e.target.value) || 512)}
               />
             </div>
           </div>
         </CardContent>
       </Card>
-
     </div>
   )
 }
