@@ -19,5 +19,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: House Cleaning Audit & Roadmap
+## [x] Track: House Cleaning Audit & Roadmap
 *Link: [./conductor/tracks/house_cleaning_20251222/](./conductor/tracks/house_cleaning_20251222/)*
+
+---
+
+## [~] Track: Comprehensive Feature Audit & Documentation Update
+*Link: [./conductor/tracks/feature_audit_update_20251224/](./conductor/tracks/feature_audit_update_20251224/)*
