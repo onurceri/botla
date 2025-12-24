@@ -101,7 +101,7 @@ const DashboardLayout = () => {
 
   const settingsItems = [
     { icon: User, label: 'Profil', to: '/dashboard/settings/profile' },
-    { icon: CreditCard, label: 'Plan & Fatura', to: '/dashboard/settings/plan' },
+    { icon: CreditCard, label: 'Plan', to: '/dashboard/settings/plan' },
   ]
 
   return (

@@ -44,7 +44,7 @@ const ProfilePage = () => {
             <div className="space-y-1">
               <h3 className="font-medium text-lg">{fullName || 'İsimsiz Kullanıcı'}</h3>
               <p className="text-sm text-muted-foreground">{email}</p>
-              <PlanBadge plan={userPlan as PlanTier} size="md" className="mt-2" />
+              <PlanBadge plan={userPlan as PlanTier} size="md" variant="soft" className="mt-2" />
             </div>
           </div>
 

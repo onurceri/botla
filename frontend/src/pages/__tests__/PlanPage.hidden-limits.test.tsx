@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PlanPage from '../PlanPage'
 import { api } from '@/api/client'
@@ -77,15 +77,22 @@ describe('PlanPage hidden limits', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Plan ve Faturalandırma' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Plan ve Kullanım' })).toBeInTheDocument()
     })
 
-    expect((await screen.findAllByText('Aylık Kaynak Ekleme'))[0]).toBeInTheDocument()
-    expect(await screen.findByText((content, element) => {
-      return /7\s*\/\s*50\s*kullanıldı/.test(element?.textContent || '');
-    })).toBeInTheDocument()
+    // Debug the DOM to see what's actually rendered
+    // screen.debug()
 
-    expect(screen.getByText('Aylık Embedding Token Kullanımı')).toBeInTheDocument()
-    expect(screen.getByText((t) => /12,345\s*\/\s*250,000/.test(t))).toBeInTheDocument()
+    const ingestCard = (await screen.findAllByText('Aylık Kaynak Ekleme'))[0].closest('.glass-card')
+    
+    expect(ingestCard).toBeInTheDocument()
+    // Find '7' within THIS card specifically
+    expect(within(ingestCard as HTMLElement).getByText('7')).toBeInTheDocument()
+    expect(within(ingestCard as HTMLElement).getByText(/\/ 50/)).toBeInTheDocument()
+
+    const embedCard = screen.getByText('Embedding Token').closest('.glass-card')
+    expect(embedCard).toBeInTheDocument()
+    expect(within(embedCard as HTMLElement).getByText(/12[.,]345/)).toBeInTheDocument()
+    expect(within(embedCard as HTMLElement).getByText(/\/250[.,]000/)).toBeInTheDocument()
   })
 })

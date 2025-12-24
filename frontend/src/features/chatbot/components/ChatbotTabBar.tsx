@@ -28,7 +28,7 @@ export function ChatbotTabBar() {
     { id: 'security', label: 'Güvenlik', icon: Shield },
     { id: 'sources', label: 'Kaynaklar', icon: Database },
     { id: 'actions', label: 'Aksiyonlar', icon: Zap },
-    { id: 'playground', label: 'Test Alanı', icon: Terminal },
+    { id: 'playground', label: 'Görünüm ve Test', icon: Terminal },
     { id: 'deploy', label: 'Yayınla', icon: Rocket },
     { id: 'insights', label: 'Raporlar', icon: BarChart3 },
   ]

@@ -1,6 +1,4 @@
-import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { Crown, Sparkles, User } from 'lucide-react'
 
 export type PlanTier = 'free' | 'pro' | 'ultra'
 
@@ -14,7 +12,6 @@ interface PlanBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 const planConfig = {
   ultra: {
     label: 'ULTRA',
-    icon: Crown,
     colors: {
       solid: 'bg-primary text-primary-foreground shadow-sm shadow-primary/30',
       soft: 'bg-primary/10 text-primary border border-primary/20',
@@ -23,7 +20,6 @@ const planConfig = {
   },
   pro: {
     label: 'PRO',
-    icon: Sparkles,
     colors: {
       solid: 'bg-amber-500 text-white shadow-sm shadow-amber-500/30',
       soft: 'bg-amber-500/10 text-amber-600 border border-amber-500/20',
@@ -32,7 +28,6 @@ const planConfig = {
   },
   free: {
     label: 'FREE',
-    icon: User,
     colors: {
       solid: 'bg-muted-foreground text-muted shadow-sm',
       soft: 'bg-muted text-muted-foreground border border-border',
@@ -47,42 +42,29 @@ const planConfig = {
  */
 function PlanBadge({
   plan,
-  showIcon = true,
   size = 'sm',
   variant = 'soft',
   className,
   ...props
 }: PlanBadgeProps) {
   const config = planConfig[plan]
-  const Icon = config.icon
-
-  const sizeClasses = {
-    xs: 'px-1.5 py-px text-[9px] gap-1',
-    sm: 'px-2 py-0.5 text-[10px] gap-1.5',
-    md: 'px-2.5 py-0.5 text-xs gap-1.5',
-    lg: 'px-3 py-1 text-sm gap-2',
-  }
-
-  const iconSizes = {
-    xs: 'h-2 w-2',
-    sm: 'h-2.5 w-2.5',
-    md: 'h-3 w-3',
-    lg: 'h-3.5 w-3.5',
-  }
+  const colorClass = config.colors[variant]
 
   return (
-    <span
+    <div
       className={cn(
-        'inline-flex items-center rounded-full font-bold tracking-wider transition-all duration-200 select-none',
-        sizeClasses[size],
-        config.colors[variant],
+        'inline-flex items-center gap-1.5 rounded-full font-black tracking-wider transition-all duration-300',
+        colorClass,
+        size === 'xs' && 'px-1.5 py-0 px-1 text-[9px]',
+        size === 'sm' && 'px-2 py-0.5 text-[10px]',
+        size === 'md' && 'px-3 py-1 text-[11px]',
+        size === 'lg' && 'px-4 py-1.5 text-xs',
         className,
       )}
       {...props}
     >
-      {showIcon && Icon && <Icon className={cn('shrink-0', iconSizes[size])} />}
-      {config.label}
-    </span>
+      <span>{config.label}</span>
+    </div>
   )
 }
 

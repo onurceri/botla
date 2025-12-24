@@ -78,8 +78,9 @@ describe('ChatbotDetailPage playground', () => {
       </QueryWrapper>,
     )
 
-    const playTabs = await screen.findAllByRole('link', { name: /Test Alanı/i })
+    const playTabs = await screen.findAllByRole('link', { name: /Görünüm ve Test/i })
     await user.click(playTabs[playTabs.length - 1])
+    expect(await screen.findByRole('heading', { name: /Görünüm ve Test/i })).toBeInTheDocument()
     const inputs = screen.getAllByPlaceholderText('Mesaj yazın...')
     const input = inputs[inputs.length - 1]
     await user.type(input, 'selam')
@@ -108,7 +109,7 @@ describe('ChatbotDetailPage playground', () => {
       </QueryWrapper>,
     )
 
-    const playTabs2 = await screen.findAllByRole('link', { name: /Test Alanı/i })
+    const playTabs2 = await screen.findAllByRole('link', { name: /Görünüm ve Test/i })
     await user.click(playTabs2[playTabs2.length - 1])
     const poweredBy = await screen.findAllByText(/Powered by/i)
     const panel = poweredBy[poweredBy.length - 1]
@@ -144,7 +145,7 @@ describe('ChatbotDetailPage playground', () => {
       </QueryWrapper>,
     )
 
-    const playTabs3 = await screen.findAllByRole('link', { name: /Test Alanı/i })
+    const playTabs3 = await screen.findAllByRole('link', { name: /Görünüm ve Test/i })
     await user.click(playTabs3[playTabs3.length - 1])
     const inputs2 = screen.getAllByPlaceholderText('Mesaj yazın...')
     const input = inputs2[inputs2.length - 1]

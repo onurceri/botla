@@ -189,7 +189,7 @@ export default function EmbeddingCodePanel({
                   <div className="flex items-center gap-3">
                     <Key className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Gelişmiş: Token Doğrulama (JWT)</span>
-                    <PlanBadge plan="pro" size="sm" />
+                    <PlanBadge plan="pro" size="xs" variant="solid" />
                   </div>
                   {advancedOpen ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground" />
