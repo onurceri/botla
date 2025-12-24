@@ -42,7 +42,7 @@ For immediate production issue tackling, complete these in order:
 
 ### Day 5-7: Basic Frontend
 - [x] Admin layout and routes
-- [ ] Dashboard overview page
+- [x] Dashboard overview page
 - [ ] System health page
 - [ ] Queues management page
 
