@@ -735,7 +735,7 @@ List and manage users.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/admin/AdminUsersPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminUsersPage.tsx`**
   
   ```typescript
   import { useState } from 'react';
@@ -835,23 +835,23 @@ List and manage users.
 
 ---
 
-## Step 3.9: Additional Pages (Stubs)
+## Step 3.9: Additional Pages
 
 Create remaining pages with basic structure.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/admin/AdminOrganizationsPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminOrganizationsPage.tsx`**
   - List organizations with member count, chatbot count
   - Filter by plan, search by name
   - Link to detail page
 
-- [ ] **Create `frontend/src/pages/admin/AdminChatbotsPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminChatbotsPage.tsx`**
   - List all chatbots across platform
   - Filter by status, organization
   - Force refresh action
 
-- [ ] **Create `frontend/src/pages/admin/AdminSourcesPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminSourcesPage.tsx`**
   - List all data sources
   - Filter by status (processing, ready, failed)
   - Reprocess failed sources

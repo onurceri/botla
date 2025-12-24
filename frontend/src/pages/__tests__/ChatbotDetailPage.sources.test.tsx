@@ -8,6 +8,14 @@ import ChatbotDetailPage from '../ChatbotDetailPage'
 import SourcesTab from '@/features/chatbot/pages/tabs/SourcesTab'
 import { api } from '@/api/client'
 
+vi.mock('@/features/organization/context/OrganizationContext', () => ({
+  useOrganization: () => ({
+    currentWorkspace: { id: 'ws-1' },
+    isLoading: false,
+  }),
+  OrganizationProvider: ({ children }: any) => children,
+}))
+
 vi.mock('@/api/source', () => ({
   listSources: vi.fn().mockResolvedValue([
     {
@@ -29,7 +37,30 @@ vi.mock('@/api/source', () => ({
 describe('ChatbotDetailPage sources', () => {
   it('deletes a source and refreshes list', async () => {
     const user = userEvent.setup()
-    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: '123', name: 'Bot' } } as any)
+    vi.spyOn(api, 'get').mockImplementation((url: string) => {
+      if (url.includes('/api/v1/me/plan')) {
+        return Promise.resolve({
+          data: {
+            code: 'pro',
+            features: {
+              files: {
+                max_files_per_bot: 999,
+                max_size_mb: 50,
+                ocr_enabled: true,
+                max_files_total: 999,
+                total_storage_mb: 1000,
+              },
+              scraping: { max_urls_per_bot: 999 },
+            },
+            available_models: [],
+          },
+        } as any)
+      }
+      if (url.includes('/api/v1/chatbots/123')) {
+        return Promise.resolve({ data: { id: '123', name: 'Bot' } } as any)
+      }
+      return Promise.resolve({ data: {} } as any)
+    })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(
@@ -46,13 +77,13 @@ describe('ChatbotDetailPage sources', () => {
       </QueryWrapper>,
     )
 
-    const srcTabs = screen.getAllByRole('link', { name: /Kaynaklar/i })
+    const srcTabs = await screen.findAllByRole('link', { name: /Kaynaklar/i })
     await user.click(srcTabs[srcTabs.length - 1])
     const sourceHeads = await screen.findAllByText('inline.txt')
     const sourceCard = sourceHeads[0].closest('[data-testid="source-card"]')!
     const delBtn = within(sourceCard as HTMLElement).getByRole('button', { name: /Kaynağı Sil/i })
     await user.click(delBtn)
-    
+
     // Confirm delete in AlertDialog
     const confirmBtn = await screen.findByRole('button', { name: 'Sil' })
     await user.click(confirmBtn)
@@ -70,7 +101,30 @@ describe('ChatbotDetailPage sources', () => {
       return 1 as any
     })
     vi.spyOn(globalThis, 'clearInterval').mockImplementation(() => {})
-    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { id: '123', name: 'Bot' } } as any)
+    vi.spyOn(api, 'get').mockImplementation((url: string) => {
+      if (url.includes('/api/v1/me/plan')) {
+        return Promise.resolve({
+          data: {
+            code: 'pro',
+            features: {
+              files: {
+                max_files_per_bot: 999,
+                max_size_mb: 50,
+                ocr_enabled: true,
+                max_files_total: 999,
+                total_storage_mb: 1000,
+              },
+              scraping: { max_urls_per_bot: 999 },
+            },
+            available_models: [],
+          },
+        } as any)
+      }
+      if (url.includes('/api/v1/chatbots/123')) {
+        return Promise.resolve({ data: { id: '123', name: 'Bot' } } as any)
+      }
+      return Promise.resolve({ data: {} } as any)
+    })
     const { uploadTextSource, getSourceStatus, listSources } = await import('@/api/source')
     ;(uploadTextSource as any).mockResolvedValueOnce({ id: 'sid1' })
     ;(getSourceStatus as any)
@@ -94,9 +148,10 @@ describe('ChatbotDetailPage sources', () => {
 
     const srcTabs2 = await screen.findAllByRole('link', { name: /Kaynaklar/i })
     await user.click(srcTabs2[srcTabs2.length - 1])
-    const textButtons = screen.getAllByText('Metin')
-    await user.click(textButtons[textButtons.length - 1])
-    const textarea = screen.getByPlaceholderText('Metin içeriğini buraya yapıştırın...')
+    const pdfBtn = await screen.findByRole('button', { name: 'PDF Yükle' })
+    const uploaderButtonRow = pdfBtn.parentElement as HTMLElement
+    await user.click(within(uploaderButtonRow).getByRole('button', { name: 'Metin' }))
+    const textarea = await screen.findByPlaceholderText(/Metin içeriğinizi buraya yapıştırın/i)
     await user.type(textarea, 'hello')
     const buttons = screen.getAllByRole('button', { name: 'Ekle' })
     await user.click(buttons[buttons.length - 1])

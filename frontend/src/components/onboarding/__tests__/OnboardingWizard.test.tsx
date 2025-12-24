@@ -134,9 +134,11 @@ describe('OnboardingWizard', () => {
       const user = userEvent.setup()
 
       // API çağrılarını mock'la
-      vi.spyOn(api, 'post')
+      const postSpy = vi
+        .spyOn(api, 'post')
         .mockResolvedValueOnce({ data: { id: 'test-bot-id', name: 'Test Bot' } })
         .mockResolvedValueOnce({ data: {} })
+        .mockResolvedValue({ data: {} } as any)
 
       renderOnboarding()
 
@@ -158,14 +160,17 @@ describe('OnboardingWizard', () => {
       await waitFor(() => {
         expect(screen.getByText('Kişiliğini Belirleyin')).toBeInTheDocument()
       })
+      expect(getActionButton()).not.toBeDisabled()
       await user.click(getActionButton())
 
-      // Başarı mesajını bekle
       await waitFor(() => {
-        expect(screen.getByText((content, element) => {
-          return /Tebrikler|başarıyla oluşturuldu/i.test(element?.textContent || '');
-        })).toBeInTheDocument()
-      }, { timeout: 3000 })
+        expect(postSpy).toHaveBeenCalled()
+      })
+
+      expect(
+        await screen.findByRole('heading', { name: /Tebrikler/i }, { timeout: 3000 }),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/kullanıma hazır\./i)).toBeInTheDocument()
     })
   })
 

@@ -37,14 +37,14 @@ For immediate production issue tackling, complete these in order:
 
 ### Day 3-4: Production Monitoring  
 - [x] Detailed health checks (DB, Redis, Qdrant, OpenAI)
-- [ ] Queue monitoring (pending, stuck jobs)
-- [ ] Error tracking service
+- [x] Queue monitoring (pending, stuck jobs)
+- [x] Error tracking service
 
 ### Day 5-7: Basic Frontend
 - [x] Admin layout and routes
 - [x] Dashboard overview page
-- [ ] System health page
-- [ ] Queues management page
+- [x] System health page
+- [x] Queues management page
 
 ---
 

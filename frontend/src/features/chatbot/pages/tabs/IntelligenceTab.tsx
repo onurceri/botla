@@ -2,9 +2,7 @@ import { useParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import SourceUploader from '@/components/chatbot/SourceUploader'
-import SourceList from '../../components/SourceList'
 import URLAdvancedSettings from '../../components/URLAdvancedSettings'
-import PendingURLsPanel from '../../components/PendingURLsPanel'
 import ActionList from '../../components/ActionList'
 import { useSourceOps } from '../../hooks/useSourceOps'
 import { useChatbotContext } from '../../context/ChatbotContext'
@@ -24,13 +22,9 @@ export default function IntelligenceTab() {
     sources,
     refreshSources,
     pollStatus,
-    handleDeleteSource,
-    handleRefreshSource,
-    refreshingId,
   } = useSourceOps(id, isNew)
 
   const {
-    userPlan,
     planConfig,
     discoveryMode,
     setDiscoveryMode,
@@ -246,8 +240,6 @@ export default function IntelligenceTab() {
             </CardContent>
           </Card>
 
-          <PendingURLsPanel chatbotId={id} onSourcesCreated={refreshSources} />
-
           {/* Source List Section */}
           <Card className="border-muted-foreground/20 shadow-sm">
             <CardHeader>
@@ -261,13 +253,23 @@ export default function IntelligenceTab() {
             </CardHeader>
             <CardContent>
               {sources.length > 0 ? (
-                <SourceList
-                  sources={sources as any}
-                  userPlan={userPlan}
-                  onDelete={handleDeleteSource}
-                  onRefresh={handleRefreshSource}
-                  refreshingId={refreshingId}
-                />
+                <div className="space-y-2">
+                  {sources.map((source: any) => (
+                    <div
+                      key={source.id}
+                      className="flex items-center justify-between rounded-lg border bg-card px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">
+                          {source.original_filename || source.source_url || source.id}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {source.source_type} · {source.status}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/30 p-10 text-center space-y-3">
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted shadow-sm">

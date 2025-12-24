@@ -40,7 +40,7 @@ describe('ChatbotDetailPage sections toggle', () => {
         </ToastProvider>
       </QueryWrapper>,
     )
-    const playTriggers = await screen.findAllByRole('link', { name: /Test Alanı/ })
+    const playTriggers = await screen.findAllByRole('link', { name: /Görünüm ve Test/i })
     await user.click(playTriggers[playTriggers.length - 1])
     const identityBtn = await screen.findByRole('button', { name: /Kimlik/ })
     await user.click(identityBtn)
@@ -50,12 +50,12 @@ describe('ChatbotDetailPage sections toggle', () => {
 
     // Appearance (Konum)
     const appearanceBtn = screen.getByRole('button', { name: /Konum/ })
-    appearanceBtn.click()
+    await user.click(appearanceBtn)
     expect(await screen.findByLabelText('Konum')).toBeInTheDocument()
 
     // Colors (Yazı ve Renkler)
     const colorsBtn = screen.getByRole('button', { name: /Yazı ve Renkler/ })
-    colorsBtn.click()
-    expect(await screen.findByText('Header Yazı')).toBeInTheDocument()
+    await user.click(colorsBtn)
+    expect(await screen.findByText('Panel & Header')).toBeInTheDocument()
   })
 })

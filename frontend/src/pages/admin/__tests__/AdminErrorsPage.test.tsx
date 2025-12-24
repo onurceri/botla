@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AdminErrorsPage } from '../AdminErrorsPage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -7,7 +7,7 @@ import * as adminApi from '@/api/admin'
 
 // Mock Radix Select
 vi.mock('@radix-ui/react-select', () => ({
-  Root: ({ children, onValueChange, value }: any) => (
+  Root: ({ children, onValueChange }: any) => (
     <div data-testid="mock-select" onClick={() => onValueChange?.('error')}>{children}</div>
   ),
   Trigger: ({ children }: any) => <button data-testid="severity-select">{children}</button>,

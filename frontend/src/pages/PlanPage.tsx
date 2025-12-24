@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 import { Badge } from '@/components/ui/badge'
@@ -13,11 +12,9 @@ import {
   Check,
   X,
   LayoutDashboard,
-  RefreshCcw,
   FileText,
   Clock,
   Database,
-  ExternalLink,
 } from 'lucide-react'
 import { usePlan, useUsage } from '@/hooks/queries/useProfile'
 import { useRateLimit } from '@/hooks/useRateLimit'
