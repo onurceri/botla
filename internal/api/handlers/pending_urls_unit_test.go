@@ -4,10 +4,21 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
+
+func parseBotIDFromPath(path string) (string, bool) {
+	parts := strings.Split(path, "/")
+	for i, part := range parts {
+		if part == "chatbots" && i+1 < len(parts) {
+			return parts[i+1], true
+		}
+	}
+	return "", false
+}
 
 func TestParseBotIDFromPath_PendingURLs(t *testing.T) {
 	tests := []struct {
