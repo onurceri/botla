@@ -21,7 +21,7 @@ The system enforces strict limits and feature gates based on three primary tiers
 ### 2.1. Feature Matrix
 | Feature | Free | Pro | Ultra |
 | :--- | :--- | :--- | :--- |
-| **Max Chatbots** | 1 | 10 | 50-100 |
+| **Max Chatbots** | 1 | 10 | 100 |
 | **Default AI Model** | `gpt-4o-mini` | `gpt-4o` | `gpt-4o` |
 | **Allowed Models** | `gpt-4o-mini` | `gpt-4o-mini`, `gpt-4o` | `gpt-4o-mini`, `gpt-4o`, `gpt-5` |
 | **Monthly Tokens** | 100,000 | 1,000,000 | 5,000,000 |
@@ -31,16 +31,24 @@ The system enforces strict limits and feature gates based on three primary tiers
 | **Smart Fallback** | No | Yes | Yes |
 | **Escalate to Human** | No | No | Yes |
 | **Custom Branding** | No | No | Yes |
-| **Rate Limit (Chat RPM)** | 30 | 100 | 500 |
+| **Max Suggested Questions** | 3 | 6 | 10 |
 
 ### 2.2. Ingestion & Storage Limits
 | Limit | Free | Pro | Ultra |
 | :--- | :--- | :--- | :--- |
-| **Max Files per Bot** | 1 | 20 | 100-1000 |
-| **Max File Size (MB)** | 5 | 20 | 50-100 |
+| **Max Files per Bot** | 1 | 20 | 100 |
+| **Max Files Total** | 5 | 100 | 1,000 |
+| **Max File Size (MB)** | 5 | 20 | 50 |
 | **Total Storage (MB)** | 10 | 500 | 2,000 |
 | **Scraping Max URLs** | 1 | 10 | 50 |
-| **Scraping Max Pages/Crawl** | 0 | 10 | 100 |
+| **Scraping Max Pages/Crawl** | 5 | 50 | 200 |
+
+### 2.3. Rate Limits
+| Limit | Free | Pro | Ultra |
+| :--- | :--- | :--- | :--- |
+| **Global RPM** | 100 | 500 | 2,000 |
+| **Chat RPM** | 30 | 100 | 500 |
+| **Sources API RPM** | 10 | 30 | 100 |
 
 ## 3. Chatbot Configuration & "Intelligence"
 - **Identity & Persona:**

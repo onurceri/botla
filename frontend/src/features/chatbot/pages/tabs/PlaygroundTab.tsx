@@ -133,7 +133,7 @@ export default function PlaygroundTab() {
           </div>
           <div className="hidden sm:block">
             <h2 className="text-sm font-bold tracking-tight text-slate-900 uppercase opacity-60">
-              Playground
+              Test Alanı
             </h2>
           </div>
         </div>

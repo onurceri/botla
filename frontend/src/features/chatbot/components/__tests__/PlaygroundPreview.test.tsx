@@ -53,7 +53,7 @@ describe('PlaygroundPreview', () => {
     const { container } = render(<PlaygroundPreview {...defaultProps} />)
 
     const iframe = container.querySelector('iframe')
-    expect(iframe).toHaveAttribute('title', 'Chatbot Preview')
+    expect(iframe).toHaveAttribute('title', 'Chatbot Önizlemesi')
     expect(iframe).toHaveAttribute(
       'sandbox',
       'allow-scripts allow-same-origin allow-forms allow-popups',

@@ -77,7 +77,7 @@ describe('ChatbotDetailPage tab query param', () => {
     )
     const view2 = within(utils2.container)
     const user = userEvent.setup()
-    const triggers2 = await view2.findAllByRole('link', { name: /Playground/ })
+    const triggers2 = await view2.findAllByRole('link', { name: /Test Alanı/ })
     await user.click(triggers2[0])
     const openBtn = await view2.findByLabelText('Sohbeti aç')
     await user.click(openBtn)

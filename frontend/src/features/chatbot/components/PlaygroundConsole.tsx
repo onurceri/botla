@@ -105,7 +105,7 @@ export default function PlaygroundConsole() {
             <Terminal className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
           </div>
           <span className="text-[9px] lg:text-[11px] font-mono font-bold tracking-[0.1em] uppercase text-slate-400 group-hover:text-slate-200 transition-colors truncate">
-            Event Debug Console
+            Hata Ayıklama Konsolu
           </span>
           {logs.length > 0 && !isExpanded && (
             <div className="flex items-center gap-1 ml-1 lg:ml-2 bg-emerald-500/10 px-1.5 lg:px-2 py-0.5 rounded-full border border-emerald-500/20">

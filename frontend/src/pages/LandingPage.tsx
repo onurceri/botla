@@ -12,7 +12,6 @@ import {
   Menu,
   X,
   Sparkles,
-  Cpu,
   MessagesSquare,
   Search,
 } from 'lucide-react'
@@ -184,12 +183,17 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto mb-16 px-4">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass border border-white/20 text-muted-foreground text-sm font-medium mb-8"
+            className="inline-flex items-center gap-3 px-5 py-2 rounded-full glass border border-white/30 text-foreground text-xs font-bold uppercase tracking-widest mb-10 shadow-xl shadow-primary/5"
           >
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span>Yapay zeka ile müşteri desteğinde yeni çağ</span>
+            <div className="flex -space-x-2">
+              <div className="w-6 h-6 rounded-full border-2 border-background bg-red-400" />
+              <div className="w-6 h-6 rounded-full border-2 border-background bg-blue-400" />
+              <div className="w-6 h-6 rounded-full border-2 border-background bg-primary" />
+            </div>
+            <span className="opacity-80">GPT-4o & GPT-4o Mini Destekli</span>
+            <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
           </motion.div>
 
           <motion.h1
@@ -293,81 +297,110 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
   )
 }
 
-const FeatureCard = ({ icon: Icon, title, desc, delay }: any) => (
-  <motion.div
-    initial={{ opacity: 0, y: 24 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, margin: "-100px" }}
-    transition={{ delay, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-    className="group relative p-10 rounded-[2.5rem] bg-card border border-border/50 hover:border-primary/40 transition-all duration-500 hover:shadow-xl hover:shadow-primary/5"
-  >
-    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-10 group-hover:scale-110 transition-transform duration-500 shadow-glow">
-      <Icon className="w-8 h-8 text-primary" />
-    </div>
+const BentoCard = ({ icon: Icon, title, desc, className, delay, href }: any) => {
+  const CardContent = (
+    <>
+      {/* Refractive Edge Highlight */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
+      </div>
 
-    <h3 className="text-2xl font-bold mb-4 text-foreground tracking-tight">{title}</h3>
-    <p className="text-muted-foreground leading-relaxed text-lg">{desc}</p>
-    
-    <div className="mt-8 flex items-center text-primary text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-500 cursor-pointer">
-      Daha fazlası <ArrowRight className="ml-1 w-4 h-4" />
-    </div>
-  </motion.div>
-)
-
-const Features = () => {
-  const features = [
-    {
-      icon: Database,
-      title: 'Verilerinizi Bağlayın',
-      desc: 'PDF yükleyin, web sitenizi kaynak olarak ekleyin veya metin içeriği girin. AI modelimiz verilerinizi analiz eder ve öğrenir.',
-    },
-    {
-      icon: Cpu,
-      title: 'Gelişmiş RAG Teknolojisi',
-      desc: 'Vektör tabanlı arama ve GPT-4o ile, botunuz her zaman bağlama uygun ve doğru cevaplar verir. Halüsinasyon görmez.',
-    },
-    {
-      icon: Globe,
-      title: 'Dinamik Web Tarama',
-      desc: 'Web siteniz güncellendiğinde botunuz da güncellensin. Dinamik site tarayıcımızla içeriğinizi otomatik senkronize edin.',
-    },
-    {
-      icon: ShieldCheck,
-      title: 'Güvenlik & Guardrails',
-      desc: 'Botunuzun konuşacağı konuları sınırlayın. Rakip firmalardan bahsetmesini veya uygunsuz içerik üretmesini engelleyin.',
-    },
-    {
-      icon: Zap,
-      title: 'Hızlı Entegrasyon',
-      desc: 'Tek satır JavaScript kodu ile sitenize ekleyin. Güvenli embed seçenekleriyle alan adlarınızı kısıtlayın.',
-    },
-    {
-      icon: Search,
-      title: 'Analitik ve İçgörü',
-      desc: 'Kullanıcılarınızın ne sorduğunu görün. Başarısız konuşmaları analiz edin ve botunuzu sürekli iyileştirin.',
-    },
-  ]
+      <div className="h-full flex flex-col items-start gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+          <Icon className="w-7 h-7 text-primary" />
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold mb-3 tracking-tight">{title}</h3>
+          <p className="text-muted-foreground/80 leading-relaxed text-sm md:text-base">{desc}</p>
+        </div>
+        <div className="mt-auto opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+          <span className="text-primary font-bold text-sm flex items-center gap-1">
+            Detayları Gör <ArrowRight className="w-4 h-4" />
+          </span>
+        </div>
+      </div>
+    </>
+  )
 
   return (
-    <section id="features" className="scroll-mt-24 py-32 bg-secondary/30 relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 blur-[160px] rounded-full -z-10" />
-      
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ delay, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        "group relative overflow-hidden rounded-[2.5rem] bg-card border border-border/50 p-8 hover:border-primary/40 transition-all duration-500",
+        href && "cursor-pointer",
+        className
+      )}
+    >
+      {href ? (
+        <a href={href} className="absolute inset-0 z-10 p-8">
+          {CardContent}
+        </a>
+      ) : CardContent}
+    </motion.div>
+  )
+}
+
+const Features = () => {
+  return (
+    <section id="features" className="py-32 bg-secondary/30 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center max-w-3xl mx-auto mb-20 px-4">
-          <Badge>Özellikler</Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-8 text-foreground tracking-tight leading-[1.1]">
-            Yapay Zekanın Gücünü <br />
-            <span className="text-primary tracking-tighter">İşinize Taşıyın</span>
+        <div className="max-w-3xl mb-24">
+          <Badge>Teknoloji</Badge>
+          <h2 className="text-5xl md:text-7xl font-bold mt-6 mb-8 tracking-tight">
+            Hiper-Akıllı Bir <br />
+            <span className="text-primary">Ekosistem.</span>
           </h2>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            İşletmenizin her adımında size eşlik eden, tamamen verilerinizle eğitilmiş profesyonel bir asistan.
+            Statik veriyi dinamik bir asistanın ötesine taşıyan, her sektör için özelleştirilmiş 
+            akıllı araçlar bütünü.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((f, i) => (
-            <FeatureCard key={i} {...f} delay={i * 0.1} />
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 h-auto md:h-[900px]">
+          <BentoCard 
+            delay={0.1}
+            href="#how-it-works"
+            icon={Database}
+            title="Geniş Bilgi Dağarcığı"
+            desc="Dokümanlarınızı, web sitenizi ve metin verilerinizi saniyeler içinde analiz edip tek bir akıllı bilgi tabanında toplar."
+            className="md:col-span-3 md:row-span-2 bg-gradient-to-br from-card to-primary/5"
+          />
+          <BentoCard 
+            delay={0.2}
+            href="#how-it-works"
+            icon={Zap}
+            title="Yüksek Performans"
+            desc="Optimize edilmiş RAG altyapısı ile karmaşık sorulara saniyeler içinde doğru ve bağlam odaklı yanıtlar üretir."
+            className="md:col-span-3 md:row-span-1"
+          />
+          <BentoCard 
+            delay={0.3}
+            href="#how-it-works"
+            icon={ShieldCheck}
+            title="Akıllı Denetim"
+            desc="Guardrails sayesinde botunuzun hedeften sapmasını ve hatalı bilgi üretmesini kontrol altında tutarsınız."
+            className="md:col-span-3 md:row-span-2"
+          />
+          <BentoCard 
+            delay={0.4}
+            href="#faq"
+            icon={Globe}
+            title="Gelişmiş Dil Yeteneği"
+            desc="Yapay zekanın doğal dil işleme gücüyle onlarca dilde akıcı ve anlamlı kullanıcı etkileşimi sağlar."
+            className="md:col-span-3 md:row-span-1"
+          />
+          <BentoCard 
+            delay={0.5}
+            href="#pricing"
+            icon={Search}
+            title="Veriye Dayalı Analiz"
+            desc="Konuşmaları madencilik yaparak kullanıcılarınızın beklentilerini ve bot performansını raporlar."
+            className="md:col-span-6 md:row-span-1 border-primary/20 bg-primary/5"
+          />
         </div>
       </div>
     </section>
@@ -473,11 +506,11 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
         { text: '100 Adet Chatbot', included: true },
         { text: 'Aylık 5.000.000 Token', included: true },
         { text: '50 Site & 100 PDF', included: true },
-        { text: 'GPT-4o & Claude 3.5 Sonnet', included: true },
-        { text: 'Tam Özelleştirme & Whitelabel', included: true },
+        { text: 'GPT-4o & GPT-5 Hazır', included: true },
+        { text: 'Tam Özelleştirme & Branding Kaldırma', included: true },
         { text: 'İnsan Desteğine Aktarma', included: true },
         { text: 'Özel Entegrasyonlar', included: true },
-        { text: '7/24 Özel Temsilci', included: true },
+        { text: '7/24 Öncelikli Destek', included: true },
       ],
     },
   ]
@@ -514,6 +547,7 @@ const HowItWorks = () => {
       desc: 'PDF, web sitesi URL’i veya metin ekleyerek botunuzu eğitin.',
       icon: Database,
       bullets: ['PDF yükleyin', 'Web sitenizi taratın', 'Metin ekleyin'],
+      tip: 'URL eklediğinizde sistem sayfaları otomatik keşfedebilir; isterseniz sadece belirli yolları dahil/hariç tutarak taramayı kontrol edebilirsiniz.',
     },
     {
       num: '02',
@@ -521,6 +555,7 @@ const HowItWorks = () => {
       desc: 'Botunuzun tonunu, güvenlik kurallarını ve sınırlarını ayarlayın.',
       icon: ShieldCheck,
       bullets: ['Guardrails', 'Güvenli konuşma sınırları', 'Gerekirse insan desteğine yönlendirme'],
+      tip: 'Guardrails özelliğini kullanarak botun rakip markalardan bahsetmesini veya kapsam dışı konulara girmesini tamamen engelleyebilirsiniz.',
     },
     {
       num: '03',
@@ -528,6 +563,7 @@ const HowItWorks = () => {
       desc: 'Tek satır kodla sitenize ekleyin, isterseniz domain kısıtlayın.',
       icon: MessagesSquare,
       bullets: ['Tek satır embed kodu', 'İzinli domain listesi', 'Güvenli embed (planına göre)'],
+      tip: 'Güvenlik için "Allowed Domains" listesini doldurmayı unutmayın; böylece botunuz sadece sizin yetkilendirdiğiniz sitelerde çalışır.',
     },
   ]
 
@@ -631,7 +667,7 @@ const HowItWorks = () => {
                     Profesyonel İpucu
                   </div>
                   <div className="text-muted-foreground leading-relaxed">
-                    URL eklediğinizde sistem sayfaları otomatik keşfedebilir; isterseniz sadece belirli yolları dahil/haric tutarak taramayı kontrol edebilirsiniz.
+                    {active.tip}
                   </div>
                 </div>
               </motion.div>

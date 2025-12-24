@@ -40,7 +40,7 @@ describe('ChatbotDetailPage sections toggle', () => {
         </ToastProvider>
       </QueryWrapper>,
     )
-    const playTriggers = await screen.findAllByRole('link', { name: /Playground/ })
+    const playTriggers = await screen.findAllByRole('link', { name: /Test Alanı/ })
     await user.click(playTriggers[playTriggers.length - 1])
     const identityBtn = await screen.findByRole('button', { name: /Kimlik/ })
     await user.click(identityBtn)
