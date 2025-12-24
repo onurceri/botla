@@ -72,7 +72,5 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 		TotalCount: len(filteredURLs),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(response)
+	api.WriteJSON(w, http.StatusOK, response)
 }

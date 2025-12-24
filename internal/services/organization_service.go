@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/logger"
@@ -71,7 +70,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, name, slug
 		return nil, err
 	}
 	if exists {
-		return nil, fmt.Errorf("organization slug already exists")
+		return nil, ErrOrgSlugExists
 	}
 
 	org := &models.Organization{
@@ -115,7 +114,7 @@ func (s *OrganizationService) UpdateOrganization(ctx context.Context, id, name, 
 		return err
 	}
 	if exists {
-		return fmt.Errorf("organization slug already exists")
+		return ErrOrgSlugExists
 	}
 
 	_, err = s.DB.ExecContext(ctx, "UPDATE organizations SET name = $1, slug = $2, updated_at = NOW() WHERE id = $3", name, slug, id)
@@ -166,7 +165,7 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string)
 	}
 
 	if count <= 1 {
-		return fmt.Errorf("cannot delete the last organization")
+		return ErrLastOrganization
 	}
 
 	_, err = s.DB.ExecContext(ctx, "DELETE FROM organizations WHERE id = $1", id)
@@ -206,6 +205,10 @@ func (s *OrganizationService) GetUserOrganizations(ctx context.Context, userID s
 			}
 		}
 		orgs = append(orgs, &org)
+	}
+	// MI-006: Check for iteration errors
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return orgs, nil
 }
@@ -254,6 +257,10 @@ func (s *OrganizationService) GetMembers(ctx context.Context, orgID string) ([]*
 		}
 		members = append(members, &m)
 	}
+	// MI-006: Check for iteration errors
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return members, nil
 }
 
@@ -275,7 +282,7 @@ func (s *OrganizationService) RemoveMember(ctx context.Context, orgID, callerID,
 		return err
 	}
 	if targetMembership == nil {
-		return fmt.Errorf("target user is not a member of this organization")
+		return ErrNotMember
 	}
 
 	// 2. Prevent removing the last owner
@@ -285,7 +292,7 @@ func (s *OrganizationService) RemoveMember(ctx context.Context, orgID, callerID,
 			return err2
 		}
 		if ownerCount <= 1 {
-			return fmt.Errorf("cannot remove the last owner")
+			return ErrLastOwner
 		}
 	}
 
@@ -298,7 +305,7 @@ func (s *OrganizationService) RemoveMember(ctx context.Context, orgID, callerID,
 func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, callerID, targetUserID, newRole string) error {
 	// 1. Validate role
 	if !isValidRole(newRole) {
-		return fmt.Errorf("invalid role: %s", newRole)
+		return ErrInvalidRole
 	}
 
 	// 2. Get caller's membership
@@ -307,7 +314,7 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 		return err
 	}
 	if callerMembership == nil {
-		return fmt.Errorf("caller is not a member of this organization")
+		return ErrNotMember
 	}
 
 	// 3. Get target's current membership
@@ -316,12 +323,12 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 		return err
 	}
 	if targetMembership == nil {
-		return fmt.Errorf("target user is not a member of this organization")
+		return ErrNotMember
 	}
 
 	// 4. Prevent self-promotion (member→admin, admin→owner)
 	if callerID == targetUserID && hasHigherRole(newRole, callerMembership.Role) {
-		return fmt.Errorf("cannot promote yourself")
+		return ErrCannotPromoteSelf
 	}
 
 	// 5. Prevent owner demotion if last owner
@@ -331,13 +338,13 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 			return err2
 		}
 		if ownerCount <= 1 {
-			return fmt.Errorf("cannot demote the last owner")
+			return ErrCannotDemoteOwner
 		}
 	}
 
 	// 6. Only owners can assign owner role
 	if newRole == RoleOwner && callerMembership.Role != RoleOwner {
-		return fmt.Errorf("only owners can assign owner role")
+		return ErrOnlyOwnersCanGrant
 	}
 
 	// 7. Execute update

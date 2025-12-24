@@ -3,9 +3,9 @@ package handlers
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"net/http"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
@@ -120,11 +120,7 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 		AvailableModels: availableModels,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, res)
 }
 
 // getPlanInfo retrieves plan details with translations

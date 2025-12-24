@@ -7,6 +7,7 @@ import (
 
 	"strconv"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
@@ -70,11 +71,7 @@ func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request)
 		data = []db.AnalyticsPoint{}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, data)
 }
 
 // GetChatbotAnalyticsOverview returns aggregated analytics for a specific chatbot
@@ -93,10 +90,7 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsOverview(w http.ResponseWriter, r
 		stats = &models.AnalyticsOverview{}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(stats); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, stats)
 }
 
 // GetChatbotAnalyticsTrends returns daily trends for a chatbot
@@ -120,10 +114,7 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsTrends(w http.ResponseWriter, r *
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, data)
 }
 
 // GetSourceUsage returns source usage analytics for a chatbot

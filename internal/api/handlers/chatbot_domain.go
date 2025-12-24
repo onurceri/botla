@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
 )
@@ -27,9 +28,7 @@ func (h *ChatbotHandlers) UpdateBasicInfo(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // UpdateAppearance handles PUT /chatbots/{id}/appearance
@@ -51,9 +50,7 @@ func (h *ChatbotHandlers) UpdateAppearance(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // UpdateModelSettings handles PUT /chatbots/{id}/model
@@ -75,9 +72,7 @@ func (h *ChatbotHandlers) UpdateModelSettings(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // UpdateSecuritySettings handles PUT /chatbots/{id}/security
@@ -99,9 +94,7 @@ func (h *ChatbotHandlers) UpdateSecuritySettings(w http.ResponseWriter, r *http.
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // UpdateGuardrails handles PUT /chatbots/{id}/guardrails
@@ -123,9 +116,7 @@ func (h *ChatbotHandlers) UpdateGuardrails(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // UpdateHandoff handles PUT /chatbots/{id}/handoff
@@ -147,9 +138,7 @@ func (h *ChatbotHandlers) UpdateHandoff(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // UpdateRefresh handles PUT /chatbots/{id}/refresh
@@ -171,9 +160,7 @@ func (h *ChatbotHandlers) UpdateRefresh(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // UpdateScrapingConfig handles PUT /chatbots/{id}/scraping
@@ -195,9 +182,7 @@ func (h *ChatbotHandlers) UpdateScrapingConfig(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(updated)
+	api.WriteJSON(w, http.StatusOK, updated)
 }
 
 // Helper to get chatbot from context and verify ownership

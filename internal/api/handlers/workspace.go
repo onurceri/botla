@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
-	"strings"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
@@ -39,8 +40,7 @@ func (h *WorkspaceHandlers) Workspaces(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(workspaces)
+		api.WriteJSON(w, http.StatusOK, workspaces)
 
 	case http.MethodPost:
 		var req createWorkspaceRequest
@@ -55,16 +55,14 @@ func (h *WorkspaceHandlers) Workspaces(w http.ResponseWriter, r *http.Request) {
 
 		ws, err := h.WorkspaceService.CreateWorkspace(r.Context(), orgID, req.Name, req.Slug, req.ClientName)
 		if err != nil {
-			if strings.Contains(err.Error(), "exists") {
+			if errors.Is(err, services.ErrWorkspaceSlugExists) {
 				w.WriteHeader(http.StatusConflict)
 				return
 			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(ws)
+		api.WriteJSON(w, http.StatusCreated, ws)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -85,7 +83,7 @@ func (h *WorkspaceHandlers) UpdateWorkspace(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := h.WorkspaceService.UpdateWorkspace(r.Context(), wsID, req.Name, req.Slug, req.ClientName); err != nil {
-		if strings.Contains(err.Error(), "exists") {
+		if errors.Is(err, services.ErrWorkspaceSlugExists) {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
@@ -103,9 +101,8 @@ func (h *WorkspaceHandlers) DeleteWorkspace(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := h.WorkspaceService.DeleteWorkspace(r.Context(), wsID); err != nil {
-		if strings.Contains(err.Error(), "cannot delete the last") {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		if errors.Is(err, services.ErrLastWorkspace) {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)

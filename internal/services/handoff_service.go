@@ -165,7 +165,13 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 	}
 
 	// Update analytics asynchronously
+	// LI-001: Wrap in panic recovery to prevent crash
 	go func() {
+		defer func() {
+			if r := recover(); r != nil && s.Log != nil {
+				s.Log.Error("handoff_analytics_panic", map[string]any{"panic": r})
+			}
+		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		// isHandoff=true, tokens=0, responseTime=0 (not applicable for handoff event itself)

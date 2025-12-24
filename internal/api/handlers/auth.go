@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/auth"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/langconfig"
@@ -52,10 +53,8 @@ type refreshRequest struct {
 }
 
 // respondError sends a JSON error response
-func respondError(w http.ResponseWriter, code int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+func respondError(w http.ResponseWriter, status int, message string) {
+	api.WriteJSON(w, status, map[string]string{"error": message})
 }
 
 func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -261,11 +260,7 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err = json.NewEncoder(w).Encode(tokenResponse{Token: accessToken, RefreshToken: refreshToken}); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, tokenResponse{Token: accessToken, RefreshToken: refreshToken})
 }
 
 func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
@@ -274,9 +269,5 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]any{"user_id": id, "status": "ok"}); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, map[string]any{"user_id": id, "status": "ok"})
 }

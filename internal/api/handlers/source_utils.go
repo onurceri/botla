@@ -3,7 +3,6 @@ package handlers
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -14,15 +13,52 @@ import (
 
 // checkIngestionQuota validates monthly ingestion quota
 func (h *SourcesHandlers) checkIngestionQuota(r *http.Request, userID string, plan *models.Plan) error {
+	available := h.getAvailableIngestionCount(r, userID, plan)
+	if available <= 0 {
+		return &quotaError{"Monthly ingestion limit exceeded"}
+	}
+	return nil
+}
+
+// getAvailableIngestionCount returns how many more ingestions the user can perform this month
+func (h *SourcesHandlers) getAvailableIngestionCount(r *http.Request, userID string, plan *models.Plan) int {
 	usedSources, _, _ := db.GetMonthlyIngestionUsage(r.Context(), h.DB, userID, time.Now())
 	maxIngest := plan.Config.MaxMonthlyIngestions
 	if maxIngest <= 0 {
 		maxIngest = 50
 	}
 	if usedSources >= maxIngest {
-		return &quotaError{"Monthly ingestion limit exceeded"}
+		return 0
 	}
-	return nil
+	return maxIngest - usedSources
+}
+
+// persistAndEnqueueInternal saves the data source to database and enqueues for processing without writing response
+func (h *SourcesHandlers) persistAndEnqueueInternal(r *http.Request, ds *models.DataSource) (string, error) {
+	newID, err := db.CreateDataSource(r.Context(), h.DB, ds)
+	if err != nil {
+		h.logError("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": ds.ChatbotID, "source_type": ds.SourceType})
+		return "", err
+	}
+	if h.Queue != nil {
+		h.Queue.Enqueue(newID)
+	}
+	return newID, nil
+}
+
+// checkCooldown validates if enough time has passed since the last action
+func (h *SourcesHandlers) checkCooldown(r *http.Request, lastActionTime *time.Time, plan *models.Plan) (time.Duration, bool) {
+	cdMin := plan.Config.MinReAddCooldownMinutes
+	if cdMin <= 0 || lastActionTime == nil {
+		return 0, true
+	}
+
+	elapsed := time.Since(*lastActionTime)
+	cooldown := time.Duration(cdMin) * time.Minute
+	if elapsed < cooldown {
+		return cooldown - elapsed, false
+	}
+	return 0, true
 }
 
 // checkStorageQuota validates total storage quota
@@ -71,11 +107,4 @@ func isPDFContentType(ct, name string) bool {
 		return true
 	}
 	return strings.HasSuffix(name, ".pdf")
-}
-
-// writeJSON writes a JSON response
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }

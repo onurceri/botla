@@ -40,12 +40,11 @@ func cleanupStaleSchemas() {
 	}
 	defer func() { _ = db.Close() }()
 
-	// Find all schemas starting with 'test_'
+	// Find all schemas starting with 'botla_test_'
 	rows, err := db.Query(`
 		SELECT nspname 
 		FROM pg_namespace 
-		WHERE nspname LIKE 'test_%' 
-		AND nspname != 'test' 
+		WHERE nspname LIKE 'botla_test_%' 
 	`)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to list stale schemas: %v\n", err)
@@ -97,7 +96,7 @@ func getTestDSN(schema string) string {
 
 	dsn := "postgres://" + user + ":" + password + "@" + host + ":" + port + "/" + dbName + "?sslmode=disable"
 	if schema != "" {
-		dsn += "&options=-c%20search_path%3D" + schema
+		dsn += "&search_path=" + schema
 	}
 	return dsn
 }
@@ -186,7 +185,7 @@ func generateUniqueSchema(t *testing.T) string {
 	if _, err := rand.Read(bytes); err != nil {
 		t.Fatalf("failed to generate random bytes: %v", err)
 	}
-	return fmt.Sprintf("test_%s", hex.EncodeToString(bytes))
+	return fmt.Sprintf("botla_test_%s", hex.EncodeToString(bytes))
 }
 
 // createSchemaAndConnect creates a new schema, runs migrations, and returns a connection
@@ -201,7 +200,7 @@ func createSchemaAndConnect(t *testing.T, schema string) *sql.DB {
 	}
 
 	// Create the schema
-	if _, err = baseDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema)); err != nil {
+	if _, err = baseDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema)); err != nil {
 		_ = baseDB.Close()
 		t.Fatalf("create schema %s: %v", schema, err)
 	}
@@ -260,7 +259,7 @@ func dropSchema(t *testing.T, db *sql.DB, schema string) {
 	`, schema))
 
 	// Drop the schema
-	if _, err := baseDB.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema)); err != nil {
+	if _, err := baseDB.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err != nil {
 		t.Logf("warning: failed to drop schema %s: %v", schema, err)
 	}
 }

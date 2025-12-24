@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
@@ -69,12 +68,7 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Check monthly ingestion quota
-	usedSources, _, _ := db.GetMonthlyIngestionUsage(r.Context(), h.DB, userID, time.Now())
-	maxIngest := plan.Config.MaxMonthlyIngestions
-	if maxIngest <= 0 {
-		maxIngest = 50
-	}
-	monthlyAvailable := maxIngest - usedSources
+	monthlyAvailable := h.getAvailableIngestionCount(r, userID, plan)
 	if monthlyAvailable <= 0 {
 		api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyIngestionExceeded, cfg)
 		return
@@ -115,16 +109,12 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 			SourceURL:  &url,
 		}
 
-		newID, createErr := db.CreateDataSource(r.Context(), h.DB, &ds)
+		_, createErr := h.persistAndEnqueueInternal(r, &ds)
 		if createErr != nil {
 			errors = append(errors, "Failed to create source for: "+url)
 			continue
 		}
 
-		// Enqueue for processing
-		if h.Queue != nil {
-			h.Queue.Enqueue(newID)
-		}
 		createdCount++
 	}
 
@@ -139,11 +129,9 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		Errors:       errors,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	if createdCount > 0 {
-		w.WriteHeader(http.StatusCreated)
+		api.WriteJSON(w, http.StatusCreated, response)
 	} else {
-		w.WriteHeader(http.StatusOK)
+		api.WriteJSON(w, http.StatusOK, response)
 	}
-	_ = json.NewEncoder(w).Encode(response)
 }

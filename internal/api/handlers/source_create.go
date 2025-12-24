@@ -2,10 +2,9 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
@@ -160,14 +159,12 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 	}
 
 	// Check cooldown after delete
-	cdMin := plan.Config.MinReAddCooldownMinutes
-	if cdMin > 0 {
-		lastDel, _ := db.GetLastDeletedAtForURL(r.Context(), h.DB, chatbotID, url)
-		if lastDel.Valid {
-			if time.Since(lastDel.Time) < time.Duration(cdMin)*time.Minute {
-				api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrReaddCooldownActive, cfg)
-				return
-			}
+	lastDel, _ := db.GetLastDeletedAtForURL(r.Context(), h.DB, chatbotID, url)
+	if lastDel.Valid {
+		if remaining, ok := h.checkCooldown(r, &lastDel.Time, plan); !ok {
+			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", remaining.Seconds()))
+			api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrReaddCooldownActive, cfg)
+			return
 		}
 	}
 
@@ -239,18 +236,10 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 
 // persistAndEnqueue saves the data source to database and enqueues for processing
 func (h *SourcesHandlers) persistAndEnqueue(w http.ResponseWriter, r *http.Request, ds *models.DataSource) {
-	newID, err := db.CreateDataSource(r.Context(), h.DB, ds)
+	newID, err := h.persistAndEnqueueInternal(r, ds)
 	if err != nil {
-		h.logError("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": ds.ChatbotID, "source_type": ds.SourceType})
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if h.Queue != nil {
-		h.Queue.Enqueue(newID)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err = json.NewEncoder(w).Encode(map[string]string{"id": newID}); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusCreated, map[string]string{"id": newID})
 }

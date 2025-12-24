@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/logger"
@@ -55,9 +56,7 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	}
 
 	if req.SessionID == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "session_id is required"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "session_id is required"})
 		return
 	}
 
@@ -70,9 +69,7 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 
 	// Check if handoff is enabled
 	if !bot.HandoffEnabled {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "handoff is not enabled for this chatbot"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "handoff is not enabled for this chatbot"})
 		return
 	}
 
@@ -87,18 +84,11 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	svc := services.NewHandoffService(h.DB, h.Log)
 	result, err := svc.RequestHandoff(r.Context(), bot, conv.ID, req.Message)
 	if err != nil {
-		if h.Log != nil {
-			h.Log.Error("handoff_request_failed", map[string]any{"error": err.Error()})
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed to create handoff request"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create handoff request"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(result)
+	api.WriteJSON(w, http.StatusOK, result)
 }
 
 // ListHandoffRequests handles GET /api/chatbots/:id/handoff-requests
@@ -116,9 +106,7 @@ func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{"requests": requests})
+	api.WriteJSON(w, http.StatusOK, map[string]any{"requests": requests})
 }
 
 // UpdateHandoffRequest handles PATCH /api/chatbots/:id/handoff-requests/:requestId
@@ -146,9 +134,7 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 	// Update status
 	svc := services.NewHandoffService(h.DB, h.Log)
 	if err := svc.UpdateHandoffStatus(r.Context(), requestID, req.Status, req.AssignedTo); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
@@ -181,17 +167,13 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 	// Parse request
 	var req publicEmailSubmission
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid request body"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		return
 	}
 
 	// Validate email format (basic check)
 	if req.Email == "" || !strings.Contains(req.Email, "@") {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "valid email is required"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "valid email is required"})
 		return
 	}
 
@@ -204,18 +186,11 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 
 	// Update handoff request with email
 	if err := db.UpdateHandoffUserEmail(r.Context(), h.DB, requestID, req.Email); err != nil {
-		if h.Log != nil {
-			h.Log.Error("update_handoff_email_failed", map[string]any{"error": err.Error(), "request_id": requestID})
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed to save email"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save email"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"success": true,
 		"message": "Teşekkürler! E-posta adresiniz kaydedildi. En kısa sürede sizinle iletişime geçeceğiz.",
 	})
@@ -251,7 +226,5 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(detail)
+	api.WriteJSON(w, http.StatusOK, detail)
 }

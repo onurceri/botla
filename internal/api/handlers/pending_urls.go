@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/services"
@@ -60,7 +61,7 @@ type ClearResponse struct {
 // ListPendingURLs handles GET /api/v1/chatbots/:id/pending-urls
 func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
@@ -88,7 +89,7 @@ func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Req
 	urls, err := db.ListPendingURLs(r.Context(), h.DB, chatbotID, perPage, offset)
 	if err != nil {
 		h.logError("list_pending_urls_failed", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 
@@ -96,32 +97,32 @@ func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Req
 	total, err := db.CountPendingURLs(r.Context(), h.DB, chatbotID)
 	if err != nil {
 		h.logError("count_pending_urls_failed", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 
 	// Build response
-	urlResponses := make([]PendingURLResponse, len(urls))
-	for i, u := range urls {
-		urlResponses[i] = PendingURLResponse{
-			ID:           u.ID,
-			URL:          u.URL,
-			DiscoveredAt: u.DiscoveredAt.Format("2006-01-02T15:04:05Z"),
-		}
-	}
-
-	writeJSON(w, http.StatusOK, ListPendingURLsResponse{
-		URLs:    urlResponses,
+	resp := ListPendingURLsResponse{
+		URLs:    make([]PendingURLResponse, 0),
 		Total:   total,
 		Page:    page,
 		PerPage: perPage,
-	})
+	}
+	for _, u := range urls {
+		resp.URLs = append(resp.URLs, PendingURLResponse{
+			ID:           u.ID,
+			URL:          u.URL,
+			DiscoveredAt: u.DiscoveredAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	api.WriteJSON(w, http.StatusOK, resp)
 }
 
 // ApprovePendingURLs handles POST /api/v1/chatbots/:id/pending-urls/approve
 func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
@@ -133,12 +134,12 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	// Parse request body
 	var req ApproveRejectRequest
 	if err2 := json.NewDecoder(r.Body).Decode(&req); err2 != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
 		return
 	}
 
 	if len(req.URLIDs) == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no_urls_provided"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "no_urls_provided"})
 		return
 	}
 
@@ -146,7 +147,7 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	pendingURLs, err := db.GetPendingURLsByIDs(r.Context(), h.DB, chatbotID, req.URLIDs)
 	if err != nil {
 		h.logError("get_pending_urls_failed", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 
@@ -170,11 +171,11 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	approvedCount, err := db.UpdatePendingURLStatus(r.Context(), h.DB, chatbotID, req.URLIDs, "selected")
 	if err != nil {
 		h.logError("update_pending_urls_status_failed", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, ApproveResponse{
+	api.WriteJSON(w, http.StatusOK, ApproveResponse{
 		ApprovedCount:  approvedCount,
 		SourcesCreated: sourcesCreated,
 	})
@@ -183,7 +184,7 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 // RejectPendingURLs handles POST /api/v1/chatbots/:id/pending-urls/reject
 func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
@@ -195,12 +196,12 @@ func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.R
 	// Parse request body
 	var req ApproveRejectRequest
 	if err2 := json.NewDecoder(r.Body).Decode(&req); err2 != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
 		return
 	}
 
 	if len(req.URLIDs) == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no_urls_provided"})
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "no_urls_provided"})
 		return
 	}
 
@@ -208,11 +209,11 @@ func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.R
 	rejectedCount, err := db.UpdatePendingURLStatus(r.Context(), h.DB, chatbotID, req.URLIDs, "rejected")
 	if err != nil {
 		h.logError("update_pending_urls_status_failed", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, RejectResponse{
+	api.WriteJSON(w, http.StatusOK, RejectResponse{
 		RejectedCount: rejectedCount,
 	})
 }
@@ -220,7 +221,7 @@ func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.R
 // ClearPendingURLs handles POST /api/v1/chatbots/:id/pending-urls/clear
 func (h *PendingURLsHandlers) ClearPendingURLs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
@@ -233,11 +234,11 @@ func (h *PendingURLsHandlers) ClearPendingURLs(w http.ResponseWriter, r *http.Re
 	clearedCount, err := db.DeletePendingURLsByChatbot(r.Context(), h.DB, chatbotID)
 	if err != nil {
 		h.logError("clear_pending_urls_failed", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, ClearResponse{
+	api.WriteJSON(w, http.StatusOK, ClearResponse{
 		ClearedCount: clearedCount,
 	})
 }

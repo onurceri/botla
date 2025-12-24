@@ -50,8 +50,7 @@ func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request) {
 		actions = []*models.ChatbotAction{}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"actions": actions})
+	api.WriteJSON(w, http.StatusOK, map[string]any{"actions": actions})
 }
 
 func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request) {
@@ -112,9 +111,7 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(action)
+	api.WriteJSON(w, http.StatusCreated, action)
 }
 
 func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request) {
@@ -134,8 +131,7 @@ func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(action)
+	api.WriteJSON(w, http.StatusOK, action)
 }
 
 func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
@@ -209,8 +205,7 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(action)
+	api.WriteJSON(w, http.StatusOK, action)
 }
 
 func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request) {
@@ -272,8 +267,7 @@ func (h *ActionHandlers) GetLogs(w http.ResponseWriter, r *http.Request) {
 		logs = []*models.ActionExecutionLog{}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"logs":  logs,
 		"page":  page,
 		"limit": limit,

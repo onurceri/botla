@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/processing"
@@ -14,7 +14,7 @@ import (
 
 // GetSourceStatusOrDelete handles GET/DELETE for individual sources
 func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http.Request) {
-	s, _, _, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService, "")
+	s, _, _, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -46,11 +46,7 @@ func (h *SourcesHandlers) getSourceStatus(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "private, must-revalidate")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(s); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, s)
 }
 
 // deleteSource handles source deletion
@@ -71,7 +67,15 @@ func (h *SourcesHandlers) deleteSource(w http.ResponseWriter, r *http.Request, s
 	}
 
 	// Re-aggregate suggestions after source deletion (use background context)
-	go processing.ReAggregateSuggestionsForChatbot(context.Background(), h.DB, s.ChatbotID, h.Log)
+	// HI-002: Wrap in panic recovery to prevent server crash
+	go func() {
+		defer func() {
+			if r := recover(); r != nil && h.Log != nil {
+				h.Log.Error("re_aggregate_panic", map[string]any{"panic": r, "chatbot_id": s.ChatbotID})
+			}
+		}()
+		processing.ReAggregateSuggestionsForChatbot(context.Background(), h.DB, s.ChatbotID, h.Log)
+	}()
 
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -2,22 +2,16 @@ package router
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func registerSourceRoutes(mux *http.ServeMux, secret string, sh *handlers.SourcesHandlers) {
-	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/refresh") {
-			sh.RefreshSource(w, r)
-			return
-		}
-		if strings.HasSuffix(r.URL.Path, "/chunks") {
-			sh.GetSourceChunks(w, r)
-			return
-		}
-		sh.GetSourceStatusOrDelete(w, r)
-	})))
+	auth := middleware.AuthMiddleware(secret)
+
+	mux.Handle("POST /api/v1/sources/{id}/refresh", auth(http.HandlerFunc(sh.RefreshSource)))
+	mux.Handle("GET /api/v1/sources/{id}/chunks", auth(http.HandlerFunc(sh.GetSourceChunks)))
+	mux.Handle("GET /api/v1/sources/{id}", auth(http.HandlerFunc(sh.GetSourceStatusOrDelete)))
+	mux.Handle("DELETE /api/v1/sources/{id}", auth(http.HandlerFunc(sh.GetSourceStatusOrDelete)))
 }
