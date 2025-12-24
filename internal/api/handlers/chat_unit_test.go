@@ -58,6 +58,7 @@ func TestChat_NoInfoFound(t *testing.T) {
 	cr := map[string]any{"message": "selam", "session_id": "s-unit"}
 	crb, _ := json.Marshal(cr)
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+id+"/chat", bytes.NewReader(crb))
+	r2.SetPathValue("id", id)
 	rr2 := httptest.NewRecorder()
 	ch.Chat(rr2, ctx(r2))
 	if rr2.Code != http.StatusOK {

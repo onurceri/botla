@@ -77,6 +77,7 @@ func TestGetSourceChunks_Success(t *testing.T) {
 
 	// 4. Request
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/sources/%s/chunks?chatbot_id=%s", sourceID, chatbotID), nil)
+	req.SetPathValue("id", sourceID)
 
 	// Inject UserID into context (simulating AuthMiddleware)
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)

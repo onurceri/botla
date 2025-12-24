@@ -58,6 +58,7 @@ func TestSources_TextCreation(t *testing.T) {
 	mw.Close()
 
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody.Bytes()))
+	r2.SetPathValue("id", botID)
 	r2.Header.Set("Content-Type", mw.FormDataContentType())
 	rr2 := httptest.NewRecorder()
 	sh.ChatbotSources(rr2, ctx(r2))
@@ -112,6 +113,7 @@ func TestSources_URLCreation(t *testing.T) {
 	mw.Close()
 
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody.Bytes()))
+	r2.SetPathValue("id", botID)
 	r2.Header.Set("Content-Type", mw.FormDataContentType())
 	rr2 := httptest.NewRecorder()
 	sh.ChatbotSources(rr2, ctx(r2))
@@ -166,6 +168,7 @@ func TestSources_EmptyText_BadRequest(t *testing.T) {
 	mw.Close()
 
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody.Bytes()))
+	r2.SetPathValue("id", botID)
 	r2.Header.Set("Content-Type", mw.FormDataContentType())
 	rr2 := httptest.NewRecorder()
 	sh.ChatbotSources(rr2, ctx(r2))
@@ -214,6 +217,7 @@ func TestSources_EmptyURL_BadRequest(t *testing.T) {
 	mw.Close()
 
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody.Bytes()))
+	r2.SetPathValue("id", botID)
 	r2.Header.Set("Content-Type", mw.FormDataContentType())
 	rr2 := httptest.NewRecorder()
 	sh.ChatbotSources(rr2, ctx(r2))
@@ -264,6 +268,7 @@ func TestSources_DuplicateURL_Conflict(t *testing.T) {
 	mw1.Close()
 
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody1.Bytes()))
+	r2.SetPathValue("id", botID)
 	r2.Header.Set("Content-Type", mw1.FormDataContentType())
 	rr2 := httptest.NewRecorder()
 	sh.ChatbotSources(rr2, ctx(r2))
@@ -280,6 +285,7 @@ func TestSources_DuplicateURL_Conflict(t *testing.T) {
 	mw2.Close()
 
 	r3 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody2.Bytes()))
+	r3.SetPathValue("id", botID)
 	r3.Header.Set("Content-Type", mw2.FormDataContentType())
 	rr3 := httptest.NewRecorder()
 	sh.ChatbotSources(rr3, ctx(r3))
@@ -327,6 +333,7 @@ func TestSources_InvalidSourceType_BadRequest(t *testing.T) {
 	mw.Close()
 
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody.Bytes()))
+	r2.SetPathValue("id", botID)
 	r2.Header.Set("Content-Type", mw.FormDataContentType())
 	rr2 := httptest.NewRecorder()
 	sh.ChatbotSources(rr2, ctx(r2))

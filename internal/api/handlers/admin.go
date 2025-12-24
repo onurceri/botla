@@ -169,9 +169,3 @@ func (h *AdminHandlers) GetOrganization(w http.ResponseWriter, r *http.Request) 
 
 	api.WriteJSON(w, http.StatusOK, org)
 }
-
-// GetDetailedHealth returns system-wide health and resource usage.
-func (h *AdminHandlers) GetDetailedHealth(w http.ResponseWriter, r *http.Request) {
-	// Placeholder for now
-	w.WriteHeader(http.StatusNotImplemented)
-}

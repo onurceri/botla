@@ -59,6 +59,7 @@ func TestUpdateAppearance_NewFields(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID+"/appearance", bytes.NewReader(body))
+	req.SetPathValue("id", botID)
 	req.Header.Set("Content-Type", "application/json")
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rr := httptest.NewRecorder()
