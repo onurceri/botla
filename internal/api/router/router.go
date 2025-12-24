@@ -57,6 +57,9 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
 	adh := handlers.NewAdminHandlers(pool, adminSvc)
 	adhh := handlers.NewAdminHealthHandlers(pool, cfg)
+	aqh := handlers.NewAdminQueueHandlers(pool)
+	aeh := handlers.NewAdminErrorHandlers(pool)
+	aah := handlers.NewAdminAuditHandlers(pool)
 
 	// Health
 	mux.HandleFunc("/health", hh.Health)
@@ -97,7 +100,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	registerOrgRoutes(mux, cfg.JWT_SECRET, orgSvc, oh, wh)
 
 	// Admin
-	registerAdminRoutes(mux, adh, adhh, cfg.JWT_SECRET)
+	registerAdminRoutes(mux, adh, adhh, aqh, aeh, aah, cfg.JWT_SECRET)
 
 	return mux
 }

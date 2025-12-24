@@ -434,7 +434,7 @@ Dedicated page for monitoring all dependencies.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/admin/AdminSystemPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminSystemPage.tsx`**
   
   ```typescript
   import { useQuery } from '@tanstack/react-query';
@@ -512,7 +512,7 @@ Monitor and manage processing queues.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/admin/AdminQueuesPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminQueuesPage.tsx`**
   
   ```typescript
   import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -638,7 +638,7 @@ View and filter error logs.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/admin/AdminErrorsPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminErrorsPage.tsx`**
   
   ```typescript
   import { useState } from 'react';
@@ -856,7 +856,7 @@ Create remaining pages with basic structure.
   - Filter by status (processing, ready, failed)
   - Reprocess failed sources
 
-- [ ] **Create `frontend/src/pages/admin/AdminAuditPage.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminAuditPage.tsx`**
   - List admin actions
   - Filter by action type, admin user
 
