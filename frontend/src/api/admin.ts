@@ -202,8 +202,18 @@ export const deleteJob = async (id: string) => {
 /**
  * List system error logs.
  */
-export const listErrors = async (params?: { page?: number; severity?: string; type?: string }) => {
-  const { data } = await api.get<PaginatedResponse<ErrorLogEntry>>('/api/v1/admin/errors', { params })
+export const getErrors = async (severity?: string, offset?: number, limit?: number) => {
+  const { data } = await api.get<PaginatedResponse<ErrorLogEntry>>('/api/v1/admin/errors', {
+    params: { severity, offset, limit },
+  })
+  return data
+}
+
+/**
+ * Get summary statistics for recent errors.
+ */
+export const getErrorStats = async () => {
+  const { data } = await api.get<Record<string, number>>('/api/v1/admin/errors/stats')
   return data
 }
 
@@ -234,7 +244,7 @@ export const forceRefreshChatbot = async (id: string) => {
 /**
  * List admin audit logs.
  */
-export const listAuditLogs = async (params?: { page?: number }) => {
+export const listAuditLogs = async (params?: { offset?: number; limit?: number; admin_user_id?: string; action?: string; target_type?: string }) => {
   const { data } = await api.get<PaginatedResponse<any>>('/api/v1/admin/audit-logs', { params })
   return data
 }
