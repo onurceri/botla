@@ -1,42 +1,67 @@
+import { useQuery } from '@tanstack/react-query'
+import { Users, Building2, Bot, MessageSquare } from 'lucide-react'
+import { getOverviewStats } from '@/api/admin'
+import { StatsCard } from '@/features/admin/components/StatsCard'
+import { HealthPanel } from '@/features/admin/components/HealthPanel'
+
 /**
  * AdminDashboardPage - Main overview page for admin dashboard
  * Shows platform statistics and health status
  */
 export function AdminDashboardPage() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => getOverviewStats(),
+  })
+
+  // Format numbers for display
+  const formatNumber = (val: number | undefined) => (val ?? 0).toLocaleString()
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Genel Bakış</h1>
-      <p className="text-muted-foreground">
-        Admin dashboard genel bakış sayfası - İstatistikler ve sistem durumu burada görüntülenecek.
-      </p>
-
-      {/* Placeholder for stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-card rounded-lg p-6 border border-border animate-pulse">
-            <div className="h-4 bg-muted rounded w-1/2 mb-2" />
-            <div className="h-8 bg-muted rounded w-3/4" />
-          </div>
-        ))}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Genel Bakış</h1>
+        <p className="text-muted-foreground">
+          Platform genel istatistikleri ve sistem durumu.
+        </p>
       </div>
 
-      {/* Placeholder for panels */}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Total Users"
+          value={formatNumber(stats?.total_users)}
+          subtitle={stats?.users_today ? `+${stats.users_today} today` : undefined}
+          icon={<Users className="w-5 h-5" />}
+          isLoading={isLoading}
+        />
+        <StatsCard
+          title="Organizations"
+          value={formatNumber(stats?.total_organizations)}
+          icon={<Building2 className="w-5 h-5" />}
+          isLoading={isLoading}
+        />
+        <StatsCard
+          title="Chatbots"
+          value={formatNumber(stats?.total_chatbots)}
+          icon={<Bot className="w-5 h-5" />}
+          isLoading={isLoading}
+        />
+        <StatsCard
+          title="Total Messages"
+          value={formatNumber(stats?.total_messages)}
+          subtitle={stats?.conversations_today ? `+${stats.conversations_today} today` : undefined}
+          icon={<MessageSquare className="w-5 h-5" />}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Panels Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card rounded-lg p-6 border border-border animate-pulse">
-          <div className="h-6 bg-muted rounded w-1/3 mb-4" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-4 bg-muted rounded" />
-            ))}
-          </div>
-        </div>
-        <div className="bg-card rounded-lg p-6 border border-border animate-pulse">
-          <div className="h-6 bg-muted rounded w-1/3 mb-4" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-4 bg-muted rounded" />
-            ))}
-          </div>
+        <HealthPanel />
+        <div className="bg-card rounded-xl border border-border p-6 flex flex-col items-center justify-center text-center opacity-50">
+          <p className="text-sm font-medium text-muted-foreground">Recent Activity Panel</p>
+          <p className="text-xs text-muted-foreground mt-1">Coming Soon</p>
         </div>
       </div>
     </div>

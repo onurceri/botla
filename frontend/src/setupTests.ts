@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest'
-import { beforeEach, vi } from 'vitest'
+import { beforeEach, afterEach, vi } from 'vitest'
+import { cleanup } from '@testing-library/react'
 import * as React from 'react'
 import { api } from '@/api/client'
 
@@ -49,6 +50,10 @@ beforeEach(() => {
       throw createUnexpectedHttpCallError(`api.${method}`, args)
     })
   }
+})
+
+afterEach(() => {
+  cleanup()
 })
 
 const localStorageStore: Record<string, string> = {}
