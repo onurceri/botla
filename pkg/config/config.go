@@ -17,6 +17,7 @@ type Config struct {
 	DB_PASSWORD           string
 	DB_SCHEMA             string
 	DB_SSLMODE            string
+	REDIS_URL             string
 	QDRANT_URL            string
 	QDRANT_API_KEY        string
 	OPENAI_API_KEY        string
@@ -102,6 +103,7 @@ func LoadConfig() *Config {
 			}
 			return "disable"
 		}(),
+		REDIS_URL:      os.Getenv("REDIS_URL"),
 		QDRANT_URL:     os.Getenv("QDRANT_URL"),
 		QDRANT_API_KEY: os.Getenv("QDRANT_API_KEY"),
 		OPENAI_API_KEY: os.Getenv("OPENAI_API_KEY"),

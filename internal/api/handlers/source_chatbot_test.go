@@ -32,22 +32,26 @@ func TestChatbotSources_InvalidPath(t *testing.T) {
 	ctx := context.WithValue(context.Background(), middleware.ContextKeyUserID, "user-123")
 
 	tests := []struct {
-		path string
-		want int
+		name    string
+		pathVal string
+		want    int
 	}{
-		{"/api/v1/chatbots//sources", http.StatusNotFound},
-		{"/api/v1/chatbots/new/sources", http.StatusBadRequest},
+		{"empty id", "", http.StatusNotFound},
+		{"id is 'new'", "new", http.StatusBadRequest},
 	}
 
 	for _, tc := range tests {
-		r := httptest.NewRequest(http.MethodGet, tc.path, nil)
-		r = r.WithContext(ctx)
-		rr := httptest.NewRecorder()
-		sh.ChatbotSources(rr, r)
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+tc.pathVal+"/sources", nil)
+			r.SetPathValue("id", tc.pathVal)
+			r = r.WithContext(ctx)
+			rr := httptest.NewRecorder()
+			sh.ChatbotSources(rr, r)
 
-		if rr.Code != tc.want {
-			t.Errorf("ChatbotSources(%q) status = %d, want %d", tc.path, rr.Code, tc.want)
-		}
+			if rr.Code != tc.want {
+				t.Errorf("ChatbotSources(id=%q) status = %d, want %d", tc.pathVal, rr.Code, tc.want)
+			}
+		})
 	}
 }
 
@@ -83,6 +87,7 @@ func TestChatbotSources_MethodNotAllowed(t *testing.T) {
 	// Test unsupported methods
 	for _, method := range []string{http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		r := httptest.NewRequest(method, "/api/v1/chatbots/"+botID+"/sources", nil)
+		r.SetPathValue("id", botID)
 		r = r.WithContext(ctx)
 		rr := httptest.NewRecorder()
 		sh.ChatbotSources(rr, r)

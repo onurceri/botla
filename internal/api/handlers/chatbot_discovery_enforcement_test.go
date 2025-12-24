@@ -55,6 +55,7 @@ func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 	update := map[string]any{"discovery_mode": "auto"}
 	uj, _ := json.Marshal(update)
 	r2 := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(uj))
+	r2.SetPathValue("id", botID)
 	rr2 := httptest.NewRecorder()
 	h.ByID(rr2, ctx(r2))
 	if rr2.Code != http.StatusForbidden {

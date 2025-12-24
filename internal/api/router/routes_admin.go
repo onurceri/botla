@@ -8,7 +8,7 @@ import (
 	pkgMiddleware "github.com/onurceri/botla-co/pkg/middleware"
 )
 
-func registerAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, secret string) {
+func registerAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, ahh *handlers.AdminHealthHandlers, secret string) {
 	// Base admin handler with Auth and Admin middleware
 	adminChain := func(h http.HandlerFunc) http.Handler {
 		return pkgMiddleware.AuthMiddleware(secret)(
@@ -29,5 +29,6 @@ func registerAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, secret 
 	mux.Handle("GET /api/v1/admin/organizations/{id}", adminChain(ah.GetOrganization))
 
 	// System Health
-	mux.Handle("GET /api/v1/admin/health/detailed", adminChain(ah.GetDetailedHealth))
+	mux.Handle("GET /api/v1/admin/health/detailed", adminChain(ahh.GetDetailedHealth))
 }
+

@@ -54,6 +54,7 @@ func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
 	}
 	body := []byte(`{"handoff_enabled":true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))
+	req.SetPathValue("id", botID)
 	req.Header.Set("Content-Type", "application/json")
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rr := httptest.NewRecorder()

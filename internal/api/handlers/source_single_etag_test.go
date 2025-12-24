@@ -49,6 +49,7 @@ func TestSources_ETag_Status(t *testing.T) {
 	_ = mw.WriteField("text", "hello world")
 	mw.Close()
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody.Bytes()))
+	r2.SetPathValue("id", botID)
 	r2.Header.Set("Content-Type", mw.FormDataContentType())
 	rr2 := httptest.NewRecorder()
 	sh.ChatbotSources(rr2, ctx(r2))
@@ -61,6 +62,7 @@ func TestSources_ETag_Status(t *testing.T) {
 
 	// GET status and capture ETag
 	r3 := httptest.NewRequest(http.MethodGet, "/api/v1/sources/"+sid, nil)
+	r3.SetPathValue("id", sid)
 	rr3 := httptest.NewRecorder()
 	sh.GetSourceStatusOrDelete(rr3, ctx(r3))
 	if rr3.Code != http.StatusOK {
@@ -73,6 +75,7 @@ func TestSources_ETag_Status(t *testing.T) {
 
 	// GET with If-None-Match should be 304
 	r4 := httptest.NewRequest(http.MethodGet, "/api/v1/sources/"+sid, nil)
+	r4.SetPathValue("id", sid)
 	r4.Header.Set("If-None-Match", etag)
 	rr4 := httptest.NewRecorder()
 	sh.GetSourceStatusOrDelete(rr4, ctx(r4))

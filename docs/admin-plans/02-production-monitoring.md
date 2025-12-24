@@ -14,7 +14,7 @@ Extend the existing health handler to provide detailed status.
 
 ### Tasks
 
-- [ ] **Create `internal/api/handlers/admin_health.go`**
+- [x] **Create `internal/api/handlers/admin_health.go`**
   
   ```go
   package handlers
@@ -46,7 +46,7 @@ Extend the existing health handler to provide detailed status.
   }
   ```
 
-- [ ] **Implement dependency checks**
+- [x] **Implement dependency checks**
   
   Create helper functions:
   ```go
@@ -57,7 +57,7 @@ Extend the existing health handler to provide detailed status.
   func checkStorage(ctx context.Context, cfg *config.Config) DependencyStatus  // S3/R2
   ```
 
-- [ ] **Add Redis health check**
+- [x] **Add Redis health check**
   
   ```go
   func checkRedis(ctx context.Context, cfg *config.Config) DependencyStatus {
@@ -87,7 +87,7 @@ Extend the existing health handler to provide detailed status.
   }
   ```
 
-- [ ] **Add OpenAI health check** (ping models endpoint)
+- [x] **Add OpenAI health check** (ping models endpoint)
   
   ```go
   func checkOpenAI(ctx context.Context, cfg *config.Config) DependencyStatus {
@@ -118,7 +118,7 @@ Extend the existing health handler to provide detailed status.
   }
   ```
 
-- [ ] **Add storage health check** (S3/R2)
+- [x] **Add storage health check** (S3/R2)
   
   ```go
   func checkStorage(ctx context.Context, cfg *config.Config) DependencyStatus {

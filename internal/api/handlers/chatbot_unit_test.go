@@ -49,6 +49,7 @@ func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
 	}
 	body := []byte(`{"refresh_policy":"auto","refresh_frequency":"weekly"}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))
+	req.SetPathValue("id", botID)
 	req.Header.Set("Content-Type", "application/json")
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rr := httptest.NewRecorder()
@@ -93,6 +94,7 @@ func TestUpdateChatbot_SecureEmbedForbidden_ForFreePlan(t *testing.T) {
 	}
 	body := []byte(`{"secure_embed_enabled": true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))
+	req.SetPathValue("id", botID)
 	req.Header.Set("Content-Type", "application/json")
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rr := httptest.NewRecorder()
