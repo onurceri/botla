@@ -129,7 +129,7 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.generateAndSendTokens(w, r, userID, http.StatusCreated)
+	h.generateAndSendTokens(w, r, userID, false, http.StatusCreated)
 }
 
 // slugifyEmail converts email to URL-safe slug
@@ -162,7 +162,8 @@ func (h *AuthHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var userID string
 	var hash string
-	err := h.DB.QueryRowContext(r.Context(), "SELECT id, password_hash FROM users WHERE LOWER(email) = LOWER($1)", req.Email).Scan(&userID, &hash)
+	var isPlatformAdmin bool
+	err := h.DB.QueryRowContext(r.Context(), "SELECT id, password_hash, is_platform_admin FROM users WHERE LOWER(email) = LOWER($1)", req.Email).Scan(&userID, &hash, &isPlatformAdmin)
 	if err == sql.ErrNoRows {
 		respondError(w, http.StatusUnauthorized, "Invalid credentials")
 		return
@@ -176,7 +177,7 @@ func (h *AuthHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.generateAndSendTokens(w, r, userID, http.StatusOK)
+	h.generateAndSendTokens(w, r, userID, isPlatformAdmin, http.StatusOK)
 }
 
 func (h *AuthHandlers) RefreshHandler(w http.ResponseWriter, r *http.Request) {
@@ -216,7 +217,7 @@ func (h *AuthHandlers) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.generateAndSendTokens(w, r, claims.UserID, http.StatusOK)
+	h.generateAndSendTokens(w, r, claims.UserID, claims.IsPlatformAdmin, http.StatusOK)
 }
 
 func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -241,14 +242,14 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Request, userID string, status int) {
-	accessToken, err := auth.GenerateToken(h.Secret, userID, "access", 1*time.Hour)
+func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Request, userID string, isPlatformAdmin bool, status int) {
+	accessToken, err := auth.GenerateToken(h.Secret, userID, isPlatformAdmin, "access", 1*time.Hour)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	refreshToken, err := auth.GenerateToken(h.Secret, userID, "refresh", 7*24*time.Hour)
+	refreshToken, err := auth.GenerateToken(h.Secret, userID, isPlatformAdmin, "refresh", 7*24*time.Hour)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -260,7 +261,7 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	api.WriteJSON(w, http.StatusOK, tokenResponse{Token: accessToken, RefreshToken: refreshToken})
+	api.WriteJSON(w, status, tokenResponse{Token: accessToken, RefreshToken: refreshToken})
 }
 
 func ProtectedHandler(w http.ResponseWriter, r *http.Request) {

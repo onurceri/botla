@@ -145,16 +145,17 @@ func (s *ChatService) appendUserMessageWithContext(cc *chatContext) {
 	}
 
 	var content string
-	if strings.TrimSpace(contextText) != "" {
+	switch {
+	case strings.TrimSpace(contextText) != "":
 		content = RAGContextIntroEN + contextText + "\n\nQuestion:\n" + cc.Request.Message
-	} else if cc.SearchResult.Tier == rag.TierLow && len(cc.Actions) > 0 {
+	case cc.SearchResult.Tier == rag.TierLow && len(cc.Actions) > 0:
 		// Tool-only mode: No RAG context but custom actions available.
 		// Prevent LLM from using general knowledge - only allow tool usage.
 		content = "[IMPORTANT: You have NO knowledge sources available for this query. " +
 			"You may ONLY use the provided tools to help the user. " +
 			"If no tool can help with their request, politely say you don't have information on this topic. " +
 			"Do NOT make up facts or use general knowledge.]\n\n" + cc.Request.Message
-	} else {
+	default:
 		content = cc.Request.Message
 	}
 

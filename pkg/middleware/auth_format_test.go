@@ -24,7 +24,7 @@ func TestAuthMiddleware_BearerButTamperedToken(t *testing.T) {
 	mw := AuthMiddleware("secret")
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	tok, _ := auth.GenerateToken("secret", "u1", "access", time.Minute)
+	tok, _ := auth.GenerateToken("secret", "u1", false, "access", time.Minute)
 	req.Header.Set("Authorization", "Bearer "+tok+"x")
 	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })).ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {

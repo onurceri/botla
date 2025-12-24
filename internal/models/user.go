@@ -18,6 +18,7 @@ type User struct {
 	OnboardingStep      int             `json:"onboarding_step"`
 	OnboardingSkipped   bool            `json:"onboarding_skipped"`
 	OnboardingData      *OnboardingData `json:"onboarding_data,omitempty"`
+	IsPlatformAdmin     bool            `json:"is_platform_admin"`
 }
 
 type OnboardingData struct {

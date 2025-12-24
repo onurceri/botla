@@ -12,10 +12,12 @@ func GetUserByID(ctx context.Context, pool *sql.DB, id string) (*models.User, er
 	var onboardingDataJSON []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT id, email, full_name, avatar_url, plan_id, preferred_language_id, created_at,
-               onboarding_completed, onboarding_step, onboarding_skipped, onboarding_data
+               onboarding_completed, onboarding_step, onboarding_skipped, onboarding_data,
+               is_platform_admin
         FROM users WHERE id=$1 AND deleted_at IS NULL`, id).Scan(
 		&u.ID, &u.Email, &u.FullName, &u.AvatarURL, &u.PlanID, &u.PreferredLanguageID, &u.CreatedAt,
 		&u.OnboardingCompleted, &u.OnboardingStep, &u.OnboardingSkipped, &onboardingDataJSON,
+		&u.IsPlatformAdmin,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -37,10 +39,12 @@ func GetUserByEmail(ctx context.Context, pool *sql.DB, email string) (*models.Us
 	var onboardingDataJSON []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT id, email, full_name, avatar_url, plan_id, preferred_language_id, created_at,
-               onboarding_completed, onboarding_step, onboarding_skipped, onboarding_data
+               onboarding_completed, onboarding_step, onboarding_skipped, onboarding_data,
+               is_platform_admin
         FROM users WHERE email=$1 AND deleted_at IS NULL`, email).Scan(
 		&u.ID, &u.Email, &u.FullName, &u.AvatarURL, &u.PlanID, &u.PreferredLanguageID, &u.CreatedAt,
 		&u.OnboardingCompleted, &u.OnboardingStep, &u.OnboardingSkipped, &onboardingDataJSON,
+		&u.IsPlatformAdmin,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {

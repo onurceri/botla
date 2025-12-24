@@ -8,7 +8,7 @@ import (
 func TestGenerateAndVerifyToken(t *testing.T) {
 	secret := "s"
 	id := "user-1"
-	tok, err := GenerateToken(secret, id, "access", time.Minute)
+	tok, err := GenerateToken(secret, id, false, "access", time.Minute)
 	if err != nil {
 		t.Fatalf("generate error: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestGenerateAndVerifyToken(t *testing.T) {
 func TestExpiredToken(t *testing.T) {
 	secret := "s"
 	id := "user-1"
-	tok, err := GenerateToken(secret, id, "access", -time.Minute)
+	tok, err := GenerateToken(secret, id, false, "access", -time.Minute)
 	if err != nil {
 		t.Fatalf("generate error: %v", err)
 	}

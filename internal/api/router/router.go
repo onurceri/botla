@@ -23,6 +23,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	workspaceSvc := services.NewWorkspaceService(pool, log)
 	analyticsSvc := services.NewAnalyticsService(pool, log)
 	chatbotSvc := services.NewChatbotService(pool, log)
+	adminSvc := services.NewAdminService(pool, log)
 
 	factory := rag.NewClientFactory(cfg)
 	oaiClient, _ := rag.NewOpenAIClient(cfg)
@@ -54,6 +55,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
+	adh := handlers.NewAdminHandlers(pool, adminSvc)
 
 	// Health
 	mux.HandleFunc("/health", hh.Health)
@@ -76,7 +78,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
 
 	// Chatbots Dispatch (Sub-routes)
-	mux.Handle("/api/v1/chatbots/", chatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anh, sugh))
+	mux.Handle("/api/v1/chatbots/", ChatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anh, sugh))
 
 	// Public Routes
 	registerPublicRoutes(mux, cfg.JWT_SECRET, hoh, ph, pool)
@@ -85,13 +87,16 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 
 	// Sources
-	registerSourceRoutes(mux, cfg.JWT_SECRET, sh)
+	RegisterSourceRoutes(mux, cfg.JWT_SECRET, sh)
 
 	// Analytics
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(anh.GetAnalytics))))
 
 	// Organizations & Workspaces
 	registerOrgRoutes(mux, cfg.JWT_SECRET, orgSvc, oh, wh)
+
+	// Admin
+	registerAdminRoutes(mux, adh, cfg.JWT_SECRET)
 
 	return mux
 }

@@ -38,7 +38,7 @@ func TestAuth_RefreshWithExpiredToken(t *testing.T) {
 	res.Body.Close()
 
 	// Generate an expired refresh token
-	expiredRefresh, err := auth.GenerateToken(te.Cfg.JWT_SECRET, userID, "refresh", -1*time.Hour)
+	expiredRefresh, err := auth.GenerateToken(te.Cfg.JWT_SECRET, userID, false, "refresh", -1*time.Hour)
 	if err != nil {
 		t.Fatalf("failed to generate token: %v", err)
 	}

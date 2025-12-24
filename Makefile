@@ -77,6 +77,12 @@ be-run-no-pdf:
 be-run-test:
 	 DB_SCHEMA=test go run cmd/server/main.go
 
+admin-promote:
+	go run cmd/cli/main.go -email=$(email) -make-admin=true
+
+admin-demote:
+	go run cmd/cli/main.go -email=$(email) -make-admin=false
+
 fe-run:
 	 cd frontend && npm run dev
 

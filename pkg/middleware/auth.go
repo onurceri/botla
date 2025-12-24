@@ -13,7 +13,10 @@ import (
 
 type contextKey string
 
-const ContextKeyUserID contextKey = "userID"
+const (
+	ContextKeyUserID          contextKey = "userID"
+	ContextKeyIsPlatformAdmin contextKey = "isPlatformAdmin"
+)
 
 type authErrorResponse struct {
 	Error string `json:"error"`
@@ -59,6 +62,7 @@ func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), ContextKeyUserID, claims.UserID)
+			ctx = context.WithValue(ctx, ContextKeyIsPlatformAdmin, claims.IsPlatformAdmin)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -96,6 +100,7 @@ func OptionalAuthMiddleware(secret string) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), ContextKeyUserID, claims.UserID)
+			ctx = context.WithValue(ctx, ContextKeyIsPlatformAdmin, claims.IsPlatformAdmin)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -105,4 +110,10 @@ func UserIDFromContext(ctx context.Context) (string, bool) {
 	v := ctx.Value(ContextKeyUserID)
 	s, ok := v.(string)
 	return s, ok
+}
+
+func IsPlatformAdminFromContext(ctx context.Context) bool {
+	v := ctx.Value(ContextKeyIsPlatformAdmin)
+	b, ok := v.(bool)
+	return ok && b
 }

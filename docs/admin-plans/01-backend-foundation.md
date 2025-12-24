@@ -14,7 +14,7 @@ Create the database migration for admin tables.
 
 ### Tasks
 
-- [ ] **Create migration file** `db/migrations/000041_admin_platform.up.sql`
+- [x] **Create migration file** `db/migrations/000041_admin_platform.up.sql`
   
   Add the following tables and columns:
   
@@ -74,7 +74,7 @@ Create the database migration for admin tables.
   CREATE INDEX idx_platform_metrics_name_time ON platform_metrics(metric_name, recorded_at DESC);
   ```
 
-- [ ] **Create down migration** `db/migrations/000041_admin_platform.down.sql`
+- [x] **Create down migration** `db/migrations/000041_admin_platform.down.sql`
   
   ```sql
   DROP TABLE IF EXISTS platform_metrics;
@@ -84,12 +84,12 @@ Create the database migration for admin tables.
   ALTER TABLE users DROP COLUMN IF EXISTS is_platform_admin;
   ```
 
-- [ ] **Run migration**
+- [x] **Run migration**
   ```bash
   make migrate-up
   ```
 
-- [ ] **Verify migration**
+- [x] **Verify migration**
   ```bash
   make psql
   # Then run:
@@ -107,7 +107,7 @@ Update the User model to include the admin flag.
 
 ### Tasks
 
-- [ ] **Update `internal/models/user.go`**
+- [x] **Update `internal/models/user.go`**
   
   Add field to User struct:
   ```go
@@ -117,7 +117,7 @@ Update the User model to include the admin flag.
   }
   ```
 
-- [ ] **Update `internal/db/user.go`**
+- [x] **Update `internal/db/user.go`**
   
   Add `is_platform_admin` to SELECT queries in:
   - `GetUserByID()`
@@ -131,7 +131,7 @@ Update the User model to include the admin flag.
   FROM users WHERE id=$1 AND deleted_at IS NULL
   ```
 
-- [ ] **Update auth token generation** in `internal/auth/jwt.go`
+- [x] **Update auth token generation** in `internal/auth/jwt.go`
   
   Add `is_platform_admin` to JWT claims so it's available on every request.
 
@@ -143,7 +143,7 @@ Create middleware to protect admin routes.
 
 ### Tasks
 
-- [ ] **Create `internal/api/middleware/admin.go`**
+- [x] **Create `internal/api/middleware/admin.go`**
   
   ```go
   package middleware
@@ -171,7 +171,7 @@ Create middleware to protect admin routes.
   }
   ```
 
-- [ ] **Write unit tests** `internal/api/middleware/admin_test.go`
+- [x] **Write unit tests** `internal/api/middleware/admin_test.go`
   
   Test cases:
   - Request without user context returns 401
@@ -186,7 +186,7 @@ Create service for logging admin actions.
 
 ### Tasks
 
-- [ ] **Create `internal/db/admin_audit.go`**
+- [x] **Create `internal/db/admin_audit.go`**
   
   ```go
   package db
@@ -217,7 +217,7 @@ Create service for logging admin actions.
   }
   ```
 
-- [ ] **Create `internal/services/admin_service.go`**
+- [x] **Create `internal/services/admin_service.go`**
   
   ```go
   package services
@@ -249,7 +249,7 @@ Set up the admin route group.
 
 ### Tasks
 
-- [ ] **Create `internal/api/routes/admin.go`**
+- [x] **Create `internal/api/routes/admin.go`**
   
   ```go
   package routes
@@ -286,7 +286,7 @@ Set up the admin route group.
   }
   ```
 
-- [ ] **Register routes in main router** (`cmd/server/main.go` or router setup file)
+- [x] **Register routes in main router** (`internal/api/router/router.go`)
   
   Add:
   ```go
@@ -301,7 +301,7 @@ Create the main dashboard stats endpoint.
 
 ### Tasks
 
-- [ ] **Create `internal/api/handlers/admin_stats.go`**
+- [x] **Create admin stats handler** (implemented in `internal/api/handlers/admin.go`)
   
   ```go
   package handlers
@@ -328,7 +328,7 @@ Create the main dashboard stats endpoint.
   }
   ```
 
-- [ ] **Create `internal/db/admin_stats.go`**
+- [x] **Create `internal/db/admin_stats.go`**
   
   Queries for:
   - `GetPlatformUserCount(ctx, db, filter)`
@@ -345,7 +345,7 @@ Create user management endpoints.
 
 ### Tasks
 
-- [ ] **Create `internal/api/handlers/admin_users.go`**
+- [x] **Create `internal/api/handlers/admin_users.go`**
   
   Implement:
   - `ListUsers(w, r)` - paginated list with search/filter
@@ -370,7 +370,7 @@ Create user management endpoints.
   }
   ```
 
-- [ ] **Create `internal/db/admin_users.go`**
+- [x] **Create `internal/db/admin_users.go`**
   
   Queries for:
   - `ListUsersAdmin(ctx, db, params)` - with pagination
@@ -386,7 +386,7 @@ Create organization management endpoints.
 
 ### Tasks
 
-- [ ] **Create `internal/api/handlers/admin_orgs.go`**
+- [x] **Create `internal/api/handlers/admin_orgs.go`**
   
   Implement:
   - `ListOrganizations(w, r)` - paginated list with stats
@@ -411,7 +411,7 @@ Create organization management endpoints.
   }
   ```
 
-- [ ] **Create `internal/db/admin_orgs.go`**
+- [x] **Create `internal/db/admin_orgs.go`**
   
   Queries for:
   - `ListOrganizationsAdmin(ctx, db, params)`
@@ -425,7 +425,7 @@ Create CLI command to make a user admin.
 
 ### Tasks
 
-- [ ] **Create `cmd/cli/main.go`** (if doesn't exist)
+- [x] **Create `cmd/cli/main.go`** (if doesn't exist)
   
   ```go
   package main
@@ -467,7 +467,7 @@ Create CLI command to make a user admin.
   }
   ```
 
-- [ ] **Add Makefile target**
+- [x] **Add Makefile target**
   
   ```makefile
   cli-make-admin:

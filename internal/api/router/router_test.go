@@ -91,7 +91,7 @@ func TestRegisterPublicRoutes(t *testing.T) {
 func TestRegisterSourceRoutes(t *testing.T) {
 	mux := http.NewServeMux()
 	sh := &handlers.SourcesHandlers{}
-	registerSourceRoutes(mux, "secret", sh)
+	RegisterSourceRoutes(mux, "secret", sh)
 
 	// Should be protected by middleware -> 401
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/sources/123", nil)
@@ -144,7 +144,7 @@ func TestChatbotsDispatchHandler_Routes(t *testing.T) {
 	sugh := &handlers.SuggestionsHandlers{}
 
 	// Use nil for the remaining arguments if any
-	h := chatbotsDispatchHandler("secret", ch, sh, chh, puh, acth, hoh, anh, sugh)
+	h := ChatbotsDispatchHandler("secret", ch, sh, chh, puh, acth, hoh, anh, sugh)
 
 	// Since everything is protected by AuthMiddleware, we expect 401 for all valid routes if no token provided.
 	// If a route is NOT registered, we might get 404 (if it falls through) OR 401 (if the whole handler is wrapped).
