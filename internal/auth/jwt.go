@@ -14,12 +14,13 @@ const (
 )
 
 type Claims struct {
-	UserID    string
-	TokenType string
+	UserID          string
+	TokenType       string
+	IsPlatformAdmin bool
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(secret string, userID string, tokenType string, ttl time.Duration) (string, error) {
+func GenerateToken(secret string, userID string, isPlatformAdmin bool, tokenType string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	randomBytes := make([]byte, 16)
 	if _, err := rand.Read(randomBytes); err != nil {
@@ -27,8 +28,9 @@ func GenerateToken(secret string, userID string, tokenType string, ttl time.Dura
 	}
 	jti := hex.EncodeToString(randomBytes)
 	claims := Claims{
-		UserID:    userID,
-		TokenType: tokenType,
+		UserID:          userID,
+		TokenType:       tokenType,
+		IsPlatformAdmin: isPlatformAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        jti,
 			Subject:   userID,

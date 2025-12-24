@@ -206,8 +206,8 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 				}
 				// CR-003: Secure origin validation using proper URL parsing
 				// Prevents bypass via origins like "https://example.com.evil.com"
-				parsed, err := url.Parse(origin)
-				if err == nil {
+				parsed, pErr := url.Parse(origin)
+				if pErr == nil {
 					hostname := parsed.Hostname()
 					if hostname == d || strings.HasSuffix(hostname, "."+d) {
 						allowed = true

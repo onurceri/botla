@@ -114,7 +114,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	}
 
 	q, _ := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC)
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore, QdrantClient: actualVC}
+	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore, QdrantClient: actualVC, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	factory := rag.NewClientFactory(cfg)
 	if llm != nil {
 		factory.RegisterClient("openai", llm)
@@ -124,14 +124,14 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	if llmEmbed, ok := actualLLM.(rag.EmbeddingClient); ok {
 		chatSvc.Embedder = llmEmbed
 	}
-	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc}
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 
 	// Create mock tool name generator for tests
 	mockClient := &mockToolsClient{}
 	tng := rag.NewToolNameGenerator(mockClient)
-	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: tng}
-	handh := &handlers.HandoffHandlers{DB: pool, Log: log}
-	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q}
+	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: tng, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	handh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 
 	// Actions routes
 	mux.Handle("GET /api/v1/chatbots/{id}/actions", protected(http.HandlerFunc(acth.List)))

@@ -7,7 +7,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
-func registerSourceRoutes(mux *http.ServeMux, secret string, sh *handlers.SourcesHandlers) {
+func RegisterSourceRoutes(mux *http.ServeMux, secret string, sh *handlers.SourcesHandlers) {
 	auth := middleware.AuthMiddleware(secret)
 
 	mux.Handle("POST /api/v1/sources/{id}/refresh", auth(http.HandlerFunc(sh.RefreshSource)))

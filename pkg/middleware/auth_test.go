@@ -23,7 +23,7 @@ func TestAuthMiddleware_InvalidTokenType(t *testing.T) {
 	mw := AuthMiddleware("secret")
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	tok, _ := auth.GenerateToken("secret", "u1", "refresh", time.Minute)
+	tok, _ := auth.GenerateToken("secret", "u1", false, "refresh", time.Minute)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })).ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
@@ -35,7 +35,7 @@ func TestAuthMiddleware_ValidAccess(t *testing.T) {
 	mw := AuthMiddleware("secret")
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	tok, _ := auth.GenerateToken("secret", "u1", "access", time.Minute)
+	tok, _ := auth.GenerateToken("secret", "u1", false, "access", time.Minute)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })).ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -62,7 +62,7 @@ func TestOptionalAuthMiddleware_ValidAccess(t *testing.T) {
 	mw := OptionalAuthMiddleware("secret")
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/public", nil)
-	tok, _ := auth.GenerateToken("secret", "u1", "access", time.Minute)
+	tok, _ := auth.GenerateToken("secret", "u1", false, "access", time.Minute)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid, ok := UserIDFromContext(r.Context())

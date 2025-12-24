@@ -3,7 +3,7 @@ package auth
 import "testing"
 
 func TestVerifyToken_WrongSecret(t *testing.T) {
-	tok, err := GenerateToken("secret1", "u", "access", 0)
+	tok, err := GenerateToken("secret1", "u", false, "access", 0)
 	if err != nil {
 		t.Fatalf("gen err: %v", err)
 	}

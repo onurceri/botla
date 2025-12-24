@@ -48,7 +48,7 @@ func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 	}
 	resPing.Body.Close()
 
-	expired, _ := auth.GenerateToken(te.Cfg.JWT_SECRET, "expired-user", "access", -time.Minute)
+	expired, _ := auth.GenerateToken(te.Cfg.JWT_SECRET, "expired-user", false, "access", -time.Minute)
 	reqExp, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	reqExp.Header.Set("Authorization", "Bearer "+expired)
 	resExp, _ := http.DefaultClient.Do(reqExp)
