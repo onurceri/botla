@@ -15,12 +15,13 @@ import (
 
 // MeResponse represents the /me endpoint response
 type MeResponse struct {
-	ID            string         `json:"id"`
-	Email         string         `json:"email"`
-	CreatedAt     time.Time      `json:"created_at"`
-	FullName      *string        `json:"full_name,omitempty"`
-	AvatarURL     *string        `json:"avatar_url,omitempty"`
-	Organizations []Organization `json:"organizations,omitempty"`
+	ID              string         `json:"id"`
+	Email           string         `json:"email"`
+	CreatedAt       time.Time      `json:"created_at"`
+	FullName        *string        `json:"full_name,omitempty"`
+	AvatarURL       *string        `json:"avatar_url,omitempty"`
+	IsPlatformAdmin bool           `json:"is_platform_admin"`
+	Organizations   []Organization `json:"organizations,omitempty"`
 }
 
 type Organization struct {
@@ -103,11 +104,12 @@ func (h *MeHandlers) buildMeResponse(u *models.User, orgs []Organization) MeResp
 	}
 
 	return MeResponse{
-		ID:            u.ID,
-		Email:         u.Email,
-		CreatedAt:     u.CreatedAt,
-		FullName:      sanitizedFullName,
-		AvatarURL:     u.AvatarURL,
-		Organizations: orgs,
+		ID:              u.ID,
+		Email:           u.Email,
+		CreatedAt:       u.CreatedAt,
+		FullName:        sanitizedFullName,
+		AvatarURL:       u.AvatarURL,
+		IsPlatformAdmin: u.IsPlatformAdmin,
+		Organizations:   orgs,
 	}
 }
