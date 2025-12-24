@@ -8,7 +8,7 @@ import ColorsSection from '../../components/ColorsSection'
 import BrandingSettings from '../../components/BrandingSettings'
 import SuggestionsPanel from '../../components/SuggestionsPanel'
 import PlaygroundPreview from '../../components/PlaygroundPreview'
-import { Zap, Settings2, MessageSquare, RefreshCw, ChevronDown } from 'lucide-react'
+import { Settings2, MessageSquare, RefreshCw, ChevronDown, Play } from 'lucide-react'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
 import {
@@ -124,21 +124,24 @@ export default function PlaygroundTab() {
   })
 
   return (
-    <div className="flex flex-col h-auto lg:h-[calc(100vh-145px)] -mt-2 animate-in fade-in duration-500 pb-4 lg:pb-0">
+    <div className="flex flex-col h-auto lg:h-[calc(100vh-145px)] animate-in fade-in duration-500 pb-4 lg:pb-0 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 lg:mb-4 shrink-0 px-1">
-        <div className="flex items-center gap-2">
-          <div className="sm:hidden p-1.5 rounded-lg bg-primary/10 text-primary">
-            <Zap className="w-4 h-4 fill-primary/20" />
+      <div className="flex flex-col gap-2 px-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-slate-900/5 text-slate-900">
+              <Play className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">Görünüm ve Test</h2>
+              <p className="text-sm text-slate-500 font-medium">
+                Chatbotunuzun görünümünü özelleştirin ve canlı olarak test edin
+              </p>
+            </div>
           </div>
-          <div className="hidden sm:block">
-            <h2 className="text-sm font-bold tracking-tight text-slate-900 uppercase opacity-60">
-              Test Alanı
-            </h2>
+          <div className="flex items-center gap-4">
+            <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <SaveIndicator isSaving={isSaving} lastSavedAt={lastSavedAt} error={error} />
         </div>
       </div>
 

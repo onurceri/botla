@@ -16,6 +16,7 @@ import {
   Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 import { cn } from '@/lib/utils'
 
 // --- Components ---
@@ -423,6 +424,9 @@ const PricingCard = ({ title, price, features, recommended, cta }: any) => (
     )}
 
     <div className="mb-10 w-full">
+      <div className="flex justify-center mb-4">
+        <PlanBadge plan={title.toLowerCase() as PlanTier} size="lg" variant="soft" />
+      </div>
       <h3 className="text-2xl font-bold mb-4">{title}</h3>
       <div className="flex items-baseline justify-center gap-1">
         <span className="text-5xl font-bold tracking-tight">{price}</span>
@@ -462,7 +466,7 @@ const PricingCard = ({ title, price, features, recommended, cta }: any) => (
 const Pricing = ({ authenticated }: { authenticated: boolean }) => {
   const plans = [
     {
-      title: 'Başlangıç (Free)',
+      title: 'Free',
       price: '0 TL',
       cta: {
         text: authenticated ? "Dashboard'a Git" : 'Ücretsiz Başla',
@@ -480,7 +484,7 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
       ],
     },
     {
-      title: 'Profesyonel (Pro)',
+      title: 'Pro',
       price: '199 TL',
       recommended: true,
       cta: {
