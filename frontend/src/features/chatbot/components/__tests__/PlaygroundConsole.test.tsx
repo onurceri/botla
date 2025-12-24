@@ -15,7 +15,7 @@ describe('PlaygroundConsole', () => {
   it('toggles expansion when clicked', () => {
     render(<PlaygroundConsole />)
 
-    const header = screen.getByText(/Event Debug Console/i)
+    const header = screen.getByText(/Hata Ayıklama Konsolu/i)
 
     // Initially collapsed
     const consoleContainer = screen.getByTestId('playground-console-container')
@@ -34,7 +34,7 @@ describe('PlaygroundConsole', () => {
     render(<PlaygroundConsole />)
 
     // Expand to see logs
-    fireEvent.click(screen.getByText(/Event Debug Console/i))
+    fireEvent.click(screen.getByText(/Hata Ayıklama Konsolu/i))
 
     expect(screen.getByText(/Henüz olay kaydedilmedi/i)).toBeInTheDocument()
 
@@ -86,7 +86,7 @@ describe('PlaygroundConsole', () => {
     render(<PlaygroundConsole />)
 
     // Expand
-    fireEvent.click(screen.getByText(/Event Debug Console/i))
+    fireEvent.click(screen.getByText(/Hata Ayıklama Konsolu/i))
 
     // Add a log
     act(() => {
@@ -109,7 +109,7 @@ describe('PlaygroundConsole', () => {
 
   it('displays different event types correctly', () => {
     render(<PlaygroundConsole />)
-    fireEvent.click(screen.getByText(/Event Debug Console/i))
+    fireEvent.click(screen.getByText(/Hata Ayıklama Konsolu/i))
 
     const events = [
       {

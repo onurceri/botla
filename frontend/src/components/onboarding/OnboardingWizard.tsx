@@ -501,7 +501,7 @@ const OnboardingWizard = () => {
                   <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">
                     1
                   </span>
-                  <span>Playground'da botunuzu test edin</span>
+                  <span>Test Alanı'nda botunuzu test edin</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">

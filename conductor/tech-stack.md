@@ -6,6 +6,7 @@
 - **Caching & Pub/Sub:** Redis
 - **Vector Database:** Qdrant (for RAG and semantic search)
 - **Object Storage:** AWS S3 or Cloudflare R2
+- **LLM Provider:** OpenRouter (access to GPT-4o, GPT-4o-mini, GPT-5)
 - **Key Libraries:** `pgx/v5`, `go-redis/v9`, `aws-sdk-go-v2`, `colly` (scraping), `go-fitz` (PDF processing)
 
 ## Frontend (Dashboard)

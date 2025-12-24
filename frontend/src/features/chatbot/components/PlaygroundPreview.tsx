@@ -209,7 +209,7 @@ export default function PlaygroundPreview(props: Props) {
         ref={iframeRef}
         src={`${WIDGET_URL}/preview.html`}
         onLoad={handleIframeLoad}
-        title="Chatbot Preview"
+        title="Chatbot Önizlemesi"
         className="absolute inset-0 w-full h-full border-0 bg-transparent"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         loading="eager"

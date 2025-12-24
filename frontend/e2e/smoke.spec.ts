@@ -149,7 +149,7 @@ test.describe('E2E Smoke', () => {
     }
 
     // Chat
-    await page.getByRole('tab', { name: 'Playground' }).click()
+    await page.getByRole('tab', { name: 'Test Alanı' }).click()
     await page.getByRole('button', { name: 'Sohbeti aç' }).click()
     const input = page.getByPlaceholder('Mesaj yazın...')
     await input.fill('merhaba')
