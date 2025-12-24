@@ -14,7 +14,7 @@ Set up admin-only routing.
 
 ### Tasks
 
-- [ ] **Update `frontend/src/types/user.ts`**
+- [x] **Update `frontend/src/types/user.ts`**
   
   Add admin flag to User type:
   ```typescript
@@ -24,7 +24,7 @@ Set up admin-only routing.
   }
   ```
 
-- [ ] **Create `frontend/src/features/admin/AdminRoute.tsx`**
+- [x] **Create `frontend/src/features/admin/AdminRoute.tsx`**
   
   ```typescript
   import { Navigate } from 'react-router-dom';
@@ -49,7 +49,7 @@ Set up admin-only routing.
   }
   ```
 
-- [ ] **Register admin routes** in `frontend/src/App.tsx`
+- [x] **Register admin routes** in `frontend/src/App.tsx`
   
   ```typescript
   import { AdminRoute } from '@/features/admin/AdminRoute';
@@ -84,7 +84,7 @@ Create typed API functions for admin endpoints.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/api/admin.ts`**
+- [x] **Create `frontend/src/api/admin.ts`**
   
   ```typescript
   import { api } from './client';
@@ -223,7 +223,7 @@ Create the admin shell with sidebar navigation.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/admin/AdminLayout.tsx`**
+- [x] **Create `frontend/src/pages/admin/AdminLayout.tsx`**
   
   ```typescript
   import { Outlet, NavLink } from 'react-router-dom';

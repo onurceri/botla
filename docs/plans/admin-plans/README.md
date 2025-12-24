@@ -41,7 +41,7 @@ For immediate production issue tackling, complete these in order:
 - [ ] Error tracking service
 
 ### Day 5-7: Basic Frontend
-- [ ] Admin layout and routes
+- [x] Admin layout and routes
 - [ ] Dashboard overview page
 - [ ] System health page
 - [ ] Queues management page

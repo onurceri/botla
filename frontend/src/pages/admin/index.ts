@@ -1,0 +1,11 @@
+// Admin pages barrel export
+export { AdminLayout } from './AdminLayout'
+export { AdminDashboardPage } from './AdminDashboardPage'
+export { AdminUsersPage } from './AdminUsersPage'
+export { AdminOrganizationsPage } from './AdminOrganizationsPage'
+export { AdminChatbotsPage } from './AdminChatbotsPage'
+export { AdminSourcesPage } from './AdminSourcesPage'
+export { AdminSystemPage } from './AdminSystemPage'
+export { AdminQueuesPage } from './AdminQueuesPage'
+export { AdminErrorsPage } from './AdminErrorsPage'
+export { AdminAuditPage } from './AdminAuditPage'

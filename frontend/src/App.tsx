@@ -24,6 +24,21 @@ import PlaygroundTab from '@/features/chatbot/pages/tabs/PlaygroundTab'
 import DeployTab from '@/features/chatbot/pages/tabs/DeployTab'
 import InsightsTab from '@/features/chatbot/pages/tabs/InsightsTab'
 
+// Admin routes
+import { AdminRoute } from '@/features/admin/AdminRoute'
+import {
+  AdminLayout,
+  AdminDashboardPage,
+  AdminUsersPage,
+  AdminOrganizationsPage,
+  AdminChatbotsPage,
+  AdminSourcesPage,
+  AdminSystemPage,
+  AdminQueuesPage,
+  AdminErrorsPage,
+  AdminAuditPage,
+} from '@/pages/admin'
+
 // Helper to validate stored tokens
 const isValidToken = (token: string | null): boolean => {
   return token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
@@ -110,6 +125,28 @@ function App() {
             <Route path="settings/organization" element={<OrganizationSettingsPage />} />
             <Route path="settings/workspace" element={<WorkspaceSettingsPage />} />
             <Route path="settings/plan" element={<PlanPage />} />
+          </Route>
+
+          {/* Admin Routes - Protected by AdminRoute */}
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="organizations" element={<AdminOrganizationsPage />} />
+            <Route path="chatbots" element={<AdminChatbotsPage />} />
+            <Route path="sources" element={<AdminSourcesPage />} />
+            <Route path="system" element={<AdminSystemPage />} />
+            <Route path="queues" element={<AdminQueuesPage />} />
+            <Route path="errors" element={<AdminErrorsPage />} />
+            <Route path="audit" element={<AdminAuditPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
