@@ -176,7 +176,7 @@ func TestGenerateUniqueSchema(t *testing.T) {
 		schemas[schema] = true
 
 		// Verify format
-		if len(schema) != 13 { // "test_" (5) + 8 hex chars
+		if len(schema) != 19 { // "botla_test_" (11) + 8 hex chars
 			t.Fatalf("unexpected schema length: %s (len=%d)", schema, len(schema))
 		}
 	}

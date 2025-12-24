@@ -487,27 +487,6 @@ func normalizeSelectors(items []string) []string {
 }
 
 func calculateNextRefreshTime(frequency string) time.Time {
-	now := time.Now()
-	switch frequency {
-	case "daily":
-		next := now.Add(24 * time.Hour)
-		return time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, now.Location())
-	case "weekly":
-		daysUntilSunday := (7 - int(now.Weekday())) % 7
-		if daysUntilSunday == 0 {
-			daysUntilSunday = 7
-		}
-		next := now.Add(time.Duration(daysUntilSunday) * 24 * time.Hour)
-		return time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, now.Location())
-	case "monthly":
-		next := now.AddDate(0, 1, 0)
-		return time.Date(next.Year(), next.Month(), 1, 0, 0, 0, 0, now.Location())
-	default:
-		daysUntilSunday := (7 - int(now.Weekday())) % 7
-		if daysUntilSunday == 0 {
-			daysUntilSunday = 7
-		}
-		next := now.Add(time.Duration(daysUntilSunday) * 24 * time.Hour)
-		return time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, now.Location())
-	}
+	// LI-005: DRY - delegate to shared CalculateNextRefresh
+	return CalculateNextRefresh(frequency, time.Now())
 }

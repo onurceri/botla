@@ -119,11 +119,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		sources = append(sources, sourceUsed{ChunkIndex: s.ChunkIndex, SourceType: s.SourceType})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(chatResponse{Response: result.Response, TokensUsed: result.TokensUsed, SourcesUsed: sources}); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, chatResponse{Response: result.Response, TokensUsed: result.TokensUsed, SourcesUsed: sources})
 }
 
 type feedbackRequest struct {
@@ -158,6 +154,10 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Update Analytics
 	go func() {
+		// CR-002: Recover from panics to prevent server crash
+		defer func() {
+			_ = recover()
+		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), oldThumbsUp, req.ThumbsUp)

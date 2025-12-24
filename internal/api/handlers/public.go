@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -203,11 +204,15 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 				if d == "" {
 					continue
 				}
-				// Simple check: origin contains the allowed domain
-				// e.g. "example.com" matches "https://example.com" and "https://sub.example.com"
-				if strings.Contains(origin, d) {
-					allowed = true
-					break
+				// CR-003: Secure origin validation using proper URL parsing
+				// Prevents bypass via origins like "https://example.com.evil.com"
+				parsed, err := url.Parse(origin)
+				if err == nil {
+					hostname := parsed.Hostname()
+					if hostname == d || strings.HasSuffix(hostname, "."+d) {
+						allowed = true
+						break
+					}
 				}
 			}
 			if !allowed {
@@ -308,18 +313,14 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		sources = append(sources, publicSourceUsed{ChunkIndex: s.ChunkIndex, SourceType: s.SourceType})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(publicChatResponse{
+	api.WriteJSON(w, http.StatusOK, publicChatResponse{
 		Response:         result.Response,
 		MessageID:        result.MessageID,
 		TokensUsed:       result.TokensUsed,
 		SourcesUsed:      sources,
 		ConfidenceTier:   result.ConfidenceTier,
 		HandoffRequestID: result.HandoffRequestID,
-	}); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	})
 }
 
 // PublicChatFunc returns a http.HandlerFunc for backwards compatibility
@@ -384,6 +385,9 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 
 	// Update analytics asynchronously
 	go func() {
+		defer func() {
+			_ = recover()
+		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), oldThumbsUp, req.ThumbsUp)

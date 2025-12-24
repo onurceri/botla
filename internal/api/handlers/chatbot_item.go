@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
@@ -39,11 +40,7 @@ func userIDFromContext(r *http.Request) string {
 
 // getChatbot returns a single chatbot
 func (h *ChatbotHandlers) getChatbot(w http.ResponseWriter, c *models.Chatbot) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(c); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, c)
 }
 
 // updateChatbot handles PUT request to update a chatbot
@@ -62,9 +59,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 			h.writeFeatureError(w, featureErr)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(updated)
+		api.WriteJSON(w, http.StatusOK, updated)
 		return
 	}
 
@@ -81,9 +76,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(c2)
+	api.WriteJSON(w, http.StatusOK, c2)
 }
 
 // convertToServiceRequest converts handler request to service request
@@ -165,9 +158,7 @@ func (h *ChatbotHandlers) convertToServiceRequest(req createChatbotRequest) serv
 
 // writeFeatureError writes a feature error response
 func (h *ChatbotHandlers) writeFeatureError(w http.ResponseWriter, err *validation.FeatureError) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+	api.WriteJSON(w, http.StatusForbidden, map[string]interface{}{
 		"error":            err.Message,
 		"upgrade_required": err.UpgradeRequired,
 		"feature":          err.Feature,

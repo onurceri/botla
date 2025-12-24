@@ -72,7 +72,10 @@ func UpdatePendingURLStatus(ctx context.Context, pool *sql.DB, chatbotID string,
 	if err != nil {
 		return 0, err
 	}
-	affected, _ := result.RowsAffected()
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
 	return int(affected), nil
 }
 
@@ -117,6 +120,9 @@ func DeletePendingURLsByChatbot(ctx context.Context, pool *sql.DB, chatbotID str
 	if err != nil {
 		return 0, err
 	}
-	affected, _ := result.RowsAffected()
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
 	return int(affected), nil
 }

@@ -208,6 +208,15 @@ func (s *ChatService) runAgenticLoop(
 		}
 
 		cc.TotalTokens += response.Usage.TotalTokens
+
+		// CR-001: Guard against empty choices array to prevent panic
+		if len(response.Choices) == 0 {
+			if s.Log != nil {
+				s.Log.Error("llm_empty_choices", map[string]any{"chatbot_id": cc.Bot.ID})
+			}
+			cc.Response = s.getErrorMessage(cc)
+			return
+		}
 		choice := response.Choices[0]
 
 		// Add assistant message to history

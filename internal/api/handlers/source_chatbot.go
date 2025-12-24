@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
@@ -36,9 +36,5 @@ func (h *SourcesHandlers) listSources(w http.ResponseWriter, r *http.Request, ch
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(items); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	api.WriteJSON(w, http.StatusOK, items)
 }

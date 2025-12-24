@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,7 +17,7 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	s, c, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService, "/refresh")
+	s, c, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -58,15 +57,10 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check cooldown
-	cooldownMin := plan.Config.MinReAddCooldownMinutes
-	if cooldownMin > 0 && s.LastRefreshedAt != nil {
-		elapsed := time.Since(*s.LastRefreshedAt)
-		if elapsed < time.Duration(cooldownMin)*time.Minute {
-			remaining := time.Duration(cooldownMin)*time.Minute - elapsed
-			w.Header().Set("Retry-After", strconv.Itoa(int(remaining.Seconds())))
-			api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrRefreshCooldownActive, cfg)
-			return
-		}
+	if remaining, ok := h.checkCooldown(r, s.LastRefreshedAt, plan); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(int(remaining.Seconds())))
+		api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrRefreshCooldownActive, cfg)
+		return
 	}
 
 	// Update source for refresh
@@ -83,7 +77,5 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		h.Queue.Enqueue(sourceID)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	_ = json.NewEncoder(w).Encode(map[string]string{"id": sourceID})
+	api.WriteJSON(w, http.StatusAccepted, map[string]string{"id": sourceID})
 }

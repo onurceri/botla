@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -39,7 +38,7 @@ func (s *WorkspaceService) CreateWorkspace(ctx context.Context, orgID, name, slu
 
 	if err != nil {
 		if strings.Contains(err.Error(), "unique constraint") {
-			return nil, fmt.Errorf("workspace slug already exists in this organization")
+			return nil, ErrWorkspaceSlugExists
 		}
 		return nil, err
 	}
@@ -57,7 +56,7 @@ func (s *WorkspaceService) UpdateWorkspace(ctx context.Context, wsID, name, slug
 
 	if err != nil {
 		if strings.Contains(err.Error(), "unique constraint") {
-			return fmt.Errorf("workspace slug already exists in this organization")
+			return ErrWorkspaceSlugExists
 		}
 		return err
 	}
@@ -66,26 +65,37 @@ func (s *WorkspaceService) UpdateWorkspace(ctx context.Context, wsID, name, slug
 
 // DeleteWorkspace deletes a workspace
 func (s *WorkspaceService) DeleteWorkspace(ctx context.Context, wsID string) error {
+	// MI-003: Use transaction for atomicity
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
 	// Get organization_id first
 	var orgID string
-	err := s.DB.QueryRowContext(ctx, "SELECT organization_id FROM workspaces WHERE id = $1", wsID).Scan(&orgID)
+	err = tx.QueryRowContext(ctx, "SELECT organization_id FROM workspaces WHERE id = $1", wsID).Scan(&orgID)
 	if err != nil {
 		return err
 	}
 
 	// Check total workspaces count
 	var count int
-	err = s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM workspaces WHERE organization_id = $1", orgID).Scan(&count)
+	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM workspaces WHERE organization_id = $1", orgID).Scan(&count)
 	if err != nil {
 		return err
 	}
 
 	if count <= 1 {
-		return fmt.Errorf("cannot delete the last workspace in the organization")
+		return ErrLastWorkspace
 	}
 
-	_, err = s.DB.ExecContext(ctx, "DELETE FROM workspaces WHERE id = $1", wsID)
-	return err
+	_, err = tx.ExecContext(ctx, "DELETE FROM workspaces WHERE id = $1", wsID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // GetWorkspaces returns all workspaces of an organization
@@ -108,6 +118,10 @@ func (s *WorkspaceService) GetWorkspaces(ctx context.Context, orgID string) ([]*
 			return nil, err
 		}
 		workspaces = append(workspaces, &ws)
+	}
+	// MI-006: Check for iteration errors
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return workspaces, nil
 }

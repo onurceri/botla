@@ -28,6 +28,13 @@ func WriteErrorWithDetails(w http.ResponseWriter, status int, message string, co
 	_ = json.NewEncoder(w).Encode(ErrorResponse{Error: message, Code: code, Details: details})
 }
 
+// WriteJSON writes a JSON response
+func WriteJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
 func WriteLocalizedError(w http.ResponseWriter, status int, code string, cfg langconfig.LanguageConfig) {
 	msg := cfg.UserMessages.Errors[code]
 	if msg == "" {

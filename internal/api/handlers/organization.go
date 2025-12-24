@@ -3,9 +3,10 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
-	"strings"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
@@ -49,8 +50,7 @@ func (h *OrganizationHandlers) ListOrCreate(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(orgs)
+		api.WriteJSON(w, http.StatusOK, orgs)
 
 	case http.MethodPost:
 		var req createOrgRequest
@@ -65,16 +65,14 @@ func (h *OrganizationHandlers) ListOrCreate(w http.ResponseWriter, r *http.Reque
 
 		org, err := h.OrgService.CreateOrganization(r.Context(), req.Name, req.Slug, userID)
 		if err != nil {
-			if strings.Contains(err.Error(), "exists") {
+			if errors.Is(err, services.ErrOrgSlugExists) {
 				w.WriteHeader(http.StatusConflict)
 				return
 			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(org)
+		api.WriteJSON(w, http.StatusCreated, org)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -97,8 +95,7 @@ func (h *OrganizationHandlers) GetOrganization(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(org)
+	api.WriteJSON(w, http.StatusOK, org)
 }
 
 func (h *OrganizationHandlers) UpdateOrganization(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +112,7 @@ func (h *OrganizationHandlers) UpdateOrganization(w http.ResponseWriter, r *http
 	}
 
 	if err := h.OrgService.UpdateOrganization(r.Context(), orgID, req.Name, req.Slug); err != nil {
-		if strings.Contains(err.Error(), "exists") {
+		if errors.Is(err, services.ErrOrgSlugExists) {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
@@ -133,9 +130,8 @@ func (h *OrganizationHandlers) DeleteOrganization(w http.ResponseWriter, r *http
 	}
 
 	if err := h.OrgService.DeleteOrganization(r.Context(), orgID); err != nil {
-		if strings.Contains(err.Error(), "cannot delete the last") {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		if errors.Is(err, services.ErrLastOrganization) {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -178,8 +174,7 @@ func (h *OrganizationHandlers) GetMembers(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(membersResponse{
+	api.WriteJSON(w, http.StatusOK, membersResponse{
 		Members:    members,
 		CallerRole: callerRole,
 	})
@@ -233,16 +228,14 @@ func (h *OrganizationHandlers) RemoveMember(w http.ResponseWriter, r *http.Reque
 	targetUserID := r.PathValue("userID")
 
 	if err := h.OrgService.RemoveMember(r.Context(), orgID, callerID, targetUserID); err != nil {
-		w.Header().Set("Content-Type", "application/json")
+		status := http.StatusInternalServerError
 		switch {
-		case strings.Contains(err.Error(), "cannot remove the last owner"):
-			w.WriteHeader(http.StatusForbidden)
-		case strings.Contains(err.Error(), "not a member"):
-			w.WriteHeader(http.StatusNotFound)
-		default:
-			w.WriteHeader(http.StatusInternalServerError)
+		case errors.Is(err, services.ErrLastOwner):
+			status = http.StatusForbidden
+		case errors.Is(err, services.ErrNotMember):
+			status = http.StatusNotFound
 		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		api.WriteJSON(w, status, map[string]string{"error": err.Error()})
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -270,20 +263,18 @@ func (h *OrganizationHandlers) UpdateMemberRole(w http.ResponseWriter, r *http.R
 	}
 
 	if err := h.OrgService.UpdateMemberRole(r.Context(), orgID, callerID, targetUserID, req.Role); err != nil {
-		w.Header().Set("Content-Type", "application/json")
+		status := http.StatusInternalServerError
 		// Return appropriate status codes based on error type
 		switch {
-		case strings.Contains(err.Error(), "invalid role"),
-			strings.Contains(err.Error(), "cannot promote"),
-			strings.Contains(err.Error(), "cannot demote"),
-			strings.Contains(err.Error(), "only owners can"):
-			w.WriteHeader(http.StatusForbidden)
-		case strings.Contains(err.Error(), "not a member"):
-			w.WriteHeader(http.StatusNotFound)
-		default:
-			w.WriteHeader(http.StatusInternalServerError)
+		case errors.Is(err, services.ErrInvalidRole),
+			errors.Is(err, services.ErrCannotPromoteSelf),
+			errors.Is(err, services.ErrCannotDemoteOwner),
+			errors.Is(err, services.ErrOnlyOwnersCanGrant):
+			status = http.StatusForbidden
+		case errors.Is(err, services.ErrNotMember):
+			status = http.StatusNotFound
 		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		api.WriteJSON(w, status, map[string]string{"error": err.Error()})
 		return
 	}
 	w.WriteHeader(http.StatusOK)

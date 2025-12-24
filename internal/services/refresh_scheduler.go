@@ -81,6 +81,12 @@ func (s *RefreshScheduler) Start(ctx context.Context) {
 // run is the main scheduler loop
 func (s *RefreshScheduler) run(ctx context.Context) {
 	defer s.wg.Done()
+	// MI-002: Recover from panics to keep scheduler running
+	defer func() {
+		if r := recover(); r != nil && s.Log != nil {
+			s.Log.Error("scheduler_panic", map[string]any{"panic": r})
+		}
+	}()
 
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
@@ -92,9 +98,19 @@ func (s *RefreshScheduler) run(ctx context.Context) {
 		case <-s.stopChan:
 			return
 		case <-ticker.C:
-			s.processDueChatbots(ctx)
+			s.safeProcessDueChatbots(ctx)
 		}
 	}
+}
+
+// safeProcessDueChatbots wraps processDueChatbots with panic recovery
+func (s *RefreshScheduler) safeProcessDueChatbots(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil && s.Log != nil {
+			s.Log.Error("process_due_chatbots_panic", map[string]any{"panic": r})
+		}
+	}()
+	s.processDueChatbots(ctx)
 }
 
 // Stop halts the scheduler
