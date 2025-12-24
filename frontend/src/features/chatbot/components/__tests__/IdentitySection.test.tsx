@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import IdentitySection from '../IdentitySection'
 
 describe('IdentitySection', () => {
-  it('toggles and updates fields', () => {
+  it('toggles and updates fields', async () => {
     const onToggle = vi.fn()
     const setName = vi.fn()
     const setIcon = vi.fn()
@@ -32,13 +32,15 @@ describe('IdentitySection', () => {
     const welcomeInput = screen.getByLabelText(/Karşılama Mesajı/) as HTMLTextAreaElement
     fireEvent.change(welcomeInput, { target: { value: 'Hoş Geldiniz' } })
     expect(setWelcome).toHaveBeenCalledWith('Hoş Geldiniz')
-    expect(await screen.findByText((content, element) => {
-      const hasText = (node: Element) => node.textContent === '12/200';
-      const nodeHasText = hasText(element!);
-      const childrenDontHaveText = Array.from(element?.children || []).every(
-        child => !hasText(child)
-      );
-      return nodeHasText && childrenDontHaveText;
-    })).toBeInTheDocument()
+    expect(
+      await screen.findByText((_content, element) => {
+        const hasText = (node: Element) => node.textContent?.replace(/\s/g, '') === '5/200'
+        const nodeHasText = hasText(element!)
+        const childrenDontHaveText = Array.from(element?.children || []).every(
+          (child) => !hasText(child),
+        )
+        return nodeHasText && childrenDontHaveText
+      }),
+    ).toBeInTheDocument()
   })
 })

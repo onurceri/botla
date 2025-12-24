@@ -91,8 +91,9 @@ describe('ChatbotsPage', () => {
       { id: 1, name: 'Bot A', description: 'A', model: 'gpt' },
       { id: 2, name: 'Bot B', description: 'B', model: 'gpt' },
     ]
-    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: bots } as any)
+    vi.spyOn(api, 'get').mockResolvedValue({ data: bots } as any)
     const delSpy = vi.spyOn(api, 'delete').mockResolvedValueOnce({ data: {} } as any)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(
       <QueryWrapper>
@@ -137,9 +138,10 @@ describe('ChatbotsPage', () => {
 
   it('handles delete API error and logs', async () => {
     const bots = [{ id: 3, name: 'Err Bot', description: '', model: 'gpt' }]
-    vi.spyOn(api, 'get').mockResolvedValueOnce({ data: bots } as any)
+    vi.spyOn(api, 'get').mockResolvedValue({ data: bots } as any)
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.spyOn(api, 'delete').mockRejectedValueOnce(new Error('fail'))
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(
       <QueryWrapper>
         <ToastProvider>

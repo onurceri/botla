@@ -1,6 +1,7 @@
 import { api } from './client'
 
-// Types
+const ADMIN_BASE = '/api/v1/admin' as const
+
 export interface PaginatedResponse<T> {
   data: T[]
   total: number
@@ -8,22 +9,11 @@ export interface PaginatedResponse<T> {
   per_page?: number
 }
 
-export interface UserListResponse {
-  users: AdminUser[]
-  total: number
-}
-
-export interface OrganizationListResponse {
-  organizations: AdminOrganization[]
-  total: number
-}
-
 export interface OverviewStats {
   total_users: number
   total_organizations: number
   total_chatbots: number
   total_messages: number
-  // The plan had these, but backend doesn't yet. Added for future-proofing.
   users_today?: number
   conversations_today?: number
   active_plans?: Record<string, number>
@@ -50,13 +40,14 @@ export interface QueueStats {
   pending_count: number
   processing_count: number
   failed_count: number
-  oldest_pending?: string
+  oldest_pending?: string | null
 }
 
 export interface StuckJob {
   id: string
   queue_name: string
   source_id?: string
+  chatbot_id?: string
   status: string
   started_at: string
   stuck_duration: string
@@ -67,19 +58,29 @@ export interface ErrorLogEntry {
   id: string
   error_type: string
   message: string
+  request_path?: string
+  request_method?: string
+  user_id?: string
+  chatbot_id?: string
+  organization_id?: string
   severity: string
   created_at: string
   stack_trace?: string
+  context?: string
 }
 
 export interface AdminUser {
   id: string
   email: string
-  full_name: string
+  full_name?: string
   avatar_url?: string
   plan_id: string
+  preferred_language_id?: string
+  onboarding_completed?: boolean
+  onboarding_step?: string
+  onboarding_skipped?: boolean
+  onboarding_data?: unknown
   is_platform_admin: boolean
-  is_suspended?: boolean
   created_at: string
 }
 
@@ -93,158 +94,138 @@ export interface AdminOrganization {
   updated_at: string
 }
 
-// API Functions
-
-/**
- * Get high-level platform metrics for the admin dashboard.
- */
-export const getOverviewStats = async () => {
-  const { data } = await api.get<OverviewStats>('/api/v1/admin/stats/overview')
-  return data
+export interface UserListResponse {
+  users: AdminUser[]
+  total: number
 }
 
-/**
- * Get comprehensive health status of all system dependencies.
- */
-export const getDetailedHealth = async () => {
-  const { data } = await api.get<DetailedHealth>('/api/v1/admin/health/detailed')
-  return data
-}
-
-/**
- * List all users with pagination and filtering.
- */
-export const listUsers = async (params?: {
+export interface ListUsersParams {
   limit?: number
   offset?: number
   email?: string
   is_platform_admin?: boolean
   plan_id?: string
-}) => {
-  const { data } = await api.get<UserListResponse>('/api/v1/admin/users', { params })
-  return data
 }
 
-/**
- * Get details for a single user.
- */
-export const getUser = async (id: string) => {
-  const { data } = await api.get<AdminUser>(`/api/v1/admin/users/${id}`)
-  return data
+export interface OrganizationListResponse {
+  organizations: AdminOrganization[]
+  total: number
 }
 
-/**
- * Update a user's details or admin status.
- */
-export const updateUser = async (
-  id: string,
-  updates: { full_name?: string; plan_id?: string; is_platform_admin?: boolean; status?: string },
-) => {
-  const { data } = await api.patch<{ status: string }>(`/api/v1/admin/users/${id}`, updates)
-  return data
-}
-
-/**
- * List all organizations with pagination and filtering.
- */
-export const listOrganizations = async (params?: {
+export interface ListOrganizationsParams {
   limit?: number
   offset?: number
   name?: string
   plan_id?: string
-}) => {
-  const { data } = await api.get<OrganizationListResponse>('/api/v1/admin/organizations', { params })
+}
+
+export interface ListErrorsParams {
+  severity?: string
+  offset?: number
+  limit?: number
+}
+
+export interface AuditLogEntry {
+  id: string
+  admin_user_id: string
+  action: string
+  target_type: string
+  target_id?: string | null
+  details: Record<string, unknown>
+  ip_address: string
+  user_agent: string
+  created_at: string
+}
+
+export interface ListAuditLogsParams {
+  limit?: number
+  offset?: number
+  admin_user_id?: string
+  action?: string
+  target_type?: string
+}
+
+export const getOverviewStats = async () => {
+  const { data } = await api.get<OverviewStats>(`${ADMIN_BASE}/stats/overview`)
   return data
 }
 
-/**
- * Get details for a single organization.
- */
+export const getDetailedHealth = async () => {
+  const { data } = await api.get<DetailedHealth>(`${ADMIN_BASE}/health/detailed`)
+  return data
+}
+
+export const listUsers = async (params?: ListUsersParams) => {
+  const { data } = await api.get<UserListResponse>(`${ADMIN_BASE}/users`, { params })
+  return data
+}
+
+export const getUser = async (id: string) => {
+  const { data } = await api.get<AdminUser>(`${ADMIN_BASE}/users/${id}`)
+  return data
+}
+
+export const updateUser = async (
+  id: string,
+  updates: { full_name?: string; plan_id?: string; is_platform_admin?: boolean; status?: string },
+) => {
+  const { data } = await api.patch<{ status: string }>(`${ADMIN_BASE}/users/${id}`, updates)
+  return data
+}
+
+export const listOrganizations = async (params?: ListOrganizationsParams) => {
+  const { data } = await api.get<OrganizationListResponse>(`${ADMIN_BASE}/organizations`, { params })
+  return data
+}
+
 export const getOrganization = async (id: string) => {
-  const { data } = await api.get<AdminOrganization>(`/api/v1/admin/organizations/${id}`)
+  const { data } = await api.get<AdminOrganization>(`${ADMIN_BASE}/organizations/${id}`)
   return data
 }
 
-// Placeholder functions for future implementation (not yet in backend)
-
-/**
- * Get status of background job queues.
- */
 export const getQueues = async () => {
-  const { data } = await api.get<QueueStats[]>('/api/v1/admin/queues')
+  const { data } = await api.get<QueueStats[]>(`${ADMIN_BASE}/queues`)
   return data
 }
 
-/**
- * Get list of jobs that seem to be stuck.
- */
 export const getStuckJobs = async (threshold?: string) => {
-  const { data } = await api.get<StuckJob[]>('/api/v1/admin/queues/stuck', { params: { threshold } })
+  const { data } = await api.get<StuckJob[]>(`${ADMIN_BASE}/queues/stuck`, { params: { threshold } })
   return data
 }
 
-/**
- * Retry a failed or stuck job.
- */
 export const retryJob = async (id: string) => {
-  const { data } = await api.post(`/api/v1/admin/queues/${id}/retry`)
+  const { data } = await api.post(`${ADMIN_BASE}/queues/${id}/retry`)
   return data
 }
 
-/**
- * Delete a job from the queue.
- */
 export const deleteJob = async (id: string) => {
-  const { data } = await api.delete(`/api/v1/admin/queues/${id}`)
+  const { data } = await api.delete(`${ADMIN_BASE}/queues/${id}`)
   return data
 }
 
-/**
- * List system error logs.
- */
 export const getErrors = async (severity?: string, offset?: number, limit?: number) => {
-  const { data } = await api.get<PaginatedResponse<ErrorLogEntry>>('/api/v1/admin/errors', {
+  const { data } = await api.get<PaginatedResponse<ErrorLogEntry>>(`${ADMIN_BASE}/errors`, {
     params: { severity, offset, limit },
   })
   return data
 }
 
-/**
- * Get summary statistics for recent errors.
- */
+export const listErrors = async (params?: ListErrorsParams) => {
+  const { data } = await api.get<PaginatedResponse<ErrorLogEntry>>(`${ADMIN_BASE}/errors`, { params })
+  return data
+}
+
 export const getErrorStats = async () => {
-  const { data } = await api.get<Record<string, number>>('/api/v1/admin/errors/stats')
+  const { data } = await api.get<Record<string, number>>(`${ADMIN_BASE}/errors/stats`)
   return data
 }
 
-/**
- * Get details of a specific error log entry.
- */
 export const getError = async (id: string) => {
-  const { data } = await api.get<ErrorLogEntry>(`/api/v1/admin/errors/${id}`)
+  const { data } = await api.get<ErrorLogEntry>(`${ADMIN_BASE}/errors/${id}`)
   return data
 }
 
-/**
- * List all chatbots across all organizations.
- */
-export const listChatbots = async (params?: { page?: number; search?: string; status?: string }) => {
-  const { data } = await api.get<PaginatedResponse<any>>('/api/v1/admin/chatbots', { params })
-  return data
-}
-
-/**
- * Force a refresh of a chatbot's content.
- */
-export const forceRefreshChatbot = async (id: string) => {
-  const { data } = await api.post(`/api/v1/admin/chatbots/${id}/force-refresh`)
-  return data
-}
-
-/**
- * List admin audit logs.
- */
-export const listAuditLogs = async (params?: { offset?: number; limit?: number; admin_user_id?: string; action?: string; target_type?: string }) => {
-  const { data } = await api.get<PaginatedResponse<any>>('/api/v1/admin/audit-logs', { params })
+export const listAuditLogs = async (params?: ListAuditLogsParams) => {
+  const { data } = await api.get<PaginatedResponse<AuditLogEntry>>(`${ADMIN_BASE}/audit-logs`, { params })
   return data
 }

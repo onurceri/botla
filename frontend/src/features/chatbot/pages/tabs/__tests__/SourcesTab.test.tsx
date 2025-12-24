@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from '@/components/ui/toast'
 import SourcesTab from '../SourcesTab'
-import { ChatbotProvider } from '../../context/ChatbotContext'
+import { ChatbotProvider } from '../../../context/ChatbotContext'
 
 // Mock ResizeObserver for Radix UI
 global.ResizeObserver = class ResizeObserver {
@@ -22,36 +23,39 @@ const createWrapper = () => {
     },
   })
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/chatbots/abc/sources']}>
-        <ChatbotProvider chatbotId="abc">
-          {children}
-        </ChatbotProvider>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <ToastProvider>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/chatbots/abc/sources']}>
+          <Routes>
+            <Route
+              path="/chatbots/:id/sources"
+              element={<ChatbotProvider chatbotId="abc" isNew={false}>{children}</ChatbotProvider>}
+            />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ToastProvider>
   )
 }
 
-const mockSources = [
-  {
-    id: '1',
-    source_type: 'pdf',
-    original_filename: 'file.pdf',
-    status: 'completed',
-    chunk_count: 3,
-  },
-  {
-    id: '2',
-    source_type: 'url',
-    source_url: 'https://example.com',
-    status: 'processing',
-    chunk_count: 0,
-  },
-]
-
-vi.mock('../../hooks/useSourceOps', () => ({
+vi.mock('../../../hooks/useSourceOps', () => ({
   useSourceOps: () => ({
-    sources: mockSources,
+    sources: [
+      {
+        id: '1',
+        source_type: 'pdf',
+        original_filename: 'file.pdf',
+        status: 'completed',
+        chunk_count: 3,
+      },
+      {
+        id: '2',
+        source_type: 'url',
+        source_url: 'https://example.com',
+        status: 'processing',
+        chunk_count: 0,
+      },
+    ],
     refreshSources: vi.fn(),
     pollStatus: vi.fn(),
     handleDeleteSource: vi.fn(),

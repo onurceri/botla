@@ -140,10 +140,20 @@ describe('api/admin', () => {
   })
 
   describe('Error endpoints', () => {
-    it('listErrors calls the correct endpoint', async () => {
+    it('getErrors calls the correct endpoint with params', async () => {
       const spy = vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { data: [], total: 0 } } as any)
-      await adminApi.listErrors({ page: 1, severity: 'error' })
-      expect(spy).toHaveBeenCalledWith('/api/v1/admin/errors', { params: { page: 1, severity: 'error' } })
+      await adminApi.getErrors('error', 0, 20)
+      expect(spy).toHaveBeenCalledWith('/api/v1/admin/errors', {
+        params: { severity: 'error', offset: 0, limit: 20 },
+      })
+    })
+
+    it('listErrors calls the correct endpoint with params object', async () => {
+      const spy = vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { data: [], total: 0 } } as any)
+      await adminApi.listErrors({ severity: 'error', offset: 0, limit: 20 })
+      expect(spy).toHaveBeenCalledWith('/api/v1/admin/errors', {
+        params: { severity: 'error', offset: 0, limit: 20 },
+      })
     })
 
     it('getError calls the correct endpoint', async () => {
@@ -151,27 +161,19 @@ describe('api/admin', () => {
       await adminApi.getError('error-1')
       expect(spy).toHaveBeenCalledWith('/api/v1/admin/errors/error-1')
     })
-  })
 
-  describe('Chatbot endpoints', () => {
-    it('listChatbots calls the correct endpoint', async () => {
-      const spy = vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { data: [], total: 0 } } as any)
-      await adminApi.listChatbots({ page: 1, search: 'bot' })
-      expect(spy).toHaveBeenCalledWith('/api/v1/admin/chatbots', { params: { page: 1, search: 'bot' } })
-    })
-
-    it('forceRefreshChatbot calls the correct endpoint', async () => {
-      const spy = vi.spyOn(api, 'post').mockResolvedValueOnce({ data: {} } as any)
-      await adminApi.forceRefreshChatbot('bot-1')
-      expect(spy).toHaveBeenCalledWith('/api/v1/admin/chatbots/bot-1/force-refresh')
+    it('getErrorStats calls the correct endpoint', async () => {
+      const spy = vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { error: 1 } } as any)
+      await adminApi.getErrorStats()
+      expect(spy).toHaveBeenCalledWith('/api/v1/admin/errors/stats')
     })
   })
 
   describe('Audit endpoints', () => {
     it('listAuditLogs calls the correct endpoint', async () => {
       const spy = vi.spyOn(api, 'get').mockResolvedValueOnce({ data: { data: [], total: 0 } } as any)
-      await adminApi.listAuditLogs({ page: 1 })
-      expect(spy).toHaveBeenCalledWith('/api/v1/admin/audit-logs', { params: { page: 1 } })
+      await adminApi.listAuditLogs({ offset: 0, limit: 50 })
+      expect(spy).toHaveBeenCalledWith('/api/v1/admin/audit-logs', { params: { offset: 0, limit: 50 } })
     })
   })
 })

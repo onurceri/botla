@@ -38,7 +38,7 @@ describe('SourceUploader', () => {
 
     const textButtons = screen.getAllByText('Metin')
     await user.click(textButtons[textButtons.length - 1])
-    const textarea = screen.getByPlaceholderText('Metin içeriğini buraya yapıştırın...')
+    const textarea = screen.getByPlaceholderText(/Metin içeriğinizi buraya yapıştırın/i)
     await user.type(textarea, 'hello')
     const buttons = screen.getAllByRole('button', { name: 'Ekle' })
     await user.click(buttons[buttons.length - 1])
