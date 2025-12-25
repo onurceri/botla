@@ -7,7 +7,7 @@ MIGRATIONS_DIR ?= db/migrations
 TEST_DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_test?sslmode=disable&options=-c%20search_path%3Dtest
 
 DOCKER_DATABASE_URL ?= postgres://botla:botla@botla-postgres:5432/botla_dev?sslmode=disable
-DOCKER_TEST_DATABASE_URL ?= $(DOCKER_DATABASE_URL)&options=-c%20search_path%3Dtest
+DOCKER_TEST_DATABASE_URL ?= postgres://botla:botla@botla-postgres:5432/botla_test?sslmode=disable&options=-c%20search_path%3Dtest
 
 up:
 	 docker compose -f docker-compose.dev.yml up -d

@@ -12,6 +12,16 @@ export const _resetRedirecting = () => {
   isRedirecting = false
 }
 
+// Exported for testing - allows mocking the redirect behavior
+export let _redirectToLogin = () => {
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login'
+  }
+}
+export const _setRedirectToLogin = (fn: () => void) => {
+  _redirectToLogin = fn
+}
+
 // Helper to check if a stored value is valid (not undefined, null, or "undefined" string)
 const isValidToken = (token: string | null | undefined): token is string => {
   return (
@@ -37,14 +47,16 @@ const handleSessionExpired = () => {
     window.dispatchEvent(new CustomEvent('session-expired'))
   }
 
-  if (!import.meta.env.VITE_E2E) {
-    if (typeof window !== 'undefined') {
-      // Small delay to allow toast to show before redirect
-      setTimeout(() => {
-        window.location.replace('/login')
-      }, 100)
-    }
+  // Skip redirect only in E2E mode
+  const isE2E = import.meta.env.VITE_E2E === '1' || import.meta.env.VITE_E2E === 'true'
+  if (isE2E) {
+    return
   }
+
+  // Small delay to allow toast to show before redirect
+  setTimeout(() => {
+    _redirectToLogin()
+  }, 1500)
 }
 
 api.interceptors.request.use((config) => {
@@ -81,6 +93,13 @@ api.interceptors.response.use(
 
     // If already redirecting, just reject without further processing
     if (isRedirecting) {
+      return Promise.reject(err)
+    }
+
+    // Skip token refresh logic for auth endpoints - 401 on these means invalid credentials, not session expiry
+    const authEndpoints = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/refresh']
+    const isAuthEndpoint = authEndpoints.some((endpoint) => originalRequest?.url?.includes(endpoint))
+    if (isAuthEndpoint) {
       return Promise.reject(err)
     }
 

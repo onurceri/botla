@@ -43,6 +43,28 @@ func NewConfigFromEnv() *TieredConfig {
 		}
 	}
 
+	// Auth endpoint overrides (strict limits for brute-force protection)
+	if v := getEnvInt("RATE_LIMIT_AUTH_LOGIN", 0); v > 0 {
+		cfg.EndpointOverrides["/api/v1/auth/login"] = Config{
+			RequestsPerWindow: v,
+			WindowSize:        60 * time.Second,
+		}
+	}
+
+	if v := getEnvInt("RATE_LIMIT_AUTH_REGISTER", 0); v > 0 {
+		cfg.EndpointOverrides["/api/v1/auth/register"] = Config{
+			RequestsPerWindow: v,
+			WindowSize:        60 * time.Second,
+		}
+	}
+
+	if v := getEnvInt("RATE_LIMIT_AUTH_REFRESH", 0); v > 0 {
+		cfg.EndpointOverrides["/api/v1/auth/refresh"] = Config{
+			RequestsPerWindow: v,
+			WindowSize:        60 * time.Second,
+		}
+	}
+
 	return cfg
 }
 

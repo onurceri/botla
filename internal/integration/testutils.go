@@ -46,7 +46,69 @@ type TestEnv struct {
 	Queue       *processing.SourceQueue
 }
 
+// cleanupOnce ensures we only run cleanup once per test suite
+var cleanupOnce sync.Once
+
+// CleanupAllIntegrationSchemas removes all botla_it_* schemas from the test database.
+// This should be called at the start of a test run to ensure a clean state.
+func CleanupAllIntegrationSchemas() error {
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		getEnvOrDefault("DB_USER", "botla"),
+		getEnvOrDefault("DB_PASSWORD", "botla"),
+		getEnvOrDefault("DB_HOST", "localhost"),
+		getEnvOrDefault("DB_PORT", "5432"),
+		"botla_test",
+	)
+
+	db, err := sql.Open("pgx", dbURL)
+	if err != nil {
+		return fmt.Errorf("open db: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	rows, err := db.Query(`
+		SELECT nspname 
+		FROM pg_namespace 
+		WHERE nspname LIKE 'botla_it_%'
+	`)
+	if err != nil {
+		return fmt.Errorf("list schemas: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var schemas []string
+	for rows.Next() {
+		var schema string
+		if err := rows.Scan(&schema); err == nil {
+			schemas = append(schemas, schema)
+		}
+	}
+
+	for _, schema := range schemas {
+		// Terminate connections first
+		_, _ = db.Exec(`
+			SELECT pg_terminate_backend(pid)
+			FROM pg_stat_activity
+			WHERE datname = current_database()
+			  AND pid <> pg_backend_pid()
+		`)
+
+		if _, err := db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to drop schema %s: %v\n", schema, err)
+		} else {
+			fmt.Fprintf(os.Stdout, "cleaned up integration test schema: %s\n", schema)
+		}
+	}
+
+	return nil
+}
+
 func SetupTestEnv() (*TestEnv, error) {
+	// Run cleanup once at the start of the test suite to remove stale schemas
+	cleanupOnce.Do(func() {
+		_ = CleanupAllIntegrationSchemas()
+	})
+
 	if os.Getenv("DB_HOST") == "" {
 		_ = os.Setenv("DB_HOST", "localhost")
 	}
@@ -245,12 +307,66 @@ func TeardownTestEnv(te *TestEnv) {
 	if te.Queue != nil {
 		te.Queue.Stop()
 	}
+
+	schema := te.Schema
 	if te.DB != nil {
-		if te.Schema != "" {
-			_, _ = te.DB.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", te.Schema))
-		}
 		_ = te.DB.Close()
 	}
+
+	// Use a fresh connection for cleanup to avoid issues with the closed connection
+	if schema != "" {
+		dropIntegrationSchema(schema)
+	}
+}
+
+// dropIntegrationSchema drops an integration test schema using a fresh connection.
+// This is more reliable than using the test's DB connection which may have issues.
+func dropIntegrationSchema(schema string) {
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		getEnvOrDefault("DB_USER", "botla"),
+		getEnvOrDefault("DB_PASSWORD", "botla"),
+		getEnvOrDefault("DB_HOST", "localhost"),
+		getEnvOrDefault("DB_PORT", "5432"),
+		"botla_test",
+	)
+
+	db, err := sql.Open("pgx", dbURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to open db for schema cleanup: %v\n", err)
+		return
+	}
+	defer func() { _ = db.Close() }()
+
+	// Terminate all connections to this schema to allow drop
+	_, _ = db.Exec(`
+		SELECT pg_terminate_backend(pid)
+		FROM pg_stat_activity
+		WHERE datname = current_database()
+		  AND pid <> pg_backend_pid()
+		  AND state = 'idle'
+	`)
+
+	// Retry drop up to 3 times
+	for i := 0; i < 3; i++ {
+		if _, err := db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err == nil {
+			return
+		}
+		// Small delay between retries
+		if i < 2 {
+			select {
+			case <-context.Background().Done():
+				return
+			default:
+			}
+		}
+	}
+}
+
+func getEnvOrDefault(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
 }
 
 func restorePlans(db *sql.DB) {

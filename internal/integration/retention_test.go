@@ -44,8 +44,8 @@ func TestRetentionJob_Conversations(t *testing.T) {
 	}
 	chatbotID := createChatbot()
 
-	// 2. Insert old conversation (100 days old)
-	oldDate := time.Now().AddDate(0, 0, -100)
+	// 2. Insert old conversation (731 days old)
+	oldDate := time.Now().AddDate(0, 0, -731)
 	var oldConvID string
 	err = te.DB.QueryRow(`
 		INSERT INTO conversations (chatbot_id, session_id, created_at, updated_at)
@@ -72,7 +72,7 @@ func TestRetentionJob_Conversations(t *testing.T) {
 	log := logger.New("DEBUG")
 	mockStorage := &storage.MemoryStorage{}
 	job := services.NewRetentionJob(te.DB, log, mockStorage)
-	// Default retention is 90 days
+	// Default retention is 730 days
 	err = job.Run(context.Background())
 	if err != nil {
 		t.Fatalf("job run failed: %v", err)
@@ -178,8 +178,8 @@ func TestRetentionJob_AuditLogs(t *testing.T) {
 		t.Fatalf("failed to get admin user: %v", err)
 	}
 
-	// 1. Setup old audit logs (366 days old)
-	oldDate := time.Now().AddDate(0, 0, -366)
+	// 1. Setup old audit logs (731 days old)
+	oldDate := time.Now().AddDate(0, 0, -731)
 	_, err = te.DB.Exec(`
 		INSERT INTO admin_audit_logs (admin_user_id, action, target_type, created_at)
 		VALUES ($1, 'test_action', 'test_target', $2)
@@ -209,8 +209,8 @@ func TestRetentionJob_AuditLogs(t *testing.T) {
 
 	// 4. Verify
 	var count int
-	// Old should be gone (cutoff is 365 days by default)
-	err = te.DB.QueryRow("SELECT COUNT(*) FROM admin_audit_logs WHERE created_at < $1", time.Now().AddDate(0, 0, -365)).Scan(&count)
+	// Old should be gone (cutoff is 730 days by default)
+	err = te.DB.QueryRow("SELECT COUNT(*) FROM admin_audit_logs WHERE created_at < $1", time.Now().AddDate(0, 0, -730)).Scan(&count)
 	if err != nil {
 		t.Fatalf("count old failed: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestRetentionJob_AuditLogs(t *testing.T) {
 	}
 
 	// New should remain
-	err = te.DB.QueryRow("SELECT COUNT(*) FROM admin_audit_logs WHERE created_at > $1", time.Now().AddDate(0, 0, -365)).Scan(&count)
+	err = te.DB.QueryRow("SELECT COUNT(*) FROM admin_audit_logs WHERE created_at > $1", time.Now().AddDate(0, 0, -730)).Scan(&count)
 	if err != nil {
 		t.Fatalf("count new failed: %v", err)
 	}

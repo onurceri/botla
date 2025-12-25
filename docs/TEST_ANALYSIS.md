@@ -16,6 +16,40 @@ However, several issues and anti-patterns were identified that could lead to fla
 
 ---
 
+## ✅ Fixed Issues (2025-12-25)
+
+The following critical test infrastructure issues have been resolved:
+
+### Database Configuration Issues
+
+1. **`DOCKER_TEST_DATABASE_URL` pointed to wrong database** (`Makefile:10`)
+   - Was: `$(DOCKER_DATABASE_URL)&options=-c%20search_path%3Dtest` (pointed to `botla_dev`)
+   - Fixed: Now explicitly points to `botla_test` database
+
+2. **Schema creation missing before migrations** (`internal/testdb/testdb.go`)
+   - `OpenTestDBWithSchema` now creates the schema before running migrations
+   - Prevents "schema does not exist" errors
+
+### Race Condition Fixes
+
+3. **Parallel test schema cleanup race condition** (`internal/testdb/testdb.go`)
+   - Added `activeSchemas` tracking to prevent cleanup of in-use schemas
+   - Added time-based threshold (5 min) for stale schema detection
+   - Added migration caching to avoid redundant migrations
+
+4. **Integration test cleanup failures** (`internal/integration/testutils.go`)
+   - `TeardownTestEnv` now uses a fresh connection for cleanup
+   - Added retry logic (3 attempts) for schema drops
+   - Terminates idle connections before dropping schemas
+
+### New Cleanup Functions
+
+5. **Added `CleanupAllTestSchemas()`** - Explicit cleanup for `botla_test_*` schemas
+6. **Added `CleanupAllIntegrationSchemas()`** - Explicit cleanup for `botla_it_*` schemas
+7. **Automatic cleanup at suite start** - Integration tests now clean stale schemas at start
+
+---
+
 ## Critical Issues
 
 ### 1. Unused Mock Objects in TestEnv (`internal/integration/testutils.go:231`)

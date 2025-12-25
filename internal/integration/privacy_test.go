@@ -39,8 +39,10 @@ func TestPrivacyFlow(t *testing.T) {
 	t.Run("User Consents", func(t *testing.T) {
 		// Update consents
 		body := map[string]bool{
-			"marketing": true,
-			"analytics": false,
+			"marketing":       true,
+			"analytics":       false,
+			"personalization": true,
+			"third_party":     false,
 		}
 		b, err := json.Marshal(body)
 		require.NoError(t, err)
@@ -67,12 +69,10 @@ func TestPrivacyFlow(t *testing.T) {
 		err = json.NewDecoder(resp.Body).Decode(&consents)
 		require.NoError(t, err)
 
-		// Note: The response structure depends on GetMyConsents implementation.
-		// If it returns a map or list, we should check accordingly.
-		// Based on user_privacy.go it returns whatever GetMyConsents returns.
-		// Assuming it returns a map like {"marketing": true, ...}
-		// If not, we might need to adjust.
-		// Let's assume it works for now or returns OK.
+		assert.Equal(t, true, consents["marketing"])
+		assert.Equal(t, false, consents["analytics"])
+		assert.Equal(t, true, consents["personalization"])
+		assert.Equal(t, false, consents["third_party"])
 	})
 
 	t.Run("User Request Export", func(t *testing.T) {

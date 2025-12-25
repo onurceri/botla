@@ -186,7 +186,13 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	aeh := handlers.NewAdminErrorHandlers(pool)
 	aah := handlers.NewAdminAuditHandlers(pool)
 	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
-	router.RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, cfg.JWT_SECRET)
+
+	// RAG service and queue wrapper for admin chatbot/source handlers
+	ragSvc := services.NewRAGService(pool, actualVC, log)
+	queueWrapper := &services.Queue{SourceQueue: q}
+	ach := handlers.NewAdminChatbotHandlers(pool, adminSvc, ragSvc, queueWrapper)
+	ash := handlers.NewAdminSourceHandlers(pool, adminSvc, ragSvc, queueWrapper)
+	router.RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)
 
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)

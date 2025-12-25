@@ -103,3 +103,77 @@ func TestKey(t *testing.T) {
 		}
 	}
 }
+
+func TestDefaultConfig_AuthEndpoints(t *testing.T) {
+	cfg := DefaultConfig()
+
+	// Test login endpoint default
+	loginCfg, exists := cfg.EndpointOverrides["/api/v1/auth/login"]
+	if !exists {
+		t.Fatal("login endpoint override not found in defaults")
+	}
+	if loginCfg.RequestsPerWindow != 5 {
+		t.Errorf("expected login requests 5, got %d", loginCfg.RequestsPerWindow)
+	}
+	if loginCfg.WindowSize != 60*time.Second {
+		t.Errorf("expected login window 60s, got %v", loginCfg.WindowSize)
+	}
+
+	// Test register endpoint default
+	registerCfg, exists := cfg.EndpointOverrides["/api/v1/auth/register"]
+	if !exists {
+		t.Fatal("register endpoint override not found in defaults")
+	}
+	if registerCfg.RequestsPerWindow != 3 {
+		t.Errorf("expected register requests 3, got %d", registerCfg.RequestsPerWindow)
+	}
+
+	// Test refresh endpoint default
+	refreshCfg, exists := cfg.EndpointOverrides["/api/v1/auth/refresh"]
+	if !exists {
+		t.Fatal("refresh endpoint override not found in defaults")
+	}
+	if refreshCfg.RequestsPerWindow != 10 {
+		t.Errorf("expected refresh requests 10, got %d", refreshCfg.RequestsPerWindow)
+	}
+}
+
+func TestNewConfigFromEnv_AuthEndpointOverrides(t *testing.T) {
+	os.Setenv("RATE_LIMIT_AUTH_LOGIN", "10")
+	os.Setenv("RATE_LIMIT_AUTH_REGISTER", "2")
+	os.Setenv("RATE_LIMIT_AUTH_REFRESH", "20")
+	defer func() {
+		os.Unsetenv("RATE_LIMIT_AUTH_LOGIN")
+		os.Unsetenv("RATE_LIMIT_AUTH_REGISTER")
+		os.Unsetenv("RATE_LIMIT_AUTH_REFRESH")
+	}()
+
+	cfg := NewConfigFromEnv()
+
+	// Login should be overridden
+	loginCfg, exists := cfg.EndpointOverrides["/api/v1/auth/login"]
+	if !exists {
+		t.Fatal("login endpoint override not found")
+	}
+	if loginCfg.RequestsPerWindow != 10 {
+		t.Errorf("expected login requests 10, got %d", loginCfg.RequestsPerWindow)
+	}
+
+	// Register should be overridden
+	registerCfg, exists := cfg.EndpointOverrides["/api/v1/auth/register"]
+	if !exists {
+		t.Fatal("register endpoint override not found")
+	}
+	if registerCfg.RequestsPerWindow != 2 {
+		t.Errorf("expected register requests 2, got %d", registerCfg.RequestsPerWindow)
+	}
+
+	// Refresh should be overridden
+	refreshCfg, exists := cfg.EndpointOverrides["/api/v1/auth/refresh"]
+	if !exists {
+		t.Fatal("refresh endpoint override not found")
+	}
+	if refreshCfg.RequestsPerWindow != 20 {
+		t.Errorf("expected refresh requests 20, got %d", refreshCfg.RequestsPerWindow)
+	}
+}
