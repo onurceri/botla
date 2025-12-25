@@ -8,14 +8,7 @@ import { api } from '@/api/client'
 
 describe('LoginPage', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-      },
-      writable: true,
-    })
+    window.localStorage.clear()
   })
 
   it('renders form elements', () => {

@@ -54,6 +54,13 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  for (const key of Object.keys(localStorageStore)) {
+    delete localStorageStore[key]
+  }
+  ; (window.localStorage.getItem as any)?.mockClear?.()
+    ; (window.localStorage.setItem as any)?.mockClear?.()
+    ; (window.localStorage.removeItem as any)?.mockClear?.()
+    ; (window.localStorage.clear as any)?.mockClear?.()
 })
 
 const localStorageStore: Record<string, string> = {}

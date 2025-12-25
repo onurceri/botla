@@ -27,14 +27,7 @@ vi.mock('@/features/organization/context/OrganizationContext', () => ({
 
 describe('DashboardPage', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-      },
-      writable: true,
-    })
+    window.localStorage.clear()
   })
 
   afterEach(() => {

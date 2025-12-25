@@ -9,10 +9,7 @@ import { api } from '@/api/client'
 
 describe('ChatbotDetailPage initial tab selection', () => {
   it('reads ?tab=connect from window.location and shows embed panel', async () => {
-    Object.defineProperty(window, 'localStorage', {
-      value: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
-      writable: true,
-    })
+    window.localStorage.clear()
 
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
       if (url.includes('/api/v1/organizations'))

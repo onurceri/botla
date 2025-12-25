@@ -36,14 +36,7 @@ vi.mock('@/api/plan', () => ({
 
 describe('DashboardLayout', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-      },
-      writable: true,
-    })
+    window.localStorage.clear()
 
     // Default mock for me
     vi.mocked(api.get).mockResolvedValue({
