@@ -164,7 +164,7 @@ func (app *application) start() {
 	app.schedulerCancel = schedulerCancel
 	app.refreshScheduler.Start(schedulerCtx)
 
-	// Start retention job (daily)
+	// Start retention job (daily at 03:00 AM)
 	go func() {
 		// Run once on startup (in background)
 		go func() {
@@ -173,13 +173,17 @@ func (app *application) start() {
 			}
 		}()
 
-		ticker := time.NewTicker(24 * time.Hour)
-		defer ticker.Stop()
 		for {
+			now := time.Now()
+			next := time.Date(now.Year(), now.Month(), now.Day(), 3, 0, 0, 0, now.Location())
+			if now.After(next) {
+				next = next.Add(24 * time.Hour)
+			}
+
 			select {
 			case <-schedulerCtx.Done():
 				return
-			case <-ticker.C:
+			case <-time.After(time.Until(next)):
 				if err := app.retentionJob.Run(schedulerCtx); err != nil {
 					app.log.Error("retention_job_failed", map[string]any{"error": err.Error()})
 				}

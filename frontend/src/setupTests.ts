@@ -102,7 +102,7 @@ class ResizeObserverMock {
 vi.stubGlobal('ResizeObserver', ResizeObserverMock)
 
 vi.mock('@widget/widgetApp', () => {
-  function WidgetApp({ chatbotId }: { chatbotId: string }) {
+  function WidgetApp({ chatbotId: _chatbotId }: { chatbotId: string }) {
     const [open, setOpen] = React.useState(false)
     const [input, setInput] = React.useState('')
     const [disabled, setDisabled] = React.useState(false)

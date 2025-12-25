@@ -64,12 +64,27 @@ func DefaultConfig() *TieredConfig {
 			WindowSize:        60 * time.Second,
 		},
 		EndpointOverrides: map[string]Config{
+			// Chat endpoint - moderate limits
 			"/api/v1/chat": {
 				RequestsPerWindow: 20,
 				WindowSize:        60 * time.Second,
 			},
+			// Sources endpoint - moderate limits
 			"/api/v1/sources": {
 				RequestsPerWindow: 10,
+				WindowSize:        60 * time.Second,
+			},
+			// Auth endpoints - STRICT limits to prevent brute-force attacks
+			"/api/v1/auth/login": {
+				RequestsPerWindow: 5, // 5 attempts per minute per IP
+				WindowSize:        60 * time.Second,
+			},
+			"/api/v1/auth/register": {
+				RequestsPerWindow: 3, // 3 registrations per minute per IP
+				WindowSize:        60 * time.Second,
+			},
+			"/api/v1/auth/refresh": {
+				RequestsPerWindow: 10, // 10 refreshes per minute per IP
 				WindowSize:        60 * time.Second,
 			},
 		},

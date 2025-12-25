@@ -29,9 +29,9 @@ func NewRetentionJob(db *sql.DB, log *logger.Logger, storage storage.StorageServ
 		Log:     log,
 		Storage: storage,
 		Config: RetentionConfig{
-			ConversationRetentionDays: 90,
+			ConversationRetentionDays: 730, // 2 years as per policy
 			ErrorLogRetentionDays:     30,
-			AuditLogRetentionDays:     365,
+			AuditLogRetentionDays:     730, // 2 years as per policy
 			DataExportRetentionDays:   7,
 		},
 	}
@@ -110,10 +110,15 @@ func (j *RetentionJob) cleanExpiredExports(ctx context.Context) (int64, error) {
 		// 1. Clean data_exports table files
 		rows, err := j.DB.QueryContext(ctx, `SELECT download_url FROM data_exports WHERE expires_at < $1 AND download_url IS NOT NULL`, now)
 		if err == nil {
-			defer rows.Close()
+			defer func() {
+				closeErr := rows.Close()
+				if closeErr != nil {
+					j.Log.Error("failed_to_close_rows", map[string]any{"error": closeErr.Error()})
+				}
+			}()
 			for rows.Next() {
 				var key string
-				if err := rows.Scan(&key); err == nil && key != "" {
+				if scanErr := rows.Scan(&key); scanErr == nil && key != "" {
 					_ = j.Storage.DeleteFile(ctx, key)
 				}
 			}
@@ -122,10 +127,15 @@ func (j *RetentionJob) cleanExpiredExports(ctx context.Context) (int64, error) {
 		// 2. Clean privacy_requests table files
 		rows2, err := j.DB.QueryContext(ctx, `SELECT export_url FROM privacy_requests WHERE export_expires_at < $1 AND export_url IS NOT NULL`, now)
 		if err == nil {
-			defer rows2.Close()
+			defer func() {
+				closeErr := rows2.Close()
+				if closeErr != nil {
+					j.Log.Error("failed_to_close_rows2", map[string]any{"error": closeErr.Error()})
+				}
+			}()
 			for rows2.Next() {
 				var key string
-				if err := rows2.Scan(&key); err == nil && key != "" {
+				if scanErr := rows2.Scan(&key); scanErr == nil && key != "" {
 					_ = j.Storage.DeleteFile(ctx, key)
 				}
 			}

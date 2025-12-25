@@ -8,7 +8,7 @@ import (
 	pkgMiddleware "github.com/onurceri/botla-co/pkg/middleware"
 )
 
-func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *handlers.AdminHealthHandlers, aqh *handlers.AdminQueueHandlers, aeh *handlers.AdminErrorHandlers, aah *handlers.AdminAuditHandlers, aph *handlers.PrivacyHandlers, secret string) {
+func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *handlers.AdminHealthHandlers, aqh *handlers.AdminQueueHandlers, aeh *handlers.AdminErrorHandlers, aah *handlers.AdminAuditHandlers, aph *handlers.PrivacyHandlers, ach *handlers.AdminChatbotHandlers, ash *handlers.AdminSourceHandlers, secret string) {
 	// Base admin handler with Auth and Admin middleware
 	adminChain := func(h http.HandlerFunc) http.Handler {
 		return pkgMiddleware.AuthMiddleware(secret)(
@@ -27,6 +27,18 @@ func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *h
 	// Organizations
 	mux.Handle("GET /api/v1/admin/organizations", adminChain(ah.ListOrganizations))
 	mux.Handle("GET /api/v1/admin/organizations/{id}", adminChain(ah.GetOrganization))
+
+	// Chatbots
+	mux.Handle("GET /api/v1/admin/chatbots", adminChain(ach.ListChatbots))
+	mux.Handle("GET /api/v1/admin/chatbots/{id}", adminChain(ach.GetChatbot))
+	mux.Handle("POST /api/v1/admin/chatbots/{id}/force-refresh", adminChain(ach.ForceRefreshChatbot))
+
+	// Data Sources
+	mux.Handle("GET /api/v1/admin/sources", adminChain(ash.ListSources))
+	mux.Handle("GET /api/v1/admin/sources/stats", adminChain(ash.GetSourceStats))
+	mux.Handle("GET /api/v1/admin/sources/types", adminChain(ash.GetSourceTypes))
+	mux.Handle("GET /api/v1/admin/sources/{id}", adminChain(ash.GetSource))
+	mux.Handle("POST /api/v1/admin/sources/{id}/reprocess", adminChain(ash.ReprocessSource))
 
 	// System Health
 	mux.Handle("GET /api/v1/admin/health/detailed", adminChain(adhh.GetDetailedHealth))

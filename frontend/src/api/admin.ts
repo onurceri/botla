@@ -273,3 +273,112 @@ export const processPrivacyRequest = async (
   })
   return data
 }
+
+// === Chatbots ===
+
+export interface AdminChatbot {
+  id: string
+  name: string
+  owner_id: string
+  workspace_id: string
+  organization_id?: string
+  organization_name?: string
+  owner_email: string
+  source_count: number
+  message_count: number
+  custom_branding?: unknown
+  created_at: string
+}
+
+export interface ChatbotListResponse {
+  chatbots: AdminChatbot[]
+  total: number
+}
+
+export interface ListChatbotsParams {
+  limit?: number
+  offset?: number
+  name?: string
+  organization_id?: string
+  owner_id?: string
+}
+
+export const listChatbots = async (params?: ListChatbotsParams) => {
+  const { data } = await api.get<ChatbotListResponse>(`${ADMIN_BASE}/chatbots`, { params })
+  return data
+}
+
+export const getChatbot = async (id: string) => {
+  const { data } = await api.get<AdminChatbot>(`${ADMIN_BASE}/chatbots/${id}`)
+  return data
+}
+
+export const forceRefreshChatbot = async (id: string) => {
+  const { data } = await api.post<{ status: string; sources_reset: number; sources_queued: number }>(
+    `${ADMIN_BASE}/chatbots/${id}/force-refresh`
+  )
+  return data
+}
+
+
+
+// === Data Sources ===
+
+export interface AdminSource {
+  id: string
+  chatbot_id: string
+  chatbot_name: string
+  organization_name?: string
+  owner_email: string
+  source_type: string
+  source_url?: string
+  original_filename?: string
+  status: string
+  error_message?: string
+  chunk_count: number
+  size_bytes?: number
+  processed_at?: string
+  created_at: string
+}
+
+export interface SourceListResponse {
+  sources: AdminSource[]
+  total: number
+}
+
+export interface ListSourcesParams {
+  limit?: number
+  offset?: number
+  chatbot_id?: string
+  source_type?: string
+  status?: string
+  owner_id?: string
+}
+
+export const listSources = async (params?: ListSourcesParams) => {
+  const { data } = await api.get<SourceListResponse>(`${ADMIN_BASE}/sources`, { params })
+  return data
+}
+
+export const getSource = async (id: string) => {
+  const { data } = await api.get<AdminSource>(`${ADMIN_BASE}/sources/${id}`)
+  return data
+}
+
+export const getSourceStats = async () => {
+  const { data } = await api.get<Record<string, number>>(`${ADMIN_BASE}/sources/stats`)
+  return data
+}
+
+export const getSourceTypes = async () => {
+  const { data } = await api.get<{ types: string[]; statuses: string[] }>(`${ADMIN_BASE}/sources/types`)
+  return data
+}
+
+export const reprocessSource = async (id: string) => {
+  const { data } = await api.post<{ status: string; queued: boolean }>(
+    `${ADMIN_BASE}/sources/${id}/reprocess`
+  )
+  return data
+}
+

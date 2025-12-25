@@ -253,7 +253,7 @@ export default function PrivacySettingsPage() {
             Veri Dışa Aktarma
           </CardTitle>
           <CardDescription>
-            Tüm kişisel verilerinizin bir kopyasını indirin. İşlem tamamlandığında size e-posta iletilecektir.
+            Tüm kişisel verilerinizin bir kopyasını indirin. İşlem tamamlandığında buradan indirebilirsiniz.
           </CardDescription>
         </CardHeader>
         <CardContent>

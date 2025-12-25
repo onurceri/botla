@@ -64,6 +64,13 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
 	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc}
 
+	// RAG service for admin operations (vector deletion)
+	ragSvc := services.NewRAGService(pool, qdClient, log)
+	// Queue wrapper for source processing
+	queueWrapper := &services.Queue{SourceQueue: q}
+	ach := handlers.NewAdminChatbotHandlers(pool, adminSvc, ragSvc, queueWrapper)
+	ash := handlers.NewAdminSourceHandlers(pool, adminSvc, ragSvc, queueWrapper)
+
 	// Health
 	mux.HandleFunc("/health", hh.Health)
 
@@ -113,7 +120,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	registerOrgRoutes(mux, cfg.JWT_SECRET, orgSvc, oh, wh)
 
 	// Admin
-	RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, cfg.JWT_SECRET)
+	RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)
 
 	return mux
 }

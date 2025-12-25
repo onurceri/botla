@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import axios from 'axios'
-import { api, _resetRedirecting } from '../client'
+import { api, _resetRedirecting, _setRedirectToLogin } from '../client'
 
 describe('axios refresh interceptor', () => {
   beforeEach(() => {
@@ -76,9 +76,11 @@ describe('axios refresh interceptor', () => {
     vi.stubEnv('VITE_E2E', '')
     window.localStorage.setItem('botla_refresh_token', 'rtok')
     vi.spyOn(axios, 'post').mockRejectedValueOnce(new Error('nope'))
-    const getLoc = vi.spyOn(window, 'location', 'get')
-    const replaceMock = vi.fn()
-    getLoc.mockReturnValue({ ...window.location, replace: replaceMock } as any)
+    
+    // Set up the mock redirect function BEFORE triggering the handler
+    const redirectMock = vi.fn()
+    _setRedirectToLogin(redirectMock)
+    
     const handlers = (api as any).interceptors.response.handlers
     const handler = handlers[handlers.length - 1].rejected
     const req: any = { url: '/x', headers: {}, method: 'get', _retry: false }
@@ -86,17 +88,54 @@ describe('axios refresh interceptor', () => {
 
     const p = handler(err).catch(() => {})
 
-    // Fast-forward time for the 100ms delay in handleSessionExpired
-    vi.advanceTimersByTime(200)
+    // Fast-forward time for the 1500ms delay in handleSessionExpired
+    await vi.advanceTimersByTimeAsync(2000)
     await p
 
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_token')
     expect(window.localStorage.removeItem).toHaveBeenCalledWith('botla_refresh_token')
-
-    await vi.waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith('/login')
+    expect(redirectMock).toHaveBeenCalled()
+    
+    // Restore original redirect function
+    _setRedirectToLogin(() => {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
     })
-    getLoc.mockRestore()
+    vi.useRealTimers()
+    vi.unstubAllEnvs()
+  })
+
+  it('does not trigger session expiry on auth endpoint 401 errors', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('VITE_E2E', '')
+    
+    // Set up the mock redirect function to track if it gets called
+    const redirectMock = vi.fn()
+    _setRedirectToLogin(redirectMock)
+    
+    const handlers = (api as any).interceptors.response.handlers
+    const handler = handlers[handlers.length - 1].rejected
+    
+    // Test login endpoint
+    const loginReq: any = { url: '/api/v1/auth/login', headers: {}, method: 'post', _retry: false }
+    const loginErr: any = { response: { status: 401 }, config: loginReq }
+    
+    await expect(handler(loginErr)).rejects.toEqual(loginErr)
+    
+    // Fast-forward time - redirect should NOT be called
+    await vi.advanceTimersByTimeAsync(2000)
+    
+    // Verify session expiry was NOT triggered
+    expect(window.localStorage.removeItem).not.toHaveBeenCalled()
+    expect(redirectMock).not.toHaveBeenCalled()
+    
+    // Restore original redirect function
+    _setRedirectToLogin(() => {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+    })
     vi.useRealTimers()
     vi.unstubAllEnvs()
   })
