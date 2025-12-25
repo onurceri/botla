@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestAction_CRUD(t *testing.T) {
@@ -299,6 +301,19 @@ func TestChatWithTools(t *testing.T) {
 func TestAgenticLoopLimit(t *testing.T) {
 	// 1. Setup Mock Server for Infinite Loop
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/embeddings" {
+			w.Header().Set("Content-Type", "application/json")
+			resp := map[string]any{
+				"data": []map[string]any{
+					{
+						"embedding": make([]float32, 1536),
+						"index":     0,
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
 		if r.URL.Path == "/v1/chat/completions" {
 			w.Header().Set("Content-Type", "application/json")
 			// Always return a tool call
@@ -397,6 +412,19 @@ func TestAgenticLoopLimit(t *testing.T) {
 
 func TestToolExecutionError(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/embeddings" {
+			w.Header().Set("Content-Type", "application/json")
+			resp := map[string]any{
+				"data": []map[string]any{
+					{
+						"embedding": make([]float32, 1536),
+						"index":     0,
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
 		if r.URL.Path == "/v1/chat/completions" {
 			var req map[string]any
 			json.NewDecoder(r.Body).Decode(&req)
@@ -457,11 +485,32 @@ func TestToolExecutionError(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	token := authTokenForAction(t, te.Server.URL, "err_user@example.com")
+	mockVC := &rag.MockVectorClient{}
+	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
+	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{
+		{
+			ID:    "1",
+			Score: 0.9,
+			Payload: rag.EmbeddingPayload{
+				OriginalText: "some context",
+				SourceID:     "test.pdf",
+				SourceType:   "file",
+			},
+		},
+	}, nil)
+
+	// Use the real LLM client pointed to our mock server
+	llmClient, _ := rag.NewOpenAIClient(te.Cfg)
+
+	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	token := authTokenForAction(t, ts.URL, "err_user@example.com")
 
 	createBot := map[string]any{"name": "Error Bot", "language": "en-US"}
 	cb, _ := json.Marshal(createBot)
-	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	reqC, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
@@ -479,14 +528,14 @@ func TestToolExecutionError(t *testing.T) {
 		"enabled":     true,
 	}
 	ca, _ := json.Marshal(createAction)
-	reqA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
+	reqA, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
 	reqA.Header.Set("Authorization", "Bearer "+token)
 	reqA.Header.Set("Content-Type", "application/json")
 	http.DefaultClient.Do(reqA)
 
 	chatReq := map[string]any{"message": "Trigger error", "session_id": "err-session"}
 	cr, _ := json.Marshal(chatReq)
-	reqChat, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cr))
+	reqChat, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cr))
 	reqChat.Header.Set("Authorization", "Bearer "+token)
 	reqChat.Header.Set("Content-Type", "application/json")
 	resChat, err := http.DefaultClient.Do(reqChat)
@@ -506,6 +555,19 @@ func TestToolExecutionError(t *testing.T) {
 
 func TestHTTPActionPOST(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/embeddings" {
+			w.Header().Set("Content-Type", "application/json")
+			resp := map[string]any{
+				"data": []map[string]any{
+					{
+						"embedding": make([]float32, 1536),
+						"index":     0,
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
 		if r.URL.Path == "/v1/chat/completions" {
 			var req map[string]any
 			json.NewDecoder(r.Body).Decode(&req)
@@ -570,11 +632,32 @@ func TestHTTPActionPOST(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	token := authTokenForAction(t, te.Server.URL, "post_user@example.com")
+	mockVC := &rag.MockVectorClient{}
+	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
+	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{
+		{
+			ID:    "1",
+			Score: 0.9,
+			Payload: rag.EmbeddingPayload{
+				OriginalText: "some context",
+				SourceID:     "test.pdf",
+				SourceType:   "file",
+			},
+		},
+	}, nil)
+
+	// Use the real LLM client pointed to our mock server
+	llmClient, _ := rag.NewOpenAIClient(te.Cfg)
+
+	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	token := authTokenForAction(t, ts.URL, "post_user@example.com")
 
 	createBot := map[string]any{"name": "Post Bot", "language": "en-US"}
 	cb, _ := json.Marshal(createBot)
-	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	reqC, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
@@ -592,14 +675,14 @@ func TestHTTPActionPOST(t *testing.T) {
 		"enabled":     true,
 	}
 	ca, _ := json.Marshal(createAction)
-	reqA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
+	reqA, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
 	reqA.Header.Set("Authorization", "Bearer "+token)
 	reqA.Header.Set("Content-Type", "application/json")
 	http.DefaultClient.Do(reqA)
 
 	chatReq := map[string]any{"message": "Post data", "session_id": "post-session"}
 	cr, _ := json.Marshal(chatReq)
-	reqChat, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cr))
+	reqChat, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cr))
 	reqChat.Header.Set("Authorization", "Bearer "+token)
 	reqChat.Header.Set("Content-Type", "application/json")
 	resChat, err := http.DefaultClient.Do(reqChat)
@@ -619,6 +702,19 @@ func TestHTTPActionPOST(t *testing.T) {
 
 func TestBuiltinTools(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/embeddings" {
+			w.Header().Set("Content-Type", "application/json")
+			resp := map[string]any{
+				"data": []map[string]any{
+					{
+						"embedding": make([]float32, 1536),
+						"index":     0,
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
 		if r.URL.Path == "/v1/chat/completions" {
 			var req map[string]any
 			json.NewDecoder(r.Body).Decode(&req)
@@ -678,11 +774,32 @@ func TestBuiltinTools(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	token := authTokenForAction(t, te.Server.URL, "builtin_user@example.com")
+	mockVC := &rag.MockVectorClient{}
+	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
+	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{
+		{
+			ID:    "1",
+			Score: 0.9,
+			Payload: rag.EmbeddingPayload{
+				OriginalText: "some context",
+				SourceID:     "test.pdf",
+				SourceType:   "file",
+			},
+		},
+	}, nil)
+
+	// Use the real LLM client pointed to our mock server
+	llmClient, _ := rag.NewOpenAIClient(te.Cfg)
+
+	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	token := authTokenForAction(t, ts.URL, "builtin_user@example.com")
 
 	createBot := map[string]any{"name": "Builtin Bot", "language": "en-US"}
 	cb, _ := json.Marshal(createBot)
-	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	reqC, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
@@ -700,14 +817,14 @@ func TestBuiltinTools(t *testing.T) {
 		"enabled":     true,
 	}
 	ca, _ := json.Marshal(createAction)
-	reqA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
+	reqA, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
 	reqA.Header.Set("Authorization", "Bearer "+token)
 	reqA.Header.Set("Content-Type", "application/json")
 	http.DefaultClient.Do(reqA)
 
 	chatReq := map[string]any{"message": "List sources", "session_id": "builtin-session"}
 	cr, _ := json.Marshal(chatReq)
-	reqChat, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cr))
+	reqChat, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cr))
 	reqChat.Header.Set("Authorization", "Bearer "+token)
 	reqChat.Header.Set("Content-Type", "application/json")
 	resChat, err := http.DefaultClient.Do(reqChat)

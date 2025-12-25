@@ -126,4 +126,3 @@ func TestMe_UserNotFound(t *testing.T) {
 		t.Errorf("expected status 404, got: %d", rr.Code)
 	}
 }
-

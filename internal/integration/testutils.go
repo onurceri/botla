@@ -2,7 +2,9 @@ package integration
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"net/http/httptest"
 	"os"
@@ -14,6 +16,7 @@ import (
 
 	dbpkg "github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/stretchr/testify/mock"
@@ -35,10 +38,12 @@ func (m *MockVectorStore) DeleteBySourceID(ctx context.Context, sourceID string)
 type TestEnv struct {
 	Cfg         *config.Config
 	DB          *sql.DB
+	Schema      string
 	Server      *httptest.Server
 	VectorStore *MockVectorStore
 	MockVC      *rag.MockVectorClient
 	MockLLM     *rag.MockFullClient
+	Queue       *processing.SourceQueue
 }
 
 func SetupTestEnv() (*TestEnv, error) {
@@ -58,12 +63,6 @@ func SetupTestEnv() (*TestEnv, error) {
 	if os.Getenv("DB_PASSWORD") == "" {
 		_ = os.Setenv("DB_PASSWORD", "botla")
 	}
-	if os.Getenv("DB_SCHEMA") == "" {
-		_ = os.Setenv("DB_SCHEMA", "test")
-	}
-	if os.Getenv("DB_SCHEMA") != "test" {
-		return nil, fmt.Errorf("tests must use test schema, got %s", os.Getenv("DB_SCHEMA"))
-	}
 	if os.Getenv("QDRANT_URL") == "" {
 		_ = os.Setenv("QDRANT_URL", "http://localhost:6333")
 	}
@@ -76,6 +75,12 @@ func SetupTestEnv() (*TestEnv, error) {
 	if _, ok := os.LookupEnv("OPENAI_API_KEY"); !ok {
 		_ = os.Setenv("OPENAI_API_KEY", "test-key")
 	}
+
+	randBytes := make([]byte, 4)
+	if _, err := rand.Read(randBytes); err != nil {
+		return nil, fmt.Errorf("failed to generate schema suffix: %w", err)
+	}
+	schema := "botla_it_" + hex.EncodeToString(randBytes)
 
 	// Run migrations
 	// We use the migrate CLI tool to ensure the test database is in a clean state.
@@ -100,13 +105,33 @@ func SetupTestEnv() (*TestEnv, error) {
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s",
 		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"), os.Getenv("DB_SCHEMA"))
+		os.Getenv("DB_NAME"), schema)
+
+	baseURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"),
+	)
+	baseDB, err := sql.Open("pgx", baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open base db: %w", err)
+	}
+	if pingErr := baseDB.Ping(); pingErr != nil {
+		_ = baseDB.Close()
+		return nil, fmt.Errorf("failed to ping base db: %w", pingErr)
+	}
+	if _, schemaCreateErr := baseDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema)); schemaCreateErr != nil {
+		_ = baseDB.Close()
+		return nil, fmt.Errorf("failed to create schema %s: %w", schema, schemaCreateErr)
+	}
+	_ = baseDB.Close()
 
 	// Migrate Up
 	//nolint:gosec // this is a test helper using dynamic path
 	cmdUp := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
-	if output, err := cmdUp.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("migration up failed: %s, %v", output, err)
+	output, migrateErr := cmdUp.CombinedOutput()
+	if migrateErr != nil {
+		return nil, fmt.Errorf("migration up failed: %s, %v", output, migrateErr)
 	}
 
 	// Clean up only data, don't drop tables
@@ -116,14 +141,14 @@ func SetupTestEnv() (*TestEnv, error) {
 	// NOTE: We don't truncate 'plans' and 'languages' as they are seeded.
 
 	cfg := config.LoadConfig()
+	cfg.DB_SCHEMA = schema
 	db, err := dbpkg.New(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set search path first
-	_ = os.Setenv("DB_SCHEMA", "test")
-	_, _ = db.Exec("SET search_path TO test")
+	_, _ = db.Exec("SET search_path TO " + schema)
 
 	_, _ = db.Exec(`TRUNCATE TABLE chatbots, users, organizations, workspaces, data_sources, analytics, handoff_requests, messages, conversations CASCADE`)
 
@@ -135,6 +160,44 @@ func SetupTestEnv() (*TestEnv, error) {
 	// Relax rate limits and limits for free plan in test environment
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits,requests_per_minute}', '1000'::jsonb) WHERE code = 'free'`)
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_chatbots}', '100'::jsonb) WHERE code = 'free'`)
+
+	// Insert dummy data for stub sources to prevent foreign key violations
+	dummyUUID := "00000000-0000-0000-0000-000000000001"
+
+	// Dummy User
+	if _, insertUserErr := db.Exec(`INSERT INTO users (id, email, password_hash, plan_id, created_at, is_platform_admin, onboarding_completed, onboarding_step, onboarding_skipped) 
+		VALUES ($1, 'dummy@example.com', 'hash', (SELECT id FROM plans WHERE code='free'), NOW(), false, true, 0, false)
+		ON CONFLICT (id) DO NOTHING`, dummyUUID); insertUserErr != nil {
+		return nil, fmt.Errorf("failed to insert dummy user: %w", insertUserErr)
+	}
+
+	// Dummy Chatbot
+	if _, insertChatbotErr := db.Exec(`INSERT INTO chatbots (
+		id, user_id, name, model, temperature, max_tokens, 
+		theme_color, welcome_message, created_at, updated_at, 
+		position, bot_message_color, user_message_color, bot_message_text_color, user_message_text_color, 
+		chat_font_family, chat_header_color, chat_header_text_color, chat_background_color, bubble_radius, 
+		input_background_color, input_text_color, send_button_color, 
+		discovery_mode, refresh_policy, hide_branding, confidence_threshold, handoff_enabled, handoff_type, 
+		language_id, secure_embed_enabled, suggestions_enabled
+	) VALUES (
+		$1, $1, 'Dummy Bot', 'gpt-4o-mini', 0.7, 4096, 
+		'#000000', 'Hello', NOW(), NOW(), 
+		'bottom-right', '#ffffff', '#000000', '#000000', '#ffffff', 
+		'Inter', '#ffffff', '#000000', '#ffffff', '12px', 
+		'#ffffff', '#000000', '#000000', 
+		'auto', 'manual', false, 0.5, false, 'email', 
+		(SELECT id FROM languages WHERE code='en-US'), false, false
+	) ON CONFLICT (id) DO NOTHING`, dummyUUID); insertChatbotErr != nil {
+		return nil, fmt.Errorf("failed to insert dummy chatbot: %w", insertChatbotErr)
+	}
+
+	// Dummy Source
+	if _, insertSourceErr := db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, status, chunk_count, size_bytes, is_discovered, created_at)
+		VALUES ($1, $1, 'text', 'completed', 1, 100, false, NOW())
+		ON CONFLICT (id) DO NOTHING`, dummyUUID); insertSourceErr != nil {
+		return nil, fmt.Errorf("failed to insert dummy source: %w", insertSourceErr)
+	}
 
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
@@ -163,9 +226,9 @@ func SetupTestEnv() (*TestEnv, error) {
 	vs := &MockVectorStore{}
 	// For now, continue using real clients by default to keep existing tests passing
 	// New tests can manually create a mux with mocks.
-	mux := NewTestMux(cfg, db, vs, nil, nil)
+	mux, q := NewTestMux(cfg, db, vs, nil, nil)
 	srv := httptest.NewServer(mux)
-	return &TestEnv{Cfg: cfg, DB: db, Server: srv, VectorStore: vs, MockVC: nil, MockLLM: nil}, nil
+	return &TestEnv{Cfg: cfg, DB: db, Schema: schema, Server: srv, VectorStore: vs, MockVC: mockVC, MockLLM: mockLLM, Queue: q}, nil
 }
 
 func strPtr(s string) *string {
@@ -179,7 +242,13 @@ func TeardownTestEnv(te *TestEnv) {
 	if te.Server != nil {
 		te.Server.Close()
 	}
+	if te.Queue != nil {
+		te.Queue.Stop()
+	}
 	if te.DB != nil {
+		if te.Schema != "" {
+			_, _ = te.DB.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", te.Schema))
+		}
 		_ = te.DB.Close()
 	}
 }

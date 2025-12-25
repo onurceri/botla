@@ -14,7 +14,7 @@ Add tables for privacy requests and consent tracking.
 
 ### Tasks
 
-- [ ] **Create migration** `db/migrations/000042_kvkk_compliance.up.sql`
+- [x] **Create migration** `db/migrations/000042_kvkk_compliance.up.sql`
   
   ```sql
   -- Privacy/KVKK data requests
@@ -72,7 +72,7 @@ Add tables for privacy requests and consent tracking.
   CREATE INDEX idx_data_exports_status ON data_exports(status);
   ```
 
-- [ ] **Create down migration** `db/migrations/000042_kvkk_compliance.down.sql`
+- [x] **Create down migration** `db/migrations/000042_kvkk_compliance.down.sql`
   
   ```sql
   DROP TABLE IF EXISTS data_exports;
@@ -80,7 +80,7 @@ Add tables for privacy requests and consent tracking.
   DROP TABLE IF EXISTS privacy_requests;
   ```
 
-- [ ] **Run migration**
+- [x] **Run migration**
   ```bash
   make migrate-up
   ```
@@ -93,7 +93,7 @@ Create service to handle data export and deletion.
 
 ### Tasks
 
-- [ ] **Create `internal/services/privacy_service.go`**
+- [x] **Create `internal/services/privacy_service.go`**
   
   ```go
   package services
@@ -149,7 +149,7 @@ Create service to handle data export and deletion.
   }
   ```
 
-- [ ] **Create `internal/db/privacy.go`**
+- [x] **Create `internal/db/privacy.go`**
   
   ```go
   package db
@@ -185,7 +185,7 @@ Admin endpoints for processing privacy requests.
 
 ### Tasks
 
-- [ ] **Create `internal/api/handlers/privacy.go`**
+- [x] **Create `internal/api/handlers/privacy.go`**
   
   ```go
   package handlers
@@ -228,7 +228,7 @@ Admin endpoints for processing privacy requests.
   }
   ```
 
-- [ ] **Add privacy routes** (update `internal/api/routes/admin.go`)
+- [x] **Add privacy routes** (update `internal/api/routes/admin.go`)
   
   ```go
   // KVKK/Privacy
@@ -246,7 +246,7 @@ Allow users to request their own data export/deletion.
 
 ### Tasks
 
-- [ ] **Create `internal/api/handlers/user_privacy.go`**
+- [x] **Create `internal/api/handlers/user_privacy.go`**
   
   ```go
   package handlers
@@ -290,7 +290,7 @@ Allow users to request their own data export/deletion.
   }
   ```
 
-- [ ] **Add user privacy routes** (update regular user routes)
+- [x] **Add user privacy routes** (update regular user routes)
   
   ```go
   // User privacy settings
@@ -306,7 +306,7 @@ Allow users to request their own data export/deletion.
 
 ### Tasks
 
-- [ ] **Create `internal/db/consent.go`**
+- [x] **Create `internal/db/consent.go`**
   
   ```go
   package db
@@ -335,7 +335,7 @@ User-facing privacy settings page.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/PrivacySettingsPage.tsx`**
+- [x] **Create `frontend/src/pages/PrivacySettingsPage.tsx`**
   
   ```typescript
   import { useQuery, useMutation } from '@tanstack/react-query';
@@ -345,6 +345,10 @@ User-facing privacy settings page.
     const { data: consents } = useQuery({
       queryKey: ['privacy', 'consents'],
       queryFn: () => api.get('/me/privacy/consents'),
+    });
+    
+    const updateMutation = useMutation({
+      mutationFn: (data: any) => api.patch('/me/privacy/consents', data),
     });
     
     const exportMutation = useMutation({
@@ -401,7 +405,7 @@ User-facing privacy settings page.
   }
   ```
 
-- [ ] **Add route** in App.tsx
+- [x] **Add route** in App.tsx
   
   ```typescript
   <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
@@ -415,8 +419,8 @@ Admin page to manage KVKK requests.
 
 ### Tasks
 
-- [ ] **Create `frontend/src/pages/admin/AdminPrivacyPage.tsx`**
-  
+- [x] **Create `frontend/src/pages/admin/AdminPrivacyPage.tsx`**
+
   ```typescript
   import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
   import { adminApi } from '@/api/admin';
@@ -516,8 +520,8 @@ Background job for automatic data cleanup.
 
 ### Tasks
 
-- [ ] **Create `internal/services/retention_job.go`**
-  
+- [x] **Create `internal/services/retention_job.go`**
+
   ```go
   package services
   
@@ -563,7 +567,7 @@ Background job for automatic data cleanup.
   }
   ```
 
-- [ ] **Register job** in main.go or scheduler
+- [x] **Register job** in main.go or scheduler
   
   ```go
   // Run daily at midnight
@@ -620,3 +624,48 @@ go test ./internal/db/... -v -run Consent
 | `internal/services/retention_job.go` | Data cleanup job |
 | `frontend/src/pages/PrivacySettingsPage.tsx` | User privacy page |
 | `frontend/src/pages/admin/AdminPrivacyPage.tsx` | Admin privacy page |
+
+---
+
+## Step 4.9: Integration Testing
+
+Verify KVKK features end-to-end.
+
+### Tasks
+
+- [x] **Create `internal/integration/privacy_test.go`**
+  - [x] Test User Consent Management
+  - [x] Test Data Export Request Flow
+  - [x] Test Deletion Request Flow
+  - [x] Test Admin Request Processing
+  - [x] Test Admin Data Export Generation
+
+- [x] **Verify Retention Job**
+  - [x] Create test for retention job in `internal/integration/retention_test.go`
+  - [x] Verify expired data is actually deleted
+  - [x] Verify non-expired data is preserved
+
+---
+
+## Step 4.10: Documentation
+
+- [x] **Create `docs/kvkk_compliance.md`**
+  - [x] Explanation of data collection
+  - [x] User rights and how to exercise them
+  - [x] Data retention policy details
+- [ ] **Update API Documentation**
+  - Document new privacy endpoints
+
+---
+
+## Checklist
+
+- [x] Database tables created
+- [x] Privacy service implemented
+- [x] User-facing API endpoints created
+- [x] Admin API endpoints created
+- [x] Admin UI pages created
+- [x] User settings UI created
+- [x] Data retention job implemented
+- [x] Integration tests passed
+- [x] Documentation updated (KVKK Guide created)

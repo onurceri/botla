@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -28,4 +29,9 @@ func (m *MockStorageService) DownloadFile(ctx context.Context, key string) (io.R
 func (m *MockStorageService) DeleteFile(ctx context.Context, key string) error {
 	args := m.Called(ctx, key)
 	return args.Error(0)
+}
+
+func (m *MockStorageService) GetSignedURL(ctx context.Context, key string, expires time.Duration) (string, error) {
+	args := m.Called(ctx, key, expires)
+	return args.String(0), args.Error(1)
 }

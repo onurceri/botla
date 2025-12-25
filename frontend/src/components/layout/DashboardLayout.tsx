@@ -11,6 +11,7 @@ import {
   MousePointer,
   User,
   CreditCard,
+  Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -102,6 +103,7 @@ const DashboardLayout = () => {
   const settingsItems = [
     { icon: User, label: 'Profil', to: '/dashboard/settings/profile' },
     { icon: CreditCard, label: 'Plan', to: '/dashboard/settings/plan' },
+    { icon: Shield, label: 'Gizlilik', to: '/dashboard/settings/privacy' },
   ]
 
   return (

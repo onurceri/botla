@@ -17,7 +17,7 @@ func AdminListOrganizations(ctx context.Context, pool *sql.DB, filter Organizati
 	query := `
 		SELECT id, name, slug, owner_id, plan_id, created_at, updated_at, COUNT(*) OVER() as total_count
 		FROM organizations
-		WHERE deleted_at IS NULL
+		WHERE 1=1
 	`
 	args := []any{}
 	argIdx := 1
@@ -74,7 +74,7 @@ func GetOrganizationByID(ctx context.Context, pool *sql.DB, id string) (*models.
 	query := `
 		SELECT id, name, slug, owner_id, plan_id, created_at, updated_at
 		FROM organizations
-		WHERE id = $1 AND deleted_at IS NULL
+		WHERE id = $1
 	`
 	err := pool.QueryRowContext(ctx, query, id).Scan(
 		&o.ID,

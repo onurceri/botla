@@ -7,14 +7,20 @@ import (
 
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 type AdminQueueHandlers struct {
-	DB *sql.DB
+	DB           *sql.DB
+	AdminService *services.AdminService
 }
 
-func NewAdminQueueHandlers(database *sql.DB) *AdminQueueHandlers {
-	return &AdminQueueHandlers{DB: database}
+func NewAdminQueueHandlers(database *sql.DB, adminSvc *services.AdminService) *AdminQueueHandlers {
+	return &AdminQueueHandlers{
+		DB:           database,
+		AdminService: adminSvc,
+	}
 }
 
 // GetQueues returns statistics for processing queues.
@@ -63,6 +69,10 @@ func (h *AdminQueueHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log the action
+	adminID, _ := middleware.UserIDFromContext(r.Context())
+	_ = h.AdminService.LogAction(r.Context(), adminID, "retry_job", "data_source", &id, nil, r)
+
 	api.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -79,6 +89,10 @@ func (h *AdminQueueHandlers) DeleteJob(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, http.StatusInternalServerError, "Failed to delete job", api.ErrCodeInternalError)
 		return
 	}
+
+	// Log the action
+	adminID, _ := middleware.UserIDFromContext(r.Context())
+	_ = h.AdminService.LogAction(r.Context(), adminID, "delete_job", "data_source", &id, nil, r)
 
 	api.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

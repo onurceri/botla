@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"net"
 	"net/http"
 
 	"github.com/onurceri/botla-co/internal/db"
@@ -23,13 +24,18 @@ func NewAdminService(db *sql.DB, log *logger.Logger) *AdminService {
 
 // LogAction logs an admin action to the audit log.
 func (s *AdminService) LogAction(ctx context.Context, adminID, action, targetType string, targetID *string, details map[string]any, r *http.Request) error {
+	ip := r.RemoteAddr
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		ip = host
+	}
+
 	entry := db.AuditLogEntry{
 		AdminUserID: adminID,
 		Action:      action,
 		TargetType:  targetType,
 		TargetID:    targetID,
 		Details:     details,
-		IPAddress:   r.RemoteAddr,
+		IPAddress:   ip,
 		UserAgent:   r.Header.Get("User-Agent"),
 	}
 

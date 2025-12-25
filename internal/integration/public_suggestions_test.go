@@ -27,7 +27,7 @@ func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 	mockLLM := &rag.MockFullClient{}
 
-	mux := NewTestMux(te.Cfg, te.DB, nil, mockLLM, mockVC)
+	mux, _ := NewTestMux(te.Cfg, te.DB, nil, mockLLM, mockVC)
 
 	// Create user and bot
 	userID := createTestUser(t, te.DB)

@@ -55,6 +55,7 @@ type application struct {
 	storageService   storage.StorageService
 	queue            *processing.SourceQueue
 	refreshScheduler *services.RefreshScheduler
+	retentionJob     *services.RetentionJob
 	rateLimiter      *middleware.RateLimiter
 	globalLimiter    ratelimit.Limiter
 	server           *http.Server
@@ -139,6 +140,9 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	// Start refresh scheduler
 	refreshScheduler := services.NewRefreshScheduler(pool, q, log)
 
+	// Initialize retention job
+	retentionJob := services.NewRetentionJob(pool, log, storageService)
+
 	return &application{
 		cfg:              cfg,
 		log:              log,
@@ -148,6 +152,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		storageService:   storageService,
 		queue:            q,
 		refreshScheduler: refreshScheduler,
+		retentionJob:     retentionJob,
 		rateLimiter:      rl,
 		globalLimiter:    globalLimiter,
 	}, nil
@@ -158,6 +163,29 @@ func (app *application) start() {
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
 	app.schedulerCancel = schedulerCancel
 	app.refreshScheduler.Start(schedulerCtx)
+
+	// Start retention job (daily)
+	go func() {
+		// Run once on startup (in background)
+		go func() {
+			if err := app.retentionJob.Run(schedulerCtx); err != nil {
+				app.log.Error("initial_retention_job_failed", map[string]any{"error": err.Error()})
+			}
+		}()
+
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-schedulerCtx.Done():
+				return
+			case <-ticker.C:
+				if err := app.retentionJob.Run(schedulerCtx); err != nil {
+					app.log.Error("retention_job_failed", map[string]any{"error": err.Error()})
+				}
+			}
+		}
+	}()
 
 	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService, app.qdrantClient)
 	origins := strings.Split(app.cfg.CORS_ALLOWED_ORIGINS, ",")

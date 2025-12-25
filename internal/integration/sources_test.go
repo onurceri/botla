@@ -104,8 +104,8 @@ func startQdrantTopKStub() *QdrantTopKStub {
 			"id":    "p1",
 			"score": 0.9,
 			"payload": map[string]any{
-				"chatbot_id":    "stub-bot",
-				"source_id":     "stub-source",
+				"chatbot_id":    "00000000-0000-0000-0000-000000000001",
+				"source_id":     "00000000-0000-0000-0000-000000000001",
 				"chunk_index":   0,
 				"original_text": "stub text chunk",
 				"source_type":   "text",

@@ -22,7 +22,7 @@ func TestNewTestMux_CORSPreflightAndAuth(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 	mockLLM := &rag.MockFullClient{}
 
-	h := NewTestMux(cfg, db, nil, mockLLM, mockVC)
+	h, _ := NewTestMux(cfg, db, nil, mockLLM, mockVC)
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 

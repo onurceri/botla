@@ -1,14 +1,13 @@
 package middleware
 
 import (
-	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/httputil"
 	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/redis/go-redis/v9"
 )
@@ -88,28 +87,6 @@ func (rl *RateLimiter) getOrCreatePlanLimiter(plan *models.Plan) ratelimit.Limit
 	return limiter
 }
 
-// extractIP extracts the client IP from the request
-// Handles X-Forwarded-For, X-Real-IP headers for proxy support
-func extractIP(r *http.Request) string {
-	// Check X-Forwarded-For header (can contain multiple IPs)
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take the first IP (original client)
-		ips := strings.Split(xff, ",")
-		if len(ips) > 0 {
-			return strings.TrimSpace(ips[0])
-		}
-	}
-
-	// Check X-Real-IP header
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
-	}
-
-	// Fall back to RemoteAddr
-	host, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return host
-}
-
 // RateLimitMiddleware creates a rate limiting middleware using plan-based approach
 // For authenticated users, uses their plan's rate limits
 // For unauthenticated users, uses global IP-based limits
@@ -129,7 +106,7 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 				key = ratelimit.Key(ratelimit.TierUser, uid)
 			} else {
 				// Use global IP-based limiter for unauthenticated
-				ip := extractIP(r)
+				ip := httputil.ExtractIP(r)
 				key = ratelimit.Key(ratelimit.TierGlobal, ip)
 				limiter = rl.globalLimiter
 			}

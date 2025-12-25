@@ -18,7 +18,7 @@ import (
 
 // TestSources_TextCreation tests text source creation end-to-end
 func TestSources_TextCreation(t *testing.T) {
-	dbx := testdb.OpenTestDB(t)
+	dbx := testdb.OpenParallelTestDB(t)
 
 	var uid string
 	var freePlanID string
@@ -76,7 +76,7 @@ func TestSources_TextCreation(t *testing.T) {
 
 // TestSources_URLCreation tests URL source creation end-to-end
 func TestSources_URLCreation(t *testing.T) {
-	dbx := testdb.OpenTestDB(t)
+	dbx := testdb.OpenParallelTestDB(t)
 
 	var uid string
 	var freePlanID string
@@ -131,7 +131,7 @@ func TestSources_URLCreation(t *testing.T) {
 
 // TestSources_EmptyText_BadRequest tests empty text rejection
 func TestSources_EmptyText_BadRequest(t *testing.T) {
-	dbx := testdb.OpenTestDB(t)
+	dbx := testdb.OpenParallelTestDB(t)
 
 	var uid string
 	var freePlanID string
@@ -180,7 +180,7 @@ func TestSources_EmptyText_BadRequest(t *testing.T) {
 
 // TestSources_EmptyURL_BadRequest tests empty URL rejection
 func TestSources_EmptyURL_BadRequest(t *testing.T) {
-	dbx := testdb.OpenTestDB(t)
+	dbx := testdb.OpenParallelTestDB(t)
 
 	var uid string
 	var freePlanID string

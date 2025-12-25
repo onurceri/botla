@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/api/handlers"
+	"github.com/onurceri/botla-co/internal/api/router"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
@@ -16,7 +17,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
-func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) http.Handler {
+func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) (http.Handler, *processing.SourceQueue) {
 	mux := http.NewServeMux()
 	log := logger.New("INFO")
 
@@ -96,7 +97,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		WorkspaceService: workspaceSvc,
 	}
 	// Add ExtractTenantContext to support X-Workspace-ID header
-	mux.Handle("/api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
+	mux.Handle("GET /api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
+	mux.Handle("POST /api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
 	memStore := storage.NewMemoryStorage()
 
 	// Use real clients if mocks are nil
@@ -113,7 +115,10 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		}
 	}
 
-	q, _ := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC)
+	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC)
+	if err != nil {
+		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
+	}
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore, QdrantClient: actualVC, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	factory := rag.NewClientFactory(cfg)
 	if llm != nil {
@@ -130,113 +135,27 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mockClient := &mockToolsClient{}
 	tng := rag.NewToolNameGenerator(mockClient)
 	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: tng, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	handh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 
 	// Actions routes
-	mux.Handle("GET /api/v1/chatbots/{id}/actions", protected(http.HandlerFunc(acth.List)))
-	mux.Handle("POST /api/v1/chatbots/{id}/actions", protected(http.HandlerFunc(acth.Create)))
-	mux.Handle("GET /api/v1/chatbots/{id}/actions/logs", protected(http.HandlerFunc(acth.GetLogs)))
-	mux.Handle("GET /api/v1/chatbots/{id}/actions/{actionId}", protected(http.HandlerFunc(acth.Get)))
-	mux.Handle("PUT /api/v1/chatbots/{id}/actions/{actionId}", protected(http.HandlerFunc(acth.Update)))
-	mux.Handle("DELETE /api/v1/chatbots/{id}/actions/{actionId}", protected(http.HandlerFunc(acth.Delete)))
+	// Note: Actions routes are now handled by ChatbotsDispatchHandler
 
-	mux.Handle("/api/v1/chatbots/", protected(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const p = "/api/v1/chatbots/"
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/pending-urls") {
-			if strings.HasSuffix(r.URL.Path, "/pending-urls/approve") {
-				puh.ApprovePendingURLs(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/pending-urls/reject") {
-				puh.RejectPendingURLs(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/pending-urls/clear") {
-				puh.ClearPendingURLs(w, r)
-				return
-			}
-			if strings.HasSuffix(r.URL.Path, "/pending-urls") {
-				puh.ListPendingURLs(w, r)
-				return
-			}
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			chh.Chat(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff-requests") {
-			if r.Method == http.MethodGet {
-				handh.ListHandoffRequests(w, r)
-				return
-			}
-			if r.Method == http.MethodPatch {
-				handh.UpdateHandoffRequest(w, r)
-				return
-			}
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/analytics/trends") {
-			anh.GetChatbotAnalyticsTrends(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/analytics/overview") {
-			anh.GetChatbotAnalyticsOverview(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/analytics/sources") {
-			anh.GetSourceUsage(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/basic-info") && r.Method == http.MethodPut {
-			ch.UpdateBasicInfo(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/appearance") && r.Method == http.MethodPut {
-			ch.UpdateAppearance(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/model") && r.Method == http.MethodPut {
-			ch.UpdateModelSettings(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/security") && r.Method == http.MethodPut {
-			ch.UpdateSecuritySettings(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/guardrails") && r.Method == http.MethodPut {
-			ch.UpdateGuardrails(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") && r.Method == http.MethodPut {
-			ch.UpdateHandoff(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/refresh") && r.Method == http.MethodPut {
-			ch.UpdateRefresh(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/scraping") && r.Method == http.MethodPut {
-			ch.UpdateScrapingConfig(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/sources") && !strings.Contains(r.URL.Path, "/analytics/") {
-			sh.ChatbotSources(w, r)
-			return
-		}
-		ch.ByID(w, r)
-	})))
-	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/refresh") {
-			sh.RefreshSource(w, r)
-			return
-		}
-		sh.GetSourceStatusOrDelete(w, r)
-	})))
+	// Chatbots Dispatch (Sub-routes)
+	mux.Handle("/api/v1/chatbots/", protected(middleware.ExtractTenantContext()(router.ChatbotsRawHandler(ch, sh, chh, puh, acth, hoh, anh, sugh))))
+
+	// Explicitly handle /api/v1/chatbots/{id} (no trailing slash)
+	mux.Handle("/api/v1/chatbots/{id}", protected(http.HandlerFunc(ch.ByID)))
+
+	// Sources
+	router.RegisterSourceRoutes(mux, cfg.JWT_SECRET, sh)
+
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") {
-			handh.PublicRequestHandoff(w, r)
+			hoh.PublicRequestHandoff(w, r)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
@@ -246,8 +165,30 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		}
 		handlers.PublicChatbotConfig(pool)(w, r)
 	}))
-	// mux.Handle("/api/public/", http.HandlerFunc(handh.PublicRequestHandoff))
+	// Admin
+	adminSvc := services.NewAdminService(pool, log)
+	privacySvc := services.NewPrivacyService(pool, log, memStore)
+
+	// User Privacy
+	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc}
+	mux.Handle("GET /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyConsents)))
+	mux.Handle("PATCH /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.UpdateMyConsents)))
+	mux.Handle("POST /api/v1/me/privacy/export", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestMyDataExport)))
+	mux.Handle("POST /api/v1/me/privacy/correction", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestDataCorrection)))
+	mux.Handle("POST /api/v1/me/privacy/delete", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestAccountDeletion)))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyPrivacyRequest)))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyPrivacyExport)))
+	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyDataExport)))
+
+	adh := handlers.NewAdminHandlers(pool, adminSvc)
+	adhh := handlers.NewAdminHealthHandlers(pool, cfg)
+	aqh := handlers.NewAdminQueueHandlers(pool, adminSvc)
+	aeh := handlers.NewAdminErrorHandlers(pool)
+	aah := handlers.NewAdminAuditHandlers(pool)
+	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
+	router.RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, cfg.JWT_SECRET)
+
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
-	return cors(mux)
+	return cors(mux), q
 }

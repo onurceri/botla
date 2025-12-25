@@ -6,6 +6,7 @@ import ChatbotsPage from '@/pages/ChatbotsPage'
 import ChatbotDetailPage from '@/pages/ChatbotDetailPage'
 import ProfilePage from '@/pages/ProfilePage'
 import PlanPage from '@/pages/PlanPage'
+import PrivacySettingsPage from '@/pages/PrivacySettingsPage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import OnboardingPage from '@/pages/OnboardingPage'
@@ -37,6 +38,7 @@ import {
   AdminQueuesPage,
   AdminErrorsPage,
   AdminAuditPage,
+  AdminPrivacyPage,
 } from '@/pages/admin'
 
 // Helper to validate stored tokens
@@ -125,6 +127,7 @@ function App() {
             <Route path="settings/organization" element={<OrganizationSettingsPage />} />
             <Route path="settings/workspace" element={<WorkspaceSettingsPage />} />
             <Route path="settings/plan" element={<PlanPage />} />
+            <Route path="settings/privacy" element={<PrivacySettingsPage />} />
           </Route>
 
           {/* Admin Routes - Protected by AdminRoute */}
@@ -147,6 +150,7 @@ function App() {
             <Route path="queues" element={<AdminQueuesPage />} />
             <Route path="errors" element={<AdminErrorsPage />} />
             <Route path="audit" element={<AdminAuditPage />} />
+            <Route path="privacy" element={<AdminPrivacyPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

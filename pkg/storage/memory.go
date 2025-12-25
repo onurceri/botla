@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 )
 
 type MemoryStorage struct {
@@ -39,4 +40,8 @@ func (m *MemoryStorage) DeleteFile(ctx context.Context, key string) error {
 	defer m.mu.Unlock()
 	delete(m.data, key)
 	return nil
+}
+
+func (m *MemoryStorage) GetSignedURL(ctx context.Context, key string, expires time.Duration) (string, error) {
+	return "https://memory-storage.local/" + key, nil
 }

@@ -32,7 +32,7 @@ func GetQueueStats(ctx context.Context, db *sql.DB) ([]QueueStats, error) {
 	// 1. Data Sources Queue
 	var dsStats QueueStats
 	dsStats.QueueName = "source_processing"
-	
+
 	err := db.QueryRowContext(ctx, `
 		SELECT 
 			COUNT(*) FILTER (WHERE status = 'pending'),
@@ -86,7 +86,7 @@ func GetStuckJobs(ctx context.Context, db *sql.DB, threshold time.Duration) ([]S
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var stuckJobs []StuckJob
 	for rows.Next() {
@@ -94,7 +94,7 @@ func GetStuckJobs(ctx context.Context, db *sql.DB, threshold time.Duration) ([]S
 		var durationSec float64
 		var errMsg sql.NullString
 		err := rows.Scan(
-			&job.ID, &job.QueueName, &job.SourceID, &job.ChatbotID, 
+			&job.ID, &job.QueueName, &job.SourceID, &job.ChatbotID,
 			&job.Status, &job.StartedAt, &durationSec, &errMsg,
 		)
 		if err != nil {

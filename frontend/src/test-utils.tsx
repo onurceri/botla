@@ -1,4 +1,4 @@
-import { ReactElement, ReactNode } from 'react'
+import { ReactElement, ReactNode, useMemo } from 'react'
 import { render, RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { OrganizationProvider } from '@/features/organization/context/OrganizationContext'
@@ -43,7 +43,7 @@ export function createTestQueryClient() {
  * Wrapper component that provides QueryClient and OrganizationProvider for tests
  */
 export function QueryWrapper({ children }: { children: ReactNode }) {
-  const queryClient = createTestQueryClient()
+  const queryClient = useMemo(() => createTestQueryClient(), [])
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>

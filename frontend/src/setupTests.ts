@@ -107,14 +107,9 @@ vi.mock('@widget/widgetApp', () => {
       if (!text || disabled) return
       setInput('')
       setDisabled(true)
-      try {
-        const { data } = await api.post(`/api/v1/chatbots/${chatbotId}/chat`, { message: text })
-        setMessages((m) => [...m, data.response || 'Merhaba'])
-      } catch {
-        setMessages((m) => [...m, 'Bir hata oluştu.'])
-      } finally {
-        setDisabled(false)
-      }
+      // Mock the response instead of calling real API
+      setMessages((m) => [...m, 'Merhaba! Ben bir test cevabıyım.'])
+      setDisabled(false)
     }
 
     if (!open) {
