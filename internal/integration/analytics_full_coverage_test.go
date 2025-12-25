@@ -48,7 +48,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	resC.Body.Close()
 
 	// Create a dummy source to satisfy foreign key constraints
-	sourceID := "00000000-0000-0000-0000-000000000001"
+	sourceID := "00000000-0000-0000-0000-00000000000c"
 	_, err = te.DB.Exec("INSERT INTO data_sources (id, chatbot_id, source_type, status) VALUES ($1, $2, $3, $4)",
 		sourceID, bot.ID, "text", "completed")
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 	pkgMiddleware "github.com/onurceri/botla-co/pkg/middleware"
 )
 
-func registerAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *handlers.AdminHealthHandlers, aqh *handlers.AdminQueueHandlers, aeh *handlers.AdminErrorHandlers, aah *handlers.AdminAuditHandlers, secret string) {
+func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *handlers.AdminHealthHandlers, aqh *handlers.AdminQueueHandlers, aeh *handlers.AdminErrorHandlers, aah *handlers.AdminAuditHandlers, aph *handlers.PrivacyHandlers, secret string) {
 	// Base admin handler with Auth and Admin middleware
 	adminChain := func(h http.HandlerFunc) http.Handler {
 		return pkgMiddleware.AuthMiddleware(secret)(
@@ -44,5 +44,13 @@ func registerAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *h
 
 	// Audit Logs
 	mux.Handle("GET /api/v1/admin/audit-logs", adminChain(aah.ListAuditLogs))
-}
 
+	// KVKK/Privacy
+	mux.Handle("GET /api/v1/admin/privacy/requests", adminChain(aph.ListPrivacyRequests))
+	mux.Handle("GET /api/v1/admin/privacy/requests/{id}", adminChain(aph.GetPrivacyRequest))
+	mux.Handle("GET /api/v1/admin/privacy/requests/{id}/download", adminChain(aph.DownloadPrivacyExport))
+	mux.Handle("GET /api/v1/admin/privacy/requests/{id}/download-url", adminChain(aph.GetDownloadURL))
+	mux.Handle("PATCH /api/v1/admin/privacy/requests/{id}", adminChain(aph.ProcessPrivacyRequest))
+	mux.Handle("POST /api/v1/admin/privacy/export/{userId}", adminChain(aph.GenerateUserExport))
+	mux.Handle("GET /api/v1/admin/privacy/exports/{id}/download", adminChain(aph.DownloadDataExport))
+}

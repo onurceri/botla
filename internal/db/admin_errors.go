@@ -37,7 +37,7 @@ func ListErrorLogs(ctx context.Context, pool *sql.DB, severity string, limit, of
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var logs []ErrorLogEntry
 	total := 0
@@ -138,7 +138,7 @@ func GetErrorStats(ctx context.Context, pool *sql.DB) (map[string]int, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	stats := make(map[string]int)
 	for rows.Next() {

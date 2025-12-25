@@ -166,10 +166,18 @@ func (s *ChatService) appendUserMessageWithContext(cc *chatContext) {
 // For Low tier (no relevant context), this is skipped and fallback handles the response.
 // Exception: If custom actions are defined, we still run the loop to allow tool usage.
 func (s *ChatService) executeAgenticLoop(ctx context.Context, cc *chatContext) error {
-	// Skip agentic loop for Low tier when no custom actions are defined.
-	// Built-in tools (list_sources) alone don't justify running the LLM loop.
+	// Skip agentic loop for Low tier when no custom actions are defined AND handoff is not enabled.
+	// Built-in tools like list_sources alone don't justify running the LLM loop.
 	// This ensures the fallback logic handles the "no sources" case properly.
-	if cc.SearchResult.Tier == rag.TierLow && len(cc.Actions) == 0 {
+	handoffEnabled := false
+	for _, t := range cc.Tools {
+		if t.Function.Name == "request_human_handoff" {
+			handoffEnabled = true
+			break
+		}
+	}
+
+	if cc.SearchResult.Tier == rag.TierLow && len(cc.Actions) == 0 && !handoffEnabled {
 		return nil
 	}
 

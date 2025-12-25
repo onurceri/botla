@@ -7,14 +7,7 @@ describe('App unauth redirect', () => {
     // Force VITE_E2E to false for this test
     vi.stubEnv('VITE_E2E', '')
 
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn().mockReturnValue(null),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-      },
-      writable: true,
-    })
+    window.localStorage.clear()
 
     window.history.pushState({}, 'Test page', '/dashboard')
     render(<App />, { wrapper: QueryWrapper })

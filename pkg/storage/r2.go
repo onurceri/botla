@@ -18,6 +18,7 @@ type StorageService interface {
 	UploadFile(ctx context.Context, key string, body io.Reader) (string, error)
 	DownloadFile(ctx context.Context, key string) (io.ReadCloser, error)
 	DeleteFile(ctx context.Context, key string) error
+	GetSignedURL(ctx context.Context, key string, expires time.Duration) (string, error)
 }
 
 type R2Storage struct {
@@ -85,6 +86,24 @@ func (s *R2Storage) DeleteFile(ctx context.Context, key string) error {
 		return fmt.Errorf("failed to delete file from R2: %w", err)
 	}
 	return nil
+}
+
+func (s *R2Storage) GetSignedURL(ctx context.Context, key string, expires time.Duration) (string, error) {
+	if s.bucketName == "" {
+		return "", fmt.Errorf("bucket name is empty")
+	}
+
+	presignClient := s3.NewPresignClient(s.client)
+	presignedUrl, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(key),
+	}, s3.WithPresignExpires(expires))
+
+	if err != nil {
+		return "", fmt.Errorf("failed to presign get object: %w", err)
+	}
+
+	return presignedUrl.URL, nil
 }
 
 // Helper to generate a unique key

@@ -51,22 +51,114 @@ make migrate-up
 make psql
 ```
 
-## Build & Run Commands
+## Development Commands
 
+### Running the Server
 ```bash
 # Run server (with PDF support - requires CGO)
-make be-run              # CGO_ENABLED=1 go run -tags fitz cmd/server/main.go
+make be-run
 
 # Run server (without PDF support)
-make be-run-no-pdf       # go run cmd/server/main.go
+make be-run-no-pdf
 
+# Run server with test schema
+make be-run-test
+```
+
+### Building
+```bash
 # Build all packages
 make build
 
-# Run database migrations
-make migrate-up          # Apply migrations
-make migrate-down        # Rollback migrations
-make migrate-version     # Current version
+# Run server directly
+make run
+```
+
+## Database Operations
+
+### Local Database Access
+When checking the database in the local environment, use the PostgreSQL instance running in Docker:
+
+```bash
+# Connect to dev database
+make psql
+
+# Check Redis connection
+make redis-ping
+```
+
+**Database Credentials (Docker):**
+```
+DB_HOST=botla-postgres
+DB_PORT=5432
+DB_NAME=botla_dev
+DB_USER=botla
+DB_PASSWORD=botla
+```
+
+### Database Migrations
+```bash
+# Apply all migrations
+make migrate-up
+
+# Rollback all migrations
+make migrate-down
+
+# Check current migration version
+make migrate-version
+
+# Force migration version (use with caution)
+make migrate-force-test v=<version>
+```
+
+### Creating New Migrations
+```bash
+# Create a new migration (run from project root)
+migrate create -ext sql -dir db/migrations -seq <migration_name>
+```
+
+Then edit the generated `up.sql` and `down.sql` files in `db/migrations/`.
+
+### Docker Database Access
+```bash
+# Connect to database running in Docker
+docker exec -it botla-postgres psql -U botla -d botla_dev
+
+# Run migrations in Docker network
+make migrate-up-docker
+
+# Check Docker migration version
+make migrate-version-docker
+```
+
+### Testing Database
+```bash
+# Apply migrations to test database
+make migrate-up-test
+
+# Rollback test database
+make migrate-down-test
+
+# Check test migration version
+make migrate-version-test
+
+# Create test schema
+make create-test-schema
+```
+
+### Common Database Queries (via `make psql`)
+```sql
+-- List all tables
+\dt
+
+-- Describe a table
+\d table_name
+
+-- Check migration status
+SELECT * FROM schema_migrations;
+
+-- List active connections
+SELECT * FROM pg_stat_activity;
 ```
 
 ## Testing Instructions
@@ -90,12 +182,6 @@ make cover-func          # Console output
 make cover-gate
 ```
 
-### Test Structure
-- Unit tests: `*_unit_test.go` files alongside source files
-- Integration tests: `internal/integration/*_test.go`
-- Table-driven tests are preferred
-- Use `internal/testdb` for database test utilities
-
 ### Running Specific Tests
 ```bash
 # Run a specific test
@@ -106,20 +192,47 @@ go test -v ./internal/integration/...
 
 # Run with race detector
 go test -race ./...
+
+# Run handler tests
+go test -v ./internal/api/handlers/...
 ```
 
-## Code Style Guidelines
+### Test Structure
+- Unit tests: `*_unit_test.go` files alongside source files
+- Integration tests: `internal/integration/*_test.go`
+- Table-driven tests are preferred
+- Use `internal/testdb` for database test utilities
 
-### Go Formatting
+## Code Quality
+
+### Formatting & Linting
 ```bash
-make fmt                 # gofmt -s -w .
-make imports             # goimports -w .
-make vet                 # go vet ./...
-make lint                # golangci-lint run ./...
-make vuln                # govulncheck ./...
+# Format Go code
+make fmt
 
-# Full CI check
-make ci                  # vet + lint + test-no-pdf
+# Fix imports
+make imports
+
+# Run go vet
+make vet
+
+# Run golangci-lint
+make lint
+
+# Check for vulnerabilities
+make vuln
+
+# Full CI check (vet + lint + test)
+make ci
+```
+
+### Go Module Management
+```bash
+# Tidy dependencies
+make tidy
+
+# Clean build cache
+make clean
 ```
 
 ### Conventions
@@ -140,50 +253,71 @@ make ci                  # vet + lint + test-no-pdf
 - `unused`
 - `misspell`
 
-## Database & Migrations
+## Admin Operations
 
-### Creating Migrations
+### Promote/Demote Admins
 ```bash
-# Create a new migration
-migrate create -ext sql -dir db/migrations -seq <migration_name>
+# Make a user an admin
+make admin-promote email=user@example.com
+
+# Remove admin from a user
+make admin-demote email=user@example.com
 ```
-
-### Database Queries
-Database queries are defined manually in `internal/db/`. Use parameterized queries with `pgx` to prevent SQL injection.
-
-### Local Database Access (Docker)
-When checking the database in the local environment, use the PostgreSQL instance running in Docker with the following credentials:
-
-```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=botla_dev
-DB_USER=botla
-DB_PASSWORD=botla
-```
-
-## Security Considerations
-
-- JWT tokens for authentication (access + refresh tokens)
-- Passwords hashed with bcrypt
-- Rate limiting via `pkg/middleware/`
-- CORS configuration in middleware
-- SQL injection prevented via sqlc parameterized queries
-- Input validation in handlers
 
 ## Environment Variables
 
-Required variables (see `.env.example`):
+Required in `.env`:
 - `DATABASE_URL` - PostgreSQL connection string
 - `REDIS_URL` - Redis connection string
 - `JWT_SECRET` - JWT signing secret
 - `OPENAI_API_KEY` - OpenAI API key
 - `QDRANT_URL` - Qdrant vector DB URL
-- `AWS_*` - S3 storage credentials (if using AWS)
+- `AWS_*` - S3 storage credentials (if using)
 
 ## Widget Integration
 
 The `widget/` directory contains a Preact-based embeddable chat widget. See `widget/AGENTS.md` for details.
+
+## Troubleshooting
+
+### Database Connection Issues
+```bash
+# Check if PostgreSQL is running
+docker ps | grep postgres
+
+# Check PostgreSQL logs
+docker logs botla-postgres
+
+# Verify database exists
+docker exec -it botla-postgres psql -U botla -l
+```
+
+### Redis Connection Issues
+```bash
+# Check Redis status
+make redis-ping
+
+# Check if Redis is running
+docker ps | grep redis
+
+# View Redis logs
+docker logs botla-redis
+```
+
+### Migration Issues
+```bash
+# Check migration status in database
+make psql -c "SELECT * FROM schema_migrations;"
+
+# Force migration version if stuck
+make migrate-force-test v=<version>
+```
+
+### Common Errors
+- **"connection refused"**: Ensure Docker services are running (`make up`)
+- **"relation does not exist"**: Run migrations (`make migrate-up`)
+- **"role does not exist"**: Ensure PostgreSQL is initialized with correct user
+- **"PDF support disabled"**: Run with `CGO_ENABLED=1` or use `make be-run-no-pdf`
 
 ## PR Instructions
 

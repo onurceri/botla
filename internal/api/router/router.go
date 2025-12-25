@@ -24,6 +24,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	analyticsSvc := services.NewAnalyticsService(pool, log)
 	chatbotSvc := services.NewChatbotService(pool, log)
 	adminSvc := services.NewAdminService(pool, log)
+	privacySvc := services.NewPrivacyService(pool, log, storageService)
 
 	factory := rag.NewClientFactory(cfg)
 	oaiClient, _ := rag.NewOpenAIClient(cfg)
@@ -57,9 +58,11 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
 	adh := handlers.NewAdminHandlers(pool, adminSvc)
 	adhh := handlers.NewAdminHealthHandlers(pool, cfg)
-	aqh := handlers.NewAdminQueueHandlers(pool)
+	aqh := handlers.NewAdminQueueHandlers(pool, adminSvc)
 	aeh := handlers.NewAdminErrorHandlers(pool)
 	aah := handlers.NewAdminAuditHandlers(pool)
+	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
+	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc}
 
 	// Health
 	mux.HandleFunc("/health", hh.Health)
@@ -71,6 +74,16 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(plh.GetPlan)))
 	mux.Handle("/api/v1/me/usage", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(uh.GetUsage))))
+
+	// User Privacy
+	mux.Handle("GET /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyConsents)))
+	mux.Handle("PATCH /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.UpdateMyConsents)))
+	mux.Handle("POST /api/v1/me/privacy/export", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestMyDataExport)))
+	mux.Handle("POST /api/v1/me/privacy/correction", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestDataCorrection)))
+	mux.Handle("POST /api/v1/me/privacy/delete", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestAccountDeletion)))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyPrivacyRequest)))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyPrivacyExport)))
+	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyDataExport)))
 
 	// Onboarding
 	mux.Handle("GET /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.GetOnboardingState)))
@@ -100,7 +113,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	registerOrgRoutes(mux, cfg.JWT_SECRET, orgSvc, oh, wh)
 
 	// Admin
-	registerAdminRoutes(mux, adh, adhh, aqh, aeh, aah, cfg.JWT_SECRET)
+	RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, cfg.JWT_SECRET)
 
 	return mux
 }

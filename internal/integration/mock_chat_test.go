@@ -24,7 +24,7 @@ func TestMockChatFlow(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 
 	// Setup Mux with mocks
-	mux := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 

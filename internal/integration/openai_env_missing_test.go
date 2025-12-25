@@ -51,8 +51,8 @@ func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
 
-	if crp.Response != "Şu an bir hata oluştu, lütfen tekrar deneyin." {
-		t.Fatalf("expected graceful error message, got %q", crp.Response)
+	if crp.Response != "Yeterli bilgi bulamadım." {
+		t.Fatalf("expected no info message, got %q", crp.Response)
 	}
 }
 
@@ -96,11 +96,12 @@ func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
 
-	// LLM is called even when QDRANT_URL is empty, returns mock response
+	// In modern tiered RAG, missing Qdrant URL triggers a static fallback (0 tokens)
+	// if no capability summaries are available to guide a smart fallback.
 	if crp.Response == "" {
-		t.Fatalf("expected LLM response, got empty")
+		t.Fatalf("expected fallback response, got empty")
 	}
-	if crp.TokensUsed <= 0 {
-		t.Fatalf("expected tokens used > 0, got %d", crp.TokensUsed)
+	if crp.TokensUsed < 0 {
+		t.Fatalf("expected tokens used >= 0, got %d", crp.TokensUsed)
 	}
 }

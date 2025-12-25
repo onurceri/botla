@@ -37,9 +37,9 @@ func (h *AdminErrorHandlers) ListErrors(w http.ResponseWriter, r *http.Request) 
 	}
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{
-		"data":  logs,
-		"total": total,
-		"page":  (offset / limit) + 1,
+		"data":     logs,
+		"total":    total,
+		"page":     (offset / limit) + 1,
 		"per_page": limit,
 	})
 }

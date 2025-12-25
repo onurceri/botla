@@ -45,10 +45,20 @@ func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
 
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
-	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{}, nil)
+	mockVC.On("SearchSimilar", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]rag.SearchResult{
+		{
+			ID:    "1",
+			Score: 0.9,
+			Payload: rag.EmbeddingPayload{
+				OriginalText: "some context",
+				SourceID:     "test.pdf",
+				SourceType:   "file",
+			},
+		},
+	}, nil)
 
 	// Actually, let's just create a custom mux for this test
-	mux := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 

@@ -30,7 +30,7 @@ func buildR2Mux(te *TestEnv, bucket string) http.Handler {
 	r2, _ := storage.NewR2Storage("acc-test", "AKIA_TEST_LEAK", "SECRET_TEST_LEAK", bucket)
 	sh := &handlers.SourcesHandlers{DB: te.DB, Storage: r2}
 	chh := &handlers.ChatHandlers{DB: te.DB}
-	mux.Handle("/api/v1/chatbots/", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/api/v1/chatbots/{id}/", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/chatbots/"
 		if len(r.URL.Path) >= len(p) && r.URL.Path[len(r.URL.Path)-len("/sources"):] == "/sources" {
 			sh.ChatbotSources(w, r)
@@ -38,8 +38,11 @@ func buildR2Mux(te *TestEnv, bucket string) http.Handler {
 		}
 		ch.ByID(w, r)
 	})))
+	mux.Handle("/api/v1/chatbots/{id}", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(ch.ByID)))
+
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
-	mux.Handle("/api/v1/sources/", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(sh.GetSourceStatusOrDelete)))
+	mux.Handle("/api/v1/sources/{id}/", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(sh.GetSourceStatusOrDelete)))
+	mux.Handle("/api/v1/sources/{id}", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(sh.GetSourceStatusOrDelete)))
 	log := logger.New("INFO")
 	return middleware.RequestLogger(log)(mux)
 }

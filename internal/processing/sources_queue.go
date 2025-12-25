@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
@@ -18,6 +19,7 @@ import (
 type SourceQueue struct {
 	ch           chan string
 	stopCh       chan struct{}
+	wg           sync.WaitGroup
 	db           *sql.DB
 	storage      storage.StorageService
 	openaiClient rag.LLMClient
@@ -86,6 +88,7 @@ func (q *SourceQueue) Stop() {
 		return
 	}
 	close(q.stopCh)
+	q.wg.Wait()
 }
 
 // recoverPendingSources finds and enqueues sources stuck in 'pending' status at startup

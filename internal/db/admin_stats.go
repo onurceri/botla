@@ -23,7 +23,7 @@ func GetPlatformOverviewStats(ctx context.Context, pool *sql.DB) (*PlatformOverv
 	}
 
 	// Get total organizations
-	err = pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL").Scan(&stats.TotalOrganizations)
+	err = pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM organizations").Scan(&stats.TotalOrganizations)
 	if err != nil {
 		return nil, fmt.Errorf("count organizations: %w", err)
 	}

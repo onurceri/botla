@@ -8,6 +8,10 @@ import (
 )
 
 func ChatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {
+	return middleware.AuthMiddleware(secret)(middleware.ExtractTenantContext()(ChatbotsRawHandler(ch, sh, chh, puh, acth, hoh, anh, sugh)))
+}
+
+func ChatbotsRawHandler(ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {
 	mux := http.NewServeMux()
 
 	// Pending URLs
@@ -61,5 +65,5 @@ func ChatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *ha
 	// Chatbot management (Fallback)
 	mux.HandleFunc("/api/v1/chatbots/{id}", ch.ByID)
 
-	return middleware.AuthMiddleware(secret)(middleware.ExtractTenantContext()(mux))
+	return mux
 }

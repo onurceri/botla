@@ -287,9 +287,7 @@ func runMigrations(t *testing.T, schema string) {
 	//nolint:gosec // this is a test helper using dynamic path
 	cmd := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		// Log migration errors for debugging, but don't fail
-		// Migrations may already be applied or schema may exist
-		t.Logf("migration info: %s (error: %v)", string(output), err)
+		t.Fatalf("migration failed: %s (error: %v)", string(output), err)
 	}
 }
 

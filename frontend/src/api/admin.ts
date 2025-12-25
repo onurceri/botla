@@ -210,6 +210,11 @@ export const getErrors = async (severity?: string, offset?: number, limit?: numb
   return data
 }
 
+export const getPrivacyDownloadURL = async (id: string) => {
+  const { data } = await api.get<{ url: string }>(`${ADMIN_BASE}/privacy/requests/${id}/download-url`)
+  return data
+}
+
 export const listErrors = async (params?: ListErrorsParams) => {
   const { data } = await api.get<PaginatedResponse<ErrorLogEntry>>(`${ADMIN_BASE}/errors`, { params })
   return data
@@ -227,5 +232,44 @@ export const getError = async (id: string) => {
 
 export const listAuditLogs = async (params?: ListAuditLogsParams) => {
   const { data } = await api.get<PaginatedResponse<AuditLogEntry>>(`${ADMIN_BASE}/audit-logs`, { params })
+  return data
+}
+
+export interface PrivacyRequest {
+  id: string
+  user_id: string
+  user_email: string
+  request_type: 'export' | 'deletion' | 'correction'
+  status: 'pending' | 'processing' | 'completed' | 'denied'
+  reason?: string
+  denial_reason?: string
+  processed_at?: string
+  processed_by?: string
+  completed_at?: string
+  export_url?: string
+  export_expires_at?: string
+  created_at: string
+}
+
+export interface ListPrivacyRequestsParams {
+  status?: string
+  limit?: number
+  offset?: number
+}
+
+export const listPrivacyRequests = async (params?: ListPrivacyRequestsParams) => {
+  const { data } = await api.get<PaginatedResponse<PrivacyRequest>>(`${ADMIN_BASE}/privacy/requests`, { params })
+  return data
+}
+
+export const processPrivacyRequest = async (
+  id: string,
+  action: 'approve' | 'deny',
+  denial_reason?: string
+) => {
+  const { data } = await api.patch(`${ADMIN_BASE}/privacy/requests/${id}`, {
+    action,
+    denial_reason,
+  })
   return data
 }

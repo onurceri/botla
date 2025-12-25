@@ -7,8 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,23 +19,25 @@ import (
 func TestAdminQueueHandlers(t *testing.T) {
 	pool := testdb.OpenParallelTestDB(t)
 
-	h := NewAdminQueueHandlers(pool)
+	log := logger.New("INFO")
+	adminSvc := services.NewAdminService(pool, log)
+	h := NewAdminQueueHandlers(pool, adminSvc)
 	ctx := context.Background()
 
 	// Seed required data for foreign keys
-	langID := "00000000-0000-0000-0000-000000000001"
+	langID := uuid.New().String()
 	_, err := pool.ExecContext(ctx, "INSERT INTO languages (id, code, name) VALUES ($1, 'en-test', 'English Test')", langID)
 	require.NoError(t, err)
-	
-	planID := "00000000-0000-0000-0000-000000000001"
+
+	planID := uuid.New().String()
 	_, err = pool.ExecContext(ctx, "INSERT INTO plans (id, code, price) VALUES ($1, 'free-test', 0)", planID)
 	require.NoError(t, err)
-	
-	userID := "00000000-0000-0000-0000-000000000001"
+
+	userID := uuid.New().String()
 	_, err = pool.ExecContext(ctx, "INSERT INTO users (id, email, password_hash, plan_id) VALUES ($1, 'test-queues@example.com', 'hash', $2)", userID, planID)
 	require.NoError(t, err)
-	
-	chatbotID := "00000000-0000-0000-0000-000000000001"
+
+	chatbotID := uuid.New().String()
 	_, err = pool.ExecContext(ctx, "INSERT INTO chatbots (id, user_id, name) VALUES ($1, $2, 'Test Bot')", chatbotID, userID)
 	require.NoError(t, err)
 
@@ -45,7 +50,7 @@ func TestAdminQueueHandlers(t *testing.T) {
 	require.NoError(t, err)
 
 	// 2. A processing source (stuck)
-	stuckID := "00000000-0000-0000-0000-000000000002"
+	stuckID := uuid.New().String()
 	_, err = pool.ExecContext(ctx, `
 		INSERT INTO data_sources (id, chatbot_id, source_type, status, created_at, last_refreshed_at)
 		VALUES ($1, $2, 'url', 'processing', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour')
