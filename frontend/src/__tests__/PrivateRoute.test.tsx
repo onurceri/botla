@@ -25,14 +25,7 @@ vi.mock('@/pages/DashboardPage', async () => {
 
 describe('PrivateRoute', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-      },
-      writable: true,
-    })
+    window.localStorage.clear()
   })
   it('renders protected layout when authenticated', () => {
     vi.spyOn(window.localStorage, 'getItem').mockReturnValue('tok')

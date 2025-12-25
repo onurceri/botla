@@ -14,11 +14,7 @@ describe('ChatbotDetailPage save/delete', () => {
   })
   it('creates new chatbot on valid form and shows success toast', async () => {
     const user = userEvent.setup()
-
-    Object.defineProperty(window, 'localStorage', {
-      value: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
-      writable: true,
-    })
+    window.localStorage.clear()
 
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
       if (url.includes('/api/v1/organizations'))

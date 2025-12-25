@@ -7,14 +7,7 @@ import { QueryWrapper } from '@/test-utils'
 
 describe('PlanPage hidden limits', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-      },
-      writable: true,
-    })
+    window.localStorage.clear()
   })
 
   it('renders monthly ingestions and embedding token usage from /me', async () => {

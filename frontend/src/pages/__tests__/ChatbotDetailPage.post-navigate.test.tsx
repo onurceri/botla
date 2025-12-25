@@ -11,11 +11,7 @@ describe('ChatbotDetailPage POST navigate', () => {
   it('shows success toast on POST and enables save', async () => {
     const user = userEvent.setup()
 
-    // Mock localStorage and Organizations
-    Object.defineProperty(window, 'localStorage', {
-      value: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
-      writable: true,
-    })
+    window.localStorage.clear()
 
     vi.spyOn(api, 'get').mockImplementation((url: string) => {
       if (url.includes('/api/v1/organizations')) {
