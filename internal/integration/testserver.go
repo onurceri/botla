@@ -15,6 +15,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/internal/workers"
 )
 
 func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) (http.Handler, *processing.SourceQueue) {
@@ -129,7 +130,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	if llmEmbed, ok := actualLLM.(rag.EmbeddingClient); ok {
 		chatSvc.Embedder = llmEmbed
 	}
-	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	workerPool := workers.NewWorkerPool(log, 5)
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
 
 	// Create mock tool name generator for tests
 	mockClient := &mockToolsClient{}

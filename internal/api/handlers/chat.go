@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -16,6 +15,8 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/internal/workers"
+	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -24,6 +25,8 @@ type ChatHandlers struct {
 	ChatService      *services.ChatService
 	WorkspaceService *services.WorkspaceService
 	OrgService       *services.OrganizationService
+	WorkerPool       *workers.WorkerPool
+	Logger           *logger.Logger
 }
 
 type chatRequest struct {
@@ -182,18 +185,14 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update Analytics
-	go func() {
-		// CR-002: Recover from panics to prevent server crash
-		defer func() {
-			if r := recover(); r != nil {
-				// Log panic for debugging - use fmt since we don't have logger access
-				fmt.Printf("feedback_analytics_panic: %v\n", r)
-			}
-		}()
-		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), oldThumbsUp, req.ThumbsUp)
-	}()
+	h.WorkerPool.Submit(func(ctx context.Context) {
+		if err := db.IncrementFeedback(ctx, h.DB, chatbotID, time.Now(), oldThumbsUp, req.ThumbsUp); err != nil {
+			h.Logger.Error("feedback_increment_failed", map[string]any{
+				"chatbot_id": chatbotID,
+				"error":      err.Error(),
+			})
+		}
+	})
 
 	w.WriteHeader(http.StatusOK)
 }
