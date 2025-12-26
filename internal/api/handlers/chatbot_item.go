@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
@@ -64,14 +63,18 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 	}
 
 	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
-		log.Printf("[ERROR] UpdateChatbot failed: %v", err)
+		if h.Logger != nil {
+			h.Logger.Error("UpdateChatbot failed", map[string]any{"error": err, "chatbot_id": botID})
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	c2, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil || c2 == nil {
-		log.Printf("[ERROR] GetChatbotByID after update failed: err=%v, c2=%v", err, c2)
+		if h.Logger != nil {
+			h.Logger.Error("GetChatbotByID after update failed", map[string]any{"error": err, "chatbot_id": botID, "result_nil": c2 == nil})
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

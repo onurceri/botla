@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
@@ -32,11 +34,11 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
         'scraping', jsonb_build_object('dynamic_enabled', false, 'max_urls_per_bot', 5, 'max_pages_per_crawl', 0),
         'files', jsonb_build_object('ocr_enabled', false, 'max_size_mb', 10, 'max_files_per_bot', 5, 'max_files_total', 100, 'total_storage_mb', 100),
         'chat', jsonb_build_object('allowed_models', jsonb_build_array('gpt-4o-mini'), 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k',3,'max_context_tokens',1024))
-    ) WHERE code='free'`)
+    ) WHERE code=$1`, policy.PlanFree.String())
 
 	token := authToken(t, te.Server.URL, "quota@example.com")
 	// Ensure user is on free plan
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "quota@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "quota@example.com")
 
 	// Create chatbot
 	create := map[string]any{"name": "Quota Bot"}

@@ -1,4 +1,4 @@
-package storage
+package storage //nolint:wrapcheck
 
 import (
 	"context"

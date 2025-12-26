@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
@@ -17,7 +19,7 @@ func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
 	token := authToken(t, te.Server.URL, "secure@example.com")
 
 	// Enable secure embed for free plan to allow testing
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code='free'`)
+	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}

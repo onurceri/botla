@@ -3,6 +3,7 @@ package processing
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -60,7 +61,7 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := vc.EnsureEmbeddingsCollection(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ensure embeddings collection: %w", err)
 	}
 
 	// Recover pending sources at startup

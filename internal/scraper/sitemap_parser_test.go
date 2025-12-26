@@ -465,3 +465,49 @@ func TestDiscoverSitemapURL_NotFound(t *testing.T) {
 		t.Error("Expected error when no sitemap found, got nil")
 	}
 }
+
+func TestDiscoverSitemapURL_ContextCancellation(t *testing.T) {
+	// Mock server that hangs
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond) // Longer than context timeout
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	_, err := DiscoverSitemapURL(ctx, srv.URL)
+	if err == nil {
+		t.Error("Expected context cancellation error, got nil")
+	}
+}
+
+func TestDiscoverSitemapURL_MethodNotAllowedFallback(t *testing.T) {
+	// Server returns 405 for HEAD, 200 for GET
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Method == http.MethodGet {
+			if r.URL.Path == "/sitemap.xml" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	ctx := context.Background()
+	found, err := DiscoverSitemapURL(ctx, srv.URL)
+	if err != nil {
+		t.Fatalf("DiscoverSitemapURL failed: %v", err)
+	}
+
+	expected := srv.URL + "/sitemap.xml"
+	if found != expected {
+		t.Errorf("Expected %s, got %s", expected, found)
+	}
+}

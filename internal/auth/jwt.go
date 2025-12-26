@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -24,7 +25,7 @@ func GenerateToken(secret string, userID string, isPlatformAdmin bool, tokenType
 	now := time.Now()
 	randomBytes := make([]byte, 16)
 	if _, err := rand.Read(randomBytes); err != nil {
-		return "", err
+		return "", fmt.Errorf("read random bytes: %w", err)
 	}
 	jti := hex.EncodeToString(randomBytes)
 	claims := Claims{
@@ -41,7 +42,11 @@ func GenerateToken(secret string, userID string, isPlatformAdmin bool, tokenType
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
+	s, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", fmt.Errorf("sign token: %w", err)
+	}
+	return s, nil
 }
 
 func VerifyToken(secret string, tokenString string) (*Claims, error) {
@@ -49,7 +54,7 @@ func VerifyToken(secret string, tokenString string) (*Claims, error) {
 		return []byte(secret), nil
 	}, jwt.WithIssuer(JWTIssuer), jwt.WithAudience(JWTAudience))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse token: %w", err)
 	}
 	if !parsed.Valid {
 		return nil, jwt.ErrTokenInvalidClaims

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -22,7 +23,10 @@ func IncrementSuccessfulIngestion(ctx context.Context, pool *sql.DB, userID stri
         DO UPDATE SET sources_count = usage_ingestions.sources_count + EXCLUDED.sources_count,
                       updated_at = NOW()
     `, userID, pm, delta)
-	return err
+	if err != nil {
+		return fmt.Errorf("increment successful ingestion: %w", err)
+	}
+	return nil
 }
 
 // AddEmbeddingTokens adds to embedding_tokens counter for the current month
@@ -35,7 +39,10 @@ func AddEmbeddingTokens(ctx context.Context, pool *sql.DB, userID string, at tim
         DO UPDATE SET embedding_tokens = usage_ingestions.embedding_tokens + EXCLUDED.embedding_tokens,
                       updated_at = NOW()
     `, userID, pm, tokens)
-	return err
+	if err != nil {
+		return fmt.Errorf("add embedding tokens: %w", err)
+	}
+	return nil
 }
 
 // GetMonthlyIngestionUsage returns sources_count and embedding_tokens for current month
@@ -49,7 +56,10 @@ func GetMonthlyIngestionUsage(ctx context.Context, pool *sql.DB, userID string, 
 	if err == sql.ErrNoRows {
 		return 0, 0, nil
 	}
-	return sources, tokens, err
+	if err != nil {
+		return sources, tokens, fmt.Errorf("get monthly ingestion usage: %w", err)
+	}
+	return sources, tokens, nil
 }
 
 // GetAutoRefreshCountForMonth returns the auto_refresh_count for a user in a given month
@@ -65,7 +75,7 @@ func GetAutoRefreshCountForMonth(ctx context.Context, pool *sql.DB, userID strin
 		return 0, nil
 	}
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("get auto refresh count: %w", err)
 	}
 	return count, nil
 }
@@ -80,5 +90,8 @@ func IncrementAutoRefreshCount(ctx context.Context, pool *sql.DB, userID string,
         DO UPDATE SET auto_refresh_count = usage_ingestions.auto_refresh_count + $3,
                       updated_at = NOW()`,
 		userID, pm, delta)
-	return err
+	if err != nil {
+		return fmt.Errorf("increment auto refresh count: %w", err)
+	}
+	return nil
 }

@@ -1,12 +1,13 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
+
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 type Config struct {
@@ -48,7 +49,10 @@ type Config struct {
 	GO_ENV string
 }
 
-var fatalf = func(msg string) { log.Fatal(msg) }
+var fatalf = func(msg string) {
+	logger.New("ERROR").Error(msg, nil)
+	os.Exit(1)
+}
 
 func LoadConfig() *Config {
 	_ = godotenv.Load()
@@ -69,7 +73,7 @@ func LoadConfig() *Config {
 	// OpenAI is required for embeddings, OpenRouter is preferred for LLM calls
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		// Just warn instead of fatal to allow starting up without key (useful for tests or limited functionality)
-		log.Println("WARNING: OPENAI_API_KEY is missing. Embeddings will fail.")
+		logger.New("WARN").Warn("OPENAI_API_KEY is missing. Embeddings will fail.", nil)
 	}
 
 	if os.Getenv("JWT_SECRET") == "" {

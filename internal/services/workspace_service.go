@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -40,7 +41,7 @@ func (s *WorkspaceService) CreateWorkspace(ctx context.Context, orgID, name, slu
 		if strings.Contains(err.Error(), "unique constraint") {
 			return nil, ErrWorkspaceSlugExists
 		}
-		return nil, err
+		return nil, fmt.Errorf("creating workspace: %w", err)
 	}
 
 	return ws, nil
@@ -58,7 +59,7 @@ func (s *WorkspaceService) UpdateWorkspace(ctx context.Context, wsID, name, slug
 		if strings.Contains(err.Error(), "unique constraint") {
 			return ErrWorkspaceSlugExists
 		}
-		return err
+		return fmt.Errorf("updating workspace: %w", err)
 	}
 	return nil
 }
@@ -68,7 +69,7 @@ func (s *WorkspaceService) DeleteWorkspace(ctx context.Context, wsID string) err
 	// MI-003: Use transaction for atomicity
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("starting transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -76,14 +77,14 @@ func (s *WorkspaceService) DeleteWorkspace(ctx context.Context, wsID string) err
 	var orgID string
 	err = tx.QueryRowContext(ctx, "SELECT organization_id FROM workspaces WHERE id = $1", wsID).Scan(&orgID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting workspace org: %w", err)
 	}
 
 	// Check total workspaces count
 	var count int
 	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM workspaces WHERE organization_id = $1", orgID).Scan(&count)
 	if err != nil {
-		return err
+		return fmt.Errorf("counting workspaces: %w", err)
 	}
 
 	if count <= 1 {
@@ -92,10 +93,13 @@ func (s *WorkspaceService) DeleteWorkspace(ctx context.Context, wsID string) err
 
 	_, err = tx.ExecContext(ctx, "DELETE FROM workspaces WHERE id = $1", wsID)
 	if err != nil {
-		return err
+		return fmt.Errorf("deleting workspace: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
+	}
+	return nil
 }
 
 // GetWorkspaces returns all workspaces of an organization
@@ -107,7 +111,7 @@ func (s *WorkspaceService) GetWorkspaces(ctx context.Context, orgID string) ([]*
 		ORDER BY name
 	`, orgID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying workspaces: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -115,13 +119,13 @@ func (s *WorkspaceService) GetWorkspaces(ctx context.Context, orgID string) ([]*
 	for rows.Next() {
 		var ws models.Workspace
 		if err := rows.Scan(&ws.ID, &ws.OrganizationID, &ws.Name, &ws.Slug, &ws.ClientName, &ws.CreatedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning workspace row: %w", err)
 		}
 		workspaces = append(workspaces, &ws)
 	}
 	// MI-006: Check for iteration errors
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterating workspace rows: %w", err)
 	}
 	return workspaces, nil
 }
@@ -138,7 +142,7 @@ func (s *WorkspaceService) GetWorkspace(ctx context.Context, id string) (*models
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("getting workspace: %w", err)
 	}
 	return &ws, nil
 }
@@ -148,7 +152,7 @@ func (s *WorkspaceService) CheckAccess(ctx context.Context, userID, workspaceID 
 	// 1. Get workspace
 	ws, err := s.GetWorkspace(ctx, workspaceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("checking workspace existence: %w", err)
 	}
 	if ws == nil {
 		return nil, nil // Workspace not found
@@ -165,7 +169,7 @@ func (s *WorkspaceService) CheckAccess(ctx context.Context, userID, workspaceID 
 		if err == sql.ErrNoRows {
 			return nil, nil // Not a member
 		}
-		return nil, err
+		return nil, fmt.Errorf("checking membership role: %w", err)
 	}
 
 	return ws, nil

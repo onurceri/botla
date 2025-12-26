@@ -99,17 +99,22 @@ func Wrapf(err error, format string, args ...interface{}) error {
 
 | File | Action | Description |
 |------|--------|-------------|
-| `.golangci.yml` | MODIFY | Add wrapcheck linter |
-| `internal/scraper/*.go` | MODIFY | Wrap external errors |
-| `internal/rag/*.go` | MODIFY | Wrap external errors |
-| All files with `log.Printf` | MODIFY | Use structured logger |
+| `internal/services/chat_settings.go` | MODIFY | Wrap external errors |
+| `internal/services/organization_service.go` | MODIFY | Wrap external errors |
+| `internal/services/plan_service.go` | MODIFY | Wrap external errors |
+| `internal/services/privacy_service.go` | MODIFY | Wrap external errors |
+| `internal/services/rag_service.go` | MODIFY | Wrap external errors |
+| `internal/services/refresh_scheduler.go` | MODIFY | Wrap external errors |
+| `internal/services/retention_job.go` | MODIFY | Wrap external errors |
+| `internal/services/workspace_service.go` | MODIFY | Wrap external errors |
+| `pkg/middleware/requestlog.go` | MODIFY | Wrap external errors |
 
 ## Acceptance Criteria
 
-- [ ] wrapcheck linter enabled and passing
-- [ ] No raw errors from external packages
+- [x] wrapcheck linter enabled and passing
+- [x] No raw errors from external packages
 - [ ] All logging uses `pkg/logger`
-- [ ] Error traces contain full context
+- [x] Error traces contain full context
 - [ ] Existing tests pass
 
 ## Estimated Effort

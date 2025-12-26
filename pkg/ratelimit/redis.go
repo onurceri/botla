@@ -120,10 +120,18 @@ func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, 
 
 // Reset clears the rate limit for the given key
 func (r *RedisLimiter) Reset(ctx context.Context, key string) error {
-	return r.client.Del(ctx, key).Err()
+	err := r.client.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("redis del: %w", err)
+	}
+	return nil
 }
 
 // Close closes the Redis client connection
 func (r *RedisLimiter) Close() error {
-	return r.client.Close()
+	err := r.client.Close()
+	if err != nil {
+		return fmt.Errorf("redis close: %w", err)
+	}
+	return nil
 }

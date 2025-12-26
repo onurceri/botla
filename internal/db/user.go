@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
@@ -23,7 +24,7 @@ func GetUserByID(ctx context.Context, pool *sql.DB, id string) (*models.User, er
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get user by id: %w", err)
 	}
 	if len(onboardingDataJSON) > 0 {
 		var data models.OnboardingData
@@ -50,7 +51,7 @@ func GetUserByEmail(ctx context.Context, pool *sql.DB, email string) (*models.Us
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get user by email: %w", err)
 	}
 	if len(onboardingDataJSON) > 0 {
 		var data models.OnboardingData
@@ -65,14 +66,17 @@ func GetUserByEmail(ctx context.Context, pool *sql.DB, email string) (*models.Us
 func UpdateOnboardingState(ctx context.Context, pool *sql.DB, userID string, step int, data *models.OnboardingData) error {
 	dataJSON, err := data.Value()
 	if err != nil {
-		return err
+		return fmt.Errorf("serialize onboarding data: %w", err)
 	}
 	_, err = pool.ExecContext(ctx, `
 		UPDATE users 
 		SET onboarding_step = $2, onboarding_data = $3, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 	`, userID, step, dataJSON)
-	return err
+	if err != nil {
+		return fmt.Errorf("update onboarding state: %w", err)
+	}
+	return nil
 }
 
 // SkipOnboarding marks the user's onboarding as skipped
@@ -82,7 +86,10 @@ func SkipOnboarding(ctx context.Context, pool *sql.DB, userID string) error {
 		SET onboarding_skipped = true, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 	`, userID)
-	return err
+	if err != nil {
+		return fmt.Errorf("skip onboarding: %w", err)
+	}
+	return nil
 }
 
 // CompleteOnboarding marks the user's onboarding as completed
@@ -99,7 +106,7 @@ func CompleteOnboarding(ctx context.Context, pool *sql.DB, userID, botID string)
 	data.CreatedBotID = botID
 	updatedDataJSON, err := data.Value()
 	if err != nil {
-		return err
+		return fmt.Errorf("serialize updated onboarding data: %w", err)
 	}
 
 	_, err = pool.ExecContext(ctx, `
@@ -110,5 +117,8 @@ func CompleteOnboarding(ctx context.Context, pool *sql.DB, userID, botID string)
 		    updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 	`, userID, updatedDataJSON)
-	return err
+	if err != nil {
+		return fmt.Errorf("complete onboarding: %w", err)
+	}
+	return nil
 }

@@ -1,0 +1,19 @@
+{
+    "name": "botla-co",
+    "private": true,
+    "workspaces": [
+        "packages/*",
+        "frontend",
+        "widget"
+    ],
+    "scripts": {
+        "build": "npm run build --workspaces --if-present",
+        "dev": "npm run dev --workspace=frontend & npm run dev --workspace=widget",
+        "test": "npm run test --workspaces --if-present",
+        "lint": "npm run lint --workspaces --if-present"
+    },
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=9.0.0"
+    }
+}

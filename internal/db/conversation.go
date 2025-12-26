@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
@@ -23,7 +24,7 @@ func GetOrCreateConversationBySessionID(ctx context.Context, pool *sql.DB, chatb
 		&c.ID, &c.ChatbotID, &c.SessionID, &c.MessageCount, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get or create conversation: %w", err)
 	}
 	return &c, nil
 }
@@ -37,7 +38,7 @@ func CreateMessage(ctx context.Context, pool *sql.DB, m *models.Message) (string
 		m.ConversationID, m.Role, m.Content, m.TokensUsed, m.ThumbsUp, m.Type,
 	).Scan(&id)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("create message: %w", err)
 	}
 	return id, nil
 }
@@ -46,7 +47,10 @@ func IncrementConversationMessageCount(ctx context.Context, pool *sql.DB, conver
 	_, err := pool.ExecContext(ctx, `
         UPDATE conversations SET message_count = message_count + 1, updated_at=NOW()
         WHERE id=$1`, conversationID)
-	return err
+	if err != nil {
+		return fmt.Errorf("increment conversation message count: %w", err)
+	}
+	return nil
 }
 
 func ListRecentMessages(ctx context.Context, pool *sql.DB, conversationID string, limit int) ([]models.Message, error) {
@@ -57,19 +61,19 @@ func ListRecentMessages(ctx context.Context, pool *sql.DB, conversationID string
         ORDER BY created_at DESC
         LIMIT $2`, conversationID, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query recent messages: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	out := make([]models.Message, 0)
 	for rows.Next() {
 		var m models.Message
 		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.TokensUsed, &m.ThumbsUp, &m.CreatedAt, &m.Type); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan message: %w", err)
 		}
 		out = append(out, m)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("recent messages rows err: %w", err)
 	}
 	// reverse to chronological ascending
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
@@ -85,7 +89,7 @@ func UpdateMessageFeedback(ctx context.Context, pool *sql.DB, messageID string, 
 	// Use a transaction to ensure atomicity (read-modify-write)
 	tx, err := pool.BeginTx(ctx, nil)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -99,7 +103,7 @@ func UpdateMessageFeedback(ctx context.Context, pool *sql.DB, messageID string, 
 		WHERE m.id=$1 FOR UPDATE
 	`, messageID).Scan(&oldThumbsUp, &chatbotID)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("query current feedback state: %w", err)
 	}
 
 	// Update
@@ -108,11 +112,11 @@ func UpdateMessageFeedback(ctx context.Context, pool *sql.DB, messageID string, 
 		WHERE id=$1
 	`, messageID, thumbsUp)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("update message feedback: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	var oldVal *bool

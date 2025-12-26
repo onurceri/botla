@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html"
 	"net/http"
 	"time"
@@ -77,7 +78,7 @@ func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) ([
 		ORDER BY o.created_at
 	`, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query user organizations: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -85,12 +86,12 @@ func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) ([
 	for rows.Next() {
 		var org Organization
 		if err = rows.Scan(&org.ID, &org.Name, &org.Role); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan user organization: %w", err)
 		}
 		orgs = append(orgs, org)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user organizations rows err: %w", err)
 	}
 	return orgs, nil
 }

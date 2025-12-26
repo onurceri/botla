@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // CapturedRequest holds the parsed request body for verification
@@ -184,9 +186,9 @@ func TestChat_TemperatureConfiguration(t *testing.T) {
 	token := authToken(t, te.Server.URL, "temp_test@example.com")
 
 	// Allow all models in plan and remove limits
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"], "max_monthly_tokens": 0}') WHERE code='free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"], "max_monthly_tokens": 0}') WHERE code=$1`, policy.PlanFree.String())
 	// Also ensure user is on free plan
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "temp_test@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "temp_test@example.com")
 
 	// Helper to update bot and chat
 	checkChat := func(t *testing.T, botID string, updates map[string]any, wantTemp float32) {
@@ -234,7 +236,7 @@ func TestChat_TemperatureConfiguration(t *testing.T) {
 	}
 
 	// Create initial bot
-	create := map[string]any{"name": "Temp Bot", "model": "gpt-4o-mini"}
+	create := map[string]any{"name": "Temp Bot", "model": policy.ModelGPT4oMini.String()}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
@@ -300,8 +302,8 @@ func TestChat_ModelConfiguration(t *testing.T) {
 	token := authToken(t, te.Server.URL, "model_test@example.com")
 
 	// Update plan to allow all these models
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,allowed_models}', '["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"]') WHERE code='free'`)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "model_test@example.com")
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,allowed_models}', '["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"]') WHERE code=$1`, policy.PlanFree.String())
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "model_test@example.com")
 
 	checkModel := func(t *testing.T, modelName string) {
 		t.Helper()
@@ -361,7 +363,7 @@ func TestChat_ModelConfiguration(t *testing.T) {
 
 	// MDL-001: Default/OpenAI
 	t.Run("MDL-001 OpenAI", func(t *testing.T) {
-		checkModel(t, "gpt-4o-mini")
+		checkModel(t, policy.ModelGPT4oMini.String())
 	})
 
 	// MDL-003: Anthropic

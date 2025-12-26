@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -44,7 +45,7 @@ func GetSourceUsageStats(ctx context.Context, pool *sql.DB, chatbotID string, da
 
 	rows, err := pool.QueryContext(ctx, query, chatbotID, cutoff)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query source usage stats: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -53,9 +54,12 @@ func GetSourceUsageStats(ctx context.Context, pool *sql.DB, chatbotID string, da
 		var s SourceUsageStats
 		if err := rows.Scan(&s.SourceID, &s.SourceName, &s.SourceType, &s.TimesUsed,
 			&s.AvgRelevance, &s.PositiveFeedback, &s.NegativeFeedback, &s.LastUsed); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan source usage stat: %w", err)
 		}
 		stats = append(stats, s)
 	}
-	return stats, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("source usage stats rows err: %w", err)
+	}
+	return stats, nil
 }

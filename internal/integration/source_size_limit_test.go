@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // SRC-006: Upload exceeding size limit
@@ -18,7 +20,7 @@ func TestSources_SizeLimitExceeded(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	// Set max size to 1MB for free plan
-	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"max_size_mb": 1}}'::jsonb WHERE code = 'free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"max_size_mb": 1}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
 
 	token := authToken(t, te.Server.URL, "sizelimit@example.com")
 
@@ -68,11 +70,11 @@ func TestSources_PDFLimitPerBot(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"max_size_mb": 10, "max_files_per_bot": 1}}'::jsonb WHERE code = 'free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"max_size_mb": 10, "max_files_per_bot": 1}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
 
 	email := "pdflimit@example.com"
 	token := authToken(t, te.Server.URL, email)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), email)
 
 	create := map[string]any{"name": "PDF Limit Bot"}
 	cbj, _ := json.Marshal(create)
@@ -126,11 +128,11 @@ func TestSources_StorageLimitExceeded(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"total_storage_mb": 10, "max_size_mb": 10}}'::jsonb WHERE code = 'free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"total_storage_mb": 10, "max_size_mb": 10}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
 
 	email := "storagelimit@example.com"
 	token := authToken(t, te.Server.URL, email)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), email)
 
 	create := map[string]any{"name": "Storage Limit Bot"}
 	cbj, _ := json.Marshal(create)

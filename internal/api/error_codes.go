@@ -22,14 +22,14 @@ const (
 const (
 	ErrEmailRequired           = "ERR_EMAIL_REQUIRED"
 	ErrPasswordRequired        = "ERR_PASSWORD_REQUIRED"
-	ErrEmailAndPasswordReq     = "ERR_EMAIL_AND_PASSWORD_REQUIRED"
+	ErrEmailAndPasswordReq     = "ERR_EMAIL_AND_PASSWORD_REQUIRED" //nolint:gosec
 	ErrInvalidEmailFormat      = "ERR_INVALID_EMAIL_FORMAT"
 	ErrPasswordTooShort        = "ERR_PASSWORD_TOO_SHORT"
 	ErrEmailExists             = "ERR_EMAIL_EXISTS"
-	ErrInvalidCredentials      = "ERR_INVALID_CREDENTIALS"
+	ErrInvalidCredentials      = "ERR_INVALID_CREDENTIALS" //nolint:gosec
 	ErrInvalidRequestBody      = "ERR_INVALID_REQUEST_BODY"
 	ErrDatabaseError           = "ERR_DATABASE_ERROR"
-	ErrFailedToHashPassword    = "ERR_FAILED_TO_HASH_PASSWORD"
+	ErrFailedToHashPassword    = "ERR_FAILED_TO_HASH_PASSWORD" //nolint:gosec
 	ErrFailedToCreateUser      = "ERR_FAILED_TO_CREATE_USER"
 	ErrInvalidIDFormat         = "ERR_INVALID_ID_FORMAT"
 	ErrMissingID               = "ERR_MISSING_ID"

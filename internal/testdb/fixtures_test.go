@@ -2,6 +2,8 @@ package testdb
 
 import (
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestCreateUser(t *testing.T) {
@@ -43,7 +45,7 @@ func TestCreateUser(t *testing.T) {
 
 	t.Run("creates user with specific plan", func(t *testing.T) {
 		user := CreateUser(t, db, UserFixture{
-			PlanCode: "pro",
+			PlanCode: policy.PlanPro.String(),
 		})
 
 		if user.PlanID == nil || *user.PlanID == "" {
@@ -158,7 +160,7 @@ func TestCreateChatbot(t *testing.T) {
 	t.Run("creates chatbot with custom properties", func(t *testing.T) {
 		result := CreateChatbot(t, db, ChatbotFixture{
 			Name:           "Support Bot",
-			Model:          "gpt-4o",
+			Model:          policy.ModelGPT4o.String(),
 			WelcomeMessage: "Welcome to support!",
 		})
 

@@ -1,12 +1,11 @@
-version: 2
+version: "2"
+
 run:
   timeout: 5m
   tests: false
-  skip-dirs:
-    - frontend
-    - widget
+
 linters:
-  disable-all: true
+  default: none
   enable:
     - govet
     - staticcheck
@@ -16,13 +15,31 @@ linters:
     - unused
     - misspell
     - gocritic
-linters-settings:
-  govet:
-    enable:
-      - shadow
-    check-shadowing: true
-    # - gocyclo
+    - wrapcheck
+  settings:
+    govet:
+      enable:
+        - shadow
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+        - .Wrap(
+        - .Wrapf(
+        - .WithMessage(
+        - .WithMessagef(
+        - .WithStack(
+        - .Error(
+      ignore-package-globs:
+        - github.com/onurceri/botla-co/*
+        - github.com/stretchr/testify/*
+        - context
+  exclusions:
+    paths:
+      - ^frontend/
+      - ^widget/
+
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0

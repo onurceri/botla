@@ -17,6 +17,7 @@ import (
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // hashToken creates a SHA-256 hash of the token for secure storage
@@ -95,7 +96,7 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var userID string
 	var freePlanID string
-	_ = h.DB.QueryRowContext(r.Context(), "SELECT id FROM plans WHERE code='free'").Scan(&freePlanID)
+	_ = h.DB.QueryRowContext(r.Context(), "SELECT id FROM plans WHERE code=$1", policy.PlanFree.String()).Scan(&freePlanID)
 	err = h.DB.QueryRowContext(
 		r.Context(),
 		"INSERT INTO users (email, password_hash, full_name, plan_id) VALUES ($1,$2,$3,$4) RETURNING id",

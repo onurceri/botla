@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestChatbot_DomainUpdates(t *testing.T) {
@@ -17,7 +19,7 @@ func TestChatbot_DomainUpdates(t *testing.T) {
 	token := authToken(t, te.Server.URL, "domain_test@example.com")
 
 	// Create Chatbot
-	create := map[string]any{"name": "Domain Bot", "model": "gpt-4o-mini"}
+	create := map[string]any{"name": "Domain Bot", "model": policy.ModelGPT4oMini.String()}
 	cb, _ := json.Marshal(create)
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)

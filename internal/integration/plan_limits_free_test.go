@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 type chatbotBranding struct {
@@ -59,17 +60,17 @@ func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
     "total_storage_mb": 10
   },
   "chat": {
-    "allowed_models": ["gpt-4o-mini"],
+    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
     "max_monthly_tokens": 100000,
     "rag": {
       "top_k": 3,
       "max_context_tokens": 2000
     }
   }
-}'::jsonb WHERE code = 'free'`)
+}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	token := authToken(t, te.Server.URL, "url_limit_free@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "url_limit_free@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "url_limit_free@example.com")
 
 	create := map[string]any{"name": "URL Limit Bot"}
 	cbj, _ := json.Marshal(create)
@@ -152,17 +153,17 @@ func TestFreePlan_URLLimit_AllowsNewURLAfterDelete(t *testing.T) {
     "total_storage_mb": 10
   },
   "chat": {
-    "allowed_models": ["gpt-4o-mini"],
+    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
     "max_monthly_tokens": 100000,
     "rag": {
       "top_k": 3,
       "max_context_tokens": 2000
     }
   }
-}'::jsonb WHERE code = 'free'`)
+}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	token := authToken(t, te.Server.URL, "url_limit_delete@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "url_limit_delete@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "url_limit_delete@example.com")
 
 	create := map[string]any{"name": "URL Limit Delete Bot"}
 	cbj, _ := json.Marshal(create)
@@ -249,22 +250,22 @@ func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
     "total_storage_mb": 10
   },
   "chat": {
-    "allowed_models": ["gpt-4o-mini"],
+    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
     "max_monthly_tokens": 100000,
     "rag": {
       "top_k": 3,
       "max_context_tokens": 2000
     }
   }
-}'::jsonb WHERE code = 'free'`)
+}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	email := "dynamic_free@example.com"
 	token := authToken(t, te.Server.URL, email)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, email)
 
 	create := map[string]any{"name": "Dynamic Disabled Bot"}
 	cbj, _ := json.Marshal(create)
-	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
 	resC, _ := http.DefaultClient.Do(reqC)
@@ -337,17 +338,17 @@ func TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit(t *testing.T) {
     "total_storage_mb": 10
   },
   "chat": {
-    "allowed_models": ["gpt-4o-mini"],
+    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
     "max_monthly_tokens": 100000,
     "rag": {
       "top_k": 3,
       "max_context_tokens": 2000
     }
   }
-}'::jsonb WHERE code = 'free'`)
+}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	token := authToken(t, te.Server.URL, "disc_free@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "disc_free@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "disc_free@example.com")
 
 	create := map[string]any{
 		"name":           "Free Discovery Bot",
@@ -413,10 +414,10 @@ func TestFreePlan_RefreshPolicyAuto_Forbidden(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{refresh}', '{"enabled": false, "max_monthly": 0}'::jsonb, true) WHERE code = 'free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{refresh}', '{"enabled": false, "max_monthly": 0}'::jsonb, true) WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	token := authToken(t, te.Server.URL, "refresh_policy_free@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "refresh_policy_free@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "refresh_policy_free@example.com")
 
 	create := map[string]any{"name": "Refresh Policy Bot"}
 	cbj, _ := json.Marshal(create)
@@ -458,7 +459,7 @@ func TestFreePlan_Branding_HideBrandingForbidden(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "branding_free@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "branding_free@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "branding_free@example.com")
 
 	create := map[string]any{"name": "Branding Bot"}
 	cbj, _ := json.Marshal(create)
@@ -514,10 +515,10 @@ func TestFreePlan_SecureEmbed_Forbidden(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": false}'::jsonb, true) WHERE code = 'free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": false}'::jsonb, true) WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	token := authToken(t, te.Server.URL, "secure_free@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "secure_free@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "secure_free@example.com")
 
 	create := map[string]any{"name": "Secure Embed Bot"}
 	cbj, _ := json.Marshal(create)
@@ -587,10 +588,10 @@ func TestFreePlan_Guardrails_Restrictions(t *testing.T) {
 			"can_use_escalate_fallback": false
 		}'::jsonb,
 		true
-	) WHERE code = 'free'`)
+	) WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	token := authToken(t, te.Server.URL, "guardrails_free@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, "guardrails_free@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "guardrails_free@example.com")
 
 	create := map[string]any{"name": "Guardrails Bot"}
 	cbj, _ := json.Marshal(create)
@@ -681,18 +682,18 @@ func TestFreePlan_PDF_OCRDisabled_NoTextExtracted(t *testing.T) {
     "total_storage_mb": 10
   },
   "chat": {
-    "allowed_models": ["gpt-4o-mini"],
+    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
     "max_monthly_tokens": 100000,
     "rag": {
       "top_k": 3,
       "max_context_tokens": 2000
     }
   }
-}'::jsonb WHERE code = 'free'`)
+}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
 
 	email := "ocr_free@example.com"
 	token := authToken(t, te.Server.URL, email)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'free') WHERE email = $1`, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, email)
 
 	create := map[string]any{"name": "OCR Disabled Bot"}
 	cbj, _ := json.Marshal(create)

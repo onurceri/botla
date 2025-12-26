@@ -39,7 +39,7 @@ func run() error {
 	app, err := newApplication(cfg, log)
 	if err != nil {
 		// Specific errors are logged in newApplication
-		return err
+		return fmt.Errorf("new application: %w", err)
 	}
 
 	app.start()
@@ -70,20 +70,20 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	pool, err := db.New(cfg)
 	if err != nil {
 		log.Error("db_init_failed", map[string]any{"error": err.Error()})
-		return nil, err
+		return nil, fmt.Errorf("init db: %w", err)
 	}
 
 	// Initialize Qdrant
 	qdrantClient, err := rag.NewQdrantClientFromEnv()
 	if err != nil {
 		log.Error("qdrant_init_failed", map[string]any{"error": err.Error()})
-		return nil, err
+		return nil, fmt.Errorf("init qdrant: %w", err)
 	}
 
 	// Ensure embeddings collection exists
 	err = ensureQdrantCollection(qdrantClient, log)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ensure qdrant collection: %w", err)
 	}
 	log.Info("qdrant_collection_ready", nil)
 
@@ -100,14 +100,14 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	oaiClient, err := rag.NewOpenAIClient(cfg)
 	if err != nil {
 		log.Error("openai_init_failed", map[string]any{"error": err.Error()})
-		return nil, err
+		return nil, fmt.Errorf("init openai: %w", err)
 	}
 
 	// Start source processing queue
 	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient)
 	if err != nil {
 		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
-		return nil, err
+		return nil, fmt.Errorf("init source queue: %w", err)
 	}
 
 	// Initialize Redis client for rate limiting (mandatory)
@@ -117,7 +117,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 			"error":   err.Error(),
 			"message": "Redis is required for rate limiting to ensure consistent behavior across distributed instances",
 		})
-		return nil, err
+		return nil, fmt.Errorf("init redis: %w", err)
 	}
 
 	// Initialize rate limiter (Redis-based, mandatory)
@@ -259,7 +259,7 @@ func ensureQdrantCollection(qdrantClient *rag.QdrantClient, log *logger.Logger) 
 	defer cancel()
 	if err := qdrantClient.EnsureEmbeddingsCollection(ctx); err != nil {
 		log.Error("qdrant_ensure_collection_failed", map[string]any{"error": err.Error()})
-		return err
+		return fmt.Errorf("ensure qdrant embeddings collection: %w", err)
 	}
 	return nil
 }

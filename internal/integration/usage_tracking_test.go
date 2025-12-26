@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // Helper to insert user
@@ -14,8 +15,8 @@ func insertUser(t *testing.T, pool *sql.DB, email string) (string, string) {
 	var id string
 	err := pool.QueryRow(`
         INSERT INTO users (email, password_hash, full_name, plan_id)
-        VALUES ($1, 'hash', 'Test User', (SELECT id FROM plans WHERE code='free'))
-        RETURNING id`, email).Scan(&id)
+        VALUES ($1, 'hash', 'Test User', (SELECT id FROM plans WHERE code=$2))
+        RETURNING id`, email, policy.PlanFree.String()).Scan(&id)
 	if err != nil {
 		t.Fatalf("failed to insert user: %v", err)
 	}
@@ -27,8 +28,8 @@ func insertChatbot(t *testing.T, pool *sql.DB, userID string, name string) (stri
 	var id string
 	err := pool.QueryRow(`
         INSERT INTO chatbots (user_id, name, model)
-        VALUES ($1, $2, 'gpt-4o-mini')
-        RETURNING id`, userID, name).Scan(&id)
+        VALUES ($1, $2, $3)
+        RETURNING id`, userID, name, policy.ModelGPT4oMini.String()).Scan(&id)
 	if err != nil {
 		t.Fatalf("failed to insert chatbot: %v", err)
 	}

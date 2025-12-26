@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -103,7 +104,11 @@ type RAGConfig struct {
 
 // Value implements the driver.Valuer interface for PlanConfig
 func (p PlanConfig) Value() (driver.Value, error) {
-	return json.Marshal(p)
+	b, err := json.Marshal(p)
+	if err != nil {
+		return nil, fmt.Errorf("marshal plan config: %w", err)
+	}
+	return b, nil
 }
 
 // Scan implements the sql.Scanner interface for PlanConfig
@@ -112,5 +117,8 @@ func (p *PlanConfig) Scan(value interface{}) error {
 	if !ok {
 		return errors.New("type assertion to []byte failed")
 	}
-	return json.Unmarshal(b, &p)
+	if err := json.Unmarshal(b, &p); err != nil {
+		return fmt.Errorf("unmarshal plan config: %w", err)
+	}
+	return nil
 }

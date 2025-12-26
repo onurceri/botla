@@ -47,6 +47,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 		ChatbotService:   chatbotSvc,
 		OrgService:       orgSvc,
 		WorkspaceService: workspaceSvc,
+		Logger:           log,
 	}
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, QdrantClient: qdClient, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
@@ -55,7 +56,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
+	ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc, Log: log}
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
 	adh := handlers.NewAdminHandlers(pool, adminSvc)

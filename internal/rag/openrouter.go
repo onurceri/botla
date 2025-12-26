@@ -92,9 +92,9 @@ func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]
 		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
-			lastErr = err
+			lastErr = fmt.Errorf("http post embedding: %w", err)
 		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
+			lastErr = fmt.Errorf("http post embedding status: %s", res.Status)
 			_ = res.Body.Close()
 		default:
 			var er embeddingResponse
@@ -102,9 +102,9 @@ func (c *OpenRouterClient) CreateEmbedding(ctx context.Context, text string) ([]
 			_ = res.Body.Close()
 			switch {
 			case err != nil:
-				lastErr = err
+				lastErr = fmt.Errorf("decode embedding response: %w", err)
 			case len(er.Data) == 0:
-				lastErr = errors.New("no embedding returned")
+				lastErr = fmt.Errorf("no embedding returned")
 			default:
 				out := make([]float32, len(er.Data[0].Embedding))
 				for i, v := range er.Data[0].Embedding {
@@ -135,9 +135,9 @@ func (c *OpenRouterClient) CreateEmbeddingsBatch(ctx context.Context, texts []st
 		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
-			lastErr = err
+			lastErr = fmt.Errorf("http post batch embedding: %w", err)
 		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
+			lastErr = fmt.Errorf("http post batch embedding status: %s", res.Status)
 			_ = res.Body.Close()
 		default:
 			var er embeddingResponse
@@ -145,9 +145,9 @@ func (c *OpenRouterClient) CreateEmbeddingsBatch(ctx context.Context, texts []st
 			_ = res.Body.Close()
 			switch {
 			case err != nil:
-				lastErr = err
+				lastErr = fmt.Errorf("decode batch embedding response: %w", err)
 			case len(er.Data) == 0:
-				lastErr = errors.New("no embedding returned")
+				lastErr = fmt.Errorf("no batch embedding returned")
 			default:
 				out := make([][]float32, len(er.Data))
 				for i := range er.Data {
@@ -200,12 +200,12 @@ func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.C
 
 		res, err := c.getHTTPClient().Do(req)
 		if err != nil {
-			lastErr = err
+			lastErr = fmt.Errorf("http post chat completion: %w", err)
 		} else {
 			if res.StatusCode == http.StatusOK {
 				var cr chatResponse
 				if err := json.NewDecoder(res.Body).Decode(&cr); err != nil {
-					lastErr = err
+					lastErr = fmt.Errorf("decode chat response: %w", err)
 				} else {
 					_ = res.Body.Close()
 					if len(cr.Choices) > 0 {
@@ -218,10 +218,10 @@ func (c *OpenRouterClient) CreateCompletion(ctx context.Context, params models.C
 							UsageTokens: cr.Usage.TotalTokens,
 						}, nil
 					}
-					lastErr = errors.New("no choices in response")
+					lastErr = fmt.Errorf("no choices in response")
 				}
 			} else {
-				lastErr = errors.New("OpenRouter error: " + res.Status)
+				lastErr = fmt.Errorf("OpenRouter error: %s", res.Status)
 				_ = res.Body.Close()
 			}
 		}
@@ -257,7 +257,7 @@ func (c *OpenRouterClient) CreateCompletionWithTools(
 
 	b, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal tool request: %w", err)
 	}
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
@@ -270,14 +270,14 @@ func (c *OpenRouterClient) CreateCompletionWithTools(
 		res, err := c.getHTTPClient().Do(req)
 		switch {
 		case err != nil:
-			lastErr = err
+			lastErr = fmt.Errorf("http post chat with tools: %w", err)
 		case res.StatusCode != http.StatusOK:
 			body, _ := io.ReadAll(io.LimitReader(res.Body, 8192))
 			_ = res.Body.Close()
 			if len(body) > 0 {
 				lastErr = fmt.Errorf("openrouter error: %s: %s", res.Status, string(body))
 			} else {
-				lastErr = errors.New("OpenRouter error: " + res.Status)
+				lastErr = fmt.Errorf("openrouter error status: %s", res.Status)
 			}
 		default:
 			var cr ChatResponseWithTools
@@ -285,9 +285,9 @@ func (c *OpenRouterClient) CreateCompletionWithTools(
 			_ = res.Body.Close()
 			switch {
 			case err != nil:
-				lastErr = err
+				lastErr = fmt.Errorf("decode chat with tools response: %w", err)
 			case len(cr.Choices) == 0:
-				lastErr = errors.New("no completion returned")
+				lastErr = fmt.Errorf("no completion returned")
 			default:
 				return &cr, nil
 			}

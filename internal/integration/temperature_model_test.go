@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 type TMStub struct {
@@ -39,8 +40,6 @@ func startTMStub() *TMStub {
 		s.mu.Lock()
 		s.Requests = append(s.Requests, req)
 		s.mu.Unlock()
-
-		log.Printf("Stub received request: %+v", req)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -360,18 +359,18 @@ func TestModelConfiguration(t *testing.T) {
 	token := authToken(t, te.Server.URL, "model_test@example.com")
 
 	// Update plan to allow all these models
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,allowed_models}', '["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"]') WHERE code='free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,allowed_models}', '["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"]') WHERE code=$1`, policy.PlanFree.String())
 	// Ensure user is on free plan
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "model_test@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "model_test@example.com")
 
 	testCases := []struct {
 		name     string
 		model    *string
 		expected string
 	}{
-		{"Default Model", nil, "gpt-4o-mini"},
-		{"GPT-4o", stringPtr("gpt-4o"), "gpt-4o"},
-		{"GPT-4o-Mini", stringPtr("gpt-4o-mini"), "gpt-4o-mini"},
+		{"Default Model", nil, policy.ModelGPT4oMini.String()},
+		{"GPT-4o", stringPtr(policy.ModelGPT4o.String()), policy.ModelGPT4o.String()},
+		{"GPT-4o-Mini", stringPtr(policy.ModelGPT4oMini.String()), policy.ModelGPT4oMini.String()},
 		{"Anthropic", stringPtr("anthropic:claude-3-5-sonnet"), "anthropic/claude-3-5-sonnet"},
 		{"Google", stringPtr("google:gemini-1.5-flash"), "google/gemini-1.5-flash"},
 		{"OpenRouter", stringPtr("openrouter:meta-llama/llama-3"), "meta-llama/llama-3"},
@@ -460,13 +459,13 @@ func TestModelRestrictions(t *testing.T) {
 
 	// Update plan to allow ONLY gpt-4o-mini
 	// We set the entire 'chat' object to ensure it exists, avoiding jsonb_set limitation with missing parents
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o-mini"]}') WHERE code='free'`)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "restricted_test@example.com")
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o-mini"]}') WHERE code=$1`, policy.PlanFree.String())
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "restricted_test@example.com")
 
 	// Try to create chatbot with forbidden model
 	create := map[string]any{
 		"name":  "Restricted Bot",
-		"model": "gpt-4o", // Forbidden
+		"model": policy.ModelGPT4o.String(), // Forbidden
 	}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
@@ -504,8 +503,8 @@ func TestModelRestrictions(t *testing.T) {
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.mu.Unlock()
 
-	if baseModelName(lastReq.Model) != "gpt-4o-mini" {
-		t.Errorf("expected fallback to gpt-4o-mini, got %s", lastReq.Model)
+	if baseModelName(lastReq.Model) != policy.ModelGPT4oMini.String() {
+		t.Errorf("expected fallback to %s, got %s", policy.ModelGPT4oMini.String(), lastReq.Model)
 	}
 }
 
@@ -565,8 +564,8 @@ func TestInvalidModel(t *testing.T) {
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.mu.Unlock()
 
-	if baseModelName(lastReq.Model) != "gpt-4o-mini" {
-		t.Errorf("expected fallback to gpt-4o-mini, got %s", lastReq.Model)
+	if baseModelName(lastReq.Model) != policy.ModelGPT4oMini.String() {
+		t.Errorf("expected fallback to %s, got %s", policy.ModelGPT4oMini.String(), lastReq.Model)
 	}
 }
 

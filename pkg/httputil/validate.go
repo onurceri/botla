@@ -1,9 +1,17 @@
 package httputil
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 func ParseUUID(s string) (uuid.UUID, error) {
-	return uuid.Parse(s)
+	u, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse uuid: %w", err)
+	}
+	return u, nil
 }
 
 func IsValidUUID(s string) bool {

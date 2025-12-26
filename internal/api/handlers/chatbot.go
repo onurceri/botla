@@ -7,6 +7,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 // VectorStore interface for vector operations
@@ -22,6 +23,7 @@ type ChatbotHandlers struct {
 	ChatbotService   *services.ChatbotService
 	OrgService       *services.OrganizationService
 	WorkspaceService *services.WorkspaceService
+	Logger           *logger.Logger
 }
 
 type createChatbotRequest struct {

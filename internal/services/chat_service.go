@@ -3,6 +3,9 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
+
+	"errors"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
@@ -48,6 +51,79 @@ func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.Embeddi
 		QC:       qc,
 		Log:      log,
 	}
+}
+
+// ChatRequestWithUser encapsulates resources needed for a chat request
+type ChatRequestWithUser struct {
+	UserID      string
+	Chatbot     *models.Chatbot
+	ChatRequest models.ChatRequest
+}
+
+// ProcessChatWithValidation handles the complete chat flow including plan validation, quota enforcement, and model adjustment.
+func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatRequestWithUser) (*models.ChatResult, error) {
+	// 1. Get and validate plan
+	plan, err := db.GetPlanByUserID(ctx, s.DB, req.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("get plan: %w", err)
+	}
+	if plan == nil {
+		return nil, ErrPlanNotFound
+	}
+
+	// 2. Validate and adjust model
+	if len(plan.Config.Chat.AllowedModels) > 0 {
+		allowed := false
+		for _, m := range plan.Config.Chat.AllowedModels {
+			if m == req.Chatbot.Model {
+				allowed = true
+				break
+			}
+		}
+		// If requested model is not allowed, default to the first allowed model
+		if !allowed {
+			req.Chatbot.Model = plan.Config.Chat.AllowedModels[0]
+		}
+	}
+
+	// 3. Token Check & Reservation (Atomic)
+	maxMonthlyTokens := plan.Config.Chat.MaxMonthlyTokens
+	var estimatedTokens int
+
+	if maxMonthlyTokens > 0 {
+		estimatedTokens = req.Chatbot.MaxTokens
+		if estimatedTokens <= 0 {
+			estimatedTokens = 512 // Default estimate if not set
+		}
+
+		// Reserve tokens optimistically
+		err := db.ReserveChatTokens(ctx, s.DB, req.UserID, estimatedTokens, maxMonthlyTokens)
+		if err != nil {
+			if errors.Is(err, db.ErrTokenQuotaExceeded) {
+				return nil, ErrTokenQuotaExceeded
+			}
+			return nil, fmt.Errorf("reserve tokens: %w", err)
+		}
+	}
+
+	// 4. Process Chat
+	result, err := s.ProcessChat(ctx, req.ChatRequest, req.Chatbot, plan.Config.Chat.RAG)
+
+	// 5. Adjust Token Usage
+	if maxMonthlyTokens > 0 {
+		if err != nil {
+			// On error, refund the reserved tokens
+			_ = db.AdjustChatTokens(context.Background(), s.DB, req.UserID, -estimatedTokens)
+		} else {
+			// Adjust based on actual usage
+			delta := result.TokensUsed - estimatedTokens
+			if delta != 0 {
+				_ = db.AdjustChatTokens(context.Background(), s.DB, req.UserID, delta)
+			}
+		}
+	}
+
+	return result, err
 }
 
 // =============================================================================

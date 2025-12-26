@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestHandoff_Flow(t *testing.T) {
@@ -27,7 +28,7 @@ func TestHandoff_Flow(t *testing.T) {
 	// Update plan config to allow handoff
 	updateProPlanConfig(t, te)
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 
 	// 1. Setup User & Chatbot
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_user@example.com")
@@ -180,7 +181,7 @@ func TestHandoff_Analytics(t *testing.T) {
 
 	// Assign pro plan to user
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_analytics@example.com")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)
@@ -280,7 +281,7 @@ func TestHandoff_Widget(t *testing.T) {
 
 	// Assign pro plan to user
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_widget@example.com")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)
@@ -358,7 +359,7 @@ func TestHandoff_EdgeCases(t *testing.T) {
 
 	// Assign pro plan to user
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_edge@example.com")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)
@@ -478,7 +479,7 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 
 	// Assign pro plan to user
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_status@example.com")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)
@@ -598,7 +599,7 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 
 	// Assign pro plan to user
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_dup@example.com")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)
@@ -704,7 +705,7 @@ func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_detail_nf@example.com")
 
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_detail_nf@example.com")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)
@@ -758,7 +759,7 @@ func TestHandoff_UpdateStatus_NotFoundReturns404(t *testing.T) {
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_update_nf@example.com")
 
 	var proPlanID string
-	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	te.DB.QueryRow("SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_update_nf@example.com")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -33,7 +34,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
           AND c.deleted_at IS NULL
         ORDER BY c.next_refresh_at ASC`, now)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query chatbots due for refresh: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	var out []models.Chatbot
@@ -56,7 +57,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 			&c.ConfidenceThreshold, &fmj, &trj,
 			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan chatbot for refresh: %w", err)
 		}
 		if len(sj) > 0 {
 			var arr []string
@@ -101,7 +102,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("chatbots due for refresh rows err: %w", err)
 	}
 	return out, nil
 }
@@ -115,5 +116,8 @@ func UpdateChatbotRefreshTimes(ctx context.Context, pool *sql.DB, botID string, 
             updated_at = NOW() 
         WHERE id = $3 AND deleted_at IS NULL`,
 		nextRefresh, lastRefresh, botID)
-	return err
+	if err != nil {
+		return fmt.Errorf("update chatbot refresh times: %w", err)
+	}
+	return nil
 }

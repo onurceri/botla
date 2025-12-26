@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -159,7 +160,7 @@ func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) (
 		ORDER BY chunk_count DESC
 	`, chatbotID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query source questions: %w", err)
 	}
 	defer func() {
 		_ = rows.Close()
@@ -183,7 +184,10 @@ func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) (
 			})
 		}
 	}
-	return sources, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("source questions rows err: %w", err)
+	}
+	return sources, nil
 }
 
 // fetchMaxSuggestionsForChatbot gets the plan-based limit for suggestions.
@@ -224,5 +228,8 @@ func logWarnIfPresent(log *logger.Logger, event string, data map[string]any) {
 
 // DeleteSourceVectors deletes vectors associated with a source from Qdrant.
 func DeleteSourceVectors(ctx context.Context, vc rag.VectorClient, sourceID string) error {
-	return vc.DeleteBySourceID(ctx, sourceID)
+	if err := vc.DeleteBySourceID(ctx, sourceID); err != nil {
+		return fmt.Errorf("delete source vectors: %w", err)
+	}
+	return nil
 }

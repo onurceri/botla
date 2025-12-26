@@ -3,6 +3,7 @@ package scraper
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strings"
 	"time"
 
@@ -56,7 +57,7 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 
 	bundle, err := NewCollector(cfg)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("new collector: %w", err)
 	}
 	c := bundle.Collector
 	var content string
@@ -87,10 +88,10 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 
 	err = bundle.Queue.AddURL(task.URL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("add url to queue: %w", err)
 	}
 	if err := bundle.Queue.Run(c); err != nil {
-		return "", err
+		return "", fmt.Errorf("run collector queue: %w", err)
 	}
 	c.Wait()
 
@@ -115,7 +116,7 @@ func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
 
 	bundle, err := NewCollector(cfg)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("new collector for raw html: %w", err)
 	}
 	c := bundle.Collector
 	var rawHTML string
@@ -131,10 +132,10 @@ func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
 
 	err = bundle.Queue.AddURL(targetURL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("add url to queue for raw html: %w", err)
 	}
 	if err := bundle.Queue.Run(c); err != nil {
-		return "", err
+		return "", fmt.Errorf("run collector queue for raw html: %w", err)
 	}
 	c.Wait()
 
@@ -157,12 +158,12 @@ func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
 func ExtractLinks(htmlContent string, baseURL string, filter *PathFilter) ([]string, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse base url: %w", err)
 	}
 
 	doc, err := html.Parse(strings.NewReader(htmlContent))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse html content: %w", err)
 	}
 
 	var links []string

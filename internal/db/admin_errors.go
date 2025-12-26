@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -35,7 +36,7 @@ func ListErrorLogs(ctx context.Context, pool *sql.DB, severity string, limit, of
 
 	rows, err := pool.QueryContext(ctx, query, severity, limit, offset)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("query error logs: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -52,7 +53,7 @@ func ListErrorLogs(ctx context.Context, pool *sql.DB, severity string, limit, of
 			&total,
 		)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("scan error log: %w", err)
 		}
 		if stack.Valid {
 			l.StackTrace = stack.String
@@ -98,7 +99,7 @@ func GetErrorLogByID(ctx context.Context, pool *sql.DB, id string) (*ErrorLogEnt
 		&userID, &botID, &orgID, &l.Severity, &ctxData, &l.CreatedAt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get error log: %w", err)
 	}
 
 	if stack.Valid {
@@ -136,7 +137,7 @@ func GetErrorStats(ctx context.Context, pool *sql.DB) (map[string]int, error) {
 		GROUP BY severity
 	`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query error stats: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -145,7 +146,7 @@ func GetErrorStats(ctx context.Context, pool *sql.DB) (map[string]int, error) {
 		var sev string
 		var count int
 		if err := rows.Scan(&sev, &count); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan error stat: %w", err)
 		}
 		stats[sev] = count
 	}

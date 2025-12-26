@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net"
 	"net/http"
 
@@ -45,7 +46,7 @@ func (s *AdminService) LogAction(ctx context.Context, adminID, action, targetTyp
 			"action":   action,
 			"error":    err.Error(),
 		})
-		return err
+		return fmt.Errorf("insert audit log: %w", err)
 	}
 
 	return nil

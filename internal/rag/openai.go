@@ -301,7 +301,7 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 
 	b, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshaling OpenAI request body: %w", err)
 	}
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {

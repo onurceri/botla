@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/lib/pq"
@@ -73,7 +74,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 		bot.HandoffEnabled, bot.HandoffType, hcJSON,
 	).Scan(&id)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("create chatbot: %w", err)
 	}
 	return id, nil
 }
@@ -102,7 +103,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
         WHERE c.user_id=$1 AND c.deleted_at IS NULL
         ORDER BY c.created_at DESC`, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query chatbots by user id: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	return scanChatbots(rows)
@@ -133,7 +134,7 @@ func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID strin
         WHERE c.workspace_id=$1 AND c.deleted_at IS NULL
         ORDER BY c.created_at DESC`, workspaceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query chatbots by workspace: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	return scanChatbots(rows)
@@ -161,7 +162,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			&c.ConfidenceThreshold, &tcj, &fmj, &trj,
 			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan chatbot: %w", err)
 		}
 		if len(sj) > 0 {
 			var arr []string
@@ -216,7 +217,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan chatbots rows err: %w", err)
 	}
 	return out, nil
 }
@@ -264,7 +265,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get chatbot by id: %w", err)
 	}
 	if len(sj) > 0 {
 		var arr []string
@@ -329,7 +330,7 @@ func GetUserByBotID(ctx context.Context, pool *sql.DB, botID string) (*models.Us
 		&u.ID, &u.Email, &u.FullName, &u.PlanID, &u.PreferredLanguageID,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get user by bot id: %w", err)
 	}
 	return &u, nil
 }
@@ -394,22 +395,28 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.HandoffEnabled, bot.HandoffType, hcj,
 		bot.ID,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("update chatbot: %w", err)
+	}
+	return nil
 }
 
 func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, id string, suggestions []string) error {
 	js, err := json.Marshal(suggestions)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal suggestions: %w", err)
 	}
 	_, err = pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, all_suggested_questions=$1, updated_at=NOW() WHERE id=$2`, js, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("update chatbot suggestions: %w", err)
+	}
+	return nil
 }
 
 func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]string, error) {
 	tx, err := pool.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -418,11 +425,11 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
         UPDATE chatbots SET deleted_at=NOW()
         WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL`, id, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("mark chatbot as deleted: %w", err)
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rows affected: %w", err)
 	}
 	if rows == 0 {
 		return nil, nil
@@ -434,7 +441,7 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
 		SELECT id FROM data_sources 
 		WHERE chatbot_id=$1 AND deleted_at IS NULL`, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query sources for deletion: %w", err)
 	}
 	defer func() { _ = sourceRows.Close() }()
 
@@ -442,12 +449,12 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
 	for sourceRows.Next() {
 		var sid string
 		if scanErr := sourceRows.Scan(&sid); scanErr != nil {
-			return nil, scanErr
+			return nil, fmt.Errorf("scan source id for deletion: %w", scanErr)
 		}
 		sourceIDs = append(sourceIDs, sid)
 	}
 	if rowsErr := sourceRows.Err(); rowsErr != nil {
-		return nil, rowsErr
+		return nil, fmt.Errorf("source rows err: %w", rowsErr)
 	}
 
 	// 3. Cascade soft delete sources
@@ -455,17 +462,17 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
         UPDATE data_sources SET deleted_at=NOW()
         WHERE chatbot_id=$1 AND deleted_at IS NULL`, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cascade soft delete sources: %w", err)
 	}
 
 	// 4. Hard delete analytics (since they don't support soft delete and we want to cascade)
 	_, err = tx.ExecContext(ctx, `DELETE FROM analytics WHERE chatbot_id=$1`, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hard delete analytics: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	return sourceIDs, nil
@@ -477,7 +484,10 @@ func CountChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) (in
         SELECT COUNT(*) FROM chatbots
         WHERE user_id=$1 AND deleted_at IS NULL
     `, userID).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("count chatbots by user id: %w", err)
+	}
+	return count, nil
 }
 
 func CountChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID string) (int, error) {
@@ -486,7 +496,10 @@ func CountChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID str
         SELECT COUNT(*) FROM chatbots
         WHERE workspace_id=$1 AND deleted_at IS NULL
     `, workspaceID).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("count chatbots by workspace: %w", err)
+	}
+	return count, nil
 }
 
 func normalizeLocale(code string) string {

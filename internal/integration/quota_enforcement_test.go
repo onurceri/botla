@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // Helper to get user ID from email
@@ -42,10 +43,10 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	// Update free plan to have very low token limit
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code='free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code=$1`, policy.PlanFree.String())
 
 	token := authToken(t, te.Server.URL, "chatquota@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "chatquota@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "chatquota@example.com")
 
 	// Create chatbot
 	create := map[string]any{"name": "Chat Quota Bot", "max_tokens": 50}
@@ -116,11 +117,11 @@ func TestQuota_RefreshExceeded(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	// Update free plan to have refresh enabled and low limit
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh,enabled}', 'true'::jsonb) WHERE code='free'`)
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh,max_monthly}', '1'::jsonb) WHERE code='free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh,enabled}', 'true'::jsonb) WHERE code=$1`, policy.PlanFree.String())
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh,max_monthly}', '1'::jsonb) WHERE code=$1`, policy.PlanFree.String())
 
 	token := authToken(t, te.Server.URL, "refreshquota@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "refreshquota@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "refreshquota@example.com")
 	userID := getUserIdFromToken(t, te.DB, "refreshquota@example.com")
 
 	// Manually increment refresh count (manual refresh uses refresh_count column)
@@ -176,10 +177,10 @@ func TestQuota_IngestionExceeded(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	// Update free plan to have low ingestion limit (count)
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_monthly_ingestions}', '1'::jsonb) WHERE code='free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_monthly_ingestions}', '1'::jsonb) WHERE code=$1`, policy.PlanFree.String())
 
 	token := authToken(t, te.Server.URL, "ingestionquota@example.com")
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "ingestionquota@example.com")
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "ingestionquota@example.com")
 	userID := getUserIdFromToken(t, te.DB, "ingestionquota@example.com")
 
 	// Manually increment sources count
@@ -248,12 +249,12 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 
 	// 1. Configure Plan with specific limit
 	// Limit: 1000 tokens
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '1000'::jsonb) WHERE code='free'`)
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '1000'::jsonb) WHERE code=$1`, policy.PlanFree.String())
 
 	// 2. Create User & Token
 	email := "race_quota@example.com"
 	token := authToken(t, te.Server.URL, email)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), email)
 	userID := getUserIdFromToken(t, te.DB, email)
 
 	// 3. Create Chatbot with specific max_tokens
@@ -288,7 +289,7 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 	wg.Add(concurrency)
 
 	responses := make([]int, concurrency)
-	
+
 	chatBody := chatReq{Message: "Race test", SessionID: "sess-race"}
 	chatBytes, _ := json.Marshal(chatBody)
 
@@ -298,7 +299,7 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(chatBytes))
 			req.Header.Set("Authorization", "Bearer "+token)
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			res, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Errorf("request failed: %v", err)

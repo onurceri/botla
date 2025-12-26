@@ -31,3 +31,10 @@ var (
 	ErrHandoffRateLimited = errors.New("too many handoff requests")
 	ErrHandoffNotEnabled  = errors.New("handoff is not enabled for this chatbot")
 )
+
+var (
+	ErrTokenQuotaExceeded = errors.New("monthly token quota exceeded")
+	ErrModelNotAllowed    = errors.New("model not allowed for plan")
+	ErrPlanNotFound       = errors.New("user plan not found")
+	ErrInvalidRequest     = errors.New("invalid chat request")
+)

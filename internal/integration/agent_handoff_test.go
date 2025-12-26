@@ -9,6 +9,7 @@ import (
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-co/pkg/policy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,7 +72,7 @@ func TestAutomatedHandoff(t *testing.T) {
 	// Update pro plan to allow handoff (escalate fallback)
 	updateProPlanConfig(t, te)
 	var proPlanID string
-	err = te.DB.QueryRowContext(ctx, "SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	err = te.DB.QueryRowContext(ctx, "SELECT id FROM plans WHERE code=$1", policy.PlanPro.String()).Scan(&proPlanID)
 	require.NoError(t, err)
 
 	// Create User with Pro Plan
@@ -90,7 +91,7 @@ func TestAutomatedHandoff(t *testing.T) {
 		Name:             "AutoHandoffBot",
 		SystemPrompt:     "You are helpful.",
 		LanguageCode:     "en",
-		Model:            "gpt-4o-mini", // Bare model name, resolved to API format at call time
+		Model:            policy.ModelGPT4oMini.String(), // Bare model name, resolved to API format at call time
 		Temperature:      0.7,
 		MaxTokens:        100,
 		HandoffEnabled:   true,

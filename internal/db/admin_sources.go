@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -49,7 +50,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 	var total int
 	err := pool.QueryRowContext(ctx, countQuery, filter.ChatbotID, filter.SourceType, filter.Status, filter.OwnerID).Scan(&total)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("count admin sources: %w", err)
 	}
 
 	// Data query
@@ -84,7 +85,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 
 	rows, err := pool.QueryContext(ctx, dataQuery, filter.ChatbotID, filter.SourceType, filter.Status, filter.OwnerID, limit, offset)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("query admin sources: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -112,7 +113,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 			&createdAt,
 		)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("scan admin source: %w", err)
 		}
 		if orgName.Valid {
 			s.OrganizationName = &orgName.String
@@ -137,7 +138,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("admin sources rows err: %w", err)
 	}
 
 	if sources == nil {
@@ -158,7 +159,7 @@ func AdminGetSourceStats(ctx context.Context, pool *sql.DB) (map[string]int, err
 
 	rows, err := pool.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query source stats: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -167,12 +168,15 @@ func AdminGetSourceStats(ctx context.Context, pool *sql.DB) (map[string]int, err
 		var status string
 		var count int
 		if err := rows.Scan(&status, &count); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan source stat: %w", err)
 		}
 		stats[status] = count
 	}
 
-	return stats, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("source stats rows err: %w", err)
+	}
+	return stats, nil
 }
 
 // AdminReprocessSource resets a source to pending status for reprocessing
@@ -184,12 +188,12 @@ func AdminReprocessSource(ctx context.Context, pool *sql.DB, id string) error {
 	`
 	result, err := pool.ExecContext(ctx, query, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("reprocess source: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {
@@ -246,7 +250,7 @@ func AdminGetSourceByID(ctx context.Context, pool *sql.DB, id string) (*AdminSou
 		&createdAt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get admin source by id: %w", err)
 	}
 	if orgName.Valid {
 		s.OrganizationName = &orgName.String

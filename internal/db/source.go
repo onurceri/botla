@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -35,7 +36,7 @@ func CreateDataSource(ctx context.Context, pool *sql.DB, s *models.DataSource) (
 		).Scan(&legacyID); e == nil {
 			return legacyID, nil
 		}
-		return "", err
+		return "", fmt.Errorf("scan data source id: %w", err)
 	}
 	return id, nil
 }
@@ -63,7 +64,10 @@ func CreateDiscoveredSource(ctx context.Context, pool *sql.DB, chatbotID string,
 		 VALUES ($1, 'url', $2, 'pending', true) RETURNING id`,
 		chatbotID, sourceURL,
 	).Scan(&id)
-	return id, err
+	if err != nil {
+		return "", fmt.Errorf("create discovered source: %w", err)
+	}
+	return id, nil
 }
 
 func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string) ([]models.DataSource, error) {
@@ -75,7 +79,7 @@ func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string)
         WHERE chatbot_id=$1 AND deleted_at IS NULL
         ORDER BY created_at DESC`, chatbotID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query sources by chatbot id: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	out := []models.DataSource{}
@@ -86,12 +90,12 @@ func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string)
 			&d.Status, &d.ErrorMessage, &d.ChunkCount, &d.ProcessedAt, &d.CreatedAt, &d.Hash, &d.DeletedAt,
 			&d.SizeBytes, &d.LastRefreshedAt, &d.IsDiscovered, &d.CapabilitySummary,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan source: %w", err)
 		}
 		out = append(out, d)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rows err: %w", err)
 	}
 	return out, nil
 }
@@ -109,7 +113,7 @@ func GetSourceByID(ctx context.Context, pool *sql.DB, id string) (*models.DataSo
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get source by id: %w", err)
 	}
 	return &d, nil
 }
@@ -123,7 +127,7 @@ func GetURLSourcesForChatbot(ctx context.Context, pool *sql.DB, chatbotID string
         WHERE chatbot_id = $1 AND source_type = 'url' AND deleted_at IS NULL
         ORDER BY created_at DESC`, chatbotID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query url sources: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	var out []models.DataSource
@@ -131,12 +135,12 @@ func GetURLSourcesForChatbot(ctx context.Context, pool *sql.DB, chatbotID string
 		var s models.DataSource
 		if err := rows.Scan(&s.ID, &s.ChatbotID, &s.SourceType, &s.SourceURL, &s.Status, &s.ErrorMessage,
 			&s.ChunkCount, &s.CreatedAt, &s.Hash, &s.DeletedAt, &s.LastRefreshedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan url source: %w", err)
 		}
 		out = append(out, s)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rows err: %w", err)
 	}
 	return out, nil
 }
@@ -151,24 +155,36 @@ func UpdateSourceProcessing(ctx context.Context, pool *sql.DB, id string, status
         WHERE id=$5`,
 		status, errorMessage, chunkCount, processedAt, id,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("update source processing: %w", err)
+	}
+	return nil
 }
 
 func DeleteSource(ctx context.Context, pool *sql.DB, id string) error {
 	_, err := pool.ExecContext(ctx, `DELETE FROM data_sources WHERE id=$1`, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("delete source: %w", err)
+	}
+	return nil
 }
 
 // SoftDeleteSource sets deleted_at timestamp without removing the row
 func SoftDeleteSource(ctx context.Context, pool *sql.DB, id string) error {
 	now := time.Now()
 	_, err := pool.ExecContext(ctx, `UPDATE data_sources SET deleted_at=$2 WHERE id=$1`, id, now)
-	return err
+	if err != nil {
+		return fmt.Errorf("soft delete source: %w", err)
+	}
+	return nil
 }
 
 func UpdateSourceCapability(ctx context.Context, pool *sql.DB, id string, summary string) error {
 	_, err := pool.ExecContext(ctx, `UPDATE data_sources SET capability_summary=$1 WHERE id=$2`, summary, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("update source capability: %w", err)
+	}
+	return nil
 }
 
 func UpdateSourceSuggestions(ctx context.Context, pool *sql.DB, id string, suggestions []string) error {
@@ -177,11 +193,14 @@ func UpdateSourceSuggestions(ctx context.Context, pool *sql.DB, id string, sugge
 	if suggestions != nil {
 		js, err = json.Marshal(suggestions)
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal suggestions: %w", err)
 		}
 	}
 	_, err = pool.ExecContext(ctx, `UPDATE data_sources SET suggested_questions=$1 WHERE id=$2`, js, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("update source suggestions: %w", err)
+	}
+	return nil
 }
 
 // CountSourcesByType counts non-deleted sources of a specific type for a chatbot.
@@ -190,7 +209,10 @@ func CountSourcesByType(ctx context.Context, pool *sql.DB, chatbotID string, sou
 	err := pool.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM data_sources WHERE chatbot_id=$1 AND source_type=$2 AND deleted_at IS NULL
 	`, chatbotID, sourceType).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("count sources by type: %w", err)
+	}
+	return count, nil
 }
 
 func GetFileCountByUserID(ctx context.Context, pool *sql.DB, userID string) (int, error) {
@@ -201,7 +223,10 @@ func GetFileCountByUserID(ctx context.Context, pool *sql.DB, userID string) (int
 		JOIN chatbots c ON ds.chatbot_id = c.id
 		WHERE c.user_id = $1 AND ds.source_type IN ('pdf', 'text')
 	`, userID).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("get file count by user id: %w", err)
+	}
+	return count, nil
 }
 
 func GetURLCountByUserID(ctx context.Context, pool *sql.DB, userID string) (int, error) {
@@ -212,7 +237,10 @@ func GetURLCountByUserID(ctx context.Context, pool *sql.DB, userID string) (int,
 		JOIN chatbots c ON ds.chatbot_id = c.id
 		WHERE c.user_id = $1 AND ds.source_type = 'url'
 	`, userID).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("get url count by user id: %w", err)
+	}
+	return count, nil
 }
 
 func GetMaxFileCountInAnyBot(ctx context.Context, pool *sql.DB, userID string) (int, error) {
@@ -226,7 +254,10 @@ func GetMaxFileCountInAnyBot(ctx context.Context, pool *sql.DB, userID string) (
 			GROUP BY ds.chatbot_id
 		) as counts
 	`, userID).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("get max file count in any bot: %w", err)
+	}
+	return count, nil
 }
 
 func GetMaxURLCountInAnyBot(ctx context.Context, pool *sql.DB, userID string) (int, error) {
@@ -240,13 +271,19 @@ func GetMaxURLCountInAnyBot(ctx context.Context, pool *sql.DB, userID string) (i
 			GROUP BY ds.chatbot_id
 		) as counts
 	`, userID).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("get max url count in any bot: %w", err)
+	}
+	return count, nil
 }
 
 func SourceExists(ctx context.Context, pool *sql.DB, chatbotID, url string) (bool, error) {
 	var exists bool
 	err := pool.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM data_sources WHERE chatbot_id=$1 AND source_url=$2)`, chatbotID, url).Scan(&exists)
-	return exists, err
+	if err != nil {
+		return exists, fmt.Errorf("check source existence: %w", err)
+	}
+	return exists, nil
 }
 
 // GetLastDeletedAtForURL returns most recent deleted_at for a given URL in a chatbot
@@ -260,7 +297,10 @@ func GetLastDeletedAtForURL(ctx context.Context, pool *sql.DB, chatbotID, url st
 	if err == sql.ErrNoRows {
 		return sql.NullTime{}, nil
 	}
-	return t, err
+	if err != nil {
+		return t, fmt.Errorf("get last deleted at for url: %w", err)
+	}
+	return t, nil
 }
 
 // GetStorageUsedMBByUserID sums size_bytes for user's sources
@@ -273,7 +313,7 @@ func GetStorageUsedMBByUserID(ctx context.Context, pool *sql.DB, userID string) 
         WHERE c.user_id = $1 AND ds.deleted_at IS NULL
     `, userID).Scan(&totalBytes)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("get storage used: %w", err)
 	}
 	// convert to MB
 	return int(totalBytes / (1024 * 1024)), nil
@@ -282,7 +322,10 @@ func GetStorageUsedMBByUserID(ctx context.Context, pool *sql.DB, userID string) 
 // UpdateSourceHash updates the content hash for a source
 func UpdateSourceHash(ctx context.Context, pool *sql.DB, id string, hash string) error {
 	_, err := pool.ExecContext(ctx, `UPDATE data_sources SET hash=$1 WHERE id=$2`, hash, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("update source hash: %w", err)
+	}
+	return nil
 }
 
 // UpdateSourceForRefresh sets status to pending and updates last_refreshed_at
@@ -292,7 +335,10 @@ func UpdateSourceForRefresh(ctx context.Context, pool *sql.DB, id string) error 
 		UPDATE data_sources 
 		SET status='pending', last_refreshed_at=$1, error_message=NULL
 		WHERE id=$2`, now, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("update source for refresh: %w", err)
+	}
+	return nil
 }
 
 // GetMonthlyRefreshCount returns the number of refreshes for a user in a given month
@@ -303,13 +349,12 @@ func GetMonthlyRefreshCount(ctx context.Context, pool *sql.DB, userID string, mo
 		SELECT COALESCE(refresh_count, 0) FROM usage_ingestions
 		WHERE user_id=$1 AND period_month=$2
 	`, userID, periodMonth).Scan(&count)
-	if err == sql.ErrNoRows {
-		return 0, nil
+	if err != nil {
+		return count, fmt.Errorf("get monthly refresh count: %w", err)
 	}
-	return count, err
+	return count, nil
 }
 
-// IncrementRefreshCount increments the refresh counter for a user
 func IncrementRefreshCount(ctx context.Context, pool *sql.DB, userID string, month time.Time) error {
 	periodMonth := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
 	_, err := pool.ExecContext(ctx, `
@@ -318,5 +363,8 @@ func IncrementRefreshCount(ctx context.Context, pool *sql.DB, userID string, mon
 		ON CONFLICT (user_id, period_month)
 		DO UPDATE SET refresh_count = usage_ingestions.refresh_count + 1, updated_at = NOW()
 	`, userID, periodMonth)
-	return err
+	if err != nil {
+		return fmt.Errorf("increment refresh count: %w", err)
+	}
+	return nil
 }
