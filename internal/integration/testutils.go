@@ -19,6 +19,7 @@ import (
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-co/pkg/policy"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -206,7 +207,7 @@ func SetupTestEnv() (*TestEnv, error) {
 	cfg.DB_SCHEMA = schema
 	db, err := dbpkg.New(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new db: %w", err)
 	}
 
 	// Set search path first
@@ -220,16 +221,16 @@ func SetupTestEnv() (*TestEnv, error) {
 	restorePlans(db)
 
 	// Relax rate limits and limits for free plan in test environment
-	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits,requests_per_minute}', '1000'::jsonb) WHERE code = 'free'`)
-	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_chatbots}', '100'::jsonb) WHERE code = 'free'`)
+	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits,requests_per_minute}', '1000'::jsonb) WHERE code = $1`, policy.PlanFree.String())
+	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_chatbots}', '100'::jsonb) WHERE code = $1`, policy.PlanFree.String())
 
 	// Insert dummy data for stub sources to prevent foreign key violations
 	dummyUUID := "00000000-0000-0000-0000-000000000001"
 
 	// Dummy User
 	if _, insertUserErr := db.Exec(`INSERT INTO users (id, email, password_hash, plan_id, created_at, is_platform_admin, onboarding_completed, onboarding_step, onboarding_skipped) 
-		VALUES ($1, 'dummy@example.com', 'hash', (SELECT id FROM plans WHERE code='free'), NOW(), false, true, 0, false)
-		ON CONFLICT (id) DO NOTHING`, dummyUUID); insertUserErr != nil {
+		VALUES ($1, 'dummy@example.com', 'hash', (SELECT id FROM plans WHERE code=$2), NOW(), false, true, 0, false)
+		ON CONFLICT (id) DO NOTHING`, dummyUUID, policy.PlanFree.String()); insertUserErr != nil {
 		return nil, fmt.Errorf("failed to insert dummy user: %w", insertUserErr)
 	}
 
@@ -243,14 +244,14 @@ func SetupTestEnv() (*TestEnv, error) {
 		discovery_mode, refresh_policy, hide_branding, confidence_threshold, handoff_enabled, handoff_type, 
 		language_id, secure_embed_enabled, suggestions_enabled
 	) VALUES (
-		$1, $1, 'Dummy Bot', 'gpt-4o-mini', 0.7, 4096, 
+		$1, $1, 'Dummy Bot', $2, 0.7, 4096, 
 		'#000000', 'Hello', NOW(), NOW(), 
 		'bottom-right', '#ffffff', '#000000', '#000000', '#ffffff', 
 		'Inter', '#ffffff', '#000000', '#ffffff', '12px', 
 		'#ffffff', '#000000', '#000000', 
 		'auto', 'manual', false, 0.5, false, 'email', 
 		(SELECT id FROM languages WHERE code='en-US'), false, false
-	) ON CONFLICT (id) DO NOTHING`, dummyUUID); insertChatbotErr != nil {
+	) ON CONFLICT (id) DO NOTHING`, dummyUUID, policy.ModelGPT4oMini.String()); insertChatbotErr != nil {
 		return nil, fmt.Errorf("failed to insert dummy chatbot: %w", insertChatbotErr)
 	}
 
@@ -375,38 +376,38 @@ func restorePlans(db *sql.DB) {
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', false, 'max_urls_per_bot', 1, 'max_pages_per_crawl', 5),
     'files', jsonb_build_object('ocr_enabled', false, 'max_size_mb', 5, 'max_files_per_bot', 1, 'max_files_total', 5, 'total_storage_mb', 10, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', 'gpt-4o-mini', 'allowed_models', '["gpt-4o-mini"]'::jsonb, 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k', 3, 'max_context_tokens', 2000), 'max_suggested_questions', 3),
+    'chat', jsonb_build_object('default_model', $1, 'allowed_models', '["gpt-4o-mini"]'::jsonb, 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k', 3, 'max_context_tokens', 2000), 'max_suggested_questions', 3),
     'refresh', jsonb_build_object('enabled', false, 'max_monthly', 0),
     'security', jsonb_build_object('secure_embed_enabled', false),
     'guardrails', jsonb_build_object('can_customize_thresholds', false, 'can_use_smart_fallback', false, 'can_use_escalate_fallback', false, 'can_manage_topics', false, 'can_customize_messages', false),
     'branding', jsonb_build_object('can_hide_branding', false, 'can_custom_branding', false),
     'rate_limits', jsonb_build_object('requests_per_minute', 100, 'window_seconds', 60, 'endpoints', jsonb_build_object('chat', jsonb_build_object('requests_per_minute', 30, 'window_seconds', 60), 'sources', jsonb_build_object('requests_per_minute', 10, 'window_seconds', 60))),
     'max_chatbots', 1, 'max_monthly_ingestions', 50, 'max_monthly_embedding_tokens', 250000, 'min_readd_cooldown_minutes', 60
-) WHERE code = 'free'`)
+) WHERE code = 'free'`, policy.ModelGPT4oMini.String())
 
 	// Pro
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 10, 'max_pages_per_crawl', 50),
     'files', jsonb_build_object('ocr_enabled', true, 'max_size_mb', 20, 'max_files_per_bot', 20, 'max_files_total', 100, 'total_storage_mb', 500, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', 'gpt-4o', 'allowed_models', '["gpt-4o-mini", "gpt-4o"]'::jsonb, 'max_monthly_tokens', 1000000, 'rag', jsonb_build_object('top_k', 5, 'max_context_tokens', 4000), 'max_suggested_questions', 6),
+    'chat', jsonb_build_object('default_model', $1, 'allowed_models', '["gpt-4o-mini", "gpt-4o"]'::jsonb, 'max_monthly_tokens', 1000000, 'rag', jsonb_build_object('top_k', 5, 'max_context_tokens', 4000), 'max_suggested_questions', 6),
     'refresh', jsonb_build_object('enabled', true, 'max_monthly', 5),
     'security', jsonb_build_object('secure_embed_enabled', true),
     'guardrails', jsonb_build_object('can_customize_thresholds', true, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', false, 'can_manage_topics', true, 'can_customize_messages', true),
     'branding', jsonb_build_object('can_hide_branding', true, 'can_custom_branding', false),
     'rate_limits', jsonb_build_object('requests_per_minute', 500, 'window_seconds', 60, 'endpoints', jsonb_build_object('chat', jsonb_build_object('requests_per_minute', 100, 'window_seconds', 60), 'sources', jsonb_build_object('requests_per_minute', 30, 'window_seconds', 60))),
     'max_chatbots', 10, 'max_monthly_ingestions', 500, 'max_monthly_embedding_tokens', 2500000, 'min_readd_cooldown_minutes', 30
-) WHERE code = 'pro'`)
+) WHERE code = 'pro'`, policy.ModelGPT4o.String())
 
 	// Ultra
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 50, 'max_pages_per_crawl', 200),
     'files', jsonb_build_object('ocr_enabled', true, 'max_size_mb', 50, 'max_files_per_bot', 100, 'max_files_total', 1000, 'total_storage_mb', 2000, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', 'gpt-4o', 'allowed_models', '["gpt-4o-mini", "gpt-4o", "gpt-5"]'::jsonb, 'max_monthly_tokens', 5000000, 'rag', jsonb_build_object('top_k', 10, 'max_context_tokens', 8000), 'max_suggested_questions', 10),
+    'chat', jsonb_build_object('default_model', $1, 'allowed_models', '["gpt-4o-mini", "gpt-4o", "gpt-5"]'::jsonb, 'max_monthly_tokens', 5000000, 'rag', jsonb_build_object('top_k', 10, 'max_context_tokens', 8000), 'max_suggested_questions', 10),
     'refresh', jsonb_build_object('enabled', true, 'max_monthly', 100),
     'security', jsonb_build_object('secure_embed_enabled', true),
     'guardrails', jsonb_build_object('can_customize_thresholds', true, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', true, 'can_manage_topics', true, 'can_customize_messages', true),
     'branding', jsonb_build_object('can_hide_branding', true, 'can_custom_branding', true),
     'rate_limits', jsonb_build_object('requests_per_minute', 2000, 'window_seconds', 60, 'endpoints', jsonb_build_object('chat', jsonb_build_object('requests_per_minute', 500, 'window_seconds', 60), 'sources', jsonb_build_object('requests_per_minute', 100, 'window_seconds', 60))),
     'max_chatbots', 100, 'max_monthly_ingestions', 10000, 'max_monthly_embedding_tokens', 100000000, 'min_readd_cooldown_minutes', 0
-) WHERE code = 'ultra'`)
+) WHERE code = 'ultra'`, policy.ModelGPT4o.String())
 }

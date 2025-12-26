@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChatBubble } from './components/ChatBubble'
-import { ChatDrawer } from './components/ChatDrawer'
+import { ChatBubble, ChatDrawer } from '@botla/ui-shared'
+import type { ChatMessage } from '@botla/ui-shared'
 
-type Message = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal'; handoffRequestId?: string; emailSubmitted?: boolean }
+type Message = ChatMessage
 
 export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed', previewMode = false }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelWidth?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute'; previewMode?: boolean }) {
   const [open, setOpen] = useState(!!autoOpen)
@@ -267,7 +267,6 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     >
       {open ? (
         <ChatDrawer 
-          color={color} 
           messages={messages} 
           loading={loading} 
           input={input} 

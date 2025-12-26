@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 	"unicode/utf8"
@@ -12,11 +13,11 @@ import (
 func NormalizeText(rawHTML string) (string, error) {
 	r, err := charset.NewReader(strings.NewReader(rawHTML), "text/html")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("new charset reader: %w", err)
 	}
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read all: %w", err)
 	}
 	if len(b) >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF {
 		b = b[3:]

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
@@ -21,7 +22,7 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 	token := authToken(t, te.Server.URL, "secure_owner@example.com")
 
 	// Enable secure embed for free plan (or upgrade user) to allow testing the feature logic
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code='free'`)
+	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}

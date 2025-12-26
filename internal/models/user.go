@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -33,7 +34,11 @@ type OnboardingData struct {
 
 // Value implements driver.Valuer for OnboardingData
 func (o OnboardingData) Value() (driver.Value, error) {
-	return json.Marshal(o)
+	b, err := json.Marshal(o)
+	if err != nil {
+		return nil, fmt.Errorf("marshal onboarding data: %w", err)
+	}
+	return b, nil
 }
 
 // Scan implements sql.Scanner for OnboardingData
@@ -45,5 +50,8 @@ func (o *OnboardingData) Scan(value interface{}) error {
 	if !ok {
 		return nil
 	}
-	return json.Unmarshal(bytes, o)
+	if err := json.Unmarshal(bytes, o); err != nil {
+		return fmt.Errorf("unmarshal onboarding data: %w", err)
+	}
+	return nil
 }

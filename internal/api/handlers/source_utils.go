@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -38,7 +39,7 @@ func (h *SourcesHandlers) persistAndEnqueueInternal(r *http.Request, ds *models.
 	newID, err := db.CreateDataSource(r.Context(), h.DB, ds)
 	if err != nil {
 		h.logError("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": ds.ChatbotID, "source_type": ds.SourceType})
-		return "", err
+		return "", fmt.Errorf("create data source: %w", err)
 	}
 	if h.Queue != nil {
 		h.Queue.Enqueue(newID)

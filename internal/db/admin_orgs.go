@@ -97,7 +97,10 @@ func GetOrganizationByID(ctx context.Context, pool *sql.DB, id string) (*models.
 		&o.ChatbotCount,
 	)
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get organization by id: %w", err)
 	}
 
 	return &o, nil

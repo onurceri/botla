@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -74,7 +75,10 @@ func (r *RedisCache) Get(key string) (string, bool) {
 func (r *RedisCache) Set(key, val string, ttl time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	return r.cli.Set(ctx, key, val, ttl).Err()
+	if err := r.cli.Set(ctx, key, val, ttl).Err(); err != nil {
+		return fmt.Errorf("redis set: %w", err)
+	}
+	return nil
 }
 
 func NewCache() Cache {

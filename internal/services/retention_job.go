@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/pkg/logger"
@@ -80,10 +81,14 @@ func (j *RetentionJob) cleanConversations(ctx context.Context) (int64, error) {
 
 	result, err := j.DB.ExecContext(ctx, query, cutoff)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("cleaning conversations: %w", err)
 	}
 
-	return result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("getting rows affected: %w", err)
+	}
+	return rows, nil
 }
 
 func (j *RetentionJob) cleanErrorLogs(ctx context.Context) (int64, error) {
@@ -96,10 +101,14 @@ func (j *RetentionJob) cleanErrorLogs(ctx context.Context) (int64, error) {
 	if err != nil {
 		// If table doesn't exist, ignore error or log it.
 		// For now, return error so we know.
-		return 0, err
+		return 0, fmt.Errorf("cleaning error logs: %w", err)
 	}
 
-	return result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("getting rows affected: %w", err)
+	}
+	return rows, nil
 }
 
 func (j *RetentionJob) cleanExpiredExports(ctx context.Context) (int64, error) {
@@ -152,9 +161,12 @@ func (j *RetentionJob) cleanExpiredExports(ctx context.Context) (int64, error) {
 	// 4. Delete from data_exports table
 	res2, err := j.DB.ExecContext(ctx, `DELETE FROM data_exports WHERE expires_at < $1`, now)
 	if err != nil {
-		return totalDeleted, err
+		return totalDeleted, fmt.Errorf("cleaning data exports: %w", err)
 	}
-	affected, _ := res2.RowsAffected()
+	affected, err := res2.RowsAffected()
+	if err != nil {
+		return totalDeleted, fmt.Errorf("getting rows affected: %w", err)
+	}
 	totalDeleted += affected
 
 	return totalDeleted, nil
@@ -167,8 +179,12 @@ func (j *RetentionJob) cleanAuditLogs(ctx context.Context) (int64, error) {
 
 	result, err := j.DB.ExecContext(ctx, query, cutoff)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("cleaning audit logs: %w", err)
 	}
 
-	return result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("getting rows affected: %w", err)
+	}
+	return rows, nil
 }

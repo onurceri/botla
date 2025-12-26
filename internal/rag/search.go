@@ -57,7 +57,7 @@ func SearchContextTiered(ctx context.Context, vc VectorClient, queryEmbedding []
 
 	items, err := vc.SearchSimilar(ctx, queryEmbedding, chatbotID, topK)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("search similar failed: %w", err)
 	}
 
 	if len(items) == 0 {

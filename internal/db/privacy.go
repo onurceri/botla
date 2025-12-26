@@ -225,7 +225,7 @@ func CompletePrivacyExportRequest(ctx context.Context, pool *sql.DB, id, adminID
 func AnonymizeUserData(ctx context.Context, pool *sql.DB, userID string) error {
 	tx, err := pool.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -270,7 +270,10 @@ func AnonymizeUserData(ctx context.Context, pool *sql.DB, userID string) error {
 		return fmt.Errorf("delete user memberships: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) ([]string, error) {
@@ -280,7 +283,7 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 	var avatarURL sql.NullString
 	err := pool.QueryRowContext(ctx, `SELECT avatar_url FROM users WHERE id = $1`, userID).Scan(&avatarURL)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+		return nil, fmt.Errorf("query user avatar: %w", err)
 	}
 	if avatarURL.Valid && avatarURL.String != "" {
 		files = append(files, avatarURL.String)
@@ -288,14 +291,20 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 
 	// 2. Get chatbot bot_icons
 	rows, err := pool.QueryContext(ctx, `SELECT bot_icon FROM chatbots WHERE user_id = $1 AND bot_icon IS NOT NULL AND bot_icon != ''`, userID)
-	if err == nil {
-		for rows.Next() {
-			var icon string
-			if scanErr := rows.Scan(&icon); scanErr == nil {
-				files = append(files, icon)
-			}
+	if err != nil {
+		return nil, fmt.Errorf("query chatbot icons: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var icon string
+		if scanErr := rows.Scan(&icon); scanErr != nil {
+			return nil, fmt.Errorf("scan chatbot icon: %w", scanErr)
 		}
-		_ = rows.Close()
+		files = append(files, icon)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("chatbot icons rows err: %w", err)
 	}
 
 	// 3. Get data source file paths
@@ -305,14 +314,20 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 		JOIN chatbots cb ON ds.chatbot_id = cb.id
 		WHERE cb.user_id = $1 AND ds.file_path IS NOT NULL AND ds.file_path != ''
 	`, userID)
-	if err == nil {
-		for rows.Next() {
-			var path string
-			if scanErr := rows.Scan(&path); scanErr == nil {
-				files = append(files, path)
-			}
+	if err != nil {
+		return nil, fmt.Errorf("query data source file paths: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var path string
+		if scanErr := rows.Scan(&path); scanErr != nil {
+			return nil, fmt.Errorf("scan data source file path: %w", scanErr)
 		}
-		_ = rows.Close()
+		files = append(files, path)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("data source file paths rows err: %w", err)
 	}
 
 	// 4. Get organization branding logos
@@ -321,19 +336,27 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 		FROM organizations 
 		WHERE owner_id = $1 AND branding IS NOT NULL
 	`, userID)
-	if err == nil {
-		for rows.Next() {
-			var brandingBytes []byte
-			if scanErr := rows.Scan(&brandingBytes); scanErr == nil && len(brandingBytes) > 0 {
-				var cb struct {
-					LogoURL string `json:"logo_url"`
-				}
-				if unmarshalErr := json.Unmarshal(brandingBytes, &cb); unmarshalErr == nil && cb.LogoURL != "" {
-					files = append(files, cb.LogoURL)
-				}
+	if err != nil {
+		return nil, fmt.Errorf("query organization branding: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var brandingBytes []byte
+		if scanErr := rows.Scan(&brandingBytes); scanErr != nil {
+			return nil, fmt.Errorf("scan organization branding: %w", scanErr)
+		}
+		if len(brandingBytes) > 0 {
+			var cb struct {
+				LogoURL string `json:"logo_url"`
+			}
+			if unmarshalErr := json.Unmarshal(brandingBytes, &cb); unmarshalErr == nil && cb.LogoURL != "" {
+				files = append(files, cb.LogoURL)
 			}
 		}
-		_ = rows.Close()
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("organization branding rows err: %w", err)
 	}
 
 	return files, nil

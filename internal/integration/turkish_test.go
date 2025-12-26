@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // TRK-002: Turkish special chars in chatbot name
@@ -162,8 +163,8 @@ func TestTurkish_LocalizedError(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	// Update free plan to have very low token limit
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code='free'`)
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "error-loc@example.com")
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code=$1`, policy.PlanFree.String())
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "error-loc@example.com")
 
 	token := authToken(t, te.Server.URL, "error-loc@example.com")
 

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
@@ -34,7 +35,7 @@ func (s *RAGService) DeleteBotVectors(ctx context.Context, chatbotID string) err
 	// Get all source IDs for this chatbot
 	rows, err := s.DB.QueryContext(ctx, `SELECT id FROM data_sources WHERE chatbot_id = $1 AND deleted_at IS NULL`, chatbotID)
 	if err != nil {
-		return err
+		return fmt.Errorf("querying source IDs: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -51,7 +52,10 @@ func (s *RAGService) DeleteBotVectors(ctx context.Context, chatbotID string) err
 		}
 	}
 
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterating rows: %w", err)
+	}
+	return nil
 }
 
 // DeleteSourceVectors deletes all vectors associated with a specific source
@@ -59,7 +63,10 @@ func (s *RAGService) DeleteSourceVectors(ctx context.Context, sourceID string) e
 	if s.VectorClient == nil {
 		return nil
 	}
-	return s.VectorClient.DeleteBySourceID(ctx, sourceID)
+	if err := s.VectorClient.DeleteBySourceID(ctx, sourceID); err != nil {
+		return fmt.Errorf("deleting source vectors: %w", err)
+	}
+	return nil
 }
 
 // Queue wraps SourceQueue to provide a simpler interface for handlers

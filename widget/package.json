@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@botla/ui-shared": "file:../packages/ui-shared",
     "markdown-to-jsx": "^9.3.5",
     "preact": "^10.27.2",
     "react": "^19.2.0",

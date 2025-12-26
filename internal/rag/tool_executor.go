@@ -105,11 +105,11 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 			logCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			if logErr := db.CreateActionLog(logCtx, e.DB, logEntry); logErr != nil {
-				if e.Log != nil {
-					e.Log.Error("failed to create action log", map[string]any{"error": logErr.Error()})
-				} else {
-					fmt.Printf("failed to create action log: %v\n", logErr)
+				l := e.Log
+				if l == nil {
+					l = logger.New("ERROR")
 				}
+				l.Error("failed to create action log", map[string]any{"error": logErr.Error()})
 			}
 		}()
 	}()
@@ -263,7 +263,7 @@ func (e *ToolExecutor) executeHTTP(ctx context.Context, toolCall ToolCall, actio
 
 	req, err := http.NewRequestWithContext(ctx, method, config.URL, body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("http tool request creation failed: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -297,13 +297,13 @@ func (e *ToolExecutor) executeHTTP(ctx context.Context, toolCall ToolCall, actio
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("http tool request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading http tool response failed: %w", err)
 	}
 
 	return &ToolResult{
@@ -333,19 +333,19 @@ func (e *ToolExecutor) executeZapier(ctx context.Context, toolCall ToolCall, act
 
 	req, err := http.NewRequestWithContext(ctx, "POST", config.WebhookURL, body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("zapier tool request creation failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("zapier tool request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading zapier tool response failed: %w", err)
 	}
 
 	return &ToolResult{

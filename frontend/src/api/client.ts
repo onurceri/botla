@@ -31,7 +31,6 @@ const handleSessionExpired = () => {
   if (isRedirecting) return
   isRedirecting = true
 
-  const storage = typeof window !== 'undefined' ? window.localStorage : null
   // Cookies are HttpOnly and cannot be cleared by JS.
   // We rely on the server to clear them on /logout or they will expire.
   // We can try to call logout endpoint here, but session expired usually means token is already invalid.

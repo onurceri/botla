@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
@@ -19,7 +20,7 @@ func GetEnabledActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*mo
 	`
 	rows, err := db.QueryContext(ctx, query, chatbotID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query enabled actions: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -30,11 +31,14 @@ func GetEnabledActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*mo
 			&a.ID, &a.ChatbotID, &a.Name, &a.Description, &a.ActionType,
 			&a.Config, &a.Parameters, &a.ToolName, &a.Enabled, &a.Version, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan enabled action: %w", err)
 		}
 		actions = append(actions, &a)
 	}
-	return actions, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("enabled actions rows err: %w", err)
+	}
+	return actions, nil
 }
 
 func GetActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*models.ChatbotAction, error) {
@@ -46,7 +50,7 @@ func GetActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*models.Ch
 	`
 	rows, err := db.QueryContext(ctx, query, chatbotID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query actions: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -57,11 +61,14 @@ func GetActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*models.Ch
 			&a.ID, &a.ChatbotID, &a.Name, &a.Description, &a.ActionType,
 			&a.Config, &a.Parameters, &a.ToolName, &a.Enabled, &a.Version, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan action: %w", err)
 		}
 		actions = append(actions, &a)
 	}
-	return actions, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("actions rows err: %w", err)
+	}
+	return actions, nil
 }
 
 func CreateAction(ctx context.Context, db *sql.DB, action *models.ChatbotAction) error {
@@ -70,10 +77,14 @@ func CreateAction(ctx context.Context, db *sql.DB, action *models.ChatbotAction)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, version, created_at, updated_at
 	`
-	return db.QueryRowContext(ctx, query,
+	err := db.QueryRowContext(ctx, query,
 		action.ChatbotID, action.Name, action.Description, action.ActionType,
 		action.Config, action.Parameters, action.ToolName, action.Enabled,
 	).Scan(&action.ID, &action.Version, &action.CreatedAt, &action.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("create action: %w", err)
+	}
+	return nil
 }
 
 // UpdateAction updates an action with optimistic locking.
@@ -93,7 +104,7 @@ func UpdateAction(ctx context.Context, db *sql.DB, action *models.ChatbotAction)
 		if err == sql.ErrNoRows {
 			return ErrVersionConflict
 		}
-		return err
+		return fmt.Errorf("update action: %w", err)
 	}
 	return nil
 }
@@ -101,7 +112,10 @@ func UpdateAction(ctx context.Context, db *sql.DB, action *models.ChatbotAction)
 func DeleteAction(ctx context.Context, db *sql.DB, id string) error {
 	query := `DELETE FROM chatbot_actions WHERE id = $1`
 	_, err := db.ExecContext(ctx, query, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("delete action: %w", err)
+	}
+	return nil
 }
 
 func GetActionByID(ctx context.Context, db *sql.DB, id string) (*models.ChatbotAction, error) {
@@ -119,7 +133,7 @@ func GetActionByID(ctx context.Context, db *sql.DB, id string) (*models.ChatbotA
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get action by id: %w", err)
 	}
 	return &a, nil
 }
@@ -140,7 +154,7 @@ func GetActionByToolName(ctx context.Context, db *sql.DB, chatbotID, toolName st
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get action by tool name: %w", err)
 	}
 	return &a, nil
 }

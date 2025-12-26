@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -59,7 +60,7 @@ func ReserveChatTokens(ctx context.Context, pool *sql.DB, userID string, estimat
 			// The WHERE clause rejected the insert or update - limit exceeded
 			return ErrTokenQuotaExceeded
 		}
-		return err
+		return fmt.Errorf("reserve chat tokens: %w", err)
 	}
 
 	return nil
@@ -86,7 +87,10 @@ func AdjustChatTokens(ctx context.Context, pool *sql.DB, userID string, deltaTok
 		SET chat_tokens = chat_tokens + $3, updated_at = NOW()
 		WHERE user_id = $1 AND period_month = $2::date
 	`, userID, pm, deltaTokens)
-	return err
+	if err != nil {
+		return fmt.Errorf("adjust chat tokens: %w", err)
+	}
+	return nil
 }
 
 // GetMonthlyChatTokens returns the current monthly chat token usage for a user
@@ -103,7 +107,7 @@ func GetMonthlyChatTokens(ctx context.Context, pool *sql.DB, userID string) (int
 		return 0, nil
 	}
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("get monthly chat tokens: %w", err)
 	}
 	return tokens, nil
 }
@@ -121,5 +125,8 @@ func IncrementChatTokens(ctx context.Context, pool *sql.DB, userID string, token
 			chat_tokens = usage_ingestions.chat_tokens + EXCLUDED.chat_tokens,
 			updated_at = NOW()
 	`, userID, pm, tokens)
-	return err
+	if err != nil {
+		return fmt.Errorf("increment chat tokens: %w", err)
+	}
+	return nil
 }

@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"net/http"
 	"os"
@@ -48,7 +49,7 @@ func NewCollector(cfg CollectorConfig) (*CollectorBundle, error) {
 		RandomDelay: time.Second / time.Duration(cfg.RateLimitPerSec),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collector limit rule failed: %w", err)
 	}
 
 	ua := cfg.UserAgents
@@ -92,7 +93,7 @@ func NewCollector(cfg CollectorConfig) (*CollectorBundle, error) {
 
 	q, err := queue.New(1, &queue.InMemoryQueueStorage{MaxSize: 100})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("colly queue creation failed: %w", err)
 	}
 	return &CollectorBundle{Collector: c, Queue: q}, nil
 }

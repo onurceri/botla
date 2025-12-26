@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -29,7 +30,10 @@ func (sr *statusRecorder) Write(b []byte) (int, error) {
 	}
 	n, err := sr.ResponseWriter.Write(b)
 	sr.bytes += n
-	return n, err
+	if err != nil {
+		return n, fmt.Errorf("write response: %w", err)
+	}
+	return n, nil
 }
 
 func RequestLogger(log *logger.Logger) func(http.Handler) http.Handler {

@@ -10,6 +10,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // PlanResponse represents the /me/plan endpoint response
@@ -153,7 +154,8 @@ func (h *PlanHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planIn
 	`, u.PlanID, langID).Scan(&planCode, &name, &desc, &planPrice, &planCurrency, &config)
 
 	if err != nil {
-		planCode = "free"
+		// Fallback to free plan using typed constant
+		planCode = policy.PlanFree.String()
 	}
 
 	// Apply config defaults
@@ -176,11 +178,11 @@ func (h *PlanHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planIn
 func applyConfigDefaults(config *models.PlanConfig, planCode string) {
 	if config.Files.MaxFilesTotal == 0 {
 		switch planCode {
-		case "free":
+		case policy.PlanFree.String():
 			config.Files.MaxFilesTotal = 5
-		case "pro":
+		case policy.PlanPro.String():
 			config.Files.MaxFilesTotal = 100
-		case "ultra":
+		case policy.PlanUltra.String():
 			config.Files.MaxFilesTotal = 1000
 		default:
 			config.Files.MaxFilesTotal = 5

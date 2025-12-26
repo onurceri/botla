@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -49,7 +50,7 @@ func qdrantHealthy(ctx context.Context, cfg *config.Config) error {
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("qdrant health check request: %w", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
@@ -21,7 +22,7 @@ func GetPlanByUserID(ctx context.Context, pool *sql.DB, userID string) (*models.
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get plan by user id: %w", err)
 	}
 	return &p, nil
 }

@@ -42,7 +42,7 @@ func (s *PrivacyService) ExportUserData(ctx context.Context, userID string, requ
 	}
 	createdExport, err := db.CreateDataExport(ctx, s.DB, export)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create data export: %w", err)
 	}
 
 	// Run export in background to avoid timeout
@@ -111,7 +111,7 @@ func (s *PrivacyService) processExport(ctx context.Context, exportID, userID str
 	}
 
 	if err := db.UpdateDataExport(ctx, s.DB, update); err != nil {
-		return "", time.Time{}, 0, err
+		return "", time.Time{}, 0, fmt.Errorf("update data export: %w", err)
 	}
 
 	return fileURL, expiresAt, size, nil
@@ -126,7 +126,11 @@ func (s *PrivacyService) RequestDeletion(ctx context.Context, userID, email, rea
 		Status:      "pending",
 		Reason:      reason,
 	}
-	return db.CreatePrivacyRequest(ctx, s.DB, req)
+	res, err := db.CreatePrivacyRequest(ctx, s.DB, req)
+	if err != nil {
+		return nil, fmt.Errorf("create deletion request: %w", err)
+	}
+	return res, nil
 }
 
 func (s *PrivacyService) RequestExport(ctx context.Context, userID, email, reason string) (*db.PrivacyRequest, error) {
@@ -137,7 +141,11 @@ func (s *PrivacyService) RequestExport(ctx context.Context, userID, email, reaso
 		Status:      "pending",
 		Reason:      reason,
 	}
-	return db.CreatePrivacyRequest(ctx, s.DB, req)
+	res, err := db.CreatePrivacyRequest(ctx, s.DB, req)
+	if err != nil {
+		return nil, fmt.Errorf("create export request: %w", err)
+	}
+	return res, nil
 }
 
 func (s *PrivacyService) RequestCorrection(ctx context.Context, userID, email, reason string) (*db.PrivacyRequest, error) {
@@ -148,13 +156,17 @@ func (s *PrivacyService) RequestCorrection(ctx context.Context, userID, email, r
 		Status:      "pending",
 		Reason:      reason,
 	}
-	return db.CreatePrivacyRequest(ctx, s.DB, req)
+	res, err := db.CreatePrivacyRequest(ctx, s.DB, req)
+	if err != nil {
+		return nil, fmt.Errorf("create correction request: %w", err)
+	}
+	return res, nil
 }
 
 func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, adminID string) error {
 	req, err := db.GetPrivacyRequest(ctx, s.DB, requestID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get privacy request: %w", err)
 	}
 	if req == nil {
 		return fmt.Errorf("request not found")
@@ -164,7 +176,10 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 	}
 
 	if req.UserID == nil {
-		return db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil)
+		if err := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); err != nil {
+			return fmt.Errorf("update privacy request status: %w", err)
+		}
+		return nil
 	}
 
 	if s.Storage == nil {
@@ -172,7 +187,7 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 	}
 
 	if statusErr := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "processing", adminID, nil); statusErr != nil {
-		return statusErr
+		return fmt.Errorf("update privacy request status: %w", statusErr)
 	}
 
 	export := db.DataExport{
@@ -185,7 +200,7 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 	if err != nil {
 		errMsg := err.Error()
 		_ = db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "denied", adminID, &errMsg)
-		return err
+		return fmt.Errorf("create data export: %w", err)
 	}
 
 	go func(expID, userID, prID string) {
@@ -221,7 +236,7 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 	// 1. Get request
 	req, err := db.GetPrivacyRequest(ctx, s.DB, requestID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get privacy request: %w", err)
 	}
 	if req == nil {
 		return fmt.Errorf("request not found")
@@ -232,18 +247,19 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 
 	// 2. Cleanup user files from storage
 	files, err := db.GetUserFilesForDeletion(ctx, s.DB, *req.UserID)
-	if err != nil {
+	switch {
+	case err != nil:
 		s.Log.Error("failed_to_get_user_files_for_deletion", map[string]any{
 			"user_id": *req.UserID,
 			"error":   err.Error(),
 		})
 		// We continue even if we fail to get files, to ensure DB anonymization happens
-	} else if s.Storage == nil {
+	case s.Storage == nil:
 		s.Log.Info("storage_not_configured_skipping_user_file_deletions", map[string]any{
 			"user_id": *req.UserID,
 		})
 		// Skip file deletion when storage is not configured
-	} else {
+	default:
 		for _, file := range files {
 			if file == "" {
 				continue
@@ -266,5 +282,8 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 	}
 
 	// 4. Update request status
-	return db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil)
+	if err := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); err != nil {
+		return fmt.Errorf("update privacy request status: %w", err)
+	}
+	return nil
 }

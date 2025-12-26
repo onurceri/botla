@@ -13,6 +13,7 @@ import (
 	"github.com/onurceri/botla-co/internal/auth"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // =============================================================================
@@ -28,7 +29,7 @@ type UserFixture struct {
 	FullName        string
 	IsVerified      bool
 	IsPlatformAdmin bool
-	PlanCode        string // Plan code (e.g., "free", "pro", "ultra")
+	PlanCode        string // Plan code (e.g., policy.PlanFree, policy.PlanPro, policy.PlanUltra)
 }
 
 // DefaultUserFixture returns sensible defaults for a test user.
@@ -40,7 +41,7 @@ func DefaultUserFixture() UserFixture {
 		FullName:        "Test User",
 		IsVerified:      true,
 		IsPlatformAdmin: false,
-		PlanCode:        "free",
+		PlanCode:        policy.PlanFree.String(),
 	}
 }
 
@@ -328,7 +329,7 @@ func DefaultChatbotFixture() ChatbotFixture {
 	return ChatbotFixture{
 		ID:             uuid.NewString(),
 		Name:           "Test Bot " + uuid.NewString()[:8],
-		Model:          "gpt-4o-mini",
+		Model:          policy.ModelGPT4oMini.String(),
 		LanguageCode:   "en-US",
 		WelcomeMessage: "Hello! How can I help you?",
 		Temperature:    0.7,

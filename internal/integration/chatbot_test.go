@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 type chatbot struct {
@@ -120,7 +122,7 @@ func TestFreePlan_ModelRestriction_AllowsGpt4oMini(t *testing.T) {
 	email := "free-model-allowed@example.com"
 	token := authToken(t, te.Server.URL, email)
 
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), email)
 
 	create := map[string]any{"name": "Free Plan Bot", "model": "gpt-4o-mini"}
 	cb, _ := json.Marshal(create)
@@ -149,7 +151,7 @@ func TestFreePlan_ModelRestriction_BlocksDisallowedModels(t *testing.T) {
 	email := "free-model-block@example.com"
 	token := authToken(t, te.Server.URL, email)
 
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), email)
 
 	create := map[string]any{"name": "Free Plan Bot", "model": "gpt-4o-mini"}
 	cb, _ := json.Marshal(create)

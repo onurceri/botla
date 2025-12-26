@@ -58,34 +58,8 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 
 	userID, _ := middleware.UserIDFromContext(r.Context())
 
-	// Get plan and check limits (keep in handler for early rejection)
-	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	var ragConfig models.RAGConfig
-	var maxMonthlyTokens int
-	var estimatedTokens int
-	if plan != nil {
-		ragConfig = plan.Config.Chat.RAG
-		if len(plan.Config.Chat.AllowedModels) > 0 {
-			allowed := false
-			for _, m := range plan.Config.Chat.AllowedModels {
-				if m == cbot.Model {
-					allowed = true
-					break
-				}
-			}
-			if !allowed {
-				cbot.Model = plan.Config.Chat.AllowedModels[0]
-			}
-		}
-		maxMonthlyTokens = plan.Config.Chat.MaxMonthlyTokens
-	}
-
 	var req chatRequest
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -95,54 +69,33 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Atomic token reservation to prevent TOCTOU race condition (Issue #002)
-	// Reserve estimated tokens before processing. Use max_tokens from chatbot as estimate.
-	// This is a pessimistic reservation - we'll adjust after knowing actual usage.
-	if maxMonthlyTokens > 0 {
-		estimatedTokens = cbot.MaxTokens
-		if estimatedTokens <= 0 {
-			estimatedTokens = 512 // Default if not set
-		}
-		err := db.ReserveChatTokens(r.Context(), h.DB, userID, estimatedTokens, maxMonthlyTokens)
-		if errors.Is(err, db.ErrTokenQuotaExceeded) {
-			base := api.BaseLang(cbot.LanguageCode)
-			cfg := api.ConfigFromBase(base)
-			api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
-			return
-		}
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
-
 	// Create context with timeout
 	to := chatTimeout()
 	ctx, cancel := context.WithTimeout(r.Context(), to)
 	defer cancel()
 
-	// Delegate to chat service
-	chatReq := models.ChatRequest{
-		Message:   req.Message,
-		SessionID: req.SessionID,
-	}
-	result, err := h.ChatService.ProcessChat(ctx, chatReq, cbot, ragConfig)
+	// Delegate all business logic to service
+	result, err := h.ChatService.ProcessChatWithValidation(ctx, services.ChatRequestWithUser{
+		UserID:      userID,
+		Chatbot:     cbot,
+		ChatRequest: models.ChatRequest{Message: req.Message, SessionID: req.SessionID},
+	})
+
 	if err != nil {
-		// On error, refund the reserved tokens
-		if maxMonthlyTokens > 0 && estimatedTokens > 0 {
-			_ = db.AdjustChatTokens(context.Background(), h.DB, userID, -estimatedTokens)
+		if errors.Is(err, services.ErrTokenQuotaExceeded) {
+			base := api.BaseLang(cbot.LanguageCode)
+			cfg := api.ConfigFromBase(base)
+			api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
+			return
 		}
+
+		h.Logger.Error("chat_processing_failed", map[string]any{
+			"error":      err.Error(),
+			"chatbot_id": cbot.ID,
+			"user_id":    userID,
+		})
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-	}
-
-	// Adjust token count: correct the reservation to actual usage
-	// delta = actualTokens - estimatedTokens (can be negative if we over-reserved)
-	if maxMonthlyTokens > 0 && estimatedTokens > 0 {
-		delta := result.TokensUsed - estimatedTokens
-		if delta != 0 {
-			_ = db.AdjustChatTokens(context.Background(), h.DB, userID, delta)
-		}
 	}
 
 	// Convert sources

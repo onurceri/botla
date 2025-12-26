@@ -35,6 +35,7 @@ func WriteErrorCodeWithDetails(w http.ResponseWriter, status int, code string, d
 }
 
 // WriteError writes a standardized JSON error response.
+//
 // Deprecated: Use WriteErrorCode instead. Frontend handles localization.
 func WriteError(w http.ResponseWriter, status int, message string, code string) {
 	w.Header().Set("Content-Type", "application/json")
@@ -43,6 +44,7 @@ func WriteError(w http.ResponseWriter, status int, message string, code string) 
 }
 
 // WriteErrorWithDetails writes a JSON error response with additional details.
+//
 // Deprecated: Use WriteErrorCodeWithDetails instead.
 func WriteErrorWithDetails(w http.ResponseWriter, status int, message string, code string, details any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -58,6 +60,7 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 }
 
 // WriteLocalizedError writes a localized error using langconfig.
+//
 // Deprecated: Use WriteErrorCode instead. Frontend handles localization.
 // This should only be used for widget/chat responses where backend needs to send translated content.
 func WriteLocalizedError(w http.ResponseWriter, status int, code string, cfg langconfig.LanguageConfig) {
@@ -69,6 +72,7 @@ func WriteLocalizedError(w http.ResponseWriter, status int, code string, cfg lan
 }
 
 // WriteLocalizedErrorWithDetails writes a localized error with details using langconfig.
+//
 // Deprecated: Use WriteErrorCodeWithDetails instead. Frontend handles localization.
 func WriteLocalizedErrorWithDetails(w http.ResponseWriter, status int, code string, details any, cfg langconfig.LanguageConfig) {
 	msg := cfg.UserMessages.Errors[code]

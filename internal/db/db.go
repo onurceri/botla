@@ -25,7 +25,7 @@ func New(cfg *config.Config) (*sql.DB, error) {
 	dsn := buildDSN(cfg)
 	conn, err := sql.Open("pgx", dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open db: %w", err)
 	}
 	conn.SetMaxOpenConns(25)
 	conn.SetMaxIdleConns(5)
@@ -33,7 +33,7 @@ func New(cfg *config.Config) (*sql.DB, error) {
 	defer cancel()
 	if err := conn.PingContext(ctx); err != nil {
 		_ = conn.Close()
-		return nil, err
+		return nil, fmt.Errorf("ping db: %w", err)
 	}
 	return conn, nil
 }

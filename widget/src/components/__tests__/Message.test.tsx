@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/preact'
-import { Message } from '../Message'
+import { Message } from '@botla/ui-shared'
+import type { ChatMessage } from '@botla/ui-shared'
 
 describe('Message', () => {
   afterEach(() => {
@@ -8,13 +9,13 @@ describe('Message', () => {
   })
 
   it('renders markdown content correctly', () => {
-    const msg = {
+    const msg: ChatMessage = {
       role: 'assistant',
       content: '**Bold** and *Italic*',
       id: '1'
-    } as const
+    }
     
-    render(<Message m={msg} />)
+    render(<Message message={msg} />)
     
     const strong = screen.getByText('Bold')
     expect(strong.tagName).toBe('STRONG')
@@ -24,27 +25,27 @@ describe('Message', () => {
   })
 
   it('renders user message differently', () => {
-    const msg = {
+    const msg: ChatMessage = {
       role: 'user',
       content: 'Hello',
       id: '1'
-    } as const
+    }
     
-    const { container } = render(<Message m={msg} />)
+    const { container } = render(<Message message={msg} />)
     expect(container.querySelector('.cbw-msg.user')).toBeDefined()
     expect(screen.getByText('Hello')).toBeDefined()
   })
 
   it('renders handoff card and handles email submission', async () => {
     const onSubmitEmail = vi.fn().mockResolvedValue(undefined)
-    const msg = {
+    const msg: ChatMessage = {
       role: 'assistant',
       content: 'Handoff',
       type: 'handoff',
       handoffRequestId: 'req123'
-    } as const
+    }
 
-    render(<Message m={msg} onSubmitEmail={onSubmitEmail} />)
+    render(<Message message={msg} onSubmitEmail={onSubmitEmail} />)
 
     expect(screen.getByText('Destek Talebi')).toBeDefined()
     
@@ -63,13 +64,13 @@ describe('Message', () => {
 
   it('handles feedback clicks', () => {
     const onFeedback = vi.fn()
-    const msg = {
+    const msg: ChatMessage = {
       role: 'assistant',
       content: 'Helpful info',
       id: 'msg123'
-    } as const
+    }
 
-    render(<Message m={msg} onFeedback={onFeedback} />)
+    render(<Message message={msg} onFeedback={onFeedback} />)
 
     const thumbsUp = screen.getByTitle('Yararlı')
     fireEvent.click(thumbsUp)

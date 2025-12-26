@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/logger"
@@ -59,7 +60,7 @@ func NewOrganizationService(db *sql.DB, log *logger.Logger) *OrganizationService
 func (s *OrganizationService) CreateOrganization(ctx context.Context, name, slug, ownerID string) (*models.Organization, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("starting transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -67,7 +68,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, name, slug
 	var exists bool
 	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM organizations WHERE slug = $1)", slug).Scan(&exists)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("checking slug existence: %w", err)
 	}
 	if exists {
 		return nil, ErrOrgSlugExists
@@ -87,7 +88,7 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, name, slug
 	`, org.Name, org.Slug, org.OwnerID, org.PlanID).Scan(&org.ID, &org.CreatedAt, &org.UpdatedAt)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("inserting organization: %w", err)
 	}
 
 	// Add owner as member with 'owner' role
@@ -96,11 +97,11 @@ func (s *OrganizationService) CreateOrganization(ctx context.Context, name, slug
 		VALUES ($1, $2, 'owner')
 	`, org.ID, ownerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("adding owner membership: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("committing transaction: %w", err)
 	}
 
 	return org, nil
@@ -111,14 +112,17 @@ func (s *OrganizationService) UpdateOrganization(ctx context.Context, id, name, 
 	var exists bool
 	err := s.DB.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM organizations WHERE slug = $1 AND id != $2)", slug, id).Scan(&exists)
 	if err != nil {
-		return err
+		return fmt.Errorf("checking slug existence: %w", err)
 	}
 	if exists {
 		return ErrOrgSlugExists
 	}
 
 	_, err = s.DB.ExecContext(ctx, "UPDATE organizations SET name = $1, slug = $2, updated_at = NOW() WHERE id = $3", name, slug, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("updating organization: %w", err)
+	}
+	return nil
 }
 
 // GetOrganization returns an organization by ID
@@ -137,7 +141,7 @@ func (s *OrganizationService) GetOrganization(ctx context.Context, id string) (*
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("getting organization: %w", err)
 	}
 	if len(brandingBytes) > 0 {
 		var cb models.CustomBranding
@@ -154,14 +158,14 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string)
 	var ownerID string
 	err := s.DB.QueryRowContext(ctx, "SELECT owner_id FROM organizations WHERE id = $1", id).Scan(&ownerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting organization owner: %w", err)
 	}
 
 	// Check total organizations count for the owner
 	var count int
 	err = s.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM organizations WHERE owner_id = $1", ownerID).Scan(&count)
 	if err != nil {
-		return err
+		return fmt.Errorf("counting owner organizations: %w", err)
 	}
 
 	if count <= 1 {
@@ -169,7 +173,10 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string)
 	}
 
 	_, err = s.DB.ExecContext(ctx, "DELETE FROM organizations WHERE id = $1", id)
-	return err
+	if err != nil {
+		return fmt.Errorf("deleting organization: %w", err)
+	}
+	return nil
 }
 
 // GetUserOrganizations returns all organizations a user belongs to
@@ -182,7 +189,7 @@ func (s *OrganizationService) GetUserOrganizations(ctx context.Context, userID s
 		ORDER BY o.name
 	`, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying user organizations: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -195,7 +202,7 @@ func (s *OrganizationService) GetUserOrganizations(ctx context.Context, userID s
 			&org.CreatedAt, &org.UpdatedAt, &org.Role,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning organization row: %w", err)
 		}
 
 		if len(brandingBytes) > 0 {
@@ -208,7 +215,7 @@ func (s *OrganizationService) GetUserOrganizations(ctx context.Context, userID s
 	}
 	// MI-006: Check for iteration errors
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterating organization rows: %w", err)
 	}
 	return orgs, nil
 }
@@ -225,7 +232,7 @@ func (s *OrganizationService) CheckMembership(ctx context.Context, userID, orgID
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("checking membership: %w", err)
 	}
 	return &m, nil
 }
@@ -241,7 +248,7 @@ func (s *OrganizationService) GetMembers(ctx context.Context, orgID string) ([]*
 		ORDER BY m.created_at DESC
 	`, orgID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying members: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -253,13 +260,13 @@ func (s *OrganizationService) GetMembers(ctx context.Context, orgID string) ([]*
 			&m.User.ID, &m.User.Email, &m.User.FullName, &m.User.AvatarURL,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning member row: %w", err)
 		}
 		members = append(members, &m)
 	}
 	// MI-006: Check for iteration errors
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterating member rows: %w", err)
 	}
 	return members, nil
 }
@@ -271,7 +278,10 @@ func (s *OrganizationService) AddMember(ctx context.Context, orgID, userID, role
 		VALUES ($1, $2, $3)
 		ON CONFLICT (organization_id, user_id) DO UPDATE SET role = $3
 	`, orgID, userID, role)
-	return err
+	if err != nil {
+		return fmt.Errorf("adding member: %w", err)
+	}
+	return nil
 }
 
 // RemoveMember removes a user from the organization with RBAC validation
@@ -279,7 +289,7 @@ func (s *OrganizationService) RemoveMember(ctx context.Context, orgID, callerID,
 	// 1. Get target's current membership
 	targetMembership, err := s.CheckMembership(ctx, targetUserID, orgID)
 	if err != nil {
-		return err
+		return fmt.Errorf("checking target membership: %w", err)
 	}
 	if targetMembership == nil {
 		return ErrNotMember
@@ -298,7 +308,10 @@ func (s *OrganizationService) RemoveMember(ctx context.Context, orgID, callerID,
 
 	// 3. Execute removal
 	_, err = s.DB.ExecContext(ctx, "DELETE FROM memberships WHERE organization_id = $1 AND user_id = $2", orgID, targetUserID)
-	return err
+	if err != nil {
+		return fmt.Errorf("removing member: %w", err)
+	}
+	return nil
 }
 
 // UpdateMemberRole updates a member's role with comprehensive RBAC validation
@@ -311,7 +324,7 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 	// 2. Get caller's membership
 	callerMembership, err := s.CheckMembership(ctx, callerID, orgID)
 	if err != nil {
-		return err
+		return fmt.Errorf("checking caller membership: %w", err)
 	}
 	if callerMembership == nil {
 		return ErrNotMember
@@ -320,7 +333,7 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 	// 3. Get target's current membership
 	targetMembership, err := s.CheckMembership(ctx, targetUserID, orgID)
 	if err != nil {
-		return err
+		return fmt.Errorf("checking target membership: %w", err)
 	}
 	if targetMembership == nil {
 		return ErrNotMember
@@ -335,7 +348,7 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 	if targetMembership.Role == RoleOwner && newRole != RoleOwner {
 		ownerCount, err2 := s.countOwnersInOrg(ctx, orgID)
 		if err2 != nil {
-			return err2
+			return fmt.Errorf("checking owner count: %w", err2)
 		}
 		if ownerCount <= 1 {
 			return ErrCannotDemoteOwner
@@ -349,7 +362,10 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, calle
 
 	// 7. Execute update
 	_, err = s.DB.ExecContext(ctx, "UPDATE memberships SET role = $1 WHERE organization_id = $2 AND user_id = $3", newRole, orgID, targetUserID)
-	return err
+	if err != nil {
+		return fmt.Errorf("updating member role: %w", err)
+	}
+	return nil
 }
 
 // countOwnersInOrg returns the number of owners in an organization
@@ -358,5 +374,8 @@ func (s *OrganizationService) countOwnersInOrg(ctx context.Context, orgID string
 	err := s.DB.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM memberships WHERE organization_id = $1 AND role = 'owner'",
 		orgID).Scan(&count)
-	return count, err
+	if err != nil {
+		return 0, fmt.Errorf("counting owners: %w", err)
+	}
+	return count, nil
 }

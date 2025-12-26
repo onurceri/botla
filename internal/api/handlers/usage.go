@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -60,40 +61,40 @@ func (h *UsageHandlers) getUserUsage(ctx context.Context, userID string, workspa
 		chatbotsCount, err = db.CountChatbotsByUserID(ctx, h.DB, userID)
 	}
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("count chatbots: %w", err)
 	}
 
 	filesCount, err := db.GetFileCountByUserID(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get file count: %w", err)
 	}
 	urlsCount, err := db.GetURLCountByUserID(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get url count: %w", err)
 	}
 	tokensUsed, err := db.GetMonthlyTokenUsage(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get monthly token usage: %w", err)
 	}
 	storageUsedMB, err := db.GetStorageUsedMBByUserID(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get storage used: %w", err)
 	}
 	usedIngestions, usedEmbedTokens, err := db.GetMonthlyIngestionUsage(ctx, h.DB, userID, time.Now())
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get monthly ingestion usage: %w", err)
 	}
 	maxFilesBot, err := db.GetMaxFileCountInAnyBot(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get max file count: %w", err)
 	}
 	maxURLsBot, err := db.GetMaxURLCountInAnyBot(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get max url count: %w", err)
 	}
 	refreshCount, err := db.GetMonthlyRefreshCount(ctx, h.DB, userID, time.Now())
 	if err != nil {
-		return models.Usage{}, err
+		return models.Usage{}, fmt.Errorf("get monthly refresh count: %w", err)
 	}
 
 	return models.Usage{

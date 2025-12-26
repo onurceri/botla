@@ -120,7 +120,7 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 		if s.Log != nil {
 			s.Log.Error("restricted_smart_fallback_error", map[string]any{"error": err.Error(), "model": cc.Bot.Model})
 		}
-		return "", 0, err
+		return "", 0, fmt.Errorf("create low-tier completion: %w", err)
 	}
 
 	return res.Content, res.UsageTokens, nil

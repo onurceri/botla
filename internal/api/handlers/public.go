@@ -19,6 +19,7 @@ import (
 	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/httputil"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 type publicChatbot struct {
@@ -159,6 +160,7 @@ type publicChatResponse struct {
 type PublicHandlers struct {
 	DB          *sql.DB
 	ChatService *services.ChatService
+	Log         *logger.Logger
 }
 
 // PublicChat handles public chat requests using the ChatService
@@ -409,8 +411,11 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				// Log panic for debugging - use fmt since we don't have logger access
-				fmt.Printf("public_feedback_analytics_panic: %v\n", r)
+				if h.Log != nil {
+					h.Log.Error("public_feedback_analytics_panic", map[string]any{"panic": r})
+				} else {
+					fmt.Printf("public_feedback_analytics_panic: %v\n", r)
+				}
 			}
 		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

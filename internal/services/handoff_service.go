@@ -228,7 +228,11 @@ func (s *HandoffService) buildHandoffEmailBody(botName, requestID string, messag
 
 // GetHandoffRequests returns all handoff requests for a chatbot
 func (s *HandoffService) GetHandoffRequests(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error) {
-	return db.GetHandoffRequestsByBotID(ctx, s.DB, chatbotID)
+	requests, err := db.GetHandoffRequestsByBotID(ctx, s.DB, chatbotID)
+	if err != nil {
+		return nil, fmt.Errorf("get handoff requests: %w", err)
+	}
+	return requests, nil
 }
 
 // UpdateHandoffStatus updates the status of a handoff request
@@ -247,7 +251,7 @@ func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, sta
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrHandoffNotFound
 		}
-		return err
+		return fmt.Errorf("update handoff status: %w", err)
 	}
 	return nil
 }

@@ -125,14 +125,14 @@ func (p *SitemapParser) parseSitemapRecursive(ctx context.Context, sitemapURL st
 func (p *SitemapParser) fetchURL(ctx context.Context, targetURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating HTTP request for %s: %w", targetURL, err)
 	}
 	req.Header.Set("User-Agent", "Botla-Sitemap-Parser/1.0")
 	req.Header.Set("Accept", "application/xml, text/xml, */*")
 
 	resp, err := p.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetching sitemap from %s: %w", targetURL, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -142,7 +142,11 @@ func (p *SitemapParser) fetchURL(ctx context.Context, targetURL string) ([]byte,
 
 	// Limit read to 10MB
 	limitedReader := io.LimitReader(resp.Body, 10*1024*1024)
-	return io.ReadAll(limitedReader)
+	body, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return nil, fmt.Errorf("reading sitemap content from %s: %w", targetURL, err)
+	}
+	return body, nil
 }
 
 // isSitemapIndex checks if the XML content is a sitemap index
@@ -274,27 +278,95 @@ func DiscoverSitemapURL(ctx context.Context, baseURL string) (string, error) {
 		"/sitemaps/sitemap.xml",
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		// Prevent redirect following for HEAD requests
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 3 {
+				return fmt.Errorf("too many redirects")
+			}
+			return nil
+		},
+	}
 
 	for _, path := range commonPaths {
+		// Check context cancellation between iterations
+		if err := ctx.Err(); err != nil {
+			return "", fmt.Errorf("context error: %w", err)
+		}
+
+		// Per-request timeout
+		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		
 		testURL := fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, path)
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodHead, testURL, nil)
+		found, err := probeSitemap(reqCtx, client, testURL)
+		cancel() // Always cancel to free resources
+		
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Botla-Sitemap-Parser/1.0")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			continue
-		}
-		_ = resp.Body.Close()
-
-		if resp.StatusCode == http.StatusOK {
+		if found {
 			return testURL, nil
 		}
 	}
 
 	return "", fmt.Errorf("no sitemap found at common locations")
+}
+
+// probeSitemap checks if a sitemap exists at the given URL using HEAD then GET
+func probeSitemap(ctx context.Context, client *http.Client, targetURL string) (bool, error) {
+	// Try HEAD first
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, targetURL, nil)
+	if err != nil {
+		return false, fmt.Errorf("creating HEAD request for %s: %w", targetURL, err)
+	}
+	req.Header.Set("User-Agent", "Botla-Sitemap-Parser/1.0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("probing sitemap %s: %w", targetURL, err)
+	}
+	// Always close and drain body
+	defer func() {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+
+	// If Method Not Allowed or Not Implemented, try GET
+	if resp.StatusCode == http.StatusMethodNotAllowed || resp.StatusCode == http.StatusNotImplemented {
+		// We can't reuse the same request since it was setup for HEAD
+		return probeWithGET(ctx, client, targetURL)
+	}
+
+	return false, nil
+}
+
+func probeWithGET(ctx context.Context, client *http.Client, targetURL string) (bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return false, fmt.Errorf("creating GET request for %s: %w", targetURL, err)
+	}
+	req.Header.Set("User-Agent", "Botla-Sitemap-Parser/1.0")
+	// Use Range header to fetch only first byte to minimize data transfer if server supports it
+	req.Header.Set("Range", "bytes=0-0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("probing sitemap with GET %s: %w", targetURL, err)
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
+		_ = resp.Body.Close()
+	}()
+
+	// 200 OK or 206 Partial Content are both valid signs existence
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusPartialContent {
+		return true, nil
+	}
+
+	return false, nil
 }

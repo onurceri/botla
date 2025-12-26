@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
@@ -15,7 +16,7 @@ func SaveMessageSources(ctx context.Context, pool *sql.DB, messageID string, sou
 
 	tx, err := pool.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -25,7 +26,7 @@ func SaveMessageSources(ctx context.Context, pool *sql.DB, messageID string, sou
         ON CONFLICT (message_id, source_id, chunk_index) DO NOTHING
     `)
 	if err != nil {
-		return err
+		return fmt.Errorf("prepare stmt: %w", err)
 	}
 	defer func() { _ = stmt.Close() }()
 
@@ -35,11 +36,14 @@ func SaveMessageSources(ctx context.Context, pool *sql.DB, messageID string, sou
 		}
 		_, err = stmt.ExecContext(ctx, messageID, src.SourceID, src.ChunkIndex, src.Score)
 		if err != nil {
-			return err
+			return fmt.Errorf("exec stmt: %w", err)
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 // GetMessageSources retrieves sources used in a specific message
@@ -52,7 +56,7 @@ func GetMessageSources(ctx context.Context, pool *sql.DB, messageID string) ([]m
     `
 	rows, err := pool.QueryContext(ctx, query, messageID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query message sources: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -60,9 +64,12 @@ func GetMessageSources(ctx context.Context, pool *sql.DB, messageID string) ([]m
 	for rows.Next() {
 		var s models.MessageSource
 		if err := rows.Scan(&s.ID, &s.MessageID, &s.SourceID, &s.ChunkIndex, &s.RelevanceScore, &s.CreatedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan message source: %w", err)
 		}
 		sources = append(sources, s)
 	}
-	return sources, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("message sources rows err: %w", err)
+	}
+	return sources, nil
 }

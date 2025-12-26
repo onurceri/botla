@@ -56,7 +56,7 @@ func GenerateEmbeddings(ctx context.Context, emb EmbeddingClient, vc VectorClien
 		}
 		if berr != nil {
 			log.Error("embedding_batch_final_failed", map[string]any{"error": berr.Error(), "start_index": start, "count": len(batch)})
-			return berr
+			return fmt.Errorf("create embeddings batch: %w", berr)
 		}
 		// upsert each vector
 		for i := range vectors {
@@ -110,7 +110,7 @@ func GenerateEmbeddingsForSource(ctx context.Context, emb EmbeddingClient, vc Ve
 			cancel2()
 		}
 		if berr != nil {
-			return berr
+			return fmt.Errorf("create embeddings batch: %w", berr)
 		}
 		for i := range vectors {
 			pid := MakePointID(sourceID, start+i)
@@ -118,7 +118,7 @@ func GenerateEmbeddingsForSource(ctx context.Context, emb EmbeddingClient, vc Ve
 			batchCtx3, cancel3 := context.WithTimeout(ctx, 10*time.Second)
 			if err := vc.UpsertEmbedding(batchCtx3, pid, vectors[i], payload); err != nil {
 				cancel3()
-				return err
+				return fmt.Errorf("upsert embedding: %w", err)
 			}
 			cancel3()
 		}

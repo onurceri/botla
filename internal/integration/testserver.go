@@ -96,6 +96,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		ChatbotService:   services.NewChatbotService(pool, log),
 		OrgService:       orgSvc,
 		WorkspaceService: workspaceSvc,
+		Logger:           log,
 	}
 	// Add ExtractTenantContext to support X-Workspace-ID header
 	mux.Handle("GET /api/v1/chatbots", protected(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))

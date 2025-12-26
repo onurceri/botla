@@ -137,5 +137,9 @@ func globToRegex(pattern string) (*regexp.Regexp, error) {
 	regexPattern = "^" + regexPattern + "$"
 
 	// Compile as case-insensitive
-	return regexp.Compile("(?i)" + regexPattern)
+	r, err := regexp.Compile("(?i)" + regexPattern)
+	if err != nil {
+		return nil, fmt.Errorf("compile regex: %w", err)
+	}
+	return r, nil
 }

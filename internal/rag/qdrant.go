@@ -86,11 +86,11 @@ func (c *QdrantClient) EnsureEmbeddingsCollection(ctx context.Context) error {
 	setJSONHeaders(req2, c.apiKey)
 	res2, err := c.http.Do(req2)
 	if err != nil {
-		return err
+		return fmt.Errorf("request to create collection failed: %w", err)
 	}
 	defer func() { _ = res2.Body.Close() }()
 	if res2.StatusCode != http.StatusOK {
-		return fmt.Errorf("create collection failed: %s", res2.Status)
+		return fmt.Errorf("create collection failed with status %s", res2.Status)
 	}
 	return nil
 }
@@ -118,7 +118,7 @@ func (c *QdrantClient) UpsertEmbedding(ctx context.Context, id interface{}, vect
 	setJSONHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("upsert request failed: %w", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
@@ -161,7 +161,7 @@ func (c *QdrantClient) SearchSimilar(ctx context.Context, embedding []float32, c
 	setJSONHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("search similar request failed: %w", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
@@ -169,11 +169,11 @@ func (c *QdrantClient) SearchSimilar(ctx context.Context, embedding []float32, c
 	}
 	var qres qdrantResponse
 	if err := json.NewDecoder(res.Body).Decode(&qres); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding qdrant response: %w", err)
 	}
 	var items []SearchResult
 	if err := json.Unmarshal(qres.Result, &items); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshaling search results: %w", err)
 	}
 	return items, nil
 }
@@ -190,7 +190,7 @@ func (c *QdrantClient) DeleteBySourceID(ctx context.Context, sourceID string) er
 	setJSONHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete by source id request failed: %w", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
@@ -231,7 +231,7 @@ func (c *QdrantClient) ScrollChunks(ctx context.Context, sourceID string, limit 
 
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("scroll chunks request failed: %w", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
@@ -241,12 +241,12 @@ func (c *QdrantClient) ScrollChunks(ctx context.Context, sourceID string, limit 
 
 	var qres qdrantResponse
 	if err := json.NewDecoder(res.Body).Decode(&qres); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("decoding scroll response: %w", err)
 	}
 
 	var result scrollResult
 	if err := json.Unmarshal(qres.Result, &result); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("unmarshaling scroll result: %w", err)
 	}
 
 	var nextOffset *string

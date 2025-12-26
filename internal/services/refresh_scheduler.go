@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sync"
 	"time"
 
@@ -171,7 +172,11 @@ func (s *RefreshScheduler) processDueChatbots(ctx context.Context) {
 
 // FindDueForRefresh finds chatbots with auto refresh enabled that are due
 func (s *RefreshScheduler) FindDueForRefresh(ctx context.Context, now time.Time) ([]models.Chatbot, error) {
-	return db.GetChatbotsDueForRefresh(ctx, s.DB, now)
+	bots, err := db.GetChatbotsDueForRefresh(ctx, s.DB, now)
+	if err != nil {
+		return nil, fmt.Errorf("getting due chatbots: %w", err)
+	}
+	return bots, nil
 }
 
 // QueueRefreshForChatbot queues all URL sources for a chatbot for refresh
@@ -179,7 +184,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	// Get user's plan to check limits
 	plan, err := db.GetPlanByUserID(ctx, s.DB, bot.UserID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting user plan: %w", err)
 	}
 	if plan == nil {
 		s.logWarn("user_plan_not_found", map[string]any{"user_id": bot.UserID})
@@ -190,7 +195,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	now := time.Now()
 	usage, err := db.GetAutoRefreshCountForMonth(ctx, s.DB, bot.UserID, now)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting auto refresh count: %w", err)
 	}
 
 	// Get limit from plan config - use refresh.max_monthly if available
@@ -207,7 +212,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	// Get URL sources for this chatbot
 	sources, err := db.GetURLSourcesForChatbot(ctx, s.DB, bot.ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting url sources: %w", err)
 	}
 
 	if len(sources) == 0 {

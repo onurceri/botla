@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"fmt"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -141,7 +142,7 @@ func ScrapeDynamicURL(urlStr string, cfg DynamicConfig) (string, error) {
 	}
 	bp, err := NewBrowserPool(cfg.PoolSize, cfg.IdleTTL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("new browser pool: %w", err)
 	}
 	bp.acquire()
 	defer bp.release()
@@ -152,7 +153,7 @@ func ScrapeDynamicURL(urlStr string, cfg DynamicConfig) (string, error) {
 	br = br.Context(ctx)
 	p, err := br.Page(proto.TargetCreateTarget{URL: urlStr})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("open page: %w", err)
 	}
 	defer func() { _ = p.Close() }()
 	_ = p.WaitLoad()
@@ -160,14 +161,14 @@ func ScrapeDynamicURL(urlStr string, cfg DynamicConfig) (string, error) {
 
 	html, err := p.HTML()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get html: %w", err)
 	}
 	if len(html) > 2<<20 {
 		html = html[:2<<20]
 	}
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("new goquery doc: %w", err)
 	}
 	txt := visibleText(doc.Find("body"))
 	n, _ := NormalizeText(txt)

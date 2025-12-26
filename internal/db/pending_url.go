@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -15,7 +16,10 @@ func InsertPendingURL(ctx context.Context, pool *sql.DB, chatbotID string, sourc
 		VALUES ($1, $2, $3)
 		ON CONFLICT (chatbot_id, url) DO NOTHING`,
 		chatbotID, sourceID, url)
-	return err
+	if err != nil {
+		return fmt.Errorf("insert pending url: %w", err)
+	}
+	return nil
 }
 
 // ListPendingURLs returns pending URLs for a chatbot with pagination
@@ -28,7 +32,7 @@ func ListPendingURLs(ctx context.Context, pool *sql.DB, chatbotID string, limit,
 		LIMIT $2 OFFSET $3`,
 		chatbotID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query pending urls: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -37,13 +41,13 @@ func ListPendingURLs(ctx context.Context, pool *sql.DB, chatbotID string, limit,
 		var u models.PendingURL
 		var discoveredAt time.Time
 		if err := rows.Scan(&u.ID, &u.ChatbotID, &u.SourceID, &u.URL, &discoveredAt, &u.Status); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan pending url: %w", err)
 		}
 		u.DiscoveredAt = discoveredAt
 		urls = append(urls, u)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pending urls rows err: %w", err)
 	}
 	return urls, nil
 }
@@ -55,7 +59,10 @@ func CountPendingURLs(ctx context.Context, pool *sql.DB, chatbotID string) (int,
 		SELECT COUNT(*) FROM pending_discovered_urls
 		WHERE chatbot_id = $1 AND status = 'pending'`,
 		chatbotID).Scan(&count)
-	return count, err
+	if err != nil {
+		return count, fmt.Errorf("count pending urls: %w", err)
+	}
+	return count, nil
 }
 
 // UpdatePendingURLStatus updates the status of multiple pending URLs
@@ -70,11 +77,11 @@ func UpdatePendingURLStatus(ctx context.Context, pool *sql.DB, chatbotID string,
 		WHERE chatbot_id = $1 AND id = ANY($3::uuid[])`,
 		chatbotID, status, urlIDs)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("update pending url status: %w", err)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("rows affected: %w", err)
 	}
 	return int(affected), nil
 }
@@ -91,7 +98,7 @@ func GetPendingURLsByIDs(ctx context.Context, pool *sql.DB, chatbotID string, ur
 		WHERE chatbot_id = $1 AND id = ANY($2::uuid[]) AND status = 'pending'`,
 		chatbotID, urlIDs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query pending urls by ids: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -100,13 +107,13 @@ func GetPendingURLsByIDs(ctx context.Context, pool *sql.DB, chatbotID string, ur
 		var u models.PendingURL
 		var discoveredAt time.Time
 		if err := rows.Scan(&u.ID, &u.ChatbotID, &u.SourceID, &u.URL, &discoveredAt, &u.Status); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan pending url by id: %w", err)
 		}
 		u.DiscoveredAt = discoveredAt
 		urls = append(urls, u)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pending urls by ids rows err: %w", err)
 	}
 	return urls, nil
 }
@@ -118,11 +125,11 @@ func DeletePendingURLsByChatbot(ctx context.Context, pool *sql.DB, chatbotID str
 		WHERE chatbot_id = $1`,
 		chatbotID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("delete pending urls: %w", err)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("rows affected: %w", err)
 	}
 	return int(affected), nil
 }

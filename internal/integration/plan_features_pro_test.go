@@ -17,6 +17,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/pdf"
 	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func updateProPlanConfig(t *testing.T, te *TestEnv) {
@@ -33,7 +34,7 @@ func updateProPlanConfig(t *testing.T, te *TestEnv) {
     "total_storage_mb": 500
   },
   "chat": {
-    "allowed_models": ["gpt-4o-mini", "gpt-4o"],
+    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `", "` + policy.ModelGPT4o.String() + `"],
     "max_monthly_tokens": 1000000,
     "rag": {
       "top_k": 5,

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
 )
@@ -17,11 +18,15 @@ func CreateActionLog(ctx context.Context, db *sql.DB, log *models.ActionExecutio
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, created_at
 	`
-	return db.QueryRowContext(ctx, query,
+	err := db.QueryRowContext(ctx, query,
 		log.ChatbotID, log.ActionID, log.ConversationID, log.MessageID,
 		log.Status, log.RequestPayload, log.ResponsePayload, log.ErrorMessage,
 		log.DurationMs,
 	).Scan(&log.ID, &log.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("create action log: %w", err)
+	}
+	return nil
 }
 
 func GetActionLogs(ctx context.Context, db *sql.DB, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
@@ -36,7 +41,7 @@ func GetActionLogs(ctx context.Context, db *sql.DB, chatbotID string, limit, off
 	`
 	rows, err := db.QueryContext(ctx, query, chatbotID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query action logs: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -48,9 +53,12 @@ func GetActionLogs(ctx context.Context, db *sql.DB, chatbotID string, limit, off
 			&l.Status, &l.RequestPayload, &l.ResponsePayload, &l.ErrorMessage,
 			&l.DurationMs, &l.CreatedAt,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan action log: %w", err)
 		}
 		logs = append(logs, &l)
 	}
-	return logs, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("action logs rows err: %w", err)
+	}
+	return logs, nil
 }

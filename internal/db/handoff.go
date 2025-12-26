@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -18,7 +19,7 @@ func CreateHandoffRequest(ctx context.Context, pool *sql.DB, req *models.Handoff
 		req.ChatbotID, req.ConversationID, models.HandoffStatusPending, req.Notes,
 	).Scan(&id)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("create handoff request: %w", err)
 	}
 	return id, nil
 }
@@ -31,7 +32,7 @@ func GetHandoffRequestsByBotID(ctx context.Context, pool *sql.DB, chatbotID stri
 		WHERE chatbot_id = $1
 		ORDER BY created_at DESC`, chatbotID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query handoff requests: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -42,12 +43,12 @@ func GetHandoffRequestsByBotID(ctx context.Context, pool *sql.DB, chatbotID stri
 			&req.ID, &req.ChatbotID, &req.ConversationID, &req.Status,
 			&req.AssignedTo, &req.Notes, &req.UserEmail, &req.CreatedAt, &req.ResolvedAt,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan handoff request: %w", err)
 		}
 		requests = append(requests, &req)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("handoff requests rows err: %w", err)
 	}
 	return requests, nil
 }
@@ -66,7 +67,7 @@ func GetHandoffRequestByID(ctx context.Context, pool *sql.DB, id string) (*model
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get handoff request: %w", err)
 	}
 	return &req, nil
 }
@@ -83,11 +84,11 @@ func UpdateHandoffRequestStatus(ctx context.Context, pool *sql.DB, id, status st
 		WHERE id = $4`,
 		status, assignedTo, resolvedAt, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("update handoff status: %w", err)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("rows affected: %w", err)
 	}
 	if affected == 0 {
 		return sql.ErrNoRows
@@ -103,7 +104,7 @@ func CountPendingHandoffRequests(ctx context.Context, pool *sql.DB, chatbotID st
 		WHERE chatbot_id = $1 AND status = $2`,
 		chatbotID, models.HandoffStatusPending).Scan(&count)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("count pending handoff requests: %w", err)
 	}
 	return count, nil
 }
@@ -120,7 +121,7 @@ func HasActiveHandoffRequest(ctx context.Context, pool *sql.DB, conversationID s
 		conversationID, models.HandoffStatusPending, models.HandoffStatusAssigned,
 	).Scan(&exists)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("check active handoff request: %w", err)
 	}
 	return exists, nil
 }
@@ -132,7 +133,10 @@ func UpdateHandoffUserEmail(ctx context.Context, pool *sql.DB, requestID, email 
 		SET user_email = $1
 		WHERE id = $2`,
 		email, requestID)
-	return err
+	if err != nil {
+		return fmt.Errorf("update handoff user email: %w", err)
+	}
+	return nil
 }
 
 // HandoffRequestDetail contains a handoff request with its conversation messages

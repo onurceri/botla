@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, within, cleanup } from '@testing-library/preact'
-import { ChatDrawer } from '../ChatDrawer'
+import { ChatDrawer } from '@botla/ui-shared'
 
 describe('ChatDrawer', () => {
   afterEach(() => {
@@ -10,7 +10,6 @@ describe('ChatDrawer', () => {
     const onSend = vi.fn()
     render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={true}
         input="hello"
@@ -27,7 +26,6 @@ describe('ChatDrawer', () => {
   it('renders bot name and custom icon', () => {
     render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={false}
         input=""
@@ -46,7 +44,6 @@ describe('ChatDrawer', () => {
   it('renders default bot icon when none provided', () => {
     render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={false}
         input=""
@@ -64,7 +61,6 @@ describe('ChatDrawer', () => {
     const setInput = vi.fn()
     render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={false}
         input="Hello"
@@ -86,7 +82,6 @@ describe('ChatDrawer', () => {
   it('shows loading animation when loading is true', () => {
     render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={true}
         input=""
@@ -105,7 +100,6 @@ describe('ChatDrawer', () => {
     const onSend = vi.fn()
     render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[{ role: 'assistant', content: 'Merhaba' }]}
         loading={false}
         input=""
@@ -123,7 +117,6 @@ describe('ChatDrawer', () => {
   it('shows Botla branding when hideBranding is false, even if custom exists', async () => {
     const { container } = render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={false}
         input=""
@@ -142,7 +135,6 @@ describe('ChatDrawer', () => {
   it('shows custom branding when hideBranding is true and custom exists', async () => {
     const { container } = render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={false}
         input=""
@@ -162,7 +154,6 @@ describe('ChatDrawer', () => {
   it('shows no branding when hideBranding is true and custom is absent', async () => {
     const { container } = render(
       <ChatDrawer 
-        color="#3b82f6"
         messages={[]}
         loading={false}
         input=""
