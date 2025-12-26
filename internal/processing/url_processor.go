@@ -21,15 +21,21 @@ type URLProcessor struct {
 	OpenAIClient rag.LLMClient
 	VectorClient rag.VectorClient
 	Log          *logger.Logger
+	Scraper      scraper.Scraper
 }
 
-// NewURLProcessor creates a new URLProcessor
-func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger) *URLProcessor {
+// NewURLProcessor creates a new URLProcessor.
+// If scraper is nil, a DefaultScraper is used.
+func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper) *URLProcessor {
+	if s == nil {
+		s = scraper.NewDefaultScraper()
+	}
 	return &URLProcessor{
 		DB:           db,
 		OpenAIClient: oai,
 		VectorClient: vc,
 		Log:          log,
+		Scraper:      s,
 	}
 }
 
@@ -68,7 +74,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	}
 
 	// Step 1: Fetch raw HTML for link discovery (always, regardless of text extraction)
-	rawHTML, htmlErr := scraper.FetchRawHTML(*s.SourceURL, scraper.DefaultCollectorConfig())
+	rawHTML, htmlErr := p.Scraper.FetchRawHTML(*s.SourceURL, scraper.DefaultCollectorConfig())
 	switch {
 	case htmlErr != nil:
 		p.logWarn("url_processing_fetch_html_failed", map[string]any{
@@ -91,7 +97,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	}
 
 	// Step 2: Extract text content for embedding
-	content, err := scraper.ScrapeURLWithFallback(
+	content, err := p.Scraper.ScrapeURLWithFallback(
 		scraper.ScrapingTask{URL: *s.SourceURL},
 		scraper.DefaultCollectorConfig(),
 		plan.Config.Scraping.DynamicEnabled,
@@ -311,7 +317,7 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 	}
 
 	// Extract links with filter
-	links, lerr := scraper.ExtractLinks(rawHTML, *s.SourceURL, filter)
+	links, lerr := p.Scraper.ExtractLinks(rawHTML, *s.SourceURL, filter)
 	if lerr != nil {
 		p.logWarn("url_discovery_extract_links_failed", map[string]any{
 			"source_id": s.ID,

@@ -49,7 +49,7 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 		log:          log,
 
 		// Initialize processors
-		urlProcessor:  NewURLProcessor(dbpool, oai, vc, log),
+		urlProcessor:  NewURLProcessor(dbpool, oai, vc, log, nil),
 		pdfProcessor:  NewPDFProcessor(dbpool, st, oai, vc, log),
 		textProcessor: NewTextProcessor(dbpool, st, oai, vc, log),
 	}
