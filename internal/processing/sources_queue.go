@@ -56,10 +56,12 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 
 	go q.worker()
 
-	// Ensure collection exists at startup (best-effort)
+	// Ensure collection exists at startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	_ = vc.EnsureEmbeddingsCollection(ctx)
-	cancel()
+	defer cancel()
+	if err := vc.EnsureEmbeddingsCollection(ctx); err != nil {
+		return nil, err
+	}
 
 	// Recover pending sources at startup
 	go q.recoverPendingSources()

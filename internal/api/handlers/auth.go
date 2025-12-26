@@ -52,48 +52,45 @@ type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-// respondError sends a JSON error response
-func respondError(w http.ResponseWriter, status int, message string) {
-	api.WriteJSON(w, status, map[string]string{"error": message})
-}
+
 
 func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		api.WriteErrorCode(w, http.StatusMethodNotAllowed, api.ErrCodeMethodNotAllowed)
 		return
 	}
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidRequestBody)
 		return
 	}
 	req.Email = strings.TrimSpace(req.Email)
 	req.FullName = strings.TrimSpace(req.FullName)
 	if req.Email == "" {
-		respondError(w, http.StatusBadRequest, "Email is required")
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrEmailRequired)
 		return
 	}
 	if _, err := mail.ParseAddress(req.Email); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid email format")
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidEmailFormat)
 		return
 	}
 	if len(req.Password) < 8 {
-		respondError(w, http.StatusBadRequest, "Password must be at least 8 characters long")
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrPasswordTooShort)
 		return
 	}
 	var existing string
 	err := h.DB.QueryRowContext(r.Context(), "SELECT id FROM users WHERE email=$1", req.Email).Scan(&existing)
 	if err == nil && existing != "" {
-		respondError(w, http.StatusConflict, "Email already exists")
+		api.WriteErrorCode(w, http.StatusConflict, api.ErrEmailExists)
 		return
 	}
 	if err != nil && err != sql.ErrNoRows {
-		respondError(w, http.StatusInternalServerError, "Database error")
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrDatabaseError)
 		return
 	}
 	hash, err := auth.HashPassword(req.Password)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to hash password")
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrFailedToHashPassword)
 		return
 	}
 	var userID string
@@ -110,7 +107,7 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		}(),
 	).Scan(&userID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to create user")
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrFailedToCreateUser)
 		return
 	}
 
@@ -147,17 +144,17 @@ func slugifyEmail(email string) string {
 
 func (h *AuthHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		respondError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		api.WriteErrorCode(w, http.StatusMethodNotAllowed, api.ErrCodeMethodNotAllowed)
 		return
 	}
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidRequestBody)
 		return
 	}
 	req.Email = strings.TrimSpace(req.Email)
 	if req.Email == "" || req.Password == "" {
-		respondError(w, http.StatusBadRequest, "Email and password are required")
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrEmailAndPasswordReq)
 		return
 	}
 	var userID string
@@ -165,15 +162,15 @@ func (h *AuthHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var isPlatformAdmin bool
 	err := h.DB.QueryRowContext(r.Context(), "SELECT id, password_hash, is_platform_admin FROM users WHERE LOWER(email) = LOWER($1)", req.Email).Scan(&userID, &hash, &isPlatformAdmin)
 	if err == sql.ErrNoRows {
-		respondError(w, http.StatusUnauthorized, "Invalid credentials")
+		api.WriteErrorCode(w, http.StatusUnauthorized, api.ErrInvalidCredentials)
 		return
 	}
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Database error")
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrDatabaseError)
 		return
 	}
 	if !auth.VerifyPassword(hash, req.Password) {
-		respondError(w, http.StatusUnauthorized, "Invalid credentials")
+		api.WriteErrorCode(w, http.StatusUnauthorized, api.ErrInvalidCredentials)
 		return
 	}
 
@@ -186,7 +183,18 @@ func (h *AuthHandlers) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req refreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if r.ContentLength > 0 {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	if req.RefreshToken == "" {
+		c, err := r.Cookie("botla_refresh_token")
+		if err == nil {
+			req.RefreshToken = c.Value
+		}
+	}
+
+	if req.RefreshToken == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -226,7 +234,18 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req refreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if r.ContentLength > 0 {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	if req.RefreshToken == "" {
+		c, err := r.Cookie("botla_refresh_token")
+		if err == nil {
+			req.RefreshToken = c.Value
+		}
+	}
+
+	if req.RefreshToken == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -238,6 +257,22 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	// Clear cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     "botla_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "botla_refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -260,6 +295,26 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	// Set cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     "botla_token",
+		Value:    accessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(1 * time.Hour),
+		HttpOnly: true,
+		Secure:   false, // Set to true in production (checking r.TLS or config)
+		SameSite: http.SameSiteStrictMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "botla_refresh_token",
+		Value:    refreshToken,
+		Path:     "/",
+		Expires:  time.Now().Add(7 * 24 * time.Hour),
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+	})
 
 	api.WriteJSON(w, status, tokenResponse{Token: accessToken, RefreshToken: refreshToken})
 }

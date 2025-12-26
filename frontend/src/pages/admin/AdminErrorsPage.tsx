@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -63,25 +62,42 @@ export function AdminErrorsPage() {
     switch (severity) {
       case 'critical':
       case 'error':
-        return <AlertCircle className="w-4 h-4 text-destructive" />
+        return <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-amber-500" />
+        return <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
       default:
-        return <Info className="w-4 h-4 text-blue-500" />
+        return <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
     }
   }
 
   const getSeverityBadge = (severity: string) => {
+    let className = ''
+    let label = ''
+
     switch (severity) {
       case 'critical':
-        return <Badge variant="destructive" className="bg-red-800">Kritik</Badge>
+        className = 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20'
+        label = 'Kritik'
+        break
       case 'error':
-        return <Badge variant="destructive">Hata</Badge>
+        className = 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20'
+        label = 'Hata'
+        break
       case 'warning':
-        return <Badge variant="outline" className="text-amber-600 border-amber-600">Uyarı</Badge>
+        className = 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+        label = 'Uyarı'
+        break
       default:
-        return <Badge variant="secondary">Bilgi</Badge>
+        className = 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20'
+        label = 'Bilgi'
+        break
     }
+
+    return (
+      <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', className)}>
+        {label}
+      </span>
+    )
   }
 
   return (
@@ -181,11 +197,11 @@ export function AdminErrorsPage() {
                     <th className="p-4 font-medium border-b text-right w-16">Detay</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {data.data.map((log: any) => (
                     <tr 
                       key={log.id} 
-                      className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                      className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer group"
                       onClick={() => setSelectedError(log)}
                     >
                       <td className="p-4 text-center">
@@ -195,7 +211,7 @@ export function AdminErrorsPage() {
                         {getSeverityBadge(log.severity)}
                       </td>
                       <td className="p-4">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
                           {log.error_type}
                         </span>
                       </td>
@@ -207,12 +223,12 @@ export function AdminErrorsPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="p-4 text-muted-foreground whitespace-nowrap">
+                      <td className="p-4 text-muted-foreground whitespace-nowrap text-xs">
                         {new Date(log.created_at).toLocaleString('tr-TR')}
                       </td>
                       <td className="p-4 text-right">
                         <Button size="icon" variant="ghost" className="h-8 w-8">
-                          <ExternalLink className="w-4 h-4" />
+                          <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         </Button>
                       </td>
                     </tr>

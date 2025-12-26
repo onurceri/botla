@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: up down psql redis-ping migrate-up migrate-down migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover check-coverage
+.PHONY: up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover check-coverage
 
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
 MIGRATIONS_DIR ?= db/migrations
@@ -29,6 +29,9 @@ migrate-up:
 
 migrate-down:
 	 migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" down
+
+migrate-down-one:
+	migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" down 1
 
 migrate-version:
 	 -migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" version

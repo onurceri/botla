@@ -9,9 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"encoding/json"
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	healthCacheKey = "admin:system:health"
+	healthCacheTTL = 1 * time.Minute
 )
 
 // DependencyStatus represents the health status of a single dependency.
@@ -30,19 +36,22 @@ type DetailedHealth struct {
 	Uptime       string             `json:"uptime"`
 	Environment  string             `json:"environment"`
 	Dependencies []DependencyStatus `json:"dependencies"`
+	LastUpdated  time.Time          `json:"last_updated"`
 }
 
 // AdminHealthHandlers handles detailed health check endpoints for platform admins.
 type AdminHealthHandlers struct {
 	DB        *sql.DB
+	Redis     *redis.Client
 	Cfg       *config.Config
 	StartTime time.Time
 }
 
 // NewAdminHealthHandlers creates a new AdminHealthHandlers.
-func NewAdminHealthHandlers(db *sql.DB, cfg *config.Config) *AdminHealthHandlers {
+func NewAdminHealthHandlers(db *sql.DB, redis *redis.Client, cfg *config.Config) *AdminHealthHandlers {
 	return &AdminHealthHandlers{
 		DB:        db,
+		Redis:     redis,
 		Cfg:       cfg,
 		StartTime: time.Now(),
 	}
@@ -53,6 +62,20 @@ func (h *AdminHealthHandlers) GetDetailedHealth(w http.ResponseWriter, r *http.R
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
+	refresh := r.URL.Query().Get("refresh") == "true"
+
+	// Try to get from cache if not refreshing
+	if !refresh && h.Redis != nil {
+		val, err := h.Redis.Get(ctx, healthCacheKey).Result()
+		if err == nil {
+			var health DetailedHealth
+			if err := json.Unmarshal([]byte(val), &health); err == nil {
+				api.WriteJSON(w, http.StatusOK, health)
+				return
+			}
+		}
+	}
+
 	// Run all health checks in parallel
 	var wg sync.WaitGroup
 	results := make(chan DependencyStatus, 6) // buffer for all checks
@@ -62,6 +85,7 @@ func (h *AdminHealthHandlers) GetDetailedHealth(w http.ResponseWriter, r *http.R
 		h.checkRedis,
 		h.checkQdrant,
 		h.checkOpenAI,
+		h.checkOpenRouter,
 		h.checkStorage,
 	}
 
@@ -124,6 +148,14 @@ func (h *AdminHealthHandlers) GetDetailedHealth(w http.ResponseWriter, r *http.R
 		Uptime:       formatDuration(uptime),
 		Environment:  h.Cfg.GO_ENV,
 		Dependencies: dependencies,
+		LastUpdated:  time.Now(),
+	}
+
+	// Cache the result
+	if h.Redis != nil {
+		if data, err := json.Marshal(health); err == nil {
+			h.Redis.Set(ctx, healthCacheKey, data, healthCacheTTL)
+		}
 	}
 
 	// Set appropriate status code
@@ -163,7 +195,7 @@ func (h *AdminHealthHandlers) checkPostgres(ctx context.Context) DependencyStatu
 	return status
 }
 
-// checkRedis checks Redis connectivity.
+// checkRedis checks Redis connectivity using the shared client.
 func (h *AdminHealthHandlers) checkRedis(ctx context.Context) DependencyStatus {
 	start := time.Now()
 	status := DependencyStatus{
@@ -171,26 +203,16 @@ func (h *AdminHealthHandlers) checkRedis(ctx context.Context) DependencyStatus {
 		CheckedAt: start,
 	}
 
-	// Check if Redis is configured
-	if h.Cfg.REDIS_URL == "" {
+	// Use the injected Redis client to avoid TCP socket churn
+	// Creating new connections on every health check would cause port exhaustion
+	if h.Redis == nil {
 		status.Status = "down"
 		status.Message = "not configured"
 		status.LatencyMs = float64(time.Since(start).Milliseconds())
 		return status
 	}
 
-	opts, err := redis.ParseURL(h.Cfg.REDIS_URL)
-	if err != nil {
-		status.Status = "down"
-		status.Message = "invalid URL: " + err.Error()
-		status.LatencyMs = float64(time.Since(start).Milliseconds())
-		return status
-	}
-
-	client := redis.NewClient(opts)
-	defer func() { _ = client.Close() }()
-
-	err = client.Ping(ctx).Err()
+	err := h.Redis.Ping(ctx).Err()
 	status.LatencyMs = float64(time.Since(start).Milliseconds())
 
 	if err != nil {
@@ -302,6 +324,62 @@ func (h *AdminHealthHandlers) checkOpenAI(ctx context.Context) DependencyStatus 
 
 	// Check if latency is too high (degraded if > 500ms)
 	if status.LatencyMs > 500 {
+		status.Status = "degraded"
+		status.Message = "high latency"
+		return status
+	}
+
+	status.Status = "ok"
+	return status
+}
+
+// checkOpenRouter checks OpenRouter API connectivity.
+func (h *AdminHealthHandlers) checkOpenRouter(ctx context.Context) DependencyStatus {
+	start := time.Now()
+	status := DependencyStatus{
+		Name:      "openrouter",
+		CheckedAt: start,
+	}
+
+	if h.Cfg.OPENROUTER_API_KEY == "" {
+		status.Status = "down"
+		status.Message = "API key not configured"
+		status.LatencyMs = float64(time.Since(start).Milliseconds())
+		return status
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	// OpenRouter auth key endpoint (validates the key)
+	// We use /auth/key instead of /models because /models is public and returns 200 even with an invalid key.
+	url := h.Cfg.OPENROUTER_API_BASE + "/auth/key"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		status.Status = "down"
+		status.Message = "failed to create request: " + err.Error()
+		status.LatencyMs = float64(time.Since(start).Milliseconds())
+		return status
+	}
+
+	req.Header.Set("Authorization", "Bearer "+h.Cfg.OPENROUTER_API_KEY)
+
+	resp, err := client.Do(req)
+	status.LatencyMs = float64(time.Since(start).Milliseconds())
+
+	if err != nil {
+		status.Status = "down"
+		status.Message = err.Error()
+		return status
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		status.Status = "down"
+		status.Message = "API returned status: " + resp.Status
+		return status
+	}
+
+	// Check if latency is too high (degraded if > 1000ms - OpenRouter can be slower than direct OpenAI)
+	if status.LatencyMs > 1000 {
 		status.Status = "degraded"
 		status.Message = "high latency"
 		return status

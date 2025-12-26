@@ -1,15 +1,15 @@
+/**
+ * AdminQueuesPage - Monitor and manage background processing queues
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getQueues, getStuckJobs, retryJob, deleteJob } from '@/api/admin'
 import { RefreshCw, Trash2, Clock, AlertCircle, PlayCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { cn } from '@/lib/utils'
 
-/**
- * AdminQueuesPage - Monitor and manage background processing queues
- */
 export function AdminQueuesPage() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -118,11 +118,12 @@ export function AdminQueuesPage() {
                   <span className="text-muted-foreground flex items-center gap-2">
                     <AlertCircle className="w-3.5 h-3.5" /> Hatalı
                   </span>
-                  <span className={cn("font-semibold", 
+                  <div className={cn("flex items-center gap-2 font-semibold", 
                     q.failed_count > 0 ? "text-destructive" : "text-muted-foreground"
                   )}>
                     {q.failed_count}
-                  </span>
+                    {q.failed_count > 0 && <AlertCircle className="w-3.5 h-3.5 text-destructive animate-pulse" />}
+                  </div>
                 </div>
                 {q.oldest_pending && (
                   <div className="mt-4 pt-3 border-t text-[10px] text-muted-foreground flex justify-between">
@@ -144,9 +145,9 @@ export function AdminQueuesPage() {
               <CardTitle>Takılmış Görevler</CardTitle>
               <CardDescription>30 dakikadan uzun süredir işlenen görevler</CardDescription>
             </div>
-            <Badge variant={(stuckJobs?.length ?? 0) > 0 ? "destructive" : "outline"}>
-              {stuckJobs?.length || 0} Görev
-            </Badge>
+            {stuckJobs && stuckJobs.length > 0 && (
+               <StatusBadge status="failed" size="sm" />
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -177,7 +178,7 @@ export function AdminQueuesPage() {
                     <th className="p-4 font-medium border-b text-right w-24">Aksiyonlar</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {stuckJobs.map(job => (
                     <tr key={job.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="p-4">
@@ -189,15 +190,13 @@ export function AdminQueuesPage() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <Badge variant="outline" className="capitalize text-[10px] font-normal">
-                          {job.status}
-                        </Badge>
+                        <StatusBadge status={job.status} size="xs" />
                       </td>
                       <td className="p-4">
-                        <span className="font-mono text-destructive">{job.stuck_duration}</span>
+                        <span className="font-mono text-destructive text-xs">{job.stuck_duration}</span>
                       </td>
                       <td className="p-4">
-                        <p className="text-xs text-destructive line-clamp-2 max-w-sm" title={job.error_message}>
+                        <p className="text-xs text-destructive line-clamp-2 max-w-sm font-medium" title={job.error_message}>
                           {job.error_message || "Hata detayı yok"}
                         </p>
                       </td>

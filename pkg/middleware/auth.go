@@ -32,16 +32,28 @@ func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := r.Header.Get("Authorization")
-			if h == "" {
-				writeAuthError(w, http.StatusUnauthorized, "Missing authorization header")
+			var tokenString string
+			if h != "" {
+				parts := strings.SplitN(h, " ", 2)
+				if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+					tokenString = parts[1]
+				}
+			}
+
+			if tokenString == "" {
+				// Try cookie
+				c, err := r.Cookie("botla_token")
+				if err == nil {
+					tokenString = c.Value
+				}
+			}
+
+			if tokenString == "" {
+				writeAuthError(w, http.StatusUnauthorized, "Missing authorization header or cookie")
 				return
 			}
-			parts := strings.SplitN(h, " ", 2)
-			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-				writeAuthError(w, http.StatusUnauthorized, "Invalid authorization header format")
-				return
-			}
-			claims, err := auth.VerifyToken(secret, parts[1])
+
+			claims, err := auth.VerifyToken(secret, tokenString)
 			if err != nil {
 				if errors.Is(err, jwt.ErrTokenExpired) {
 					writeAuthError(w, http.StatusUnauthorized, "Token expired")
@@ -74,16 +86,28 @@ func OptionalAuthMiddleware(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := r.Header.Get("Authorization")
-			if h == "" {
+			var tokenString string
+			if h != "" {
+				parts := strings.SplitN(h, " ", 2)
+				if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+					tokenString = parts[1]
+				}
+			}
+
+			if tokenString == "" {
+				// Try cookie
+				c, err := r.Cookie("botla_token")
+				if err == nil {
+					tokenString = c.Value
+				}
+			}
+
+			if tokenString == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
-			parts := strings.SplitN(h, " ", 2)
-			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-				next.ServeHTTP(w, r)
-				return
-			}
-			claims, err := auth.VerifyToken(secret, parts[1])
+
+			claims, err := auth.VerifyToken(secret, tokenString)
 			if err != nil {
 				// Ignore invalid tokens in optional auth
 				next.ServeHTTP(w, r)

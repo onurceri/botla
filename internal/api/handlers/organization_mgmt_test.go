@@ -21,41 +21,23 @@ func setupTestDB(t *testing.T) *sql.DB {
 	return testdb.OpenTestDB(t)
 }
 
+// createTestUser uses the centralized fixture factory to create a test user.
 func createTestUser(t *testing.T, db *sql.DB) string {
-	var uid string
-	email := fmt.Sprintf("testuser_%d@example.com", time.Now().UnixNano())
-	// Ensure plan exists
-	var planID string
-	err := db.QueryRow(`SELECT id FROM plans LIMIT 1`).Scan(&planID)
-	if err != nil {
-		t.Fatalf("no plans found in database (migrations might not have run): %v", err)
-	}
-
-	if err := db.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "hash", planID).Scan(&uid); err != nil {
-		t.Fatalf("create user failed: %v", err)
-	}
-	return uid
-}
-
-func createTestOrg(t *testing.T, db *sql.DB, ownerID string) (string, *services.OrganizationService) {
-	log := logger.New("test")
-	svc := services.NewOrganizationService(db, log)
-
-	name := fmt.Sprintf("Test Org %d", time.Now().UnixNano())
-	slug := fmt.Sprintf("test-org-%d", time.Now().UnixNano())
-
-	org, err := svc.CreateOrganization(context.Background(), name, slug, ownerID)
-	if err != nil {
-		t.Fatalf("create org failed: %v", err)
-	}
-	return org.ID, svc
+	t.Helper()
+	user := testdb.CreateUser(t, db)
+	return user.ID
 }
 
 func TestOrganizationManagement(t *testing.T) {
 	db := setupTestDB(t)
 
-	ownerID := createTestUser(t, db)
-	orgID, svc := createTestOrg(t, db, ownerID)
+	// Use fixture to create organization and owner
+	result := testdb.CreateOrganization(t, db)
+	ownerID := result.Owner.ID
+	orgID := result.Organization.ID
+
+	// Create service manually
+	svc := services.NewOrganizationService(db, logger.New("test"))
 	h := &OrganizationHandlers{OrgService: svc, DB: db}
 	wsSvc := services.NewWorkspaceService(db, logger.New("test"))
 	wh := &WorkspaceHandlers{WorkspaceService: wsSvc}

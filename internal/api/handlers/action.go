@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -201,6 +202,10 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 	action.Enabled = req.Enabled
 
 	if err = db.UpdateAction(r.Context(), h.DB, action); err != nil {
+		if errors.Is(err, db.ErrVersionConflict) {
+			http.Error(w, "Action was modified by another request, please refresh and try again", http.StatusConflict)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

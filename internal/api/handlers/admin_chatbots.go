@@ -109,7 +109,8 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 	}
 
 	// Reset chunk counts
-	if err := db.AdminDeleteChatbotVectors(r.Context(), h.DB, id); err != nil {
+	err = db.AdminDeleteChatbotVectors(r.Context(), h.DB, id)
+	if err != nil {
 		api.WriteError(w, http.StatusInternalServerError, "Failed to reset vectors", api.ErrCodeInternalError)
 		return
 	}
@@ -152,5 +153,3 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 		"sources_queued": queuedCount,
 	})
 }
-
-

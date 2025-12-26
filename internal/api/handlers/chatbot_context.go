@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/httputil"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -26,6 +28,10 @@ func getChatbotContext(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, w
 	}
 	if botID == "new" {
 		w.WriteHeader(http.StatusBadRequest)
+		return nil, "", false
+	}
+	if !httputil.IsValidUUID(botID) {
+		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
 		return nil, "", false
 	}
 
@@ -68,6 +74,10 @@ func getSourceContext(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, ws
 	sourceID := r.PathValue("id")
 	if sourceID == "" {
 		w.WriteHeader(http.StatusNotFound)
+		return nil, nil, "", false
+	}
+	if !httputil.IsValidUUID(sourceID) {
+		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
 		return nil, nil, "", false
 	}
 

@@ -137,7 +137,7 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 			ctx := r.Context()
 			ip := httputil.ExtractIP(r)
 
-		// Check for endpoint-specific rate limits FIRST (for auth endpoints, etc.)
+			// Check for endpoint-specific rate limits FIRST (for auth endpoints, etc.)
 			// These are stricter and IP-based to prevent brute-force attacks
 			endpointLimiter := rl.getOrCreateEndpointLimiter(r.URL.Path)
 			if endpointLimiter != nil {

@@ -12,10 +12,11 @@ import (
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/redis/go-redis/v9"
 )
 
 // New creates and configures the main HTTP handler for the application.
-func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService, qdClient *rag.QdrantClient) *http.ServeMux {
+func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService, qdClient *rag.QdrantClient, redisClient *redis.Client) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Services
@@ -57,7 +58,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
 	adh := handlers.NewAdminHandlers(pool, adminSvc)
-	adhh := handlers.NewAdminHealthHandlers(pool, cfg)
+	adhh := handlers.NewAdminHealthHandlers(pool, redisClient, cfg)
 	aqh := handlers.NewAdminQueueHandlers(pool, adminSvc)
 	aeh := handlers.NewAdminErrorHandlers(pool)
 	aah := handlers.NewAdminAuditHandlers(pool)

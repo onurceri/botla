@@ -53,64 +53,6 @@ func unregisterActiveSchema(schema string) {
 	delete(activeSchemas.schemas, schema)
 }
 
-// isActiveSchema checks if a schema is currently in use by this process
-func isActiveSchema(schema string) bool {
-	activeSchemas.RLock()
-	defer activeSchemas.RUnlock()
-	_, exists := activeSchemas.schemas[schema]
-	return exists
-}
-
-// cleanupStaleSchemas removes leftover test schemas from previous runs.
-// It only cleans up schemas that:
-// 1. Start with 'botla_test_' (parallel test schemas)
-// 2. Are not in the activeSchemas map (to avoid cleaning up in-use schemas)
-func cleanupStaleSchemas() {
-	baseDSN := getTestDSN("")
-	db, err := sql.Open("pgx", baseDSN)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to open db for stale schema cleanup: %v\n", err)
-		return
-	}
-	defer func() { _ = db.Close() }()
-
-	// Find all schemas starting with 'botla_test_' (but not the base 'botla_test' schema)
-	rows, err := db.Query(`
-		SELECT nspname 
-		FROM pg_namespace
-		WHERE nspname LIKE 'botla_test_%'
-		  AND nspname NOT IN ('botla_test')
-	`)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to list stale schemas: %v\n", err)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	var schemas []string
-	for rows.Next() {
-		var schema string
-		if err := rows.Scan(&schema); err == nil {
-			schemas = append(schemas, schema)
-		}
-	}
-
-	for _, schema := range schemas {
-		// Skip schemas that are in use by this process
-		if isActiveSchema(schema) {
-			continue
-		}
-
-		// Drop the stale schema
-		_, err := db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to drop stale schema %s: %v\n", schema, err)
-		} else {
-			fmt.Fprintf(os.Stdout, "cleaned up stale test schema: %s\n", schema)
-		}
-	}
-}
-
 // CleanupAllTestSchemas removes ALL test schemas (for use in CI or explicit cleanup)
 // This is more aggressive than cleanupStaleSchemas and ignores the time threshold.
 func CleanupAllTestSchemas() error {
@@ -142,9 +84,9 @@ func CleanupAllTestSchemas() error {
 
 	for _, schema := range schemas {
 		if _, err := db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to drop schema %s: %v\n", schema, err)
+			_, _ = fmt.Fprintf(os.Stderr, "warning: failed to drop schema %s: %v\n", schema, err)
 		} else {
-			fmt.Fprintf(os.Stdout, "cleaned up test schema: %s\n", schema)
+			_, _ = fmt.Fprintf(os.Stdout, "cleaned up test schema: %s\n", schema)
 		}
 	}
 
@@ -278,8 +220,8 @@ func OpenParallelTestDB(t *testing.T) *sql.DB {
 
 	// Create the schema (needs lock to prevent race in schema creation)
 	schemaCreationLock.Lock()
+	defer schemaCreationLock.Unlock()
 	db := createSchemaAndConnect(t, schema)
-	schemaCreationLock.Unlock()
 
 	// Register cleanup to drop schema when test ends
 	t.Cleanup(func() {
@@ -361,15 +303,6 @@ func dropSchema(t *testing.T, db *sql.DB, schema string) {
 	}
 	defer func() { _ = baseDB.Close() }()
 
-	// Terminate all connections to this schema first
-	_, _ = baseDB.Exec(`
-		SELECT pg_terminate_backend(pid)
-		FROM pg_stat_activity
-		WHERE datname = current_database()
-		  AND pid <> pg_backend_pid()
-		  AND state = 'idle'
-	`)
-
 	// Drop the schema with retries
 	for i := 0; i < 3; i++ {
 		if _, err := baseDB.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err != nil {
@@ -403,10 +336,17 @@ func runMigrations(t *testing.T, schema string) {
 
 	dbURL := getTestDSN(schema)
 
-	//nolint:gosec // this is a test helper using dynamic path
-	cmd := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("migration failed: %s (error: %v)", string(output), err)
+	for i := 0; i < 3; i++ {
+		//nolint:gosec // this is a test helper using dynamic path
+		cmd := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			return
+		}
+		if i == 2 {
+			t.Fatalf("migration failed: %s (error: %v)", string(output), err)
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
 }
 

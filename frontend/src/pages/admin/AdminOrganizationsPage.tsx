@@ -8,7 +8,9 @@ import { Search, Building2, Users, Bot } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import * as adminApi from '@/api/admin'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PlanBadge, normalizePlanId } from '@/components/ui/plan-badge'
 
 export function AdminOrganizationsPage() {
   const [search, setSearch] = useState('')
@@ -40,7 +42,7 @@ export function AdminOrganizationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Organizasyonlar</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Organizasyonlar</h1>
         <p className="text-muted-foreground">
           Platformdaki tüm organizasyonları görüntüle ve yönet. Toplam: {total}
         </p>
@@ -74,72 +76,66 @@ export function AdminOrganizationsPage() {
       </div>
 
       {/* Organizations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? (
-          <div className="col-span-full p-8 text-center text-muted-foreground">Yükleniyor...</div>
-        ) : error ? (
-          <div className="col-span-full p-8 text-center text-destructive">
-            Hata: {(error as Error).message}
-          </div>
-        ) : organizations.length === 0 ? (
-          <div className="col-span-full p-8 text-center text-muted-foreground">
-            Organizasyon bulunamadı.
-          </div>
-        ) : (
-          organizations.map((org) => (
-            <div
-              key={org.id}
-              className="bg-card rounded-lg border border-border p-5 hover:border-primary/50 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-primary" />
+      {isLoading ? (
+        <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
+      ) : error ? (
+        <div className="p-8 text-center text-destructive">
+          Hata: {(error as Error).message}
+        </div>
+      ) : organizations.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground">
+          Organizasyon bulunamadı.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {organizations.map((org) => (
+            <Card key={org.id} className="hover:border-primary/50 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">{org.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">@{org.slug}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{org.name}</h3>
-                    <p className="text-sm text-muted-foreground">@{org.slug}</p>
+                  <PlanBadge 
+                    plan={normalizePlanId(org.plan_id)} 
+                    size="sm" 
+                    variant="soft" 
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    <span>{org.user_count ?? 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Bot className="w-4 h-4" />
+                    <span>{org.chatbot_count ?? 0}</span>
                   </div>
                 </div>
-                <span
-                  className={`px-2 py-1 text-xs rounded-full font-medium ${
-                    org.plan_id === 'pro'
-                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-                      : org.plan_id === 'business'
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                  }`}
-                >
-                  {org.plan_id?.toUpperCase() || 'FREE'}
-                </span>
-              </div>
 
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                <div className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  <span>-</span>
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(org.created_at), {
+                      addSuffix: true,
+                      locale: tr,
+                    })}
+                  </span>
+                  <Button variant="ghost" size="sm">
+                    Detaylar
+                  </Button>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Bot className="w-4 h-4" />
-                  <span>-</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-border">
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(org.created_at), {
-                    addSuffix: true,
-                    locale: tr,
-                  })}
-                </span>
-                <Button variant="ghost" size="sm">
-                  Detaylar
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {total > limit && (

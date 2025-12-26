@@ -22,3 +22,12 @@ var (
 	ErrWorkspaceSlugExists = errors.New("workspace slug already exists in this organization")
 	ErrLastWorkspace       = errors.New("cannot delete the last workspace in the organization")
 )
+
+var (
+	ErrHandoffExists      = errors.New("handoff request already exists")
+	ErrHandoffNotFound    = errors.New("handoff request not found")
+	ErrHandoffExpired     = errors.New("handoff request has expired")
+	ErrHandoffClosed      = errors.New("handoff request is already closed")
+	ErrHandoffRateLimited = errors.New("too many handoff requests")
+	ErrHandoffNotEnabled  = errors.New("handoff is not enabled for this chatbot")
+)

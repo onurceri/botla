@@ -181,7 +181,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyDataExport)))
 
 	adh := handlers.NewAdminHandlers(pool, adminSvc)
-	adhh := handlers.NewAdminHealthHandlers(pool, cfg)
+	adhh := handlers.NewAdminHealthHandlers(pool, nil, cfg) // nil Redis client for tests
 	aqh := handlers.NewAdminQueueHandlers(pool, adminSvc)
 	aeh := handlers.NewAdminErrorHandlers(pool)
 	aah := handlers.NewAdminAuditHandlers(pool)

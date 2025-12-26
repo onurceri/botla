@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/httputil"
 )
 
 const (
@@ -29,6 +31,10 @@ func RequireOrganizationAccess(orgService *services.OrganizationService, minRole
 			orgID := extractOrgIDFromPath(r.URL.Path)
 			if orgID == "" {
 				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if !httputil.IsValidUUID(orgID) {
+				api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
 				return
 			}
 

@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/httputil"
 )
 
 type publicChatbot struct {
@@ -54,16 +54,14 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		var err error
 		botID := strings.TrimPrefix(path, prefix)
 		if botID == "" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		// Validate that botID is a valid UUID
-		if _, err = uuid.Parse(botID); err != nil {
-			w.WriteHeader(http.StatusNotFound)
+		if !httputil.IsValidUUID(botID) {
+			api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
 			return
 		}
 
@@ -176,6 +174,10 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
+	if !httputil.IsValidUUID(botID) {
+		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		return
+	}
 	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -323,17 +325,6 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// PublicChatFunc returns a http.HandlerFunc for backwards compatibility
-//
-// Deprecated: Use PublicHandlers.PublicChat instead
-func PublicChat(dbpool *sql.DB) http.HandlerFunc {
-	// Create a ChatService for backwards compatibility
-	// Note: This is a transitional pattern; in production, ChatService should be properly initialized
-	svc := services.NewChatService(dbpool, nil, nil, nil, nil)
-	h := &PublicHandlers{DB: dbpool, ChatService: svc}
-	return h.PublicChat
-}
-
 // SubmitFeedback handles POST /api/v1/public/chatbots/:id/feedback
 func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -354,6 +345,10 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	botID := parts[5]
+	if !httputil.IsValidUUID(botID) {
+		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		return
+	}
 
 	var req struct {
 		MessageID string `json:"message_id"`
@@ -386,7 +381,10 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	// Update analytics asynchronously
 	go func() {
 		defer func() {
-			_ = recover()
+			if r := recover(); r != nil {
+				// Log panic for debugging - use fmt since we don't have logger access
+				fmt.Printf("public_feedback_analytics_panic: %v\n", r)
+			}
 		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

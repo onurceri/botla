@@ -656,24 +656,16 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	reqH2.Header.Set("Content-Type", "application/json")
 	resH2, _ := http.DefaultClient.Do(reqH2)
 
-	// Expect failure because pending request exists
-	if resH2.StatusCode != http.StatusInternalServerError {
-		// Note: The service returns generic error, which handler maps to 500 currently.
-		// Ideally it should be 400 or 409, but based on current implementation:
-		// Service returns error -> Handler logs it -> Handler returns 500 "failed to create handoff request"
-		t.Logf("Got status code %d for duplicate request", resH2.StatusCode)
+	if resH2.StatusCode != http.StatusConflict {
+		t.Errorf("expected 409 for duplicate request, got %d", resH2.StatusCode)
 	}
-	// We can check the body to be sure it's the expected error if we propagated it,
-	// but currently handler masks errors unless we update it too.
-	// For now, let's just ensure we can't create another one easily or check response.
-	// Actually, wait, let's verify if the error returned is indeed what we expect.
-	// The service returns "HANDOFF_ALREADY_EXISTS" (from config).
-	// The public handler does:
-	// if err != nil { w.WriteHeader(http.StatusInternalServerError); ... "error": "failed to create handoff request" }
-	// So we expect 500.
-
-	if resH2.StatusCode != http.StatusInternalServerError {
-		t.Errorf("expected 500 for duplicate request, got %d", resH2.StatusCode)
+	var errResp struct {
+		Error string `json:"error"`
+		Code  string `json:"code"`
+	}
+	_ = json.NewDecoder(resH2.Body).Decode(&errResp)
+	if errResp.Code != "handoff_exists" {
+		t.Errorf("expected error code handoff_exists, got %q (error=%q)", errResp.Code, errResp.Error)
 	}
 	resH2.Body.Close()
 
@@ -693,4 +685,115 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 		t.Errorf("expected success for new request after resolution, got %d", resH3.StatusCode)
 	}
 	resH3.Body.Close()
+}
+
+func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	token := authTokenForHandoff(t, te.Server.URL, "handoff_detail_nf@example.com")
+
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_detail_nf@example.com")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+	updateProPlanConfig(t, te)
+
+	createBot := map[string]any{"name": "Detail NotFound Bot", "language": "en-US"}
+	cb, _ := json.Marshal(createBot)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	var bot struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	missingID := "00000000-0000-0000-0000-000000000000"
+	reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+missingID, nil)
+	reqG.Header.Set("Authorization", "Bearer "+token)
+	resG, _ := http.DefaultClient.Do(reqG)
+	if resG.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resG.StatusCode)
+	}
+	var errResp struct {
+		Error string `json:"error"`
+		Code  string `json:"code"`
+	}
+	_ = json.NewDecoder(resG.Body).Decode(&errResp)
+	resG.Body.Close()
+	if errResp.Code != "handoff_not_found" {
+		t.Fatalf("expected error code handoff_not_found, got %q (error=%q)", errResp.Code, errResp.Error)
+	}
+}
+
+func TestHandoff_UpdateStatus_NotFoundReturns404(t *testing.T) {
+	oai := NewLLMMock(t)
+	defer oai.Close()
+
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	token := authTokenForHandoff(t, te.Server.URL, "handoff_update_nf@example.com")
+
+	var proPlanID string
+	te.DB.QueryRow("SELECT id FROM plans WHERE code='pro'").Scan(&proPlanID)
+	_, err = te.DB.Exec(`UPDATE users SET plan_id=$1 WHERE email=$2`, proPlanID, "handoff_update_nf@example.com")
+	if err != nil {
+		t.Fatalf("failed to assign pro plan: %v", err)
+	}
+	updateProPlanConfig(t, te)
+
+	createBot := map[string]any{"name": "Update NotFound Bot", "language": "en-US"}
+	cb, _ := json.Marshal(createBot)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	var bot struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	missingID := "00000000-0000-0000-0000-000000000000"
+	updateReq := map[string]any{"status": "resolved"}
+	ur, _ := json.Marshal(updateReq)
+	reqUp, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+missingID, bytes.NewReader(ur))
+	reqUp.Header.Set("Authorization", "Bearer "+token)
+	reqUp.Header.Set("Content-Type", "application/json")
+	resUp, _ := http.DefaultClient.Do(reqUp)
+	if resUp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resUp.StatusCode)
+	}
+	var errResp struct {
+		Error string `json:"error"`
+		Code  string `json:"code"`
+	}
+	_ = json.NewDecoder(resUp.Body).Decode(&errResp)
+	resUp.Body.Close()
+	if errResp.Code != "handoff_not_found" {
+		t.Fatalf("expected error code handoff_not_found, got %q (error=%q)", errResp.Code, errResp.Error)
+	}
 }

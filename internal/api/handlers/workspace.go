@@ -7,6 +7,7 @@ import (
 
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/httputil"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -75,6 +76,10 @@ func (h *WorkspaceHandlers) UpdateWorkspace(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	if !httputil.IsValidUUID(wsID) {
+		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		return
+	}
 
 	var req updateWorkspaceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -97,6 +102,10 @@ func (h *WorkspaceHandlers) DeleteWorkspace(w http.ResponseWriter, r *http.Reque
 	wsID := r.PathValue("wsID")
 	if wsID == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !httputil.IsValidUUID(wsID) {
+		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
 		return
 	}
 

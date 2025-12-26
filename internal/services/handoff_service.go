@@ -37,17 +37,26 @@ type HandoffResult struct {
 	ErrorMessage string `json:"error_message,omitempty"`
 }
 
+type InvalidHandoffStatusError struct {
+	Status string
+}
+
+func (e InvalidHandoffStatusError) Error() string {
+	return fmt.Sprintf("invalid status: %s", e.Status)
+}
+
 // RequestHandoff creates a handoff request and notifies operators
 func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot, conversationID, notes string) (*HandoffResult, error) {
+	// Validate handoff is enabled
+	if !bot.HandoffEnabled {
+		return nil, ErrHandoffNotEnabled
+	}
+
 	lc := strings.TrimSpace(bot.LanguageCode)
 	if i := strings.Index(lc, "-"); i > 0 {
 		lc = lc[:i]
 	}
 	cfg := langconfig.Get(lc)
-	// Validate handoff is enabled
-	if !bot.HandoffEnabled {
-		return nil, errors.New(cfg.UserMessages.Errors["HANDOFF_NOT_ENABLED"])
-	}
 
 	// Create handoff request in database
 	// Check for existing active handoff request
@@ -56,8 +65,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 		return nil, fmt.Errorf("failed to check existing handoff: %w", err)
 	}
 	if exists {
-		// Return specific error that can be handled by caller
-		return nil, errors.New(cfg.UserMessages.Errors["HANDOFF_ALREADY_EXISTS"])
+		return nil, ErrHandoffExists
 	}
 
 	req := &models.HandoffRequest{
@@ -232,11 +240,14 @@ func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, sta
 		models.HandoffStatusResolved: true,
 	}
 	if !validStatuses[status] {
-		lc := "tr"
-		msg := langconfig.Get(lc).UserMessages.Errors["ERR_INVALID_STATUS"]
-		formatted := fmt.Sprintf(msg, status)
-		return errors.New(formatted)
+		return InvalidHandoffStatusError{Status: status}
 	}
 
-	return db.UpdateHandoffRequestStatus(ctx, s.DB, requestID, status, assignedTo)
+	if err := db.UpdateHandoffRequestStatus(ctx, s.DB, requestID, status, assignedTo); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrHandoffNotFound
+		}
+		return err
+	}
+	return nil
 }
