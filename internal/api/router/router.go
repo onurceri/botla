@@ -8,6 +8,7 @@ import (
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
@@ -16,7 +17,7 @@ import (
 )
 
 // New creates and configures the main HTTP handler for the application.
-func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService, qdClient *rag.QdrantClient, redisClient *redis.Client) *http.ServeMux {
+func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService, qdClient *rag.QdrantClient, redisClient *redis.Client, workerPool *workers.WorkerPool) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Services
@@ -48,7 +49,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 		WorkspaceService: workspaceSvc,
 	}
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, QdrantClient: qdClient, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: toolNameGenerator, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}

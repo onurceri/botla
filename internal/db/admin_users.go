@@ -94,17 +94,19 @@ func AdminUpdateUser(ctx context.Context, pool *sql.DB, userID string, updates m
 
 	setParts := []string{}
 	for k, v := range updates {
-		// Basic validation of keys to prevent SQL injection (though we should use a proper builder)
-		allowedKeys := map[string]bool{
-			"full_name":         true,
-			"plan_id":           true,
-			"is_platform_admin": true,
-		}
-		if !allowedKeys[k] {
+		var col string
+		switch k {
+		case "full_name":
+			col = "full_name"
+		case "plan_id":
+			col = "plan_id"
+		case "is_platform_admin":
+			col = "is_platform_admin"
+		default:
 			continue
 		}
 
-		setParts = append(setParts, fmt.Sprintf("%s = $%d", k, argIdx))
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIdx))
 		args = append(args, v)
 		argIdx++
 	}

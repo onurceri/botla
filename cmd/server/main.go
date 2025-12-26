@@ -17,6 +17,7 @@ import (
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
@@ -62,6 +63,7 @@ type application struct {
 	globalLimiter    ratelimit.Limiter
 	server           *http.Server
 	schedulerCancel  context.CancelFunc
+	workerPool       *workers.WorkerPool
 }
 
 func newApplication(cfg *config.Config, log *logger.Logger) (*application, error) {
@@ -130,6 +132,9 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	// Initialize retention job
 	retentionJob := services.NewRetentionJob(pool, log, storageService)
 
+	// Initialize worker pool
+	workerPool := workers.NewWorkerPool(log, 10)
+
 	return &application{
 		cfg:              cfg,
 		log:              log,
@@ -142,6 +147,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		retentionJob:     retentionJob,
 		rateLimiter:      rl,
 		globalLimiter:    globalLimiter,
+		workerPool:       workerPool,
 	}, nil
 }
 
@@ -178,7 +184,7 @@ func (app *application) start() {
 		}
 	}()
 
-	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService, app.qdrantClient, app.redisClient)
+	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService, app.qdrantClient, app.redisClient, app.workerPool)
 	origins := strings.Split(app.cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	// Middleware chain: Recovery -> Logger -> PlanLoader -> RateLimit -> Mux
@@ -211,6 +217,9 @@ func (app *application) shutdown() {
 	}
 	if app.server != nil {
 		shutdownServer(app.server, app.log, app.db)
+	}
+	if app.workerPool != nil {
+		app.workerPool.Shutdown(10 * time.Second)
 	}
 }
 
