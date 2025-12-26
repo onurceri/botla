@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -261,18 +262,12 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	// Plan and limits
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, cbot.UserID)
 	var ragConfig models.RAGConfig
+	var maxMonthlyTokens int
+	var estimatedTokens int
 	if err == nil && plan != nil {
 		ragConfig = plan.Config.Chat.RAG
-		// Check monthly token limit
-		if plan.Config.Chat.MaxMonthlyTokens > 0 {
-			used, uerr := db.GetMonthlyTokenUsage(r.Context(), h.DB, cbot.UserID)
-			if uerr == nil && used >= plan.Config.Chat.MaxMonthlyTokens {
-				base := api.BaseLang(cbot.LanguageCode)
-				cfg := api.ConfigFromBase(base)
-				api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
-				return
-			}
-		}
+		maxMonthlyTokens = plan.Config.Chat.MaxMonthlyTokens
+		
 		// Enforce allowed model if set
 		if len(plan.Config.Chat.AllowedModels) > 0 {
 			allowed := slices.Contains(plan.Config.Chat.AllowedModels, cbot.Model)
@@ -293,6 +288,26 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Atomic token reservation to prevent TOCTOU race condition (Issue #002)
+	// Reserve estimated tokens before processing.
+	if maxMonthlyTokens > 0 {
+		estimatedTokens = cbot.MaxTokens
+		if estimatedTokens <= 0 {
+			estimatedTokens = 512 // Default
+		}
+		err := db.ReserveChatTokens(r.Context(), h.DB, cbot.UserID, estimatedTokens, maxMonthlyTokens)
+		if errors.Is(err, db.ErrTokenQuotaExceeded) {
+			base := api.BaseLang(cbot.LanguageCode)
+			cfg := api.ConfigFromBase(base)
+			api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
+			return
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
 	// Create context with timeout
 	to := chatTimeout()
 	ctx, cancel := context.WithTimeout(r.Context(), to)
@@ -305,8 +320,20 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := h.ChatService.ProcessChat(ctx, chatReq, cbot, ragConfig)
 	if err != nil {
+		// On error, refund the reserved tokens
+		if maxMonthlyTokens > 0 && estimatedTokens > 0 {
+			_ = db.AdjustChatTokens(context.Background(), h.DB, cbot.UserID, -estimatedTokens)
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	// Adjust token count: correct the reservation to actual usage
+	if maxMonthlyTokens > 0 && estimatedTokens > 0 {
+		delta := result.TokensUsed - estimatedTokens
+		if delta != 0 {
+			_ = db.AdjustChatTokens(context.Background(), h.DB, cbot.UserID, delta)
+		}
 	}
 
 	// Convert sources

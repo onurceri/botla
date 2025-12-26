@@ -28,10 +28,13 @@ func TestAuth_Register_WeakPassword(t *testing.T) {
 	if res.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 Bad Request for weak password, got %d", res.StatusCode)
 	}
-	var errResp map[string]string
+	var errResp struct {
+		Code   string `json:"code"`
+		Status int    `json:"status"`
+	}
 	_ = json.NewDecoder(res.Body).Decode(&errResp)
 	res.Body.Close()
-	if errResp["error"] != "Password must be at least 8 characters long" {
-		t.Errorf("expected 'Password must be at least 8 characters long', got %v", errResp["error"])
+	if errResp.Code != "ERR_PASSWORD_TOO_SHORT" {
+		t.Errorf("expected 'ERR_PASSWORD_TOO_SHORT', got %v", errResp.Code)
 	}
 }
