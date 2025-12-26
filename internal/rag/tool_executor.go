@@ -96,6 +96,12 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 
 		// Use a detached context for logging
 		go func() {
+			// Recover from panics to prevent server crash
+			defer func() {
+				if r := recover(); r != nil && e.Log != nil {
+					e.Log.Error("action_log_panic", map[string]any{"panic": r})
+				}
+			}()
 			logCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			if logErr := db.CreateActionLog(logCtx, e.DB, logEntry); logErr != nil {

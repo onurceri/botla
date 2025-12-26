@@ -80,7 +80,7 @@ func AdminListChatbots(ctx context.Context, pool *sql.DB, filter ChatbotFilter, 
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var chatbots []AdminChatbot
 	for rows.Next() {
@@ -217,7 +217,7 @@ func AdminGetChatbotSourceIDs(ctx context.Context, pool *sql.DB, chatbotID strin
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var ids []string
 	for rows.Next() {
@@ -242,8 +242,6 @@ func AdminDeleteChatbotVectors(ctx context.Context, pool *sql.DB, chatbotID stri
 	_, err := pool.ExecContext(ctx, query, chatbotID)
 	return err
 }
-
-
 
 // Ensure pq is imported for lib/pq driver
 var _ = pq.Array

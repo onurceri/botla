@@ -23,6 +23,7 @@ type ChatbotAction struct {
 	Parameters  *json.RawMessage `json:"parameters"` // JSON Schema
 	ToolName    *string          `json:"tool_name"`  // LLM-generated API-compatible identifier
 	Enabled     bool             `json:"enabled"`
+	Version     int              `json:"version"` // For optimistic locking
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   *time.Time       `json:"updated_at"`
 }

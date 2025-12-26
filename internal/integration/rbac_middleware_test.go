@@ -191,8 +191,11 @@ func TestRBAC_Extended(t *testing.T) {
 	t.Run("MissingAuthHeader", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+orgID, nil)
 		// No Authorization header
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		_ = res.Body.Close()
 		if res.StatusCode != http.StatusUnauthorized {
 			t.Errorf("expected 401 Unauthorized, got %d", res.StatusCode)
 		}
@@ -202,14 +205,65 @@ func TestRBAC_Extended(t *testing.T) {
 	t.Run("InvalidOrgID", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/invalid-uuid", nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
-		// Depending on implementation, this might be 400 Bad Request (validation) or 404 Not Found (if validation passes but not found)
-		// The test plan expects 400.
-		// Note: Currently returns 500 (Internal Server Error) due to unhandled UUID parsing error.
-		// Updating expectation to accept 500 for now, but this should be fixed.
-		if res.StatusCode != http.StatusBadRequest && res.StatusCode != http.StatusNotFound && res.StatusCode != http.StatusInternalServerError {
-			t.Errorf("expected 400/404/500, got %d", res.StatusCode)
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+			return
+		}
+		var body struct {
+			Error string `json:"error"`
+		}
+		_ = json.NewDecoder(res.Body).Decode(&body)
+		if body.Error != "Invalid ID format" {
+			t.Errorf("expected error %q, got %q", "Invalid ID format", body.Error)
+		}
+	})
+
+	t.Run("InvalidWorkspaceID", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID+"/workspaces/invalid-uuid", nil)
+		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+			return
+		}
+		var body struct {
+			Error string `json:"error"`
+		}
+		_ = json.NewDecoder(res.Body).Decode(&body)
+		if body.Error != "Invalid ID format" {
+			t.Errorf("expected error %q, got %q", "Invalid ID format", body.Error)
+		}
+	})
+
+	t.Run("InvalidChatbotID", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/invalid-uuid", nil)
+		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+			return
+		}
+		var body struct {
+			Error string `json:"error"`
+		}
+		_ = json.NewDecoder(res.Body).Decode(&body)
+		if body.Error != "Invalid ID format" {
+			t.Errorf("expected error %q, got %q", "Invalid ID format", body.Error)
 		}
 	})
 
@@ -220,8 +274,11 @@ func TestRBAC_Extended(t *testing.T) {
 
 		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID+"/workspaces/"+tempWSID, nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		_ = res.Body.Close()
 		if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
 			t.Errorf("expected 200/204, got %d", res.StatusCode)
 		}

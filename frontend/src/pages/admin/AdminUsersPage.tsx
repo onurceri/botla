@@ -4,11 +4,12 @@
  */
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, MoreHorizontal, UserX, UserCheck, Shield, ShieldOff } from 'lucide-react'
+import { Search, MoreHorizontal, Shield, ShieldOff, UserX } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import * as adminApi from '@/api/admin'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
 import { useToast } from '@/components/ui/toast'
+import { PlanBadge, normalizePlanId } from '@/components/ui/plan-badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 
 export function AdminUsersPage() {
   const [search, setSearch] = useState('')
@@ -69,7 +72,7 @@ export function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Kullanıcılar</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Kullanıcılar</h1>
         <p className="text-muted-foreground">
           Platformdaki tüm kullanıcıları görüntüle ve yönet. Toplam: {total}
         </p>
@@ -103,127 +106,125 @@ export function AdminUsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
-        ) : error ? (
-          <div className="p-8 text-center text-destructive">Hata: {(error as Error).message}</div>
-        ) : users.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Kullanıcı bulunamadı.</div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr className="text-left text-sm text-muted-foreground">
-                <th className="px-4 py-3 font-medium">E-posta</th>
-                <th className="px-4 py-3 font-medium">İsim</th>
-                <th className="px-4 py-3 font-medium">Plan</th>
-                <th className="px-4 py-3 font-medium">Durum</th>
-                <th className="px-4 py-3 font-medium">Kayıt</th>
-                <th className="px-4 py-3 font-medium text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{user.email}</span>
-                      {user.is_platform_admin && (
-                        <span className="px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full flex items-center gap-1">
-                          <Shield className="w-3 h-3" />
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {user.full_name || '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full font-medium ${
-                        user.plan_id === 'pro'
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-                          : user.plan_id === 'business'
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                      }`}
-                    >
-                      {user.plan_id?.toUpperCase() || 'FREE'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                      Aktif
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(user.created_at), {
-                      addSuffix: true,
-                      locale: tr,
-                    })}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => toggleAdminStatus(user)}>
-                          {user.is_platform_admin ? (
-                            <>
-                              <ShieldOff className="w-4 h-4 mr-2" />
-                              Admin Yetkisini Kaldır
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="w-4 h-4 mr-2" />
-                              Admin Yap
-                            </>
+      <Card>
+        <CardHeader className="pb-3 border-b">
+          <CardTitle className="text-sm font-medium">Kullanıcı Listesi</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
+          ) : error ? (
+            <div className="p-8 text-center text-destructive">Hata: {(error as Error).message}</div>
+          ) : users.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">Kullanıcı bulunamadı.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-muted-foreground">
+                  <tr className="text-left">
+                    <th className="px-4 py-3 font-medium">E-posta</th>
+                    <th className="px-4 py-3 font-medium">İsim</th>
+                    <th className="px-4 py-3 font-medium">Plan</th>
+                    <th className="px-4 py-3 font-medium">Durum</th>
+                    <th className="px-4 py-3 font-medium">Kayıt</th>
+                    <th className="px-4 py-3 font-medium text-right">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{user.email}</span>
+                          {user.is_platform_admin && (
+                            <span className="px-1.5 py-0.5 text-[10px] bg-primary/10 text-primary rounded-full flex items-center gap-1 font-medium">
+                              <Shield className="w-3 h-3" />
+                              Admin
+                            </span>
                           )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          <UserX className="w-4 h-4 mr-2" />
-                          Hesabı Askıya Al
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {total > limit && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {offset + 1} - {Math.min(offset + limit, total)} / {total} kullanıcı
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-              disabled={!hasPrevPage}
-            >
-              Önceki
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOffset(offset + limit)}
-              disabled={!hasNextPage}
-            >
-              Sonraki
-            </Button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {user.full_name || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <PlanBadge 
+                          plan={normalizePlanId(user.plan_id)} 
+                          size="sm" 
+                          variant="soft" 
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status="active" size="sm" />
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(user.created_at), {
+                          addSuffix: true,
+                          locale: tr,
+                        })}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => toggleAdminStatus(user)}>
+                              {user.is_platform_admin ? (
+                                <>
+                                  <ShieldOff className="w-4 h-4 mr-2" />
+                                  Admin Yetkisini Kaldır
+                                </>
+                              ) : (
+                                <>
+                                  <Shield className="w-4 h-4 mr-2" />
+                                  Admin Yap
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">
+                              <UserX className="w-4 h-4 mr-2" />
+                              Hesabı Askıya Al
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+        {/* Pagination */}
+        {total > limit && (
+          <div className="p-4 border-t flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {offset + 1} - {Math.min(offset + limit, total)} / {total} kullanıcı
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOffset(Math.max(0, offset - limit))}
+                disabled={!hasPrevPage}
+              >
+                Önceki
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOffset(offset + limit)}
+                disabled={!hasNextPage}
+              >
+                Sonraki
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Card>
     </div>
   )
 }

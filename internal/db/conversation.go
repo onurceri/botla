@@ -7,35 +7,23 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 )
 
+// GetOrCreateConversationBySessionID atomically gets an existing conversation or creates a new one.
+// Uses INSERT...ON CONFLICT to prevent race conditions when concurrent requests arrive for the same session.
 func GetOrCreateConversationBySessionID(ctx context.Context, pool *sql.DB, chatbotID string, sessionID string) (*models.Conversation, error) {
 	var c models.Conversation
+	// Atomic upsert - if conversation exists, just update the timestamp and return it.
+	// This prevents race conditions where two concurrent requests both see "no rows"
+	// and both try to insert, causing one to fail with a unique constraint violation.
 	err := pool.QueryRowContext(ctx, `
-        SELECT id, chatbot_id, session_id, message_count, created_at, updated_at
-        FROM conversations
-        WHERE chatbot_id=$1 AND session_id=$2`, chatbotID, sessionID).Scan(
+		INSERT INTO conversations (chatbot_id, session_id)
+		VALUES ($1, $2)
+		ON CONFLICT (chatbot_id, session_id) DO UPDATE SET updated_at = NOW()
+		RETURNING id, chatbot_id, session_id, message_count, created_at, updated_at`,
+		chatbotID, sessionID).Scan(
 		&c.ID, &c.ChatbotID, &c.SessionID, &c.MessageCount, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			return nil, err
-		}
-		// create new conversation
-		var id string
-		err = pool.QueryRowContext(ctx, `
-            INSERT INTO conversations (chatbot_id, session_id)
-            VALUES ($1, $2) RETURNING id`, chatbotID, sessionID).Scan(&id)
-		if err != nil {
-			return nil, err
-		}
-		// re-read to fill timestamps
-		err = pool.QueryRowContext(ctx, `
-            SELECT id, chatbot_id, session_id, message_count, created_at, updated_at
-            FROM conversations WHERE id=$1`, id).Scan(
-			&c.ID, &c.ChatbotID, &c.SessionID, &c.MessageCount, &c.CreatedAt, &c.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	return &c, nil
 }

@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/stretchr/testify/assert"
@@ -43,19 +44,19 @@ func TestGetUserDataForExport_Content(t *testing.T) {
 		SystemPrompt:   "You are a test bot",
 		Model:          "gpt-3.5-turbo",
 	}
-	chatbotID, err := CreateChatbot(ctx, pool, chatbot)
+	chatbotID, err := db.CreateChatbot(ctx, pool, chatbot)
 	require.NoError(t, err)
 
 	// 4. Create a conversation
-	conv, err := GetOrCreateConversationBySessionID(ctx, pool, chatbotID, "session-123")
+	conv, err := db.GetOrCreateConversationBySessionID(ctx, pool, chatbotID, "session-123")
 	require.NoError(t, err)
 
 	// 5. Create a consent
-	err = UpsertConsent(ctx, pool, userID, "marketing", true, "127.0.0.1", "test-agent")
+	err = db.UpsertConsent(ctx, pool, userID, "marketing", true, "127.0.0.1", "test-agent")
 	require.NoError(t, err)
 
 	// Now run the export logic
-	export, err := GetUserDataForExport(ctx, pool, userID)
+	export, err := db.GetUserDataForExport(ctx, pool, userID)
 	require.NoError(t, err)
 
 	// Verify content

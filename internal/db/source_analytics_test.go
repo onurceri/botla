@@ -1,19 +1,20 @@
-package db
+package db_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/testdb"
 )
 
 func TestGetSourceUsageStats(t *testing.T) {
-	db := testdb.OpenTestDB(t)
+	dbConn := testdb.OpenTestDB(t)
 
 	// Ensure message_sources table exists (in case migration didn't run on test schema)
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS message_sources (
+	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS message_sources (
 	    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	    message_id UUID NOT NULL,
 	    source_id UUID NOT NULL,
@@ -23,10 +24,10 @@ func TestGetSourceUsageStats(t *testing.T) {
 	    UNIQUE(message_id, source_id, chunk_index)
 	)`)
 
-	uid := createUser(t, db)
+	uid := createUser(t, dbConn)
 	// Create Chatbot
 	b := &models.Chatbot{UserID: uid, Name: "Analytics Bot", SystemPrompt: "p", LanguageCode: "en-US", Model: "gpt-3.5-turbo", Temperature: 0.1, MaxTokens: 64, ThemeColor: "#000000", WelcomeMessage: "hi", Position: "bottom-right", BotMessageColor: "#000000", UserMessageColor: "#ffffff", BotMessageTextColor: "#ffffff", UserMessageTextColor: "#000000", ChatFontFamily: "Inter", ChatHeaderColor: "#000000", ChatHeaderTextColor: "#ffffff", ChatBackgroundColor: "#ffffff"}
-	botID, err := CreateChatbot(context.Background(), db, b)
+	botID, err := db.CreateChatbot(context.Background(), dbConn, b)
 	if err != nil {
 		t.Fatalf("create bot: %v", err)
 	}
@@ -34,33 +35,33 @@ func TestGetSourceUsageStats(t *testing.T) {
 	// Create Source
 	fn := "test.txt"
 	s := &models.DataSource{ChatbotID: botID, SourceType: "text", Status: "completed", ChunkCount: 1, OriginalFilename: &fn}
-	sourceID, err := CreateDataSource(context.Background(), db, s)
+	sourceID, err := db.CreateDataSource(context.Background(), dbConn, s)
 	if err != nil {
 		t.Fatalf("create source: %v", err)
 	}
 
 	// Create Conversation
 	var convID string
-	err = db.QueryRow(`INSERT INTO conversations (chatbot_id, session_id) VALUES ($1, 'sess1') RETURNING id`, botID).Scan(&convID)
+	err = dbConn.QueryRow(`INSERT INTO conversations (chatbot_id, session_id) VALUES ($1, 'sess1') RETURNING id`, botID).Scan(&convID)
 	if err != nil {
 		t.Fatalf("create conv: %v", err)
 	}
 
 	// Create Message
 	var msgID string
-	err = db.QueryRow(`INSERT INTO messages (conversation_id, role, content, thumbs_up) VALUES ($1, 'assistant', 'resp', true) RETURNING id`, convID).Scan(&msgID)
+	err = dbConn.QueryRow(`INSERT INTO messages (conversation_id, role, content, thumbs_up) VALUES ($1, 'assistant', 'resp', true) RETURNING id`, convID).Scan(&msgID)
 	if err != nil {
 		t.Fatalf("create msg: %v", err)
 	}
 
 	// Create Message Source (Usage)
-	_, err = db.Exec(`INSERT INTO message_sources (message_id, source_id, chunk_index, relevance_score) VALUES ($1, $2, 0, 0.85)`, msgID, sourceID)
+	_, err = dbConn.Exec(`INSERT INTO message_sources (message_id, source_id, chunk_index, relevance_score) VALUES ($1, $2, 0, 0.85)`, msgID, sourceID)
 	if err != nil {
 		t.Fatalf("create msg source: %v", err)
 	}
 
 	// Test GetSourceUsageStats
-	stats, err := GetSourceUsageStats(context.Background(), db, botID, 30)
+	stats, err := db.GetSourceUsageStats(context.Background(), dbConn, botID, 30)
 	if err != nil {
 		t.Fatalf("GetSourceUsageStats failed: %v", err)
 	}
@@ -91,10 +92,10 @@ func TestGetSourceUsageStats(t *testing.T) {
 	}
 
 	// Clean up
-	db.Exec(`DELETE FROM message_sources WHERE message_id = $1`, msgID)
-	db.Exec(`DELETE FROM messages WHERE id = $1`, msgID)
-	db.Exec(`DELETE FROM conversations WHERE id = $1`, convID)
-	db.Exec(`DELETE FROM data_sources WHERE id = $1`, sourceID)
-	db.Exec(`DELETE FROM chatbots WHERE id = $1`, botID)
-	db.Exec(`DELETE FROM users WHERE id = $1`, uid)
+	dbConn.Exec(`DELETE FROM message_sources WHERE message_id = $1`, msgID)
+	dbConn.Exec(`DELETE FROM messages WHERE id = $1`, msgID)
+	dbConn.Exec(`DELETE FROM conversations WHERE id = $1`, convID)
+	dbConn.Exec(`DELETE FROM data_sources WHERE id = $1`, sourceID)
+	dbConn.Exec(`DELETE FROM chatbots WHERE id = $1`, botID)
+	dbConn.Exec(`DELETE FROM users WHERE id = $1`, uid)
 }

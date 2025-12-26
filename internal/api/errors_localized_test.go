@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 )
 
@@ -44,5 +45,18 @@ func TestWriteLocalizedError_EN(t *testing.T) {
 	}
 	if resp.Code != ErrInvalidRequestBody {
 		t.Fatalf("unexpected code: %q", resp.Code)
+	}
+}
+
+func TestMapHandoffError(t *testing.T) {
+	status, code, ok := MapHandoffError(services.ErrHandoffExists)
+	if !ok {
+		t.Fatalf("expected mapping")
+	}
+	if status != http.StatusConflict {
+		t.Fatalf("unexpected status: %d", status)
+	}
+	if code != ErrHandoffExists {
+		t.Fatalf("unexpected code: %q", code)
 	}
 }

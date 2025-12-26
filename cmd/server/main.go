@@ -100,7 +100,11 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	}
 
 	// Start source processing queue
-	q, _ := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient)
+	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient)
+	if err != nil {
+		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
+		return nil, err
+	}
 
 	// Initialize Redis client for rate limiting
 	var redisClient *redis.Client
@@ -191,7 +195,7 @@ func (app *application) start() {
 		}
 	}()
 
-	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService, app.qdrantClient)
+	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService, app.qdrantClient, app.redisClient)
 	origins := strings.Split(app.cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	// Middleware chain: Recovery -> Logger -> PlanLoader -> RateLimit -> Mux

@@ -20,16 +20,8 @@ import (
 func TestSources_TextCreation(t *testing.T) {
 	dbx := testdb.OpenParallelTestDB(t)
 
-	var uid string
-	var freePlanID string
-	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	email := fmt.Sprintf("text_create+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`,
-		email, "x", freePlanID).Scan(&uid); err != nil {
-		t.Fatalf("user: %v", err)
-	}
+	user := testdb.CreateUser(t, dbx)
+	uid := user.ID
 
 	ch := &ChatbotHandlers{DB: dbx}
 	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
@@ -78,16 +70,8 @@ func TestSources_TextCreation(t *testing.T) {
 func TestSources_URLCreation(t *testing.T) {
 	dbx := testdb.OpenParallelTestDB(t)
 
-	var uid string
-	var freePlanID string
-	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	email := fmt.Sprintf("url_create+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`,
-		email, "x", freePlanID).Scan(&uid); err != nil {
-		t.Fatalf("user: %v", err)
-	}
+	user := testdb.CreateUser(t, dbx)
+	uid := user.ID
 
 	ch := &ChatbotHandlers{DB: dbx}
 	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
@@ -133,16 +117,8 @@ func TestSources_URLCreation(t *testing.T) {
 func TestSources_EmptyText_BadRequest(t *testing.T) {
 	dbx := testdb.OpenParallelTestDB(t)
 
-	var uid string
-	var freePlanID string
-	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	email := fmt.Sprintf("empty_text+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`,
-		email, "x", freePlanID).Scan(&uid); err != nil {
-		t.Fatalf("user: %v", err)
-	}
+	user := testdb.CreateUser(t, dbx)
+	uid := user.ID
 
 	ch := &ChatbotHandlers{DB: dbx}
 	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
@@ -182,16 +158,8 @@ func TestSources_EmptyText_BadRequest(t *testing.T) {
 func TestSources_EmptyURL_BadRequest(t *testing.T) {
 	dbx := testdb.OpenParallelTestDB(t)
 
-	var uid string
-	var freePlanID string
-	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	email := fmt.Sprintf("empty_url+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`,
-		email, "x", freePlanID).Scan(&uid); err != nil {
-		t.Fatalf("user: %v", err)
-	}
+	user := testdb.CreateUser(t, dbx)
+	uid := user.ID
 
 	ch := &ChatbotHandlers{DB: dbx}
 	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
@@ -231,16 +199,8 @@ func TestSources_EmptyURL_BadRequest(t *testing.T) {
 func TestSources_DuplicateURL_Conflict(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
 
-	var uid string
-	var freePlanID string
-	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	email := fmt.Sprintf("dup_url+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`,
-		email, "x", freePlanID).Scan(&uid); err != nil {
-		t.Fatalf("user: %v", err)
-	}
+	user := testdb.CreateUser(t, dbx)
+	uid := user.ID
 
 	ch := &ChatbotHandlers{DB: dbx}
 	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
@@ -299,16 +259,8 @@ func TestSources_DuplicateURL_Conflict(t *testing.T) {
 func TestSources_InvalidSourceType_BadRequest(t *testing.T) {
 	dbx := testdb.OpenTestDB(t)
 
-	var uid string
-	var freePlanID string
-	if err := dbx.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
-		t.Fatalf("plan: %v", err)
-	}
-	email := fmt.Sprintf("invalid_type+%d@example.com", time.Now().UnixNano())
-	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`,
-		email, "x", freePlanID).Scan(&uid); err != nil {
-		t.Fatalf("user: %v", err)
-	}
+	user := testdb.CreateUser(t, dbx)
+	uid := user.ID
 
 	ch := &ChatbotHandlers{DB: dbx}
 	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}

@@ -21,10 +21,11 @@ const ChatbotsPage = () => {
 
   // Use React Query for chatbots list
   const {
-    data: bots = [],
+    data,
     isLoading: botsLoading,
     error: botsError,
   } = useChatbots(!!currentWorkspace && !isOrgLoading)
+  const bots = data ?? []
   // console.log('ChatbotsPage render:', { botsLoading, isOrgLoading, hasWorkspace: !!currentWorkspace, botsLength: bots.length })
 
   useEffect(() => {

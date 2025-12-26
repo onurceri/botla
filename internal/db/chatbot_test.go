@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/testdb"
 )
@@ -26,10 +27,10 @@ func createUser(t *testing.T, db *sql.DB) string {
 }
 
 func TestChatbot_CRUD_DB(t *testing.T) {
-	db := testdb.OpenTestDB(t)
-	uid := createUser(t, db)
+	dbConn := testdb.OpenTestDB(t)
+	uid := createUser(t, dbConn)
 	t.Cleanup(func() {
-		_, _ = db.Exec(`DELETE FROM users WHERE id = $1`, uid)
+		_, _ = dbConn.Exec(`DELETE FROM users WHERE id = $1`, uid)
 	})
 	b := &models.Chatbot{
 		UserID:               uid,
@@ -53,18 +54,18 @@ func TestChatbot_CRUD_DB(t *testing.T) {
 		SuggestedQuestions:   []string{"Q1"},
 		SuggestionsEnabled:   true,
 	}
-	id, err := CreateChatbot(context.Background(), db, b)
+	id, err := db.CreateChatbot(context.Background(), dbConn, b)
 	if err != nil || id == "" {
 		t.Fatalf("create chatbot: %v", err)
 	}
 	// update cleanup closures with created id
 	t.Cleanup(func() {
-		_, _ = db.Exec(`DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE chatbot_id = $1)`, id)
-		_, _ = db.Exec(`DELETE FROM conversations WHERE chatbot_id = $1`, id)
-		_, _ = db.Exec(`DELETE FROM data_sources WHERE chatbot_id = $1`, id)
-		_, _ = db.Exec(`DELETE FROM chatbots WHERE id = $1`, id)
+		_, _ = dbConn.Exec(`DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE chatbot_id = $1)`, id)
+		_, _ = dbConn.Exec(`DELETE FROM conversations WHERE chatbot_id = $1`, id)
+		_, _ = dbConn.Exec(`DELETE FROM data_sources WHERE chatbot_id = $1`, id)
+		_, _ = dbConn.Exec(`DELETE FROM chatbots WHERE id = $1`, id)
 	})
-	got, err := GetChatbotByID(context.Background(), db, id)
+	got, err := db.GetChatbotByID(context.Background(), dbConn, id)
 	if err != nil || got == nil {
 		t.Fatalf("get chatbot: %v", err)
 	}
@@ -72,10 +73,10 @@ func TestChatbot_CRUD_DB(t *testing.T) {
 		t.Fatalf("suggestions not read")
 	}
 	// update suggestions
-	if err2 := UpdateChatbotSuggestions(context.Background(), db, id, []string{"A", "B"}); err2 != nil {
+	if err2 := db.UpdateChatbotSuggestions(context.Background(), dbConn, id, []string{"A", "B"}); err2 != nil {
 		t.Fatalf("update sugg: %v", err2)
 	}
-	got2, err2 := GetChatbotByID(context.Background(), db, id)
+	got2, err2 := db.GetChatbotByID(context.Background(), dbConn, id)
 	if err2 != nil || got2 == nil {
 		t.Fatalf("get2: %v", err2)
 	}
@@ -83,10 +84,10 @@ func TestChatbot_CRUD_DB(t *testing.T) {
 		t.Fatalf("suggestions not updated")
 	}
 	// soft delete
-	if _, err3 := SoftDeleteChatbot(context.Background(), db, id, uid); err3 != nil {
+	if _, err3 := db.SoftDeleteChatbot(context.Background(), dbConn, id, uid); err3 != nil {
 		t.Fatalf("soft delete: %v", err3)
 	}
-	got3, err3 := GetChatbotByID(context.Background(), db, id)
+	got3, err3 := db.GetChatbotByID(context.Background(), dbConn, id)
 	if err3 != nil {
 		t.Fatalf("get3: %v", err3)
 	}

@@ -123,4 +123,24 @@ describe('DashboardLayout', () => {
     // Look for breadcrumb
     expect(screen.getAllByText('Chatbotlar')[0]).toBeInTheDocument()
   })
+
+  it('shows Admin link when user is platform admin', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { full_name: 'Admin User', email: 'admin@example.com', is_platform_admin: true },
+    })
+
+    renderWithProviders(null)
+
+    expect(await screen.findByText('Yönetim')).toBeInTheDocument()
+  })
+
+  it('hides Admin link when user is not platform admin', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { full_name: 'Regular User', email: 'user@example.com', is_platform_admin: false },
+    })
+
+    renderWithProviders(null)
+
+    expect(screen.queryByText('Yönetim')).not.toBeInTheDocument()
+  })
 })

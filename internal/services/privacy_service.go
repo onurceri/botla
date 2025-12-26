@@ -238,14 +238,12 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 			"error":   err.Error(),
 		})
 		// We continue even if we fail to get files, to ensure DB anonymization happens
+	} else if s.Storage == nil {
+		s.Log.Info("storage_not_configured_skipping_user_file_deletions", map[string]any{
+			"user_id": *req.UserID,
+		})
+		// Skip file deletion when storage is not configured
 	} else {
-		if s.Storage == nil {
-			s.Log.Info("storage_not_configured_skipping_user_file_deletions", map[string]any{
-				"user_id": *req.UserID,
-			})
-			goto anonymizeUser
-		}
-
 		for _, file := range files {
 			if file == "" {
 				continue
@@ -262,7 +260,6 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 	}
 
 	// 3. Anonymize/Delete user data
-anonymizeUser:
 	err = db.AnonymizeUserData(ctx, s.DB, *req.UserID)
 	if err != nil {
 		return fmt.Errorf("anonymize user: %w", err)

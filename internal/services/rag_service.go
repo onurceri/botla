@@ -36,7 +36,7 @@ func (s *RAGService) DeleteBotVectors(ctx context.Context, chatbotID string) err
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var sourceID string
@@ -75,4 +75,3 @@ func (q *Queue) Enqueue(id string) error {
 	q.SourceQueue.Enqueue(id)
 	return nil
 }
-

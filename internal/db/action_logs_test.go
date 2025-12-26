@@ -1,27 +1,28 @@
-package db
+package db_test
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/stretchr/testify/require"
 )
 
 func TestActionLog_CRUD(t *testing.T) {
-	db := testdb.OpenTestDB(t)
+	dbConn := testdb.OpenTestDB(t)
 
 	// 1. Create User
-	uid := createUser(t, db)
+	uid := createUser(t, dbConn)
 
 	// 2. Create Chatbot
 	b := &models.Chatbot{
 		UserID: uid, Name: "Action Log Bot",
 		LanguageCode: "en-US", Model: "gpt-4",
 	}
-	bid, err := CreateChatbot(context.Background(), db, b)
+	bid, err := db.CreateChatbot(context.Background(), dbConn, b)
 	require.NoError(t, err)
 
 	// 3. Create Action
@@ -39,7 +40,7 @@ func TestActionLog_CRUD(t *testing.T) {
 		ToolName:    &toolName,
 		Enabled:     true,
 	}
-	err = CreateAction(context.Background(), db, action)
+	err = db.CreateAction(context.Background(), dbConn, action)
 	require.NoError(t, err)
 	aid := action.ID
 
@@ -58,13 +59,13 @@ func TestActionLog_CRUD(t *testing.T) {
 		DurationMs:      100,
 	}
 
-	err = CreateActionLog(context.Background(), db, log)
+	err = db.CreateActionLog(context.Background(), dbConn, log)
 	require.NoError(t, err)
 	require.NotEmpty(t, log.ID)
 	require.False(t, log.CreatedAt.IsZero())
 
 	// 5. Get Action Logs
-	logs, err := GetActionLogs(context.Background(), db, bid, 10, 0)
+	logs, err := db.GetActionLogs(context.Background(), dbConn, bid, 10, 0)
 	require.NoError(t, err)
 	require.Len(t, logs, 1)
 	require.Equal(t, log.ID, logs[0].ID)
@@ -81,17 +82,17 @@ func TestActionLog_CRUD(t *testing.T) {
 		ErrorMessage: &errMsg,
 		DurationMs:   5000,
 	}
-	err = CreateActionLog(context.Background(), db, log2)
+	err = db.CreateActionLog(context.Background(), dbConn, log2)
 	require.NoError(t, err)
 
 	// Get page 1 (latest first)
-	logs, err = GetActionLogs(context.Background(), db, bid, 1, 0)
+	logs, err = db.GetActionLogs(context.Background(), dbConn, bid, 1, 0)
 	require.NoError(t, err)
 	require.Len(t, logs, 1)
 	require.Equal(t, log2.ID, logs[0].ID) // Latest one first
 
 	// Get page 2
-	logs, err = GetActionLogs(context.Background(), db, bid, 1, 1)
+	logs, err = db.GetActionLogs(context.Background(), dbConn, bid, 1, 1)
 	require.NoError(t, err)
 	require.Len(t, logs, 1)
 	require.Equal(t, log.ID, logs[0].ID)

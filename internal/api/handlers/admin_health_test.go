@@ -37,7 +37,7 @@ func TestAdminHealthHandlers_GetDetailedHealth(t *testing.T) {
 		GO_ENV:          "test",
 	}
 
-	h := NewAdminHealthHandlers(db, cfg)
+	h := NewAdminHealthHandlers(db, nil, cfg)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/health/detailed", nil)
 	rec := httptest.NewRecorder()

@@ -77,12 +77,22 @@ func UpdateHandoffRequestStatus(ctx context.Context, pool *sql.DB, id, status st
 	if status == models.HandoffStatusResolved {
 		resolvedAt = time.Now()
 	}
-	_, err := pool.ExecContext(ctx, `
+	result, err := pool.ExecContext(ctx, `
 		UPDATE handoff_requests
 		SET status = $1, assigned_to = $2, resolved_at = $3
 		WHERE id = $4`,
 		status, assignedTo, resolvedAt, id)
-	return err
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // CountPendingHandoffRequests returns the count of pending handoff requests for a chatbot

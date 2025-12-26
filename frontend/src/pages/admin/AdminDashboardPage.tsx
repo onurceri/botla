@@ -29,28 +29,28 @@ export function AdminDashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
-          title="Total Users"
+          title="Toplam Kullanıcı"
           value={formatNumber(stats?.total_users)}
-          subtitle={stats?.users_today ? `+${stats.users_today} today` : undefined}
+          subtitle={stats?.users_today ? `Bugün +${stats.users_today}` : undefined}
           icon={<Users className="w-5 h-5" />}
           isLoading={isLoading}
         />
         <StatsCard
-          title="Organizations"
+          title="Organizasyonlar"
           value={formatNumber(stats?.total_organizations)}
           icon={<Building2 className="w-5 h-5" />}
           isLoading={isLoading}
         />
         <StatsCard
-          title="Chatbots"
+          title="Chatbotlar"
           value={formatNumber(stats?.total_chatbots)}
           icon={<Bot className="w-5 h-5" />}
           isLoading={isLoading}
         />
         <StatsCard
-          title="Total Messages"
+          title="Toplam Mesaj"
           value={formatNumber(stats?.total_messages)}
-          subtitle={stats?.conversations_today ? `+${stats.conversations_today} today` : undefined}
+          subtitle={stats?.conversations_today ? `Bugün +${stats.conversations_today}` : undefined}
           icon={<MessageSquare className="w-5 h-5" />}
           isLoading={isLoading}
         />
@@ -60,8 +60,8 @@ export function AdminDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <HealthPanel />
         <div className="bg-card rounded-xl border border-border p-6 flex flex-col items-center justify-center text-center opacity-50">
-          <p className="text-sm font-medium text-muted-foreground">Recent Activity Panel</p>
-          <p className="text-xs text-muted-foreground mt-1">Coming Soon</p>
+          <p className="text-sm font-medium text-muted-foreground">Son Aktiviteler</p>
+          <p className="text-xs text-muted-foreground mt-1">Yakında</p>
         </div>
       </div>
     </div>

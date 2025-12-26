@@ -8,7 +8,8 @@ import { Search, Bot, RefreshCw, MessageSquare, Database, MoreHorizontal } from 
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import * as adminApi from '@/api/admin'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,11 +60,10 @@ export function AdminChatbotsPage() {
   const hasNextPage = offset + limit < total
   const hasPrevPage = offset > 0
 
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Chatbotlar</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Chatbotlar</h1>
         <p className="text-muted-foreground">
           Platform genelindeki tüm chatbotları görüntüle ve yönet. Toplam: {total}
         </p>
@@ -84,115 +84,121 @@ export function AdminChatbotsPage() {
       </div>
 
       {/* Chatbots Table */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
-        ) : error ? (
-          <div className="p-8 text-center text-destructive">Hata: {(error as Error).message}</div>
-        ) : chatbots.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Chatbot bulunamadı.</div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr className="text-left text-sm text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Chatbot</th>
-                <th className="px-4 py-3 font-medium">Sahip</th>
-                <th className="px-4 py-3 font-medium">Organizasyon</th>
-                <th className="px-4 py-3 font-medium">İstatistikler</th>
-                <th className="px-4 py-3 font-medium">Oluşturulma</th>
-                <th className="px-4 py-3 font-medium text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {chatbots.map((chatbot) => (
-                <tr key={chatbot.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Bot className="w-4 h-4 text-primary" />
-                      </div>
-                      <span className="font-medium">{chatbot.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {chatbot.owner_email}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {chatbot.organization_name || '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1" title="Kaynak sayısı">
-                        <Database className="w-4 h-4" />
-                        <span>{chatbot.source_count}</span>
-                      </div>
-                      <div className="flex items-center gap-1" title="Mesaj sayısı">
-                        <MessageSquare className="w-4 h-4" />
-                        <span>{chatbot.message_count}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(chatbot.created_at), {
-                      addSuffix: true,
-                      locale: tr,
-                    })}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => forceRefreshMutation.mutate(chatbot.id)}
-                          disabled={forceRefreshMutation.isPending}
-                        >
-                          <RefreshCw
-                            className={`w-4 h-4 mr-2 ${
-                              forceRefreshMutation.isPending ? 'animate-spin' : ''
-                            }`}
-                          />
-                          Zorla Yenile
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {total > limit && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {offset + 1} - {Math.min(offset + limit, total)} / {total} chatbot
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-              disabled={!hasPrevPage}
-            >
-              Önceki
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOffset(offset + limit)}
-              disabled={!hasNextPage}
-            >
-              Sonraki
-            </Button>
+      <Card>
+        <CardHeader className="pb-3 border-b">
+          <CardTitle className="text-sm font-medium">Chatbot Listesi</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
+          ) : error ? (
+            <div className="p-8 text-center text-destructive">Hata: {(error as Error).message}</div>
+          ) : chatbots.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">Chatbot bulunamadı.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-muted-foreground">
+                  <tr className="text-left">
+                    <th className="px-4 py-3 font-medium">Chatbot</th>
+                    <th className="px-4 py-3 font-medium">Sahip</th>
+                    <th className="px-4 py-3 font-medium">Organizasyon</th>
+                    <th className="px-4 py-3 font-medium">İstatistikler</th>
+                    <th className="px-4 py-3 font-medium">Oluşturulma</th>
+                    <th className="px-4 py-3 font-medium text-right">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {chatbots.map((chatbot) => (
+                    <tr key={chatbot.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Bot className="w-4 h-4 text-primary" />
+                          </div>
+                          <span className="font-medium">{chatbot.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {chatbot.owner_email}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {chatbot.organization_name || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-4 text-muted-foreground">
+                          <div className="flex items-center gap-1.5" title="Kaynak sayısı">
+                            <Database className="w-4 h-4" />
+                            <span className="font-medium text-foreground">{chatbot.source_count}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5" title="Mesaj sayısı">
+                            <MessageSquare className="w-4 h-4" />
+                            <span className="font-medium text-foreground">{chatbot.message_count}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {formatDistanceToNow(new Date(chatbot.created_at), {
+                          addSuffix: true,
+                          locale: tr,
+                        })}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => forceRefreshMutation.mutate(chatbot.id)}
+                              disabled={forceRefreshMutation.isPending}
+                            >
+                              <RefreshCw
+                                className={`w-4 h-4 mr-2 ${
+                                  forceRefreshMutation.isPending ? 'animate-spin' : ''
+                                }`}
+                              />
+                              Zorla Yenile
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+        {/* Pagination */}
+        {total > limit && (
+          <div className="p-4 border-t flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {offset + 1} - {Math.min(offset + limit, total)} / {total} chatbot
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOffset(Math.max(0, offset - limit))}
+                disabled={!hasPrevPage}
+              >
+                Önceki
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOffset(offset + limit)}
+                disabled={!hasNextPage}
+              >
+                Sonraki
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Card>
     </div>
   )
 }

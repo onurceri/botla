@@ -94,9 +94,9 @@ func CleanupAllIntegrationSchemas() error {
 		`)
 
 		if _, err := db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to drop schema %s: %v\n", schema, err)
+			_, _ = fmt.Fprintf(os.Stderr, "warning: failed to drop schema %s: %v\n", schema, err)
 		} else {
-			fmt.Fprintf(os.Stdout, "cleaned up integration test schema: %s\n", schema)
+			_, _ = fmt.Fprintf(os.Stdout, "cleaned up integration test schema: %s\n", schema)
 		}
 	}
 

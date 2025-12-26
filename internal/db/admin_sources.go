@@ -86,7 +86,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sources []AdminSource
 	for rows.Next() {
@@ -160,7 +160,7 @@ func AdminGetSourceStats(ctx context.Context, pool *sql.DB) (map[string]int, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	stats := make(map[string]int)
 	for rows.Next() {

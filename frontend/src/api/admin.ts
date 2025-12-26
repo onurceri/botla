@@ -33,6 +33,7 @@ export interface DetailedHealth {
   uptime: string
   environment: string
   dependencies: DependencyStatus[]
+  last_updated: string
 }
 
 export interface QueueStats {
@@ -90,6 +91,8 @@ export interface AdminOrganization {
   slug: string
   owner_id: string
   plan_id: string
+  user_count?: number
+  chatbot_count?: number
   created_at: string
   updated_at: string
 }
@@ -150,8 +153,10 @@ export const getOverviewStats = async () => {
   return data
 }
 
-export const getDetailedHealth = async () => {
-  const { data } = await api.get<DetailedHealth>(`${ADMIN_BASE}/health/detailed`)
+export const getDetailedHealth = async (refresh = false) => {
+  const { data } = await api.get<DetailedHealth>(`${ADMIN_BASE}/health/detailed`, {
+    params: refresh ? { refresh: 'true' } : undefined,
+  })
   return data
 }
 

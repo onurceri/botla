@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -156,7 +157,10 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		// CR-002: Recover from panics to prevent server crash
 		defer func() {
-			_ = recover()
+			if r := recover(); r != nil {
+				// Log panic for debugging - use fmt since we don't have logger access
+				fmt.Printf("feedback_analytics_panic: %v\n", r)
+			}
 		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

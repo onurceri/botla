@@ -114,6 +114,46 @@ func TestAdminFlow(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var result struct {
+			Organizations []models.Organization `json:"organizations"`
+			Total         int                   `json:"total"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		require.NoError(t, err)
+
+		assert.GreaterOrEqual(t, result.Total, 2) // admin/user orgs created on registration
+
+		for _, org := range result.Organizations {
+			assert.GreaterOrEqual(t, org.UserCount, 1, "Organization should have at least 1 user (owner)")
+			assert.GreaterOrEqual(t, org.ChatbotCount, 0, "Chatbot count should be at least 0")
+		}
+	})
+
+	t.Run("Get Specific Organization", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/organizations", nil)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+		resp, _ := http.DefaultClient.Do(req)
+		var result struct {
+			Organizations []models.Organization `json:"organizations"`
+		}
+		json.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+		require.NotEmpty(t, result.Organizations)
+		orgID := result.Organizations[0].ID
+
+		req, _ = http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/organizations/"+orgID, nil)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var org models.Organization
+		err = json.NewDecoder(resp.Body).Decode(&org)
+		require.NoError(t, err)
+		assert.Equal(t, orgID, org.ID)
+		assert.GreaterOrEqual(t, org.UserCount, 1)
 	})
 
 	t.Run("Unauthorized Access (Regular User)", func(t *testing.T) {
