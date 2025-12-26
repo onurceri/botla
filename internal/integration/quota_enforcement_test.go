@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "chatquota@example.com")
 
 	// Create chatbot
-	create := map[string]any{"name": "Chat Quota Bot"}
+	create := map[string]any{"name": "Chat Quota Bot", "max_tokens": 50}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
@@ -78,8 +79,9 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 
 	// Manually insert usage to exceed limit
 	// We need 150 tokens to exceed 100 limit
-	// IncrementAnalytics updates the analytics table
-	err = db.IncrementAnalytics(context.Background(), te.DB, bot.ID, time.Now(), true, 150, false, 100)
+	// Use IncrementChatTokens to update usage_ingestions (authoritative source for quota)
+	userID := getUserIdFromToken(t, te.DB, "chatquota@example.com")
+	err = db.IncrementChatTokens(context.Background(), te.DB, userID, 150)
 	if err != nil {
 		t.Fatalf("failed to increment usage: %v", err)
 	}
@@ -225,4 +227,102 @@ func TestQuota_IngestionExceeded(t *testing.T) {
 	// So we can't check JSON code "ERR_MONTHLY_INGESTION_EXCEEDED".
 	// We should just check status code or text.
 	// However, for consistency, let's just check status code first.
+}
+
+// QTA-004: Race condition check for token quota (Double-Spend)
+func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
+	// Setup mocks
+	oai := NewLLMMock(t)
+	defer oai.Close()
+	t.Setenv("OPENAI_API_BASE", oai.URL)
+	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
+	qd := startQdrantStub()
+	defer qd.Close()
+	t.Setenv("QDRANT_URL", qd.URL)
+
+	te, err := SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer TeardownTestEnv(te)
+
+	// 1. Configure Plan with specific limit
+	// Limit: 1000 tokens
+	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '1000'::jsonb) WHERE code='free'`)
+
+	// 2. Create User & Token
+	email := "race_quota@example.com"
+	token := authToken(t, te.Server.URL, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, email)
+	userID := getUserIdFromToken(t, te.DB, email)
+
+	// 3. Create Chatbot with specific max_tokens
+	create := map[string]any{
+		"name":       "Race Quota Bot",
+		"max_tokens": 40,
+	}
+	cbj, _ := json.Marshal(create)
+	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
+	reqC.Header.Set("Authorization", "Bearer "+token)
+	reqC.Header.Set("Content-Type", "application/json")
+	resC, _ := http.DefaultClient.Do(reqC)
+	var bot struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(resC.Body).Decode(&bot)
+	resC.Body.Close()
+
+	if bot.ID == "" {
+		t.Fatal("failed to create bot")
+	}
+
+	// 4. Set Initial State: 900 used
+	err = db.IncrementChatTokens(context.Background(), te.DB, userID, 900)
+	if err != nil {
+		t.Fatalf("failed to set initial tokens: %v", err)
+	}
+
+	// 5. Run Concurrent Requests
+	concurrency := 10
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	responses := make([]int, concurrency)
+	
+	chatBody := chatReq{Message: "Race test", SessionID: "sess-race"}
+	chatBytes, _ := json.Marshal(chatBody)
+
+	for i := 0; i < concurrency; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(chatBytes))
+			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set("Content-Type", "application/json")
+			
+			res, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Errorf("request failed: %v", err)
+				return
+			}
+			responses[idx] = res.StatusCode
+			res.Body.Close()
+		}(i)
+	}
+
+	wg.Wait()
+
+	// 6. Analyze Results
+	successCount := 0
+	for _, code := range responses {
+		if code == http.StatusOK {
+			successCount++
+		}
+	}
+
+	if successCount > 2 {
+		t.Errorf("Race condition detected! Expected max 2 successes, got %d", successCount)
+	}
+	if successCount == 0 {
+		t.Errorf("Too few successes, expected around 2, got 0")
+	}
 }

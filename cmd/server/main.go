@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -106,39 +108,20 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		return nil, err
 	}
 
-	// Initialize Redis client for rate limiting
-	var redisClient *redis.Client
-	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
-		opts, err := redis.ParseURL(redisURL)
-		if err != nil {
-			log.Warn("redis_parse_url_failed", map[string]any{"error": err.Error()})
-		} else {
-			redisClient = redis.NewClient(opts)
-			// Test connection
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			if err := redisClient.Ping(ctx).Err(); err != nil {
-				log.Warn("redis_ping_failed", map[string]any{"error": err.Error()})
-				if err := redisClient.Close(); err != nil {
-					log.Error("redis_close_failed", map[string]any{"error": err.Error()})
-				}
-				redisClient = nil
-			} else {
-				log.Info("redis_connected", nil)
-			}
-			cancel()
-		}
+	// Initialize Redis client for rate limiting (mandatory)
+	redisClient, err := initRedisClient(log)
+	if err != nil {
+		log.Error("redis_required", map[string]any{
+			"error":   err.Error(),
+			"message": "Redis is required for rate limiting to ensure consistent behavior across distributed instances",
+		})
+		return nil, err
 	}
 
-	// Initialize rate limiter (Redis or in-memory fallback)
+	// Initialize rate limiter (Redis-based, mandatory)
 	rlConfig := ratelimit.NewConfigFromEnv()
-	var globalLimiter ratelimit.Limiter
-	if redisClient != nil {
-		globalLimiter = ratelimit.NewRedisLimiter(redisClient, rlConfig.Global)
-		log.Info("rate_limiter_initialized", map[string]any{"backend": "redis", "mode": "plan-based"})
-	} else {
-		globalLimiter = ratelimit.NewMemoryLimiter(rlConfig.Global)
-		log.Warn("rate_limiter_using_memory", map[string]any{"message": "Redis unavailable, using in-memory rate limiter (not suitable for production)"})
-	}
+	globalLimiter := ratelimit.NewRedisLimiter(redisClient, rlConfig.Global)
+	log.Info("rate_limiter_initialized", map[string]any{"backend": "redis", "mode": "plan-based"})
 	rl := middleware.NewRateLimiter(globalLimiter, redisClient, rlConfig)
 
 	// Start refresh scheduler
@@ -270,4 +253,38 @@ func ensureQdrantCollection(qdrantClient *rag.QdrantClient, log *logger.Logger) 
 		return err
 	}
 	return nil
+}
+
+// ErrRedisURLMissing indicates REDIS_URL environment variable is not set
+var ErrRedisURLMissing = errors.New("REDIS_URL environment variable is required")
+
+// ErrRedisConnectionFailed indicates Redis connection could not be established
+var ErrRedisConnectionFailed = errors.New("failed to connect to Redis")
+
+// initRedisClient initializes and validates a Redis connection.
+// Returns an error if Redis is not configured or connection fails.
+func initRedisClient(log *logger.Logger) (*redis.Client, error) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		return nil, ErrRedisURLMissing
+	}
+
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid REDIS_URL: %w", err)
+	}
+
+	client := redis.NewClient(opts)
+
+	// Test connection with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		_ = client.Close()
+		return nil, fmt.Errorf("%w: %v", ErrRedisConnectionFailed, err)
+	}
+
+	log.Info("redis_connected", nil)
+	return client, nil
 }

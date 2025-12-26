@@ -19,6 +19,12 @@ type tokenResp struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// errResp matches the new API error response format
+type errResp struct {
+	Code   string `json:"code"`
+	Status int    `json:"status"`
+}
+
 func hashTokenForTest(token string) string {
 	h := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(h[:])
@@ -64,13 +70,13 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 	if res2.StatusCode != http.StatusConflict {
 		t.Fatalf("expected 409, got %d", res2.StatusCode)
 	}
-	var errResp map[string]string
-	if err = json.NewDecoder(res2.Body).Decode(&errResp); err != nil {
+	var er errResp
+	if err = json.NewDecoder(res2.Body).Decode(&er); err != nil {
 		t.Fatalf("decode conflict response failed: %v", err)
 	}
 	res2.Body.Close()
-	if errResp["error"] != "Email already exists" {
-		t.Fatalf("expected 'Email already exists', got %v", errResp["error"])
+	if er.Code != "ERR_EMAIL_EXISTS" {
+		t.Fatalf("expected 'ERR_EMAIL_EXISTS', got %v", er.Code)
 	}
 
 	loginBody := map[string]string{"email": email, "password": "pass1234"}
@@ -166,12 +172,12 @@ func TestAuth_Register_InvalidEmailFormat(t *testing.T) {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
 	}
 
-	var errResp map[string]string
-	if err = json.NewDecoder(res.Body).Decode(&errResp); err != nil {
+	var er errResp
+	if err = json.NewDecoder(res.Body).Decode(&er); err != nil {
 		t.Fatalf("decode error response failed: %v", err)
 	}
-	if errResp["error"] != "Invalid email format" {
-		t.Fatalf("expected 'Invalid email format', got %v", errResp["error"])
+	if er.Code != "ERR_INVALID_EMAIL_FORMAT" {
+		t.Fatalf("expected 'ERR_INVALID_EMAIL_FORMAT', got %v", er.Code)
 	}
 }
 
@@ -198,12 +204,12 @@ func TestAuth_Register_MissingEmail(t *testing.T) {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
 	}
 
-	var errResp map[string]string
-	if err = json.NewDecoder(res.Body).Decode(&errResp); err != nil {
+	var er errResp
+	if err = json.NewDecoder(res.Body).Decode(&er); err != nil {
 		t.Fatalf("decode error response failed: %v", err)
 	}
-	if errResp["error"] != "Email is required" {
-		t.Fatalf("expected 'Email is required', got %v", errResp["error"])
+	if er.Code != "ERR_EMAIL_REQUIRED" {
+		t.Fatalf("expected 'ERR_EMAIL_REQUIRED', got %v", er.Code)
 	}
 }
 
@@ -231,12 +237,12 @@ func TestAuth_Register_MissingPassword(t *testing.T) {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
 	}
 
-	var errResp map[string]string
-	if err = json.NewDecoder(res.Body).Decode(&errResp); err != nil {
+	var er errResp
+	if err = json.NewDecoder(res.Body).Decode(&er); err != nil {
 		t.Fatalf("decode error response failed: %v", err)
 	}
-	if errResp["error"] != "Password must be at least 8 characters long" {
-		t.Fatalf("expected 'Password must be at least 8 characters long', got %v", errResp["error"])
+	if er.Code != "ERR_PASSWORD_TOO_SHORT" {
+		t.Fatalf("expected 'ERR_PASSWORD_TOO_SHORT', got %v", er.Code)
 	}
 }
 
@@ -262,12 +268,12 @@ func TestAuth_Login_InvalidEmail(t *testing.T) {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
 
-	var errResp map[string]string
-	if err = json.NewDecoder(res.Body).Decode(&errResp); err != nil {
+	var er errResp
+	if err = json.NewDecoder(res.Body).Decode(&er); err != nil {
 		t.Fatalf("decode error response failed: %v", err)
 	}
-	if errResp["error"] != "Invalid credentials" {
-		t.Fatalf("expected 'Invalid credentials', got %v", errResp["error"])
+	if er.Code != "ERR_INVALID_CREDENTIALS" {
+		t.Fatalf("expected 'ERR_INVALID_CREDENTIALS', got %v", er.Code)
 	}
 }
 
@@ -307,12 +313,12 @@ func TestAuth_Login_InvalidPassword(t *testing.T) {
 	if resLogin.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resLogin.StatusCode)
 	}
-	var errResp map[string]string
-	if err = json.NewDecoder(resLogin.Body).Decode(&errResp); err != nil {
+	var er errResp
+	if err = json.NewDecoder(resLogin.Body).Decode(&er); err != nil {
 		t.Fatalf("decode error response failed: %v", err)
 	}
-	if errResp["error"] != "Invalid credentials" {
-		t.Fatalf("expected 'Invalid credentials', got %v", errResp["error"])
+	if er.Code != "ERR_INVALID_CREDENTIALS" {
+		t.Fatalf("expected 'ERR_INVALID_CREDENTIALS', got %v", er.Code)
 	}
 }
 
