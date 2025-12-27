@@ -30,3 +30,7 @@ coverage/
 .eslintcache
 *.tsbuildinfo
 .parcel-cache
+
+# Playwright
+playwright-report/
+test-results/

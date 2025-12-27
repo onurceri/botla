@@ -135,12 +135,12 @@ func TestRateLimit_PerUserIsolation(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] Chat endpoint rate limit works
-- [ ] Source creation rate limit works
-- [ ] Rate limit recovery after window
-- [ ] Per-user isolation (User A's usage doesn't affect User B)
-- [ ] Retry-After header present
-- [ ] All tests pass
+- [x] Chat endpoint rate limit works
+- [x] Source creation rate limit works
+- [x] Rate limit recovery after window
+- [x] Per-user isolation (User A's usage doesn't affect User B)
+- [x] Retry-After header present
+- [x] All tests pass
 
 ---
 

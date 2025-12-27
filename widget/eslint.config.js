@@ -26,4 +26,12 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  // Config files (postcss.config.js, vite.config.js, etc.) use Node globals
+  {
+    files: ['*.config.js', '*.config.ts'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])
+

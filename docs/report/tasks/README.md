@@ -83,9 +83,9 @@ Bu klasör, sistem analiz raporundaki tüm bulguları çözmek için oluşturulm
 - [x] 011 - Multi-Tenant Tests
 
 ### Sprint 4: Polish (Hafta 4)
-- [ ] 012 - Rate Limit Tests
-- [ ] 013 - Frontend E2E Tests
-- [ ] 014 - Widget Edge Case Tests
+- [x] 012 - Rate Limit Tests
+- [x] 013 - Frontend E2E Tests
+- [x] 014 - Widget Edge Case Tests
 - [ ] 015 - Frontend Domain Layer
 
 ---
