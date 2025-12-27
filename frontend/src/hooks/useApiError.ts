@@ -1,54 +1,45 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { getErrorMessage } from '../i18n/errors';
+import { parseError, shouldRedirectToLogin, shouldShowUpgrade, type AppError } from '@/domain';
 
 /**
  * Hook to handle API errors with localized messages.
- * Uses the current language from localStorage or defaults to 'tr'.
+ * Uses the domain layer for centralized error handling.
  */
 export function useApiError() {
   const showError = useCallback((error: { code?: string; message?: string } | string) => {
     // Get language preference (default to Turkish)
     const lang = localStorage.getItem('language') ?? 'tr';
     
-    let code: string;
-    if (typeof error === 'string') {
-      code = error;
-    } else {
-      code = error.code ?? 'INTERNAL_ERROR';
-    }
+    const appError = parseError(error, lang);
+    toast.error(appError.userMessage);
     
-    const message = getErrorMessage(code, lang);
-    toast.error(message);
-    
-    return message;
+    return appError.userMessage;
   }, []);
 
-  const handleApiError = useCallback((error: unknown) => {
-    // Handle axios/fetch error responses
-    if (error && typeof error === 'object') {
-      const err = error as { response?: { data?: { code?: string } }; code?: string; message?: string };
-      
-      // Axios error with response
-      if (err.response?.data?.code) {
-        return showError({ code: err.response.data.code });
-      }
-      
-      // Direct error object
-      if (err.code) {
-        return showError({ code: err.code });
-      }
-      
-      // Fallback to message
-      if (err.message) {
-        showError({ code: 'INTERNAL_ERROR' });
-        return err.message;
-      }
+  const handleApiError = useCallback((error: unknown): AppError => {
+    // Get language preference (default to Turkish)
+    const lang = localStorage.getItem('language') ?? 'tr';
+    
+    const appError = parseError(error, lang);
+    
+    // Show the error toast
+    toast.error(appError.userMessage);
+    
+    // Handle special cases
+    if (shouldRedirectToLogin(appError)) {
+      // Navigation should be handled by the caller
+      console.warn('Auth error detected - redirect to login recommended');
     }
     
-    // Unknown error
-    return showError({ code: 'INTERNAL_ERROR' });
-  }, [showError]);
+    if (shouldShowUpgrade(appError)) {
+      // Upgrade prompt should be handled by the caller
+      console.info('Limit error detected - upgrade prompt recommended');
+    }
+    
+    return appError;
+  }, []);
 
   return { showError, handleApiError };
 }
+

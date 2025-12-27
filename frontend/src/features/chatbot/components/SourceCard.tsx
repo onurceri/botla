@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getErrorMessage } from '@/utils/errorMessages'
+import { canRefreshSource } from '@/domain'
 import {
   Dialog,
   DialogContent,
@@ -123,7 +124,7 @@ export default function SourceCard({
   isRefreshing,
 }: SourceCardProps) {
   const [inspectorOpen, setInspectorOpen] = useState(false)
-  const canRefresh = userPlan !== 'free'
+  const refreshAllowed = canRefreshSource(userPlan)
   const statusConfig = getStatusConfig(source.status)
   const isProcessing = source.status === 'pending' || source.status === 'processing'
   const sourceName = source.original_filename || source.source_url || 'İsimsiz Kaynak'
@@ -275,14 +276,14 @@ export default function SourceCard({
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-primary"
                         aria-label="Kaynağı Yenile"
-                        disabled={!canRefresh || isProcessing || isRefreshing}
+                        disabled={!refreshAllowed || isProcessing || isRefreshing}
                         onClick={() => onRefresh(source.id)}
                       >
                         <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  {!canRefresh && (
+                  {!refreshAllowed && (
                     <TooltipContent>
                       <p>Yenileme özelliği ücretli planlarda aktiftir</p>
                     </TooltipContent>

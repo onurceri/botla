@@ -1,18 +1,22 @@
 /**
  * Plan types and utilities for the frontend domain layer.
  * Centralizes plan-related business logic.
+ * 
+ * NOTE: These limits are client-side fallbacks. 
+ * The authoritative source of truth is the backend database (plans table).
+ * These should be kept in sync with seed migrations (e.g., 000035_fix_plan_features.up.sql).
  */
 
-export type PlanCode = 'free' | 'starter' | 'pro' | 'enterprise';
+export type PlanCode = 'free' | 'pro' | 'ultra';
 
 // UI display variants (used in badges, etc.)
-export type PlanTier = 'free' | 'pro' | 'business' | 'ultra';
+export type PlanTier = 'free' | 'pro' | 'ultra';
 
 export interface PlanFeatures {
   customBranding: boolean;
-  analytics: boolean;
-  handoff: boolean;
-  apiAccess: boolean;
+  analytics: boolean; // Not explicitly in migration, assuming true for paid
+  handoff: boolean; // can_use_escalate_fallback
+  apiAccess: boolean; // Not explicitly in migration, assuming true for paid
   refresh: boolean;
   secureEmbed: boolean;
   dynamicScraping: boolean;
@@ -23,9 +27,9 @@ export interface PlanFeatures {
 
 export interface PlanLimits {
   maxChatbots: number;
-  maxSources: number;
-  maxURLs: number;
-  maxPDFs: number;
+  maxSources: number; // Not direct match, using approximation or omitting
+  maxURLs: number;    // max_urls_per_bot
+  maxPDFs: number;    // max_files_per_bot
   maxFileSizeMB: number;
   maxMonthlyTokens: number;
   maxTextLength: number;
@@ -37,16 +41,17 @@ export interface PlanLimits {
 /**
  * Default plan limits configuration.
  * These serve as fallbacks when server-side limits are not available.
+ * Values derived from migration 000035_fix_plan_features.up.sql
  */
 export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
   free: {
     maxChatbots: 1,
-    maxSources: 5,
-    maxURLs: 3,
-    maxPDFs: 2,
+    maxSources: 5, // Approximate based on files+urls
+    maxURLs: 1,
+    maxPDFs: 1,
     maxFileSizeMB: 5,
-    maxMonthlyTokens: 10000,
-    maxTextLength: 5000,
+    maxMonthlyTokens: 100000,
+    maxTextLength: 400000,
     maxPagesPerCrawl: 5,
     maxMonthlyRefreshes: 0,
     features: {
@@ -58,47 +63,24 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
       secureEmbed: false,
       dynamicScraping: false,
       ocr: false,
-      smartFallback: false,
-      topicManagement: false,
-    },
-  },
-  starter: {
-    maxChatbots: 3,
-    maxSources: 15,
-    maxURLs: 10,
-    maxPDFs: 5,
-    maxFileSizeMB: 10,
-    maxMonthlyTokens: 50000,
-    maxTextLength: 15000,
-    maxPagesPerCrawl: 20,
-    maxMonthlyRefreshes: 5,
-    features: {
-      customBranding: false,
-      analytics: true,
-      handoff: false,
-      apiAccess: false,
-      refresh: true,
-      secureEmbed: false,
-      dynamicScraping: false,
-      ocr: false,
-      smartFallback: false,
+      smartFallback: true, // Enabled in free per migration
       topicManagement: false,
     },
   },
   pro: {
     maxChatbots: 10,
     maxSources: 50,
-    maxURLs: 30,
+    maxURLs: 10,
     maxPDFs: 20,
-    maxFileSizeMB: 25,
-    maxMonthlyTokens: 200000,
-    maxTextLength: 50000,
-    maxPagesPerCrawl: 100,
-    maxMonthlyRefreshes: 30,
+    maxFileSizeMB: 20,
+    maxMonthlyTokens: 1000000,
+    maxTextLength: 400000,
+    maxPagesPerCrawl: 50,
+    maxMonthlyRefreshes: 5,
     features: {
-      customBranding: true,
+      customBranding: false, // can_custom_branding is false, can_hide_branding is true
       analytics: true,
-      handoff: true,
+      handoff: false,
       apiAccess: true,
       refresh: true,
       secureEmbed: true,
@@ -108,16 +90,16 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
       topicManagement: true,
     },
   },
-  enterprise: {
-    maxChatbots: -1, // unlimited
-    maxSources: -1,
-    maxURLs: -1,
-    maxPDFs: -1,
-    maxFileSizeMB: 100,
-    maxMonthlyTokens: -1,
-    maxTextLength: -1,
-    maxPagesPerCrawl: -1,
-    maxMonthlyRefreshes: -1,
+  ultra: {
+    maxChatbots: 100,
+    maxSources: 200,
+    maxURLs: 50,
+    maxPDFs: 100,
+    maxFileSizeMB: 50,
+    maxMonthlyTokens: 5000000,
+    maxTextLength: 400000,
+    maxPagesPerCrawl: 200,
+    maxMonthlyRefreshes: 100,
     features: {
       customBranding: true,
       analytics: true,
@@ -138,9 +120,8 @@ export const PLAN_LIMITS: Record<PlanCode, PlanLimits> = {
  */
 export const PLAN_DISPLAY: Record<PlanCode, { label: string; tier: PlanTier }> = {
   free: { label: 'FREE', tier: 'free' },
-  starter: { label: 'STARTER', tier: 'pro' },
-  pro: { label: 'PRO', tier: 'business' },
-  enterprise: { label: 'ENTERPRISE', tier: 'ultra' },
+  pro: { label: 'PRO', tier: 'pro' },
+  ultra: { label: 'ULTRA', tier: 'ultra' },
 };
 
 /**
@@ -160,9 +141,8 @@ export function normalizePlanCode(planId: string | null | undefined): PlanCode {
   if (!planId) return 'free';
   const lower = planId.toLowerCase();
   
-  if (lower === 'enterprise' || lower.includes('enterprise')) return 'enterprise';
+  if (lower === 'ultra' || lower.includes('ultra')) return 'ultra';
   if (lower === 'pro' || lower.includes('pro')) return 'pro';
-  if (lower === 'starter' || lower.includes('starter')) return 'starter';
   if (lower === 'free' || lower.includes('free')) return 'free';
   
   // UUID or unknown - default to free

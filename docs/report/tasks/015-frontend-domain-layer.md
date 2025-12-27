@@ -163,12 +163,16 @@ if (!canCreateChatbot(plan, chatbots.length)) {
 
 ## Acceptance Criteria
 
-- [ ] Domain directory structure created
-- [ ] Plan limits extracted
-- [ ] Error handling centralized
-- [ ] At least 3 components updated to use domain layer
-- [ ] No duplicate business logic in components
-- [ ] All tests pass
+- [x] Domain directory structure created
+- [x] Plan limits extracted
+- [x] Error handling centralized
+- [x] At least 3 components updated to use domain layer
+- [x] No duplicate business logic in components
+- [x] All tests pass
+
+## Notes
+- Aligned frontend plan tiers (`free`, `pro`, `ultra`) with backend database migration `000035_fix_plan_features.up.sql`.
+- Updated domain logic to use these tiers as the source of truth for fallback limits.
 
 ---
 

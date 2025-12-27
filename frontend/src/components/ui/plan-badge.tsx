@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils'
+import { planCodeToTier, type PlanTier } from '@/domain'
 
-export type PlanTier = 'free' | 'pro' | 'business' | 'ultra'
+// Re-export for backward compatibility
+export type { PlanTier }
 
 interface PlanBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   plan: PlanTier
@@ -16,14 +18,6 @@ const planConfig = {
       solid: 'bg-primary text-primary-foreground shadow-sm shadow-primary/30',
       soft: 'bg-primary/10 text-primary border border-primary/20',
       outline: 'bg-transparent text-primary border border-primary/30',
-    },
-  },
-  business: {
-    label: 'BUSINESS',
-    colors: {
-      solid: 'bg-violet-600 text-white shadow-sm shadow-violet-600/30',
-      soft: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20',
-      outline: 'bg-transparent text-violet-600 dark:text-violet-400 border border-violet-500/30',
     },
   },
   pro: {
@@ -47,16 +41,10 @@ const planConfig = {
 /**
  * Normalizes a plan ID (which may be a UUID or a friendly name) to a valid PlanTier.
  * Useful for admin pages that receive raw database plan_ids.
+ * @deprecated Use planCodeToTier from @/domain instead
  */
 export function normalizePlanId(planId: string | null | undefined): PlanTier {
-  if (!planId) return 'free'
-  const lower = planId.toLowerCase()
-  if (lower === 'ultra' || lower.includes('ultra')) return 'ultra'
-  if (lower === 'business' || lower.includes('business')) return 'business'
-  if (lower === 'pro' || lower.includes('pro')) return 'pro'
-  if (lower === 'free' || lower.includes('free')) return 'free'
-  // If it looks like a UUID or unknown, default to free
-  return 'free'
+  return planCodeToTier(planId ?? 'free')
 }
 
 /**
