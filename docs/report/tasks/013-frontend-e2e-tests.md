@@ -143,11 +143,11 @@ export async function login(page: Page) {
 
 ## Acceptance Criteria
 
-- [ ] Playwright configured
-- [ ] Auth flow tests pass
-- [ ] Chatbot creation test passes
-- [ ] Source upload test passes
-- [ ] Tests run in CI
+- [x] Playwright configured
+- [x] Auth flow tests pass
+- [x] Chatbot creation test passes
+- [x] Source upload test passes
+- [x] Tests run in CI
 
 ---
 

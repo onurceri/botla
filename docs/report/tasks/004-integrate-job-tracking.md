@@ -483,12 +483,12 @@ func TestJobTracking_FullFlow(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] `EnqueueSource` creates job record
-- [ ] Worker updates job status as steps progress
-- [ ] Failed step is tracked in job record
-- [ ] Job has `started_at` and `completed_at` timestamps
-- [ ] Progress percentage updates with each step
-- [ ] All tests pass
+- [x] `EnqueueSource` creates job record
+- [x] Worker updates job status as steps progress
+- [x] Failed step is tracked in job record
+- [x] Job has `started_at` and `completed_at` timestamps
+- [x] Progress percentage updates with each step
+- [x] All tests pass
 
 ---
 
