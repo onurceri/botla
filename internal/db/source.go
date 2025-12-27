@@ -370,3 +370,39 @@ func IncrementRefreshCount(ctx context.Context, pool *sql.DB, userID string, mon
 	}
 	return nil
 }
+
+// SourceExistsByHash checks if a source with the same hash exists for a chatbot
+func SourceExistsByHash(ctx context.Context, db *sql.DB, chatbotID, hash string) (bool, error) {
+	var exists bool
+	err := db.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM data_sources 
+			WHERE chatbot_id = $1 
+			  AND hash = $2 
+			  AND deleted_at IS NULL
+		)
+	`, chatbotID, hash).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check source hash: %w", err)
+	}
+	return exists, nil
+}
+
+// GetSourceByHash returns the existing source with the same hash
+func GetSourceByHash(ctx context.Context, db *sql.DB, chatbotID, hash string) (*models.DataSource, error) {
+	var s models.DataSource
+	err := db.QueryRowContext(ctx, `
+		SELECT id, chatbot_id, source_type, status, created_at
+		FROM data_sources 
+		WHERE chatbot_id = $1 AND hash = $2 AND deleted_at IS NULL
+		LIMIT 1
+	`, chatbotID, hash).Scan(&s.ID, &s.ChatbotID, &s.SourceType, &s.Status, &s.CreatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get source by hash: %w", err)
+	}
+	return &s, nil
+}

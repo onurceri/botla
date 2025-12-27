@@ -116,6 +116,18 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 	}
 	hval := computeHash(buf.Bytes())
 
+	// Check for duplicate content
+	exists, err := db.SourceExistsByHash(r.Context(), h.DB, bot.ID, hval)
+	if err != nil {
+		h.logError("hash_check_failed", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if exists {
+		api.WriteLocalizedError(w, http.StatusConflict, api.ErrDuplicateContent, cfg)
+		return
+	}
+
 	key := generateSourceStorageKey(bot, header.Filename)
 	uploadedKey, err := h.Storage.UploadFile(r.Context(), key, bytes.NewReader(buf.Bytes()))
 	if err != nil {
@@ -221,6 +233,19 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 	}
 
 	hval := computeHash([]byte(text))
+
+	// Check for duplicate content
+	exists, err := db.SourceExistsByHash(r.Context(), h.DB, bot.ID, hval)
+	if err != nil {
+		h.logError("hash_check_failed", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if exists {
+		api.WriteLocalizedError(w, http.StatusConflict, api.ErrDuplicateContent, cfg)
+		return
+	}
+
 	key := generateSourceStorageKey(bot, "inline.txt")
 	uploadedKey, err := h.Storage.UploadFile(r.Context(), key, bytes.NewBufferString(text))
 	if err != nil {

@@ -54,6 +54,7 @@ export const errorMessages = {
     ERR_SITEMAP_PARSE_FAILED: 'Failed to parse sitemap',
     ERR_MAX_CHATBOTS_EXCEEDED: 'Maximum chatbot limit reached',
     ERR_TEXT_TOO_LONG: 'Text exceeds maximum length',
+    ERR_DUPLICATE_CONTENT: 'This content has already been added to this chatbot',
 
     // Action errors
     ERR_NAME_AND_ACTION_TYPE_REQUIRED: 'Name and action type are required',
@@ -151,6 +152,7 @@ export const errorMessages = {
     ERR_SITEMAP_PARSE_FAILED: 'Site haritası ayrıştırılamadı',
     ERR_MAX_CHATBOTS_EXCEEDED: 'Maksimum chatbot limitine ulaşıldı',
     ERR_TEXT_TOO_LONG: 'Metin çok uzun',
+    ERR_DUPLICATE_CONTENT: 'Bu içerik zaten bu chatbota eklenmiş',
 
     // Action errors
     ERR_NAME_AND_ACTION_TYPE_REQUIRED: 'İsim ve aksiyon türü gereklidir',
