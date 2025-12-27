@@ -36,11 +36,14 @@ func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, v
 	}
 }
 
-// Process processes a PDF source
-func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
+// ProcessWithSteps processes a PDF source with step callbacks
+func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, onStep StepCallback) ProcessResult {
 	if s.FilePath == nil || *s.FilePath == "" {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}, FailedStep: models.StepFetchSource}
 	}
+
+	// Step 1: Fetch
+	onStep(models.StepFetchSource)
 
 	localPath := *s.FilePath
 
@@ -48,30 +51,33 @@ func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	if p.Storage != nil {
 		rc, err := p.Storage.DownloadFile(ctx, *s.FilePath)
 		if err != nil {
-			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}, FailedStep: models.StepFetchSource}
 		}
 
 		tmpFile, err := os.CreateTemp("", "pdf-*.pdf")
 		if err != nil {
 			_ = rc.Close()
-			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}, FailedStep: models.StepFetchSource}
 		}
 
 		_, err = io.Copy(tmpFile, rc)
 		_ = rc.Close()
 		_ = tmpFile.Close()
 		if err != nil {
-			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}, FailedStep: models.StepFetchSource}
 		}
 
 		localPath = tmpFile.Name()
 		defer func() { _ = os.Remove(localPath) }()
 	}
 
+	// Step 2: Parse
+	onStep(models.StepParseContent)
+
 	// Extract text from PDF
 	content, err := pdf.ExtractPDFText(localPath, langCode, plan.Config.Files.OCREnabled)
 	if err != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFParseFailed}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFParseFailed}, FailedStep: models.StepParseContent}
 	}
 	if content == "" {
 		return ProcessResult{ChunkCount: 0}
@@ -86,20 +92,29 @@ func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	}
 	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
+	// Step 3: Chunk
+	onStep(models.StepChunkText)
+
 	// Chunk and embed
 	rc, rerr := rag.ChunkText(content, 512, langCode)
 	if rerr != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
+
+	// Step 4: Embed
+	onStep(models.StepEmbedChunks)
 
 	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
 	if !ok {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
 	}
 
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
+
+	// Step 5: Store
+	onStep(models.StepStoreVectors)
 
 	// Calculate token usage
 	var tokens int
@@ -111,6 +126,7 @@ func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 
 	return ProcessResult{ChunkCount: len(rc)}
 }
+
 
 // persistIngestionMetadata extracts and saves metadata for the source
 func (p *PDFProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource, maxQuestions int) {
