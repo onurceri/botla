@@ -29,6 +29,10 @@ type MockVectorStore struct {
 	DeletedSourceIDs []string
 }
 
+// TestPassword is a strong password that meets complexity requirements for tests.
+// Requires: uppercase, lowercase, digit, and special character.
+const TestPassword = "Test@123"
+
 func (m *MockVectorStore) DeleteBySourceID(ctx context.Context, sourceID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

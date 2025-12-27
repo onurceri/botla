@@ -19,7 +19,7 @@ func TestAuth_RevokedRefreshToken_401(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "revoke+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	reg := map[string]string{"email": email, "password": "pass1234", "full_name": "User"}
+	reg := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, _ := json.Marshal(reg)
 	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if resReg.StatusCode != http.StatusCreated {

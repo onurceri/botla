@@ -39,7 +39,7 @@ func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, v
 // Process processes a PDF source
 func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
 	if s.FilePath == nil || *s.FilePath == "" {
-		return ProcessResult{Error: &ProcessingError{Msg: "empty_file_path"}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}}
 	}
 
 	localPath := *s.FilePath
@@ -48,20 +48,20 @@ func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	if p.Storage != nil {
 		rc, err := p.Storage.DownloadFile(ctx, *s.FilePath)
 		if err != nil {
-			return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}}
 		}
 
 		tmpFile, err := os.CreateTemp("", "pdf-*.pdf")
 		if err != nil {
 			_ = rc.Close()
-			return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}}
 		}
 
 		_, err = io.Copy(tmpFile, rc)
 		_ = rc.Close()
 		_ = tmpFile.Close()
 		if err != nil {
-			return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFDownloadFailed}}
 		}
 
 		localPath = tmpFile.Name()
@@ -71,7 +71,7 @@ func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	// Extract text from PDF
 	content, err := pdf.ExtractPDFText(localPath, langCode, plan.Config.Files.OCREnabled)
 	if err != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFParseFailed}}
 	}
 	if content == "" {
 		return ProcessResult{ChunkCount: 0}
@@ -89,16 +89,16 @@ func (p *PDFProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	// Chunk and embed
 	rc, rerr := rag.ChunkText(content, 512, langCode)
 	if rerr != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: rerr.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}}
 	}
 
 	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
 	if !ok {
-		return ProcessResult{Error: &ProcessingError{Msg: "llm_client_does_not_support_embeddings"}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}}
 	}
 
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}}
 	}
 
 	// Calculate token usage

@@ -44,7 +44,8 @@
         'http://localhost:3000'
       ];
 
-      window.__CBW_PARAMS = {};
+      // Set skip-auto-mount flag - widget should wait for WIDGET_CONFIG message
+      window.__CBW_PARAMS = { 'skip-auto-mount': '1' };
 
       function isAllowedOrigin(origin) {
         // Allow same-origin
@@ -52,6 +53,9 @@
         // Check against whitelist
         return ALLOWED_ORIGINS.indexOf(origin) !== -1;
       }
+
+      // Track whether widget has been mounted
+      var widgetMounted = false;
 
       window.addEventListener('message', function (event) {
         // Security: Validate origin
@@ -66,19 +70,26 @@
 
         // Force preview-specific settings
         config['position-strategy'] = 'absolute';
-        config['reset-session'] = '1';
         config['use-url-overrides'] = '1';
         config['preview-mode'] = '1';
 
+        // Only reset session on first mount, not on config updates
+        if (!widgetMounted) {
+          config['reset-session'] = '1';
+        }
+
         window.__CBW_PARAMS = config;
 
-        // Mount/remount widget
-        if (window.ChatbotWidget) {
-          try { window.ChatbotWidget.unmount(); } catch (e) { }
-          try { window.ChatbotWidget.mount(); } catch (e) {
+        // Mount widget only on first config, then let widget.tsx handle updates via postMessage
+        if (window.ChatbotWidget && !widgetMounted) {
+          try {
+            window.ChatbotWidget.mount();
+            widgetMounted = true;
+          } catch (e) {
             console.error('Widget mount error:', e);
           }
         }
+        // For subsequent updates, the widget.tsx message listener handles updates internally
 
         // Acknowledge to parent (use specific origin, not *)
         if (event.source) {

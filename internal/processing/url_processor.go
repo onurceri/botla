@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
@@ -51,7 +52,7 @@ type ProcessResult struct {
 func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
 	if s.SourceURL == nil || *s.SourceURL == "" {
 		p.logWarn("url_processing_empty_url", map[string]any{"source_id": s.ID})
-		return ProcessResult{Error: &ProcessingError{Msg: "empty_url"}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyURL}}
 	}
 
 	p.logInfo("url_processing_started", map[string]any{
@@ -109,7 +110,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"url":       *s.SourceURL,
 			"error":     err.Error(),
 		})
-		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: categorizeScraperError(err)}}
 	}
 
 	// Step 3: Handle empty content case
@@ -121,8 +122,11 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"selectors_used":  len(bot.SelectorWhitelist) > 0,
 			"hint":            "Website may require JavaScript rendering or has anti-bot protection",
 		})
-		// Return 0 chunks but not an error - discovery may have still succeeded
-		return ProcessResult{ChunkCount: 0}
+		// Return specific error if dynamic scraping could help but is not available
+		if !plan.Config.Scraping.DynamicEnabled {
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodeDynamicRequired}}
+		}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyContent}}
 	}
 
 	p.logInfo("url_processing_content_extracted", map[string]any{
@@ -182,7 +186,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"source_id": s.ID,
 			"error":     rerr.Error(),
 		})
-		return ProcessResult{Error: &ProcessingError{Msg: rerr.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}}
 	}
 
 	p.logInfo("url_processing_embedding_started", map[string]any{
@@ -192,7 +196,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 
 	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
 	if !ok {
-		return ProcessResult{Error: &ProcessingError{Msg: "llm_client_does_not_support_embeddings"}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}}
 	}
 
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
@@ -200,7 +204,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"source_id": s.ID,
 			"error":     err.Error(),
 		})
-		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}}
 	}
 
 	// Update hash after successful embedding
@@ -262,6 +266,16 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 	if discoveryMode == DiscoveryModeDisabled {
 		p.logInfo("url_discovery_disabled", map[string]any{
 			"source_id": s.ID,
+		})
+		return nil
+	}
+
+	// Skip discovery if plan only allows 1 URL (nothing can be added)
+	if plan.Config.Scraping.MaxURLsPerBot <= 1 {
+		p.logInfo("url_discovery_skipped_single_url_plan", map[string]any{
+			"source_id":        s.ID,
+			"max_urls_per_bot": plan.Config.Scraping.MaxURLsPerBot,
+			"reason":           "Plan limit too low for discovery",
 		})
 		return nil
 	}
@@ -447,9 +461,17 @@ func (p *URLProcessor) logWarn(event string, data map[string]any) {
 	}
 }
 
-// ProcessingError represents a processing error
-type ProcessingError struct {
-	Msg string
+// categorizeScraperError categorizes scraper errors into structured error codes
+func categorizeScraperError(err error) string {
+	errMsg := strings.ToLower(err.Error())
+	if strings.Contains(errMsg, "timeout") || strings.Contains(errMsg, "deadline") {
+		return ErrCodeScrapeFailedTimeout
+	}
+	if strings.Contains(errMsg, "403") || strings.Contains(errMsg, "forbidden") {
+		return ErrCodeScrapeFailedForbidden
+	}
+	if strings.Contains(errMsg, "connection") || strings.Contains(errMsg, "network") || strings.Contains(errMsg, "refused") {
+		return ErrCodeScrapeFailedNetwork
+	}
+	return ErrCodeScrapeFailedNetwork // Default to network error
 }
-
-func (e *ProcessingError) Error() string { return e.Msg }

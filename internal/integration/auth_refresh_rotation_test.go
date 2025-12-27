@@ -27,7 +27,7 @@ func TestAuth_RefreshRotationAndLogout(t *testing.T) {
 
 	// register & login
 	email := "rot+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, _ := json.Marshal(regBody)
 	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if resReg.StatusCode != http.StatusCreated {

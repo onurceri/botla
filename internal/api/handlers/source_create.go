@@ -12,6 +12,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/langconfig"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/urlutil"
 )
 
 // createSource handles POST request to create a new source
@@ -152,8 +153,15 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	url := strings.TrimSpace(r.FormValue("source_url"))
-	if url == "" {
+	rawURL := strings.TrimSpace(r.FormValue("source_url"))
+	if rawURL == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Normalize URL to prevent duplicates with trailing slash variations
+	url, err := urlutil.NormalizeURL(rawURL)
+	if err != nil || url == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

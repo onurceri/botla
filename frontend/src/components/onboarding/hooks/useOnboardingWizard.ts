@@ -200,7 +200,7 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
 
   const finish = useCallback(() => {
     if (state.createdBotId) {
-      navigate(`/chatbots/${state.createdBotId}`)
+      navigate(`/dashboard/chatbots/${state.createdBotId}/playground`)
     } else {
       navigate('/dashboard')
     }

@@ -20,7 +20,7 @@ func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 
 	// register to obtain user id via protected ping
 	email := "exp+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, _ := json.Marshal(regBody)
 	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if resReg.StatusCode != http.StatusCreated {
@@ -29,7 +29,7 @@ func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 	resReg.Body.Close()
 
 	// login to get valid token and confirm user id
-	lb := map[string]string{"email": email, "password": "pass1234"}
+	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
 	resLog, _ := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if resLog.StatusCode != http.StatusOK {

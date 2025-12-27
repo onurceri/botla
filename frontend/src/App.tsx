@@ -89,7 +89,9 @@ function App() {
             path="/onboarding"
             element={
               <PrivateRoute>
-                <OnboardingPage />
+                <OrganizationProvider>
+                  <OnboardingPage />
+                </OrganizationProvider>
               </PrivateRoute>
             }
           />

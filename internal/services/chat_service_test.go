@@ -323,6 +323,131 @@ func TestGetHandoffMessage(t *testing.T) {
 }
 
 // =============================================================================
+// EMPTY STATE MESSAGE TESTS
+// =============================================================================
+
+func TestGetEmptyStateMessage(t *testing.T) {
+	service := &ChatService{}
+
+	t.Run("returns Turkish empty state message", func(t *testing.T) {
+		cc := &chatContext{
+			Bot:        &models.Chatbot{},
+			LangConfig: getLangConfig("tr"),
+		}
+
+		got := service.getEmptyStateMessage(cc)
+		if got != "Henüz bilgi kaynaklarım yüklenmedi, ama yardımcı olmaya hazırım!" {
+			t.Errorf("got %q, want Turkish empty state message", got)
+		}
+	})
+
+	t.Run("returns English empty state message", func(t *testing.T) {
+		cc := &chatContext{
+			Bot:        &models.Chatbot{},
+			LangConfig: getLangConfig("en"),
+		}
+
+		got := service.getEmptyStateMessage(cc)
+		if got != "My knowledge sources haven't been set up yet, but I'm ready to help!" {
+			t.Errorf("got %q, want English empty state message", got)
+		}
+	})
+
+	t.Run("falls back to NoInfoFound if EmptyStateMessage is empty", func(t *testing.T) {
+		// Create a modified lang config with empty EmptyStateMessage
+		cc := &chatContext{
+			Bot:        &models.Chatbot{},
+			LangConfig: langconfig.LanguageConfig{
+				UserMessages: langconfig.UserMessages{
+					NoInfoFound:       "Fallback message",
+					EmptyStateMessage: "",
+				},
+			},
+		}
+
+		got := service.getEmptyStateMessage(cc)
+		if got != "Fallback message" {
+			t.Errorf("got %q, want fallback to NoInfoFound", got)
+		}
+	})
+}
+
+// =============================================================================
+// RESTRICTED FALLBACK PROMPT TESTS
+// =============================================================================
+
+func TestBuildRestrictedFallbackPrompt(t *testing.T) {
+	t.Run("includes bot name twice", func(t *testing.T) {
+		prompt := BuildRestrictedFallbackPrompt("TestBot", "", "Turkish")
+
+		// Bot name should appear at least twice (intro and example)
+		count := 0
+		for i := 0; i <= len(prompt)-len("TestBot"); i++ {
+			if prompt[i:i+len("TestBot")] == "TestBot" {
+				count++
+			}
+		}
+		if count < 2 {
+			t.Errorf("expected bot name to appear at least twice, got %d", count)
+		}
+	})
+
+	t.Run("includes greeting examples", func(t *testing.T) {
+		prompt := BuildRestrictedFallbackPrompt("TestBot", "", "Turkish")
+
+		greetings := []string{"Merhaba", "Selam", "Hello", "Naber"}
+		for _, g := range greetings {
+			if !contains(prompt, g) {
+				t.Errorf("expected prompt to contain greeting %q", g)
+			}
+		}
+	})
+
+	t.Run("includes capabilities when provided", func(t *testing.T) {
+		capabilities := "Information about products and pricing"
+		prompt := BuildRestrictedFallbackPrompt("TestBot", capabilities, "English")
+
+		if !contains(prompt, capabilities) {
+			t.Error("expected prompt to include capabilities")
+		}
+	})
+
+	t.Run("uses default capability text when empty", func(t *testing.T) {
+		prompt := BuildRestrictedFallbackPrompt("TestBot", "", "English")
+
+		if !contains(prompt, "No specific topics configured yet") {
+			t.Error("expected prompt to include default capability text")
+		}
+	})
+
+	t.Run("includes language directive", func(t *testing.T) {
+		prompt := BuildRestrictedFallbackPrompt("TestBot", "", "Turkish")
+
+		if !contains(prompt, "LANGUAGE REQUIREMENT") {
+			t.Error("expected prompt to include language directive")
+		}
+		if !contains(prompt, "Turkish") {
+			t.Error("expected prompt to include language name")
+		}
+	})
+
+	t.Run("contains strict restrictions", func(t *testing.T) {
+		prompt := BuildRestrictedFallbackPrompt("TestBot", "", "Turkish")
+
+		restrictions := []string{
+			"NEVER do these",
+			"factual questions",
+			"Make up, guess",
+		}
+		for _, r := range restrictions {
+			if !contains(prompt, r) {
+				t.Errorf("expected prompt to contain restriction %q", r)
+			}
+		}
+	})
+}
+
+// =============================================================================
 // APPEND USER MESSAGE WITH CONTEXT TESTS
 // =============================================================================
 

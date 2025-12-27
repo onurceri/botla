@@ -22,18 +22,18 @@ func TestPrivacyFlow(t *testing.T) {
 
 	// Create admin user
 	adminEmail := fmt.Sprintf("admin_%d@example.com", time.Now().UnixNano())
-	adminID := registerUser(t, te.DB, te.Server.URL, adminEmail, "password123")
+	adminID := registerUser(t, te.DB, te.Server.URL, adminEmail, "Test@123")
 
 	// Make user an admin via DB
 	_, err = te.DB.Exec("UPDATE users SET is_platform_admin = true WHERE id = $1", adminID)
 	require.NoError(t, err)
 
-	adminToken := loginUser(t, te.Server.URL, adminEmail, "password123")
+	adminToken := loginUser(t, te.Server.URL, adminEmail, "Test@123")
 
 	// Create regular user
 	userEmail := fmt.Sprintf("user_%d@example.com", time.Now().UnixNano())
-	userID := registerUser(t, te.DB, te.Server.URL, userEmail, "password123")
-	userToken := loginUser(t, te.Server.URL, userEmail, "password123")
+	userID := registerUser(t, te.DB, te.Server.URL, userEmail, "Test@123")
+	userToken := loginUser(t, te.Server.URL, userEmail, "Test@123")
 	var exportRequestID string
 
 	t.Run("User Consents", func(t *testing.T) {

@@ -37,7 +37,7 @@ func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, 
 // Process processes a text source
 func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
 	if s.FilePath == nil || *s.FilePath == "" {
-		return ProcessResult{Error: &ProcessingError{Msg: "empty_file_path"}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}}
 	}
 
 	var content string
@@ -49,11 +49,11 @@ func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *
 		b, err := io.ReadAll(rc)
 		_ = rc.Close()
 		if err != nil {
-			return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}}
 		}
 		content = string(b)
 	} else {
-		return ProcessResult{Error: &ProcessingError{Msg: "storage_required"}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}}
 	}
 
 	if content == "" {
@@ -72,16 +72,16 @@ func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *
 	// Chunk and embed
 	rc, rerr := rag.ChunkText(content, 512, langCode)
 	if rerr != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: rerr.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}}
 	}
 
 	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
 	if !ok {
-		return ProcessResult{Error: &ProcessingError{Msg: "llm_client_does_not_support_embeddings"}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}}
 	}
 
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}}
 	}
 
 	// Calculate token usage

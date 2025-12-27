@@ -1,19 +1,12 @@
-import { useState, createElement } from 'react'
-import Markdown from 'markdown-to-jsx'
-
-type Msg = { 
-  id?: string
-  role: 'user' | 'assistant'
-  content: string
-  ts?: number
-  feedback?: boolean
-  type?: 'welcome' | 'handoff' | 'normal'
-  handoffRequestId?: string
-  emailSubmitted?: boolean
-}
+import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
+import { sanitizeUrl } from '../utils/sanitize'
+import type { ChatMessage } from '../types'
 
 type Props = {
-  m: Msg
+  m: ChatMessage
   onFeedback?: (id: string, isPositive: boolean) => void
   onSubmitEmail?: (requestId: string, email: string) => Promise<void>
   botIcon?: string
@@ -29,21 +22,22 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
   const isUser = m.role === 'user'
   const isHandoff = m.type === 'handoff'
 
-  const handleSubmitEmail = async (e: React.FormEvent) => {
+  const handleSubmitEmail = (e: Event) => {
     e.preventDefault()
     if (!email.trim() || !email.includes('@') || !m.handoffRequestId || !onSubmitEmail) return
     
     setSubmitting(true)
     setError('')
     
-    try {
-      await onSubmitEmail(m.handoffRequestId, email.trim())
-      setSubmitted(true)
-    } catch {
-      setError('E-posta gönderilemedi, lütfen tekrar deneyin.')
-    } finally {
-      setSubmitting(false)
-    }
+    onSubmitEmail(m.handoffRequestId, email.trim())
+      .then(() => setSubmitted(true))
+      .catch(() => setError('E-posta gönderilemedi, lütfen tekrar deneyin.'))
+      .finally(() => setSubmitting(false))
+  }
+
+  const handleEmailChange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    setEmail(target.value)
   }
 
   // Handoff card with email form
@@ -92,7 +86,7 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onInput={handleEmailChange}
                   placeholder="e-posta@adresiniz.com"
                   disabled={submitting}
                   className="cbw-handoff-input"
@@ -112,6 +106,20 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
         </div>
       </div>
     )
+  }
+
+  // Secure Markdown configuration with react-markdown
+  // Using rehype-sanitize for HTML sanitization and custom components for links
+  const markdownComponents = {
+    a: ({ href, children }: { href?: string; children?: preact.ComponentChildren }) => {
+      const safeHref = sanitizeUrl(href)
+      if (!safeHref) return <>{children}</>
+      return (
+        <a href={safeHref} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
+      )
+    },
   }
 
   // Regular message
@@ -136,7 +144,13 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
       
       <div className={`cbw-msg ${m.role}`}>
         <div className="cbw-msg-content">
-          <Markdown options={{ createElement }}>{m.content}</Markdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeSanitize]}
+            components={markdownComponents as any}
+          >
+            {m.content}
+          </ReactMarkdown>
         </div>
         <div className="cbw-msg-footer">
           {!isUser && m.id && onFeedback && (

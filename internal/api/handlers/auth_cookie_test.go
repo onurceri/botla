@@ -31,7 +31,7 @@ func TestAuth_Cookies(t *testing.T) {
 
 	// 1. Register and check cookies
 	rr := httptest.NewRecorder()
-	reqBody := fmt.Sprintf(`{"email":"%s","password":"password123","full_name":"Cookie User"}`, email)
+	reqBody := fmt.Sprintf(`{"email":"%s","password":"Test@123","full_name":"Cookie User"}`, email)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(reqBody))
 	h.RegisterHandler(rr, req)
 

@@ -21,6 +21,7 @@ type UserMessages struct {
 	WelcomeMessage    string // Default welcome message
 	ConfidenceWarning string // Warning appended to medium-confidence responses
 	HandoffSuggestion string // Message suggesting human support
+	EmptyStateMessage string // Softer message when bot has no knowledge sources
 
 	// Organization/Workspace defaults
 	DefaultOrgName       string // Default org name when no user name
@@ -48,6 +49,7 @@ var Configs = map[string]LanguageConfig{
 			WelcomeMessage:    "Merhaba! Size nasıl yardımcı olabilirim?",
 			ConfidenceWarning: "\n\n⚠️ *Bu yanıt, sınırlı bilgi kaynaklarına dayanmaktadır ve kesin doğruluğu garanti edilemez.*",
 			HandoffSuggestion: "Bu konuda size en iyi şekilde yardımcı olabilmem için bir uzmanımızla görüşmenizi öneririm. 'İnsan Desteği İste' butonunu kullanabilirsiniz.",
+			EmptyStateMessage: "Henüz bilgi kaynaklarım yüklenmedi, ama yardımcı olmaya hazırım!",
 
 			DefaultOrgName:       "Kişisel Organizasyon",
 			DefaultOrgNameFormat: "%s Organizasyonu",
@@ -110,6 +112,7 @@ var Configs = map[string]LanguageConfig{
 			WelcomeMessage:    "Hello! How can I help you today?",
 			ConfidenceWarning: "\n\n⚠️ *This response is based on limited sources and accuracy cannot be guaranteed.*",
 			HandoffSuggestion: "For the best assistance on this topic, I recommend speaking with one of our specialists. You can use the 'Request Human Support' button.",
+			EmptyStateMessage: "My knowledge sources haven't been set up yet, but I'm ready to help!",
 
 			DefaultOrgName:       "Personal Workspace",
 			DefaultOrgNameFormat: "%s's Workspace",

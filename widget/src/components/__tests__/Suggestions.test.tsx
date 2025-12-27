@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/preact'
-import { Suggestions } from '@botla/ui-shared'
+import { Suggestions } from '../Suggestions'
 
 describe('Suggestions', () => {
   afterEach(() => {

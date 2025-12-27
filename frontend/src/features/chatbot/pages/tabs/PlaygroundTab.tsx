@@ -124,7 +124,7 @@ export default function PlaygroundTab() {
   })
 
   return (
-    <div className="flex flex-col h-auto lg:h-[calc(100vh-145px)] animate-in fade-in duration-500 pb-4 lg:pb-0 space-y-4">
+    <div className="flex flex-col animate-in fade-in duration-500 pb-4 lg:pb-0 space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-2 px-1">
         <div className="flex items-center justify-between">
@@ -146,7 +146,7 @@ export default function PlaygroundTab() {
       </div>
 
       {/* Main Content - Two columns side by side */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 xl:gap-6 min-h-0">
+      <div className="flex flex-col lg:flex-row gap-4 xl:gap-6 lg:items-start">
         {/* Left: Settings Sidebar */}
         <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col bg-slate-50/40 backdrop-blur-xl rounded-[24px] lg:rounded-[32px] border border-slate-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden">
           <div className="p-4 lg:p-5 border-b border-slate-200/60 bg-white/60 backdrop-blur-md flex items-center justify-between">
@@ -163,7 +163,7 @@ export default function PlaygroundTab() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 lg:p-5 space-y-3 lg:space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+          <div className="overflow-y-auto p-4 lg:p-5 space-y-3 lg:space-y-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
             <IdentitySection
               isExpanded={expandedSection === 'identity'}
               onToggle={() =>
@@ -295,8 +295,8 @@ export default function PlaygroundTab() {
           </div>
         </div>
 
-        {/* Right: Widget Preview - Same height as sidebar, fixed width */}
-        <div className="w-full lg:w-[420px] xl:w-[450px] shrink-0 flex flex-col rounded-[24px] lg:rounded-[32px] border border-slate-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden bg-white">
+        {/* Right: Widget Preview - Fixed height, sticky on desktop */}
+        <div className="w-full lg:w-[420px] xl:w-[450px] shrink-0 h-[500px] lg:h-[600px] lg:sticky lg:top-4 rounded-[24px] lg:rounded-[32px] border border-slate-200/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden bg-white">
           <PlaygroundPreview
             id={id || 'preview'}
             themeColor={themeColor}

@@ -10,9 +10,11 @@ import {
   Type as TypeIcon,
   Database,
   Clock,
+  Info,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { getErrorMessage } from '@/utils/errorMessages'
 import {
   Dialog,
   DialogContent,
@@ -159,8 +161,35 @@ export default function SourceCard({
                 </span>
               </TooltipTrigger>
               {source.status === 'failed' && source.error_message && (
-                <TooltipContent side="top" className="max-w-xs">
-                  <p className="break-words">{source.error_message}</p>
+                <TooltipContent side="top" className="max-w-sm p-0 overflow-hidden">
+                  <div className="p-3 space-y-2">
+                    {(() => {
+                      const errorMsg = getErrorMessage(source.error_message)
+                      return (
+                        <>
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                            <div className="space-y-1">
+                              <p className="font-semibold text-sm text-foreground">
+                                {errorMsg.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {errorMsg.description}
+                              </p>
+                            </div>
+                          </div>
+                          {errorMsg.suggestion && (
+                            <div className="flex items-start gap-2 pt-2 border-t border-border/50">
+                              <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {errorMsg.suggestion}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
                 </TooltipContent>
               )}
             </Tooltip>

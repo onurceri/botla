@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/api"
@@ -221,8 +222,8 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Validate email format (basic check)
-	if req.Email == "" || !strings.Contains(req.Email, "@") {
+	// Validate email format using proper parsing
+	if _, err := mail.ParseAddress(req.Email); err != nil {
 		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "valid email is required"})
 		return
 	}

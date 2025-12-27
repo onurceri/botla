@@ -21,7 +21,7 @@ func TestAuth_RegistrationCreatesDefaultOrgAndWorkspace(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "sideeffect+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "Side Effect User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Side Effect User"}
 	b, _ := json.Marshal(regBody)
 	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {

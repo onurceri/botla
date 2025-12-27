@@ -294,3 +294,64 @@ func TestSources_InvalidSourceType_BadRequest(t *testing.T) {
 		t.Fatalf("invalid source type: got %d, want %d", rr2.Code, http.StatusBadRequest)
 	}
 }
+
+// TestSources_DuplicateURL_TrailingSlash_Conflict tests that URLs with/without trailing slash are detected as duplicates
+func TestSources_DuplicateURL_TrailingSlash_Conflict(t *testing.T) {
+	dbx := testdb.OpenTestDB(t)
+
+	user := testdb.CreateUser(t, dbx)
+	uid := user.ID
+
+	ch := &ChatbotHandlers{DB: dbx}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	ctx := func(req *http.Request) *http.Request {
+		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
+	}
+
+	// Create chatbot
+	cb := map[string]any{"name": "Trailing Slash Test Bot"}
+	jb, _ := json.Marshal(cb)
+	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots", bytes.NewReader(jb))
+	rr1 := httptest.NewRecorder()
+	ch.ListOrCreate(rr1, ctx(r1))
+	var created map[string]any
+	_ = json.Unmarshal(rr1.Body.Bytes(), &created)
+	botID := created["id"].(string)
+
+	baseURL := "https://espacefarmento.fr"
+
+	// Create first URL source WITH trailing slash
+	var mbody1 bytes.Buffer
+	mw1 := multipart.NewWriter(&mbody1)
+	mw1.WriteField("source_type", "url")
+	mw1.WriteField("source_url", baseURL+"/") // With trailing slash
+	mw1.Close()
+
+	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody1.Bytes()))
+	r2.SetPathValue("id", botID)
+	r2.Header.Set("Content-Type", mw1.FormDataContentType())
+	rr2 := httptest.NewRecorder()
+	sh.ChatbotSources(rr2, ctx(r2))
+
+	if rr2.Code != http.StatusCreated {
+		t.Fatalf("first URL source (with slash): got %d, want %d, body: %s", rr2.Code, http.StatusCreated, rr2.Body.String())
+	}
+
+	// Try to create same URL source WITHOUT trailing slash - should be detected as duplicate
+	var mbody2 bytes.Buffer
+	mw2 := multipart.NewWriter(&mbody2)
+	mw2.WriteField("source_type", "url")
+	mw2.WriteField("source_url", baseURL) // Without trailing slash
+	mw2.Close()
+
+	r3 := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+botID+"/sources", bytes.NewReader(mbody2.Bytes()))
+	r3.SetPathValue("id", botID)
+	r3.Header.Set("Content-Type", mw2.FormDataContentType())
+	rr3 := httptest.NewRecorder()
+	sh.ChatbotSources(rr3, ctx(r3))
+
+	// Should be detected as duplicate due to URL normalization
+	if rr3.Code != http.StatusConflict && rr3.Code != http.StatusForbidden {
+		t.Fatalf("duplicate URL (without slash): got %d, want %d or %d - URL normalization may not be working", rr3.Code, http.StatusConflict, http.StatusForbidden)
+	}
+}

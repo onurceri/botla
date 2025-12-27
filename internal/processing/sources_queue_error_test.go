@@ -55,8 +55,9 @@ func TestStartSourceQueue_Error(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if err.Error() != "connection failed" {
-		t.Errorf("expected 'connection failed', got %v", err)
+	// Error is wrapped with context, so check if it contains the original error
+	if err.Error() != "ensure embeddings collection: connection failed" {
+		t.Errorf("expected 'ensure embeddings collection: connection failed', got %v", err)
 	}
 	if q != nil {
 		t.Error("expected nil queue on error")
