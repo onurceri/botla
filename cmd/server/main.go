@@ -197,14 +197,15 @@ func (app *application) start() {
 	mux := router.New(app.cfg, app.db, app.log, app.queue, app.storageService, app.qdrantClient, app.redisClient, app.workerPool)
 	origins := strings.Split(app.cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
-	// Middleware chain: Security -> Recovery -> Logger -> MaxBytes -> PlanLoader -> RateLimit -> Mux
+	// Middleware chain: RequestID -> Security -> Recovery -> Logger -> MaxBytes -> PlanLoader -> RateLimit -> Mux
 	planLoader := middleware.PlanLoaderMiddleware(app.db, app.log)
-	handler := middleware.SecurityHeadersMiddleware()(
-		middleware.RecoveryMiddleware(app.log)(
-			middleware.RequestLogger(app.log)(
-				middleware.MaxBytesMiddleware(1*1024*1024)( // 1MB limit
-					planLoader(
-						middleware.RateLimitMiddleware(app.rateLimiter)(mux))))))
+	handler := middleware.RequestID(
+		middleware.SecurityHeadersMiddleware()(
+			middleware.RecoveryMiddleware(app.log)(
+				middleware.RequestLogger(app.log)(
+					middleware.MaxBytesMiddleware(1*1024*1024)( // 1MB limit
+						planLoader(
+							middleware.RateLimitMiddleware(app.rateLimiter)(mux)))))))
 
 	app.server = newHTTPServer(app.cfg.PORT, cors(handler))
 	startServerAsync(app.server, app.log, app.cfg.PORT)
