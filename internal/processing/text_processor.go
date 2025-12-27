@@ -35,7 +35,7 @@ func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, 
 }
 
 // ProcessWithSteps processes a text source with step callbacks
-func (p *TextProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, onStep StepCallback) ProcessResult {
+func (p *TextProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, lastStep *models.TrainingStep, onStep StepCallback) ProcessResult {
 	if s.FilePath == nil || *s.FilePath == "" {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}, FailedStep: models.StepFetchSource}
 	}
@@ -58,6 +58,8 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSour
 	} else {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}, FailedStep: models.StepFetchSource}
 	}
+
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
 
 	// Step 2: Parse
 	onStep(models.StepParseContent)
@@ -84,6 +86,8 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSour
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
 
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
+
 	// Step 4: Embed
 	onStep(models.StepEmbedChunks)
 
@@ -95,6 +99,8 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSour
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
+
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, "")
 
 	// Step 5: Store
 	onStep(models.StepStoreVectors)

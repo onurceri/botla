@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -145,19 +146,122 @@ func CancelJob(ctx context.Context, db *sql.DB, id string) error {
 	return nil
 }
 
-// IncrementJobRetryCount increments the retry count for a job
-func IncrementJobRetryCount(ctx context.Context, db *sql.DB, id string) error {
-	_, err := db.ExecContext(ctx, `
+// JobStepResult tracks individual step completion
+type JobStepResult struct {
+	Step        models.TrainingStep `json:"step"`
+	Status      string              `json:"status"` // completed, failed, skipped
+	StartedAt   time.Time           `json:"started_at"`
+	CompletedAt *time.Time          `json:"completed_at,omitempty"`
+	Error       *string             `json:"error,omitempty"`
+	OutputHash  *string             `json:"output_hash,omitempty"` // For idempotency
+}
+
+// MarkStepCompleted marks a step as completed in job metadata
+func MarkStepCompleted(ctx context.Context, db *sql.DB, jobID string, step models.TrainingStep, outputHash string) error {
+	// Get current metadata
+	var metadataRaw []byte
+	err := db.QueryRowContext(ctx, `SELECT metadata FROM training_jobs WHERE id = $1`, jobID).Scan(&metadataRaw)
+	if err != nil {
+		return fmt.Errorf("get metadata: %w", err)
+	}
+
+	var metadata struct {
+		Steps []JobStepResult `json:"steps"`
+	}
+	if len(metadataRaw) > 2 { // Not empty JSON {}
+		if uerr := json.Unmarshal(metadataRaw, &metadata); uerr != nil {
+			// If invalid JSON, start fresh
+			metadata.Steps = []JobStepResult{}
+		}
+	}
+
+	// Add or update step
+	now := time.Now()
+	found := false
+	for i, s := range metadata.Steps {
+		if s.Step == step {
+			metadata.Steps[i].Status = "completed"
+			metadata.Steps[i].CompletedAt = &now
+			metadata.Steps[i].OutputHash = &outputHash
+			found = true
+			break
+		}
+	}
+	if !found {
+		metadata.Steps = append(metadata.Steps, JobStepResult{
+			Step:        step,
+			Status:      "completed",
+			StartedAt:   now,
+			CompletedAt: &now,
+			OutputHash:  &outputHash,
+		})
+	}
+
+	// Save metadata
+	newMeta, _ := json.Marshal(metadata)
+	_, err = db.ExecContext(ctx, `UPDATE training_jobs SET metadata = $2 WHERE id = $1`, jobID, newMeta)
+	if err != nil {
+		return fmt.Errorf("update metadata: %w", err)
+	}
+	return nil
+}
+
+// GetLastCompletedStep returns the last completed step for resuming
+func GetLastCompletedStep(ctx context.Context, db *sql.DB, jobID string) (*models.TrainingStep, error) {
+	var metadataRaw []byte
+	err := db.QueryRowContext(ctx, `SELECT metadata FROM training_jobs WHERE id = $1`, jobID).Scan(&metadataRaw)
+	if err != nil {
+		return nil, fmt.Errorf("get metadata: %w", err)
+	}
+
+	var metadata struct {
+		Steps []JobStepResult `json:"steps"`
+	}
+	if len(metadataRaw) <= 2 {
+		return nil, nil
+	}
+	if err := json.Unmarshal(metadataRaw, &metadata); err != nil {
+		return nil, nil
+	}
+
+	// Find last completed step
+	stepOrder := []models.TrainingStep{
+		models.StepFetchSource,
+		models.StepParseContent,
+		models.StepChunkText,
+		models.StepEmbedChunks,
+		models.StepStoreVectors,
+	}
+
+	var lastCompleted *models.TrainingStep
+	for _, step := range stepOrder {
+		for _, s := range metadata.Steps {
+			if s.Step == step && s.Status == "completed" {
+				copyStep := step
+				lastCompleted = &copyStep
+				break
+			}
+		}
+	}
+
+	return lastCompleted, nil
+}
+
+// IncrementRetryCount increments retry count and returns new count
+func IncrementRetryCount(ctx context.Context, db *sql.DB, jobID string) (int, error) {
+	var count int
+	err := db.QueryRowContext(ctx, `
 		UPDATE training_jobs 
 		SET retry_count = retry_count + 1, status = 'pending',
 		    error_code = NULL, error_message = NULL, failed_step = NULL,
 		    started_at = NULL, completed_at = NULL
 		WHERE id = $1
-	`, id)
+		RETURNING retry_count
+	`, jobID).Scan(&count)
 	if err != nil {
-		return fmt.Errorf("increment job retry count: %w", err)
+		return 0, fmt.Errorf("increment retry count: %w", err)
 	}
-	return nil
+	return count, nil
 }
 
 // GetJobBySourceID retrieves the latest job for a source

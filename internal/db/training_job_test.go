@@ -309,7 +309,7 @@ func TestGetPendingJobs(t *testing.T) {
 }
 
 func TestGetRetryableJobs(t *testing.T) {
-	dbConn := testdb.OpenTestDB(t)
+	dbConn := testdb.OpenParallelTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
 	
 	job, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
@@ -334,7 +334,7 @@ func TestGetRetryableJobs(t *testing.T) {
 	}
 }
 
-func TestIncrementJobRetryCount(t *testing.T) {
+func TestIncrementRetryCount(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
 	
@@ -344,9 +344,12 @@ func TestIncrementJobRetryCount(t *testing.T) {
 	_ = db.FailJob(context.Background(), dbConn, job.ID, models.StepEmbedChunks, "ERROR", "test error")
 
 	// Increment retry count
-	err := db.IncrementJobRetryCount(context.Background(), dbConn, job.ID)
+	newCount, err := db.IncrementRetryCount(context.Background(), dbConn, job.ID)
 	if err != nil {
-		t.Fatalf("IncrementJobRetryCount failed: %v", err)
+		t.Fatalf("IncrementRetryCount failed: %v", err)
+	}
+	if newCount != 1 {
+		t.Errorf("expected newCount 1, got %d", newCount)
 	}
 
 	updated, _ := db.GetTrainingJob(context.Background(), dbConn, job.ID)

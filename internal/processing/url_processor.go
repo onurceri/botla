@@ -53,7 +53,7 @@ type ProcessResult struct {
 type StepCallback func(step models.TrainingStep)
 
 // ProcessWithSteps processes a URL source with step callbacks
-func (p *URLProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, onStep StepCallback) ProcessResult {
+func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, lastStep *models.TrainingStep, onStep StepCallback) ProcessResult {
 	if s.SourceURL == nil || *s.SourceURL == "" {
 		p.logWarn("url_processing_empty_url", map[string]any{"source_id": s.ID})
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyURL}, FailedStep: models.StepFetchSource}
@@ -104,6 +104,8 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 		})
 	}
 
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
+
 	// Step 2: Parse
 	onStep(models.StepParseContent)
 
@@ -143,6 +145,8 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 		"source_id":     s.ID,
 		"content_bytes": len(content),
 	})
+
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepParseContent, "")
 
 	content = text.NormalizeTR(content)
 
@@ -202,6 +206,8 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
 
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
+
 	// Step 4: Embed
 	onStep(models.StepEmbedChunks)
 
@@ -222,6 +228,8 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 		})
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
+
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, newHash)
 
 	// Step 5: Store
 	onStep(models.StepStoreVectors)
