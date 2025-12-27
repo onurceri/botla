@@ -60,12 +60,12 @@ func TestWorkerPool_ParallelProcessing(t *testing.T) {
 				// or fetch the job.
 				
 				// Let's check source processing status from data_sources table
-				var processingStatus string
-				err := te.DB.QueryRow("SELECT processing_status FROM data_sources WHERE id=$1", id).Scan(&processingStatus)
+				var status string
+				err := te.DB.QueryRow("SELECT status FROM data_sources WHERE id=$1", id).Scan(&status)
 				if err != nil {
 					t.Fatalf("failed to query source status: %v", err)
 				}
-				if processingStatus == "completed" || processingStatus == "failed" {
+				if status == "completed" || status == "failed" {
 					completed++
 				}
 			}
