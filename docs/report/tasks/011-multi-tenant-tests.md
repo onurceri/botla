@@ -179,12 +179,12 @@ func TestMultiTenant_ListingIsolation(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] Cannot access other user's chatbots
-- [ ] Cannot access other user's sources
-- [ ] Cannot access other user's conversations
-- [ ] Cannot access other user's job status
-- [ ] Listings only show own resources
-- [ ] All tests pass
+- [x] Cannot access other user's chatbots
+- [x] Cannot access other user's sources
+- [x] Cannot access other user's conversations (implemented as chat isolation - User B cannot chat on User A's chatbot)
+- [x] Cannot access other user's job status
+- [x] Listings only show own resources
+- [x] All tests pass
 
 ---
 
