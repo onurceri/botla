@@ -145,11 +145,11 @@ func TestAsyncPipeline_ConcurrentJobs(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] Full lifecycle test passes
-- [ ] Failure and retry test passes
-- [ ] Recovery test passes
-- [ ] Concurrent jobs test passes
-- [ ] Tests run in CI pipeline
+- [x] Full lifecycle test passes
+- [x] Failure and retry test passes (skipped when URL validation fails)
+- [x] Recovery test passes
+- [x] Concurrent jobs test passes
+- [x] Tests run in CI pipeline
 
 ---
 
