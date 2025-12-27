@@ -18,6 +18,9 @@ type TrainingJobHandlers struct {
 	Log              *logger.Logger
 	WorkspaceService *services.WorkspaceService
 	OrgService       *services.OrganizationService
+	Queue            interface {
+		Enqueue(jobID string)
+	}
 }
 
 // JobStatusResponse is the response for job status endpoint
@@ -75,6 +78,51 @@ func (h *TrainingJobHandlers) GetJobStatus(w http.ResponseWriter, r *http.Reques
 	}
 
 	api.WriteJSON(w, http.StatusOK, resp)
+}
+
+// RetryJob handles POST /api/v1/sources/{id}/job/retry
+func (h *TrainingJobHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
+	// Use the shared getSourceContext to validate access
+	_, _, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	if !ok {
+		return
+	}
+
+	// Get latest job for this source
+	job, err := db.GetJobBySourceID(r.Context(), h.DB, sourceID)
+	if err != nil || job == nil {
+		h.logError("get_job_by_source_failed", map[string]any{"error": err, "source_id": sourceID})
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
+		return
+	}
+
+	// Only allow retry on failed jobs
+	if job.Status != models.JobStatusFailed {
+		api.WriteErrorCode(w, http.StatusBadRequest, "ERR_JOB_NOT_FAILED")
+		return
+	}
+
+	// Reset retry count for manual retry
+	_, err = h.DB.ExecContext(r.Context(), `
+		UPDATE training_jobs 
+		SET status = 'pending', retry_count = 0, error_code = NULL, error_message = NULL, failed_step = NULL
+		WHERE id = $1
+	`, job.ID)
+	if err != nil {
+		h.logError("reset_job_failed", map[string]any{"error": err.Error(), "job_id": job.ID})
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	// Enqueue for processing
+	if h.Queue != nil {
+		h.Queue.Enqueue(job.ID)
+	}
+
+	api.WriteJSON(w, http.StatusAccepted, map[string]string{
+		"job_id":  job.ID,
+		"message": "Job queued for retry",
+	})
 }
 
 // mapSourceStatusToJobStatus converts source status to job status for backward compatibility

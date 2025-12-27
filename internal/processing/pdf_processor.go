@@ -37,7 +37,7 @@ func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, v
 }
 
 // ProcessWithSteps processes a PDF source with step callbacks
-func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, onStep StepCallback) ProcessResult {
+func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, lastStep *models.TrainingStep, onStep StepCallback) ProcessResult {
 	if s.FilePath == nil || *s.FilePath == "" {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}, FailedStep: models.StepFetchSource}
 	}
@@ -71,6 +71,8 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 		defer func() { _ = os.Remove(localPath) }()
 	}
 
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
+
 	// Step 2: Parse
 	onStep(models.StepParseContent)
 
@@ -79,6 +81,8 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 	if err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFParseFailed}, FailedStep: models.StepParseContent}
 	}
+
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepParseContent, "")
 	if content == "" {
 		return ProcessResult{ChunkCount: 0}
 	}
@@ -101,6 +105,8 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
 
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
+
 	// Step 4: Embed
 	onStep(models.StepEmbedChunks)
 
@@ -112,6 +118,8 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSourc
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
+
+	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, "")
 
 	// Step 5: Store
 	onStep(models.StepStoreVectors)

@@ -83,6 +83,30 @@ var StepProgress = map[TrainingStep]int{
 	StepStoreVectors: 100,
 }
 
+// StepOrder defines the chronological order of training steps
+var StepOrder = []TrainingStep{
+	StepFetchSource,
+	StepParseContent,
+	StepChunkText,
+	StepEmbedChunks,
+	StepStoreVectors,
+}
+
+// IsStepAtOrAfter returns true if step is at or after the target step in the pipeline
+func IsStepAtOrAfter(step, target TrainingStep) bool {
+	stepIdx := -1
+	targetIdx := -1
+	for i, s := range StepOrder {
+		if s == step {
+			stepIdx = i
+		}
+		if s == target {
+			targetIdx = i
+		}
+	}
+	return stepIdx >= targetIdx && stepIdx != -1 && targetIdx != -1
+}
+
 // IsTerminal returns true if the job is in a terminal state
 func (j *TrainingJob) IsTerminal() bool {
 	return j.Status == JobStatusCompleted || j.Status == JobStatusFailed || j.Status == JobStatusCancelled

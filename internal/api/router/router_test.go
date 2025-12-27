@@ -91,7 +91,8 @@ func TestRegisterPublicRoutes(t *testing.T) {
 func TestRegisterSourceRoutes(t *testing.T) {
 	mux := http.NewServeMux()
 	sh := &handlers.SourcesHandlers{}
-	RegisterSourceRoutes(mux, "secret", sh)
+	tjh := &handlers.TrainingJobHandlers{}
+	RegisterSourceRoutes(mux, "secret", sh, tjh)
 
 	// Should be protected by middleware -> 401
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/sources/123", nil)

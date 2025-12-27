@@ -16,6 +16,8 @@ import (
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
+const MaxRetries = 3
+
 // SourceQueue manages background processing of data sources
 type SourceQueue struct {
 	ch           chan string
@@ -100,6 +102,27 @@ func (q *SourceQueue) EnqueueSource(ctx context.Context, sourceID, chatbotID str
 	}
 }
 
+// Enqueue puts a job ID into the processing queue without creating a new job record
+func (q *SourceQueue) Enqueue(jobID string) {
+	if q == nil || q.ch == nil {
+		return
+	}
+	select {
+	case q.ch <- jobID:
+		if q.log != nil {
+			q.log.Info("job_enqueued_manually", map[string]any{
+				"job_id": jobID,
+			})
+		}
+	default:
+		if q.log != nil {
+			q.log.Warn("job_enqueue_failed_queue_full", map[string]any{
+				"job_id": jobID,
+			})
+		}
+	}
+}
+
 // Stop gracefully shuts down the queue worker
 func (q *SourceQueue) Stop() {
 	if q == nil || q.stopCh == nil {
@@ -144,6 +167,7 @@ func (q *SourceQueue) recoverPendingJobs() {
 	}
 
 	var recovered int
+RecoverLoop:
 	for _, job := range jobs {
 		select {
 		case q.ch <- job.ID:
@@ -152,7 +176,7 @@ func (q *SourceQueue) recoverPendingJobs() {
 			if q.log != nil {
 				q.log.Warn("recover_pending_jobs_queue_full", map[string]any{"job_id": job.ID})
 			}
-			break
+			break RecoverLoop
 		}
 	}
 
@@ -186,7 +210,7 @@ func (q *SourceQueue) worker() {
 	}
 }
 
-// processJob handles processing of a single job
+// processJob with retry support
 func (q *SourceQueue) processJob(jobID string) {
 	ctx := context.Background()
 
@@ -199,13 +223,18 @@ func (q *SourceQueue) processJob(jobID string) {
 		return
 	}
 
-	// Update job to running
-	step := models.StepFetchSource
-	if err := db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &step); err != nil {
-		if q.log != nil {
-			q.log.Error("update_job_failed", map[string]any{"job_id": jobID, "error": err.Error()})
-		}
+	// Check if this is a retry
+	lastStep, _ := db.GetLastCompletedStep(ctx, q.db, jobID)
+
+	// Update status to running
+	var startStep models.TrainingStep
+	if lastStep != nil {
+		startStep = getNextStep(*lastStep)
+	} else {
+		startStep = models.StepFetchSource
 	}
+
+	_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &startStep)
 
 	// Load source and dependencies
 	source, bot, langCode, plan, ok := q.loadSourceAndLang(job.SourceID)
@@ -223,54 +252,64 @@ func (q *SourceQueue) processJob(jobID string) {
 			"source_id":   job.SourceID,
 			"source_type": source.SourceType,
 			"chatbot_id":  job.ChatbotID,
+			"retry_count": job.RetryCount,
+			"last_step":   lastStep,
 		})
 	}
 
-	// Process with step tracking
-	var result ProcessResult
-	switch source.SourceType {
-	case "url":
-		result = q.urlProcessor.ProcessWithSteps(ctx, source, bot, langCode, plan, func(s models.TrainingStep) {
-			_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &s)
-		})
-	case "pdf":
-		result = q.pdfProcessor.ProcessWithSteps(ctx, source, bot, langCode, plan, func(s models.TrainingStep) {
-			_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &s)
-		})
-	case "text":
-		result = q.textProcessor.ProcessWithSteps(ctx, source, bot, langCode, plan, func(s models.TrainingStep) {
-			_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &s)
-		})
-	default:
-		_ = db.FailJob(ctx, q.db, jobID, models.StepFetchSource, "UNKNOWN_TYPE", "Unknown source type: "+source.SourceType)
-		q.fail(job.SourceID, "unknown_source_type")
-		return
-	}
+	// Process with resume support
+	result := q.processWithResume(ctx, jobID, source, bot, langCode, plan, lastStep)
 
 	if result.Error != nil {
+		// Check if we should retry
+		if job.RetryCount < MaxRetries && isRetryableError(result.Error) {
+			newCount, _ := db.IncrementRetryCount(ctx, q.db, jobID)
+
+			backoff := 2 * time.Second
+			for i := 1; i < newCount && i < 10; i++ {
+				backoff *= 2
+			}
+
+			if q.log != nil {
+				q.log.Info("job_retry_scheduled", map[string]any{
+					"job_id":      jobID,
+					"retry_count": newCount,
+					"backoff":     backoff.String(),
+					"error":       result.Error.Error(),
+				})
+			}
+
+			// Re-enqueue with delay
+			go func() {
+				time.Sleep(backoff)
+				q.ch <- jobID
+			}()
+			return
+		}
+
+		// Max retries exceeded or non-retryable error
 		failedStep := result.FailedStep
 		if failedStep == "" {
 			failedStep = models.StepFetchSource
 		}
-		_ = db.FailJob(ctx, q.db, jobID, failedStep, "PROCESSING_ERROR", result.Error.Error())
+		_ = db.FailJob(ctx, q.db, jobID, failedStep, "MAX_RETRIES", result.Error.Error())
 		q.fail(job.SourceID, result.Error.Error())
 		return
 	}
 
 	if result.Skipped {
-		// Mark job as completed with skipped status
 		completedStep := models.StepStoreVectors
 		_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusCompleted, &completedStep)
 		q.complete(job.SourceID, result.ChunkCount)
 		return
 	}
 
-	// Mark job as completed
+	// Success
 	completedStep := models.StepStoreVectors
 	_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusCompleted, &completedStep)
 	q.complete(job.SourceID, result.ChunkCount)
 
-	// Enqueue any newly discovered sources (create jobs for them)
+	// Enqueue any newly discovered sources
 	for _, newSourceID := range result.NewSourceIDs {
 		if _, err := q.EnqueueSource(ctx, newSourceID, source.ChatbotID); err != nil {
 			if q.log != nil {
@@ -281,6 +320,72 @@ func (q *SourceQueue) processJob(jobID string) {
 			}
 		}
 	}
+}
+
+func (q *SourceQueue) processWithResume(ctx context.Context, jobID string, source *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, lastStep *models.TrainingStep) ProcessResult {
+	onStep := func(step models.TrainingStep) {
+		_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &step)
+		// Mark the PREVIOUS step as completed when we move to the next one
+		// This is a bit tricky because MarkStepCompleted wants an outputHash
+		// For now, the processors will handle calling MarkStepCompleted internally 
+		// if we update them, or we can do it here if we refactor.
+	}
+
+	switch source.SourceType {
+	case "url":
+		return q.urlProcessor.ProcessWithSteps(ctx, jobID, source, bot, langCode, plan, lastStep, func(s models.TrainingStep) {
+			onStep(s)
+			// We can't easily get the hash here without changing ProcessWithSteps return/callbacks
+		})
+	case "pdf":
+		return q.pdfProcessor.ProcessWithSteps(ctx, jobID, source, bot, langCode, plan, lastStep, onStep)
+	case "text":
+		return q.textProcessor.ProcessWithSteps(ctx, jobID, source, bot, langCode, plan, lastStep, onStep)
+	default:
+		return ProcessResult{
+			Error:      fmt.Errorf("unknown source type: %s", source.SourceType),
+			FailedStep: models.StepFetchSource,
+		}
+	}
+}
+
+func getNextStep(current models.TrainingStep) models.TrainingStep {
+	switch current {
+	case models.StepFetchSource:
+		return models.StepParseContent
+	case models.StepParseContent:
+		return models.StepChunkText
+	case models.StepChunkText:
+		return models.StepEmbedChunks
+	case models.StepEmbedChunks:
+		return models.StepStoreVectors
+	default:
+		return models.StepFetchSource
+	}
+}
+
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := strings.ToLower(err.Error())
+	// Retry on network errors, rate limits, temporary failures
+	retryable := []string{
+		"connection refused",
+		"timeout",
+		"rate limit",
+		"429",
+		"503",
+		"502",
+		"temporary",
+		"context deadline exceeded",
+	}
+	for _, pattern := range retryable {
+		if strings.Contains(errStr, pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 // loadSourceAndLang loads source, chatbot, and plan data

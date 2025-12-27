@@ -122,7 +122,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
 	}
 	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore, QdrantClient: actualVC, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	tjh := &handlers.TrainingJobHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	tjh := &handlers.TrainingJobHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q}
 	factory := rag.NewClientFactory(cfg)
 	if llm != nil {
 		factory.RegisterClient("openai", llm)
