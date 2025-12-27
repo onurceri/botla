@@ -55,6 +55,7 @@ const (
 	ErrMaxChatbotsExceeded     = "ERR_MAX_CHATBOTS_EXCEEDED"
 	ErrTextTooLong             = "ERR_TEXT_TOO_LONG"
 	ErrDuplicateContent        = "ERR_DUPLICATE_CONTENT"
+	ErrBlockedURL              = "ERR_BLOCKED_URL"
 )
 
 // Group: Action errors

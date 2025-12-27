@@ -12,8 +12,11 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly"
 	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-co/pkg/urlutil"
 	"golang.org/x/net/html"
 )
+
+var ssrfValidator = urlutil.NewSSRFValidator()
 
 type ScrapingTask struct {
 	URL       string
@@ -48,6 +51,9 @@ func visibleText(sel *goquery.Selection) string {
 // If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
 // Otherwise, the entire body is scraped.
 func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfig) (string, error) {
+	if err := ssrfValidator.ValidateURL(task.URL); err != nil {
+		return "", fmt.Errorf("SSRF blocked: %w", err)
+	}
 	l := logger.New("INFO")
 	cache := NewCache()
 	k := keyFor(task.URL)
@@ -112,6 +118,9 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 // FetchRawHTML fetches raw HTML content from a URL for link extraction purposes.
 // This is separate from ScrapeURL which extracts visible text.
 func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
+	if err := ssrfValidator.ValidateURL(targetURL); err != nil {
+		return "", fmt.Errorf("SSRF blocked: %w", err)
+	}
 	l := logger.New("INFO")
 
 	bundle, err := NewCollector(cfg)
@@ -215,6 +224,9 @@ func ExtractLinks(htmlContent string, baseURL string, filter *PathFilter) ([]str
 // ScrapeURLWithFallback tries static scraping first, then falls back to dynamic if enabled.
 // If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
 func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
+	if err := ssrfValidator.ValidateURL(task.URL); err != nil {
+		return "", fmt.Errorf("SSRF blocked: %w", err)
+	}
 	l := logger.New("INFO")
 	cache := NewCache()
 	k := keyFor(task.URL)
