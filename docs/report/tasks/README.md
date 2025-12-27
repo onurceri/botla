@@ -66,7 +66,7 @@ Bu klasör, sistem analiz raporundaki tüm bulguları çözmek için oluşturulm
 ```
 
 ### Sprint 1: Foundation (Hafta 1)
-- [ ] 001 - Request-ID Middleware
+- [x] 001 - Request-ID Middleware
 - [ ] 002 - Job State Table  
 - [ ] 003 - Job Progress API
 - [ ] 004 - Integrate Job Tracking
