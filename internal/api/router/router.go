@@ -35,7 +35,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	toolNameGenerator := rag.NewToolNameGenerator(oaiClient)
 
 	// Handlers
-	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
+	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg, Queue: q}
 	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	mh := &handlers.MeHandlers{DB: pool}
 	plh := &handlers.PlanHandlers{DB: pool}
@@ -125,6 +125,9 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 
 	// Admin
 	RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)
+
+	// OpenAPI Spec
+	mux.HandleFunc("GET /api/openapi.yaml", handlers.ServeOpenAPI)
 
 	return mux
 }

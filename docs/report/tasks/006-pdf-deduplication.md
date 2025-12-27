@@ -412,12 +412,12 @@ func uploadText(t *testing.T, baseURL, token, chatbotID, text string) *http.Resp
 
 ## Acceptance Criteria
 
-- [ ] Duplicate PDF upload returns 409 Conflict
-- [ ] Duplicate text upload returns 409 Conflict
-- [ ] Same content in different chatbots is allowed
-- [ ] Deleted sources don't block re-upload
-- [ ] Error message is user-friendly
-- [ ] All tests pass
+- [x] Duplicate PDF upload returns 409 Conflict
+- [x] Duplicate text upload returns 409 Conflict
+- [x] Same content in different chatbots is allowed
+- [x] Deleted sources don't block re-upload
+- [x] Error message is user-friendly
+- [x] All tests pass
 
 ---
 
@@ -432,3 +432,4 @@ func uploadText(t *testing.T, baseURL, token, chatbotID, text string) *http.Resp
 | `frontend/src/i18n/errors.ts` | MODIFY |
 | `internal/db/source_dedup_test.go` | CREATE |
 | `internal/integration/dedup_test.go` | CREATE |
+

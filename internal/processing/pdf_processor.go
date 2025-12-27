@@ -43,7 +43,9 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	}
 
 	// Step 1: Fetch
-	onStep(models.StepFetchSource)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepFetchSource, *lastStep) && models.StepFetchSource != *lastStep) {
+		onStep(models.StepFetchSource)
+	}
 
 	localPath := *s.FilePath
 
@@ -74,7 +76,9 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
 
 	// Step 2: Parse
-	onStep(models.StepParseContent)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepParseContent, *lastStep) && models.StepParseContent != *lastStep) {
+		onStep(models.StepParseContent)
+	}
 
 	// Extract text from PDF
 	content, err := pdf.ExtractPDFText(localPath, langCode, plan.Config.Files.OCREnabled)
@@ -97,7 +101,9 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
 	// Step 3: Chunk
-	onStep(models.StepChunkText)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepChunkText, *lastStep) && models.StepChunkText != *lastStep) {
+		onStep(models.StepChunkText)
+	}
 
 	// Chunk and embed
 	rc, rerr := rag.ChunkText(content, 512, langCode)
@@ -108,7 +114,9 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
 
 	// Step 4: Embed
-	onStep(models.StepEmbedChunks)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepEmbedChunks, *lastStep) && models.StepEmbedChunks != *lastStep) {
+		onStep(models.StepEmbedChunks)
+	}
 
 	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
 	if !ok {
@@ -122,7 +130,9 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, "")
 
 	// Step 5: Store
-	onStep(models.StepStoreVectors)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepStoreVectors, *lastStep) && models.StepStoreVectors != *lastStep) {
+		onStep(models.StepStoreVectors)
+	}
 
 	// Calculate token usage
 	var tokens int

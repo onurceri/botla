@@ -32,6 +32,7 @@ type Config struct {
 	JWT_SECRET            string
 	PORT                  string
 	CORS_ALLOWED_ORIGINS  string
+	WORKER_COUNT          int
 	R2_ACCOUNT_ID         string
 	R2_ACCESS_KEY_ID      string
 	R2_SECRET_ACCESS_KEY  string
@@ -139,6 +140,7 @@ func LoadConfig() *Config {
 			}
 			return v
 		}(),
+		WORKER_COUNT:           parseIntEnv("WORKER_COUNT", 4),
 		R2_ACCOUNT_ID:          os.Getenv("R2_ACCOUNT_ID"),
 		R2_ACCESS_KEY_ID:       os.Getenv("R2_ACCESS_KEY_ID"),
 		R2_SECRET_ACCESS_KEY:   os.Getenv("R2_SECRET_ACCESS_KEY"),

@@ -434,12 +434,12 @@ func TestManualRetry_Integration(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] Completed steps are tracked in job metadata
-- [ ] Automatic retry on retryable errors (up to 3 times)
-- [ ] Exponential backoff between retries
-- [ ] Manual retry endpoint works for failed jobs
-- [ ] Resume from last completed step on retry
-- [ ] All tests pass
+- [x] Completed steps are tracked in job metadata
+- [x] Automatic retry on retryable errors (up to 3 times)
+- [x] Exponential backoff between retries
+- [x] Manual retry endpoint works for failed jobs
+- [x] Resume from last completed step on retry
+- [x] All tests pass
 
 ---
 

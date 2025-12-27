@@ -383,12 +383,12 @@ func TestJobStatusEndpoint_Integration(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] Endpoint returns 200 with job status
-- [ ] Returns correct progress percentage based on current step
-- [ ] Returns error details for failed jobs
-- [ ] Returns 403 for sources user doesn't own
-- [ ] Returns 404 for non-existent sources
-- [ ] All tests pass
+- [x] Endpoint returns 200 with job status
+- [x] Returns correct progress percentage based on current step
+- [x] Returns error details for failed jobs
+- [x] Returns 403 for sources user doesn't own
+- [x] Returns 404 for non-existent sources
+- [x] All tests pass
 
 ---
 

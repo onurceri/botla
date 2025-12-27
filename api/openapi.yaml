@@ -1,0 +1,533 @@
+openapi: 3.0.3
+info:
+  title: Botla API
+  description: API for Botla chatbot platform
+  version: 1.0.0
+  contact:
+    name: Botla Support
+    email: support@botla.co
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Chatbots
+    description: Chatbot management
+  - name: Sources
+    description: Data source management
+  - name: Chat
+    description: Chat endpoints
+  - name: Training
+    description: Training job management
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: ERR_INVALID_CREDENTIALS
+        message:
+          type: string
+          description: Human-readable error message
+          example: Invalid email or password
+
+    # Auth schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        plan_code:
+          type: string
+          enum: [free, starter, pro, enterprise]
+
+    # Chatbot schemas  
+    Chatbot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        model:
+          type: string
+        language_code:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, training]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateChatbotRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        language_code:
+          type: string
+          default: tr
+
+    # Source schemas
+    DataSource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        chatbot_id:
+          type: string
+          format: uuid
+        source_type:
+          type: string
+          enum: [url, pdf, text]
+        source_url:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        chunk_count:
+          type: integer
+        error_message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # Training Job schemas
+    TrainingJob:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        source_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        current_step:
+          type: string
+          enum: [fetch_source, parse_content, chunk_text, embed_chunks, store_vectors]
+        progress_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        error_code:
+          type: string
+        error_message:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    # Chat schemas
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        conversation_id:
+          type: string
+          format: uuid
+
+    ChatResponse:
+      type: object
+      properties:
+        response:
+          type: string
+        conversation_id:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+          format: uuid
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceCitation'
+
+    SourceCitation:
+      type: object
+      properties:
+        source_id:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+        relevance:
+          type: number
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Permission denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # Auth endpoints
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                full_name:
+                  type: string
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Chatbot endpoints
+  /chatbots:
+    get:
+      tags: [Chatbots]
+      summary: List user's chatbots
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of chatbots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Chatbot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Chatbots]
+      summary: Create chatbot
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChatbotRequest'
+      responses:
+        '201':
+          description: Chatbot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chatbot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /chatbots/{id}:
+    get:
+      tags: [Chatbots]
+      summary: Get chatbot by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Chatbot details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chatbot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Source endpoints
+  /chatbots/{id}/sources:
+    get:
+      tags: [Sources]
+      summary: List sources for chatbot
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DataSource'
+    post:
+      tags: [Sources]
+      summary: Add source to chatbot
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                source_type:
+                  type: string
+                  enum: [url, pdf, text]
+                source_url:
+                  type: string
+                  format: uri
+                file:
+                  type: string
+                  format: binary
+                text:
+                  type: string
+      responses:
+        '201':
+          description: Source created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Duplicate URL or content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sources/{id}/job:
+    get:
+      tags: [Training]
+      summary: Get training job status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sources/{id}/job/retry:
+    post:
+      tags: [Training]
+      summary: Retry failed job
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Job queued for retry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  message:
+                    type: string
+        '400':
+          description: Job not in failed state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Public chat endpoint
+  /public/chat/{chatbot_id}:
+    post:
+      tags: [Chat]
+      summary: Send chat message (public)
+      parameters:
+        - name: chatbot_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'

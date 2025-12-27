@@ -50,7 +50,7 @@ func TestStartSourceQueue_Error(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(errors.New("connection failed"))
 
 	// We don't need real DB/ Storage/LLM for this test as it fails before using them
-	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC)
+	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC, 1)
 	
 	if err == nil {
 		t.Fatal("expected error, got nil")
