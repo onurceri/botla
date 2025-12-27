@@ -2,6 +2,7 @@
 package urlutil
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 )
@@ -22,7 +23,7 @@ func NormalizeURL(rawURL string) (string, error) {
 
 	u, err := url.Parse(trimmed)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("parse url failed: %w", err)
 	}
 
 	// Lowercase scheme and host

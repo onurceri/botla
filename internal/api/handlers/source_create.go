@@ -9,11 +9,12 @@ import (
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/langconfig"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
 	"github.com/onurceri/botla-co/pkg/urlutil"
 )
+
+var ssrfValidator = urlutil.NewSSRFValidator()
 
 // createSource handles POST request to create a new source
 func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, userID string) {
@@ -23,8 +24,6 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, b
 		return
 	}
 
-	base := api.BaseLang(bot.LanguageCode)
-	cfg := api.ConfigFromBase(base)
 
 	// Check monthly ingestion quota
 	if err = h.checkIngestionQuota(r, userID, plan); err != nil {
@@ -44,18 +43,18 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, b
 
 	switch sourceType {
 	case "pdf":
-		h.handlePDFUpload(w, r, bot, plan, cfg)
+		h.handlePDFUpload(w, r, bot, plan)
 	case "url":
-		h.handleURLSource(w, r, bot.ID, plan, cfg)
+		h.handleURLSource(w, r, bot.ID, plan)
 	case "text":
-		h.handleTextSource(w, r, bot, userID, plan, cfg)
+		h.handleTextSource(w, r, bot, userID, plan)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
 // handlePDFUpload handles PDF file upload
-func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, plan *models.Plan, cfg langconfig.LanguageConfig) {
+func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, plan *models.Plan) {
 	// Check file count limit
 	cnt, err := db.CountSourcesByType(r.Context(), h.DB, bot.ID, "pdf")
 	if err != nil {
@@ -67,7 +66,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 		limit = 5 // Safe fallback
 	}
 	if cnt >= limit {
-		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPdfLimitReached, cfg)
+		api.WriteErrorCode(w, http.StatusForbidden, api.ErrPdfLimitReached)
 		return
 	}
 
@@ -84,7 +83,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 		maxSizeMB = 10 // Safe fallback
 	}
 	if header.Size > int64(maxSizeMB)<<20 {
-		api.WriteLocalizedError(w, http.StatusRequestEntityTooLarge, api.ErrFileTooLarge, cfg)
+		api.WriteErrorCode(w, http.StatusRequestEntityTooLarge, api.ErrFileTooLarge)
 		return
 	}
 
@@ -124,7 +123,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if exists {
-		api.WriteLocalizedError(w, http.StatusConflict, api.ErrDuplicateContent, cfg)
+		api.WriteErrorCode(w, http.StatusConflict, api.ErrDuplicateContent)
 		return
 	}
 
@@ -149,7 +148,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 }
 
 // handleURLSource handles URL source creation
-func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request, chatbotID string, plan *models.Plan, cfg langconfig.LanguageConfig) {
+func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request, chatbotID string, plan *models.Plan) {
 	// Check URL count limit
 	cnt, err := db.CountSourcesByType(r.Context(), h.DB, chatbotID, "url")
 	if err != nil {
@@ -161,13 +160,23 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 		limit = 5 // Safe fallback
 	}
 	if cnt >= limit {
-		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrURLLimitReached, cfg)
+		api.WriteErrorCode(w, http.StatusForbidden, api.ErrURLLimitReached)
 		return
 	}
 
 	rawURL := strings.TrimSpace(r.FormValue("source_url"))
 	if rawURL == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// NEW: SSRF validation
+	if err := ssrfValidator.ValidateURL(rawURL); err != nil {
+		h.logWarn("ssrf_blocked", map[string]any{
+			"url":    rawURL,
+			"reason": err.Error(),
+		})
+		api.WriteErrorCode(w, http.StatusForbidden, api.ErrBlockedURL)
 		return
 	}
 
@@ -183,13 +192,13 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 	if lastDel.Valid {
 		if remaining, ok := h.checkCooldown(r, &lastDel.Time, plan); !ok {
 			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", remaining.Seconds()))
-			api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrReaddCooldownActive, cfg)
+			api.WriteErrorCode(w, http.StatusTooManyRequests, api.ErrReaddCooldownActive)
 			return
 		}
 	}
 
 	if exists, _ := db.SourceExists(r.Context(), h.DB, chatbotID, url); exists {
-		api.WriteLocalizedError(w, http.StatusConflict, api.ErrDuplicateURL, cfg)
+		api.WriteErrorCode(w, http.StatusConflict, api.ErrDuplicateURL)
 		return
 	}
 
@@ -203,7 +212,7 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 }
 
 // handleTextSource handles inline text source creation
-func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, userID string, plan *models.Plan, cfg langconfig.LanguageConfig) {
+func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, userID string, plan *models.Plan) {
 	text := strings.TrimSpace(r.FormValue("text"))
 	if text == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -216,7 +225,7 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 		limit = 400000 // Safe fallback
 	}
 	if len(text) > limit {
-		api.WriteLocalizedError(w, http.StatusRequestEntityTooLarge, api.ErrTextTooLong, cfg)
+		api.WriteErrorCode(w, http.StatusRequestEntityTooLarge, api.ErrTextTooLong)
 		return
 	}
 
@@ -242,7 +251,7 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if exists {
-		api.WriteLocalizedError(w, http.StatusConflict, api.ErrDuplicateContent, cfg)
+		api.WriteErrorCode(w, http.StatusConflict, api.ErrDuplicateContent)
 		return
 	}
 

@@ -55,6 +55,7 @@ export const errorMessages = {
     ERR_MAX_CHATBOTS_EXCEEDED: 'Maximum chatbot limit reached',
     ERR_TEXT_TOO_LONG: 'Text exceeds maximum length',
     ERR_DUPLICATE_CONTENT: 'This content has already been added to this chatbot',
+    ERR_BLOCKED_URL: 'This URL is not allowed for security reasons',
 
     // Action errors
     ERR_NAME_AND_ACTION_TYPE_REQUIRED: 'Name and action type are required',
@@ -153,6 +154,7 @@ export const errorMessages = {
     ERR_MAX_CHATBOTS_EXCEEDED: 'Maksimum chatbot limitine ulaşıldı',
     ERR_TEXT_TOO_LONG: 'Metin çok uzun',
     ERR_DUPLICATE_CONTENT: 'Bu içerik zaten bu chatbota eklenmiş',
+    ERR_BLOCKED_URL: 'Bu URL güvenlik nedeniyle engellenmiştir',
 
     // Action errors
     ERR_NAME_AND_ACTION_TYPE_REQUIRED: 'İsim ve aksiyon türü gereklidir',
