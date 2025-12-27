@@ -1,12 +1,12 @@
 /** @jsxImportSource react */
-import { useState, createElement } from 'react'
+import React, { useState, createElement } from 'react'
 import Markdown from 'markdown-to-jsx'
 import type { ChatMessage } from '../types'
 
 interface MessageProps {
   message: ChatMessage
-  onFeedback?: (id: string, isPositive: boolean) => void
-  onSubmitEmail?: (requestId: string, email: string) => Promise<void>
+  onFeedback?: (_id: string, _isPositive: boolean) => void
+  onSubmitEmail?: (_requestId: string, _email: string) => Promise<void>
   botIcon?: string
   classNames?: {
     row?: string

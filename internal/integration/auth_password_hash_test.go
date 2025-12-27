@@ -19,7 +19,7 @@ func TestAuth_Register_PasswordHashing(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "hashcheck+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	password := "mypassword123"
+	password := "Test@123"
 	regBody := map[string]string{"email": email, "password": password, "full_name": "Hash Check User"}
 	body, err := json.Marshal(regBody)
 	if err != nil {

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getErrorMessage } from '@/i18n/errors'
 
 type ApiErrorResponse = {
   error?: string
@@ -87,6 +88,9 @@ export function translateKnownErrorMessage(raw: string): string | null {
 
   const exact = exactMap[msg]
   if (exact) return exact
+
+  const i18nTr = getErrorMessage(msg, 'tr')
+  if (i18nTr !== msg) return i18nTr
 
   const lower = msg.toLowerCase()
   const lowerExact = exactMap[lower]

@@ -33,6 +33,7 @@ const RegisterPage = () => {
       const { data } = await api.post('/api/v1/auth/login', { email, password })
       window.localStorage.setItem('botla_token', data.token)
       window.localStorage.setItem('botla_refresh_token', data.refresh_token)
+      window.localStorage.removeItem('botla_last_org_id')
 
       // Fetch onboarding status to determine where to redirect
       const { data: onboardingState } = await api.get('/api/v1/me/onboarding')
@@ -162,7 +163,7 @@ const RegisterPage = () => {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Minimum 8 karakter"
+                    placeholder="Güçlü şifre oluşturun"
                     className="pl-12 h-12 rounded-xl border-border/50 bg-white/50 backdrop-blur-sm
                              focus:bg-white focus:border-primary/50 focus:ring-2 focus:ring-primary/20
                              transition-all duration-200"
@@ -170,6 +171,9 @@ const RegisterPage = () => {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
+                <p className="text-xs text-muted-foreground ml-1">
+                  En az 8 karakter, büyük harf, küçük harf, rakam ve özel karakter (@$!%*?&)
+                </p>
               </div>
 
               {/* Submit Button */}

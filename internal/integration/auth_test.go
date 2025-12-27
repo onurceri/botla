@@ -38,7 +38,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "user1+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User One"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User One"}
 	var b []byte
 	b, err = json.Marshal(regBody)
 	if err != nil {
@@ -79,7 +79,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 		t.Fatalf("expected 'ERR_EMAIL_EXISTS', got %v", er.Code)
 	}
 
-	loginBody := map[string]string{"email": email, "password": "pass1234"}
+	loginBody := map[string]string{"email": email, "password": "Test@123"}
 	lb, err := json.Marshal(loginBody)
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
@@ -156,7 +156,7 @@ func TestAuth_Register_InvalidEmailFormat(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	regBody := map[string]string{"email": "invalid-email", "password": "pass1234", "full_name": "Invalid Email"}
+	regBody := map[string]string{"email": "invalid-email", "password": "Test@123", "full_name": "Invalid Email"}
 	var b []byte
 	b, err = json.Marshal(regBody)
 	if err != nil {
@@ -188,7 +188,7 @@ func TestAuth_Register_MissingEmail(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	regBody := map[string]string{"password": "pass1234", "full_name": "Missing Email"}
+	regBody := map[string]string{"password": "Test@123", "full_name": "Missing Email"}
 	var b []byte
 	b, err = json.Marshal(regBody)
 	if err != nil {
@@ -253,7 +253,7 @@ func TestAuth_Login_InvalidEmail(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	loginBody := map[string]string{"email": "doesnotexist+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com", "password": "pass1234"}
+	loginBody := map[string]string{"email": "doesnotexist+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com", "password": "Test@123"}
 	lb, err := json.Marshal(loginBody)
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
@@ -285,7 +285,7 @@ func TestAuth_Login_InvalidPassword(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "login-bad-pass+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User One"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User One"}
 	rb, err := json.Marshal(regBody)
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
@@ -329,7 +329,7 @@ func TestAuth_Login_EmptyEmail(t *testing.T) {
 	}
 	defer TeardownTestEnv(te)
 
-	loginBody := map[string]string{"email": "", "password": "pass1234"}
+	loginBody := map[string]string{"email": "", "password": "Test@123"}
 	lb, err := json.Marshal(loginBody)
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
@@ -376,7 +376,7 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	baseEmail := fmt.Sprintf("TestCI+%d@Example.com", time.Now().UnixNano())
-	regBody := map[string]string{"email": baseEmail, "password": "pass1234", "full_name": "Case User"}
+	regBody := map[string]string{"email": baseEmail, "password": "Test@123", "full_name": "Case User"}
 	rb, err := json.Marshal(regBody)
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
@@ -393,7 +393,7 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 	lowerEmail := strings.ToLower(baseEmail)
 	upperEmail := strings.ToUpper(baseEmail)
 
-	loginBodyLower := map[string]string{"email": lowerEmail, "password": "pass1234"}
+	loginBodyLower := map[string]string{"email": lowerEmail, "password": "Test@123"}
 	lbLower, err := json.Marshal(loginBodyLower)
 	if err != nil {
 		t.Fatalf("marshal lower login body failed: %v", err)
@@ -407,7 +407,7 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 	}
 	resLower.Body.Close()
 
-	loginBodyUpper := map[string]string{"email": upperEmail, "password": "pass1234"}
+	loginBodyUpper := map[string]string{"email": upperEmail, "password": "Test@123"}
 	lbUpper, err := json.Marshal(loginBodyUpper)
 	if err != nil {
 		t.Fatalf("marshal upper login body failed: %v", err)
@@ -430,7 +430,7 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := fmt.Sprintf("multisession+%d@example.com", time.Now().UnixNano())
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "Multi Session User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Multi Session User"}
 	rb, err := json.Marshal(regBody)
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
@@ -444,7 +444,7 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 	}
 	resReg.Body.Close()
 
-	loginBody := map[string]string{"email": email, "password": "pass1234"}
+	loginBody := map[string]string{"email": email, "password": "Test@123"}
 	lb, err := json.Marshal(loginBody)
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
@@ -539,7 +539,7 @@ func TestAuth_Login_RefreshTokenTracking(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "refresh-track+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User One"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User One"}
 	rb, err := json.Marshal(regBody)
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
@@ -557,7 +557,7 @@ func TestAuth_Login_RefreshTokenTracking(t *testing.T) {
 	}
 	resReg.Body.Close()
 
-	loginBody := map[string]string{"email": email, "password": "pass1234"}
+	loginBody := map[string]string{"email": email, "password": "Test@123"}
 	lb, err := json.Marshal(loginBody)
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)

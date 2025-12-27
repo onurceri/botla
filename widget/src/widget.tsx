@@ -108,14 +108,34 @@ export function mount() {
   const root = document.createElement('div')
   shadow.appendChild(root)
   
-  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, previewMode }
+  // Global state tracker for preserving open state during config updates
+  let currentOpenState: boolean | undefined = undefined
+  const setOpenState = (isOpen: boolean) => { currentOpenState = isOpen }
+  
+  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, previewMode, onOpenChange: setOpenState }
   
   render(<WidgetApp {...props} />, root)
 
+  // Allowed origins for postMessage (Playground support)
+  const ALLOWED_ORIGINS = [
+    import.meta.env.VITE_DASHBOARD_URL,
+    import.meta.env.VITE_API_BASE_URL,
+  ].filter(Boolean) as string[]
+
   // Listen for live config updates (Playground support)
   window.addEventListener('message', (event) => {
+    // Origin validation - block unauthorized origins
+    if (ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.some(origin => event.origin.startsWith(origin))) {
+      console.warn('[Widget] Unauthorized postMessage origin:', event.origin)
+      return
+    }
+    
     if (event.data?.type === 'WIDGET_CONFIG') {
       const newConfig = event.data.config
+      
+      // Preserve the current open state if widget is already mounted
+      const preserveOpen = currentOpenState !== undefined ? currentOpenState : (newConfig['auto-open'] === '1')
+      
       const updatedProps = {
         ...props,
         chatbotId: newConfig['chatbot-id'] || chatbotId,
@@ -128,7 +148,7 @@ export function mount() {
         userMessageColor: newConfig['user-message-color'] || userMessageColor,
         userMessageTextColor: newConfig['user-message-text-color'] || userMessageTextColor,
         fontFamily: newConfig['font-family'] || fontFamily,
-        position: (newConfig['position'] || position) as "bottom-left" | "bottom-right" | undefined,
+        position: (newConfig['position'] === 'bottom-left' ? 'bottom-left' : newConfig['position'] === 'bottom-right' ? 'bottom-right' : position) as "bottom-left" | "bottom-right" | undefined,
         botNameOverride: newConfig['bot-name'] || botName,
         botIconOverride: newConfig['bot-icon'] || botIcon,
         welcome: newConfig['welcome'] || welcome,
@@ -141,11 +161,12 @@ export function mount() {
         panelHeight: newConfig['panel-height'] || panelHeight,
         panelWidth: newConfig['panel-width'] || panelWidth,
         useOverrides: true, // Always override in playground
-        autoOpen: newConfig['auto-open'] === '1',
+        autoOpen: preserveOpen, // Use preserved open state instead of auto-open config
         sessionIdOverride: newConfig['session-id'] || sessionIdOverride,
         hideBrandingOverride: newConfig['hide-branding'] === '1',
         positionStrategy: (newConfig['position-strategy'] || positionStrategy) as "fixed" | "absolute",
         previewMode: newConfig['preview-mode'] === '1',
+        onOpenChange: setOpenState, // Keep the callback
       }
       
       if (newConfig['suggestions']) {
@@ -170,25 +191,29 @@ export function unmount() {
   host.shadowRoot.innerHTML = ''
 }
 
-try { mount() } catch (e) {
-  const params = currentParams()
-  const debug = params.get('debug') === '1' || params.get('debug') === 'true'
-  if (debug) {
-    console.error('ChatbotWidget mount error:', e)
-    try {
-      const m = document.createElement('div')
-      m.style.position = 'fixed'
-      m.style.bottom = '8px'
-      m.style.right = '8px'
-      m.style.background = '#fee2e2'
-      m.style.color = '#b91c1c'
-      m.style.padding = '8px 10px'
-      m.style.borderRadius = '8px'
-      m.style.fontSize = '12px'
-      m.style.zIndex = '2147483647'
-      m.textContent = 'Widget failed to mount. See console.'
-      document.body.appendChild(m)
-    } catch {}
+// Skip auto-mount if skip-auto-mount flag is set (preview mode waits for postMessage config)
+const skipMount = currentParams().get('skip-auto-mount') === '1'
+if (!skipMount) {
+  try { mount() } catch (e) {
+    const params = currentParams()
+    const debug = params.get('debug') === '1' || params.get('debug') === 'true'
+    if (debug) {
+      console.error('ChatbotWidget mount error:', e)
+      try {
+        const m = document.createElement('div')
+        m.style.position = 'fixed'
+        m.style.bottom = '8px'
+        m.style.right = '8px'
+        m.style.background = '#fee2e2'
+        m.style.color = '#b91c1c'
+        m.style.padding = '8px 10px'
+        m.style.borderRadius = '8px'
+        m.style.fontSize = '12px'
+        m.style.zIndex = '2147483647'
+        m.textContent = 'Widget failed to mount. See console.'
+        document.body.appendChild(m)
+      } catch {}
+    }
   }
 }
 

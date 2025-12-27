@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// Deprecated: CORSMiddleware allows any origin when wildcard is passed.
+// Use CORSMiddlewareAllowOrigins with an explicit whitelist for production environments.
+// This function is retained for development/testing purposes only.
 func CORSMiddleware(origin string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

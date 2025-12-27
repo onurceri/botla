@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
@@ -33,19 +32,17 @@ func (s *ChatService) applyFallback(ctx context.Context, cc *chatContext) {
 func (s *ChatService) applyLowTierFallback(ctx context.Context, cc *chatContext) {
 	switch cc.ThresholdCfg.FallbackMode {
 	case "smart":
-		// Smart fallback requires capabilities to redirect the user.
-		// If no capabilities, fall back to static message to avoid
-		// the bot answering with general LLM knowledge.
-		if strings.TrimSpace(cc.Capabilities) == "" {
-			cc.Response = s.getStaticFallbackMessage(cc)
-			return
-		}
+		// Smart fallback uses restricted LLM prompt to handle greetings naturally
+		// while refusing factual questions. The RestrictedFallbackPrompt has
+		// strong guardrails that prevent the bot from answering with general knowledge.
+		// Even with empty capabilities, we call the LLM to handle greetings/small talk.
 		resp, tokens, err := s.restrictedSmartFallback(ctx, cc)
 		if err == nil {
 			cc.Response = resp
 			cc.TotalTokens += tokens
 		} else {
-			cc.Response = s.getStaticFallbackMessage(cc)
+			// If LLM fails, use the softer empty state message instead of hard refusal
+			cc.Response = s.getEmptyStateMessage(cc)
 		}
 	case "escalate":
 		cc.Response = cc.LangConfig.UserMessages.HandoffSuggestion
@@ -82,6 +79,16 @@ func (s *ChatService) getHandoffMessage(cc *chatContext) string {
 	return cc.LangConfig.UserMessages.HandoffSuggestion
 }
 
+// getEmptyStateMessage returns a softer message for when the bot has no knowledge sources.
+// This is friendlier than the standard "no info found" message.
+func (s *ChatService) getEmptyStateMessage(cc *chatContext) string {
+	if cc.LangConfig.UserMessages.EmptyStateMessage != "" {
+		return cc.LangConfig.UserMessages.EmptyStateMessage
+	}
+	// Fallback to NoInfoFound if EmptyStateMessage is not configured
+	return s.getStaticFallbackMessage(cc)
+}
+
 // =============================================================================
 // SMART FALLBACK - AI-generated redirection when no context found
 // =============================================================================
@@ -112,7 +119,7 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 		UserMessage:  cc.Request.Message,
 		Model:        modelName,
 		Temperature:  0.3,
-		MaxTokens:    80, // Low limit to prevent detailed factual responses
+		MaxTokens:    120, // Increased from 80 to allow for friendlier greeting responses
 	}
 
 	res, err := client.CreateCompletion(ctx, params)

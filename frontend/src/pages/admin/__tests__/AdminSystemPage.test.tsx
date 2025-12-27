@@ -58,6 +58,7 @@ describe('AdminSystemPage', () => {
           message: 'High latency detected',
         }
       ],
+      last_updated: new Date().toISOString(),
     }
     vi.mocked(adminApi.getDetailedHealth).mockResolvedValue(mockData)
 
@@ -71,11 +72,11 @@ describe('AdminSystemPage', () => {
 
     // Check dependencies
     expect(screen.getByText('database')).toBeInTheDocument()
-    expect(screen.getByText('OK')).toBeInTheDocument()
+    expect(screen.getByText('Aktif')).toBeInTheDocument()
     expect(screen.getByText('25ms')).toBeInTheDocument()
 
     expect(screen.getByText('redis')).toBeInTheDocument()
-    expect(screen.getByText('DEGRADED')).toBeInTheDocument()
+    expect(screen.getByText('Bekliyor')).toBeInTheDocument()
     expect(screen.getByText('150ms')).toBeInTheDocument()
     expect(screen.getByText('High latency detected')).toBeInTheDocument()
   })
@@ -88,6 +89,7 @@ describe('AdminSystemPage', () => {
       uptime: '5d 4h',
       environment: 'production',
       dependencies: [],
+      last_updated: new Date().toISOString(),
     })
 
     render(<AdminSystemPage />, { wrapper: createWrapper() })

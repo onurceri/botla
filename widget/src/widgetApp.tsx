@@ -1,41 +1,77 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChatBubble, ChatDrawer } from '@botla/ui-shared'
-import type { ChatMessage } from '@botla/ui-shared'
+import { ChatBubble } from './components/ChatBubble'
+import { ChatDrawer } from './components/ChatDrawer'
+import { sanitizeUrl } from './utils/sanitize'
+import { logger } from './utils/logger'
+import type { ChatMessage, ChatbotConfig } from './types'
+import type { WidgetAppProps } from './types/props'
+import { getSession, saveSession, clearSession, ensureSession, setSessionId } from './utils/session'
+import {
+  DEFAULT_THEME_COLOR,
+  DEFAULT_POSITION,
+  DEFAULT_MAX_CHARS,
+  DEFAULT_ERROR_MESSAGE,
+  ERROR_DISPLAY_DELAY_MS
+} from './constants'
 
-type Message = ChatMessage
+export function WidgetApp(props: WidgetAppProps) {
+  const { 
+    chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, 
+    botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, 
+    position, botNameOverride, botIconOverride, panelHeight, panelWidth, 
+    panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, 
+    welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, 
+    resetSession, sessionIdOverride, suggestions: suggestionsOverride, 
+    hideBrandingOverride, customBrandingOverride, 
+    positionStrategy = 'fixed', previewMode = false, onOpenChange 
+  } = props
 
-export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position, botNameOverride, botIconOverride, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, resetSession, sessionIdOverride, suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, positionStrategy = 'fixed', previewMode = false }: { chatbotId: string; apiBase?: string; themeColor?: string; headerColor?: string; headerTextColor?: string; botMessageColor?: string; botMessageTextColor?: string; userMessageColor?: string; userMessageTextColor?: string; fontFamily?: string; position?: 'bottom-right' | 'bottom-left'; botNameOverride?: string; botIconOverride?: string; panelHeight?: string; panelWidth?: string; panelBg?: string; inputBg?: string; inputText?: string; chatBg?: string; bubbleRadius?: string; sendButtonColor?: string; welcome?: string; embedTokenUrl?: string; captchaSiteKey?: string; autoOpen?: boolean; useOverrides?: boolean; resetSession?: boolean; sessionIdOverride?: string; suggestions?: string[]; hideBrandingOverride?: boolean; customBrandingOverride?: { logo_url?: string; text?: string; link?: string }; positionStrategy?: 'fixed' | 'absolute'; previewMode?: boolean }) {
   const [open, setOpen] = useState(!!autoOpen)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const panelRef = useRef<HTMLDivElement | null>(null)
-  const [config, setConfig] = useState<any>(null)
+  const [config, setConfig] = useState<ChatbotConfig | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sid, setSid] = useState<string>('')
   const [embedToken, setEmbedToken] = useState<string>('')
   const [unread, setUnread] = useState(0)
   const [suggestions, setSuggestions] = useState<string[]>([])
 
-  const emitEvent = (type: string, payload?: any) => {
+  const onOpenChangeRef = useRef(onOpenChange)
+  onOpenChangeRef.current = onOpenChange
+
+  const emitEvent = (type: string, payload?: unknown) => {
     if (window.parent !== window) {
       window.parent.postMessage({ type: `WIDGET_EVENT_${type.toUpperCase()}`, payload }, '*')
     }
   }
 
+  // Report open state to parent on change (initial and updates)
+  useEffect(() => {
+    onOpenChangeRef.current?.(open)
+  }, [open])
+
   useEffect(() => {
     const base = apiBase || ''
     const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}`
-    fetch(url).then(r => r.json()).then(data => {
-      setConfig(data)
-      emitEvent('CONFIG_LOADED', data)
-      if (Array.isArray(data.suggested_questions)) {
-        if (!useOverrides) setSuggestions(data.suggested_questions as string[])
-      }
-      if (data.welcome_message && !welcome) {
-        // If welcome message is not overridden by prop, use from config
-        // Logic to handle welcome message if not already present
-      }
-    }).catch(() => {})
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then((data: ChatbotConfig) => {
+        setConfig(data)
+        logger.debug('Config loaded', data)
+        emitEvent('CONFIG_LOADED', data)
+        if (Array.isArray(data.suggested_questions)) {
+          if (!useOverrides) setSuggestions(data.suggested_questions as string[])
+        }
+      })
+      .catch((error) => {
+        logger.error('Failed to load config', error)
+        emitEvent('ERROR', { type: 'config_load_error', message: error.message })
+      })
   }, [chatbotId, apiBase, useOverrides])
 
   useEffect(() => {
@@ -44,39 +80,81 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     }
   }, [useOverrides, suggestionsOverride])
 
-  const color = (useOverrides && themeColor) || config?.theme_color || '#3b82f6'
-  const pos = (useOverrides && position) || config?.position || 'bottom-right'
-  function sanitizeUrl(u?: string) {
-    if (!u) return undefined
-    return u.replace(/[`'\"]/g, '').trim()
-  }
-  const botName = (useOverrides && typeof botNameOverride !== 'undefined') ? botNameOverride : config?.bot_display_name
-  const botIcon = sanitizeUrl((useOverrides && typeof botIconOverride !== 'undefined') ? botIconOverride : config?.bot_icon)
-  const hideBrand = (useOverrides && typeof hideBrandingOverride !== 'undefined') ? hideBrandingOverride : config?.hide_branding
-  const customBrand = (useOverrides && customBrandingOverride) ? { ...customBrandingOverride, link: sanitizeUrl(customBrandingOverride.link) } : (config?.custom_branding ? { ...config?.custom_branding, link: sanitizeUrl(config?.custom_branding?.link) } : undefined)
+  const color = (useOverrides && themeColor) || (config?.theme_color as string | undefined) || DEFAULT_THEME_COLOR
+  const pos = (useOverrides && position) || (config?.position as string | undefined) || DEFAULT_POSITION
+  const botName = (useOverrides && typeof botNameOverride !== 'undefined') ? botNameOverride : (config?.bot_display_name as string | undefined)
+  const botIcon = sanitizeUrl((useOverrides && typeof botIconOverride !== 'undefined') ? botIconOverride : (config?.bot_icon as string | undefined))
+  const hideBrand = (useOverrides && typeof hideBrandingOverride !== 'undefined') ? hideBrandingOverride : (config?.hide_branding ?? false)
+  const customBrand = (useOverrides && customBrandingOverride) 
+    ? { ...customBrandingOverride, link: sanitizeUrl(customBrandingOverride.link) } 
+    : config?.custom_branding 
+      ? { ...config.custom_branding, link: sanitizeUrl(config.custom_branding.link) } 
+      : undefined
   
+  // Determine effective values for styling with proper override logic
+  const effectiveBotMsgColor = (useOverrides && botMessageColor) ? botMessageColor : (config?.bot_message_color ?? color)
+  const effectiveUserMsgColor = (useOverrides && userMessageColor) ? userMessageColor : (config?.user_message_color ?? color)
+  const effectiveBotMsgTextColor = (useOverrides && botMessageTextColor) ? botMessageTextColor : (config?.bot_message_text_color ?? '#ffffff')
+  const effectiveUserMsgTextColor = (useOverrides && userMessageTextColor) ? userMessageTextColor : (config?.user_message_text_color ?? '#ffffff')
+  const effectiveHeaderColor = (useOverrides && headerColor) ? headerColor : (config?.chat_header_color ?? color)
+  const effectiveHeaderTextColor = (useOverrides && headerTextColor) ? headerTextColor : (config?.chat_header_text_color ?? '#ffffff')
+  const effectiveFontFamily = (useOverrides && fontFamily) ? fontFamily : (config?.chat_font_family ?? 'inherit')
+  const effectivePanelBg = (useOverrides && panelBg) ? panelBg : config?.chat_panel_bg_color
+  const effectiveChatBg = (useOverrides && chatBg) ? chatBg : config?.chat_background_color
+  const effectiveInputBg = (useOverrides && inputBg) ? inputBg : config?.input_background_color
+  const effectiveInputText = (useOverrides && inputText) ? inputText : config?.input_text_color
+  const effectiveBubbleRadius = (useOverrides && bubbleRadius) ? bubbleRadius : config?.bubble_radius
+  const effectiveSendBtnColor = (useOverrides && sendButtonColor) ? sendButtonColor : config?.send_button_color
+  const effectivePanelHeight = (useOverrides && panelHeight) ? panelHeight : config?.chat_panel_height
+  const effectivePanelWidth = (useOverrides && panelWidth) ? panelWidth : config?.chat_panel_width
+
+  // Load Google Fonts dynamically
+  useEffect(() => {
+    if (!effectiveFontFamily || effectiveFontFamily === 'inherit') return
+    
+    // Extract the font family name (before any fallbacks like ", sans-serif")
+    const fontName = effectiveFontFamily.split(',')[0].trim().replace(/['"]/g, '')
+    if (!fontName) return
+    
+    // Skip system fonts
+    const systemFonts = ['inherit', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica', 'Arial', 'sans-serif', 'serif', 'monospace']
+    if (systemFonts.some(sf => fontName.toLowerCase() === sf.toLowerCase())) return
+    
+    // Check if font is already loaded in the document
+    const fontId = `cbw-font-${fontName.replace(/\s+/g, '-').toLowerCase()}`
+    
+    // For shadow DOM, we need to load the font in the parent document
+    const targetDocument = document
+    if (targetDocument.getElementById(fontId)) return
+    
+    // Create and inject Google Fonts link
+    const link = targetDocument.createElement('link')
+    link.id = fontId
+    link.rel = 'stylesheet'
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@300;400;500;600;700&display=swap`
+    targetDocument.head.appendChild(link)
+    
+    logger.debug('Google Font loaded:', fontName)
+  }, [effectiveFontFamily])
+
   useEffect(() => {
     if (panelRef.current) {
       panelRef.current.style.setProperty('--cbw-color', color)
-      panelRef.current.style.setProperty('--cbw-bot-msg-color', botMessageColor || config?.bot_message_color || color)
-      panelRef.current.style.setProperty('--cbw-user-msg-color', userMessageColor || config?.user_message_color || color)
-      panelRef.current.style.setProperty('--cbw-bot-msg-text-color', botMessageTextColor || config?.bot_message_text_color || '#ffffff')
-      panelRef.current.style.setProperty('--cbw-user-msg-text-color', userMessageTextColor || config?.user_message_text_color || '#ffffff')
-      panelRef.current.style.setProperty('--cbw-header-color', headerColor || config?.chat_header_color || color)
-      panelRef.current.style.setProperty('--cbw-header-text-color', headerTextColor || config?.chat_header_text_color || '#ffffff')
-      panelRef.current.style.setProperty('--cbw-font-family', fontFamily || config?.chat_font_family || 'inherit')
-      if (panelBg || (config as any)?.chat_panel_bg_color) panelRef.current.style.setProperty('--cbw-panel-bg', panelBg || (config as any)?.chat_panel_bg_color)
-      if (chatBg || (config as any)?.chat_background_color) panelRef.current.style.setProperty('--cbw-chat-bg', chatBg || (config as any)?.chat_background_color)
-      if (inputBg || (config as any)?.input_background_color) panelRef.current.style.setProperty('--cbw-input-bg', inputBg || (config as any)?.input_background_color)
-      if (inputText || (config as any)?.input_text_color) panelRef.current.style.setProperty('--cbw-input-text', inputText || (config as any)?.input_text_color)
-      if (bubbleRadius || (config as any)?.bubble_radius) panelRef.current.style.setProperty('--cbw-bubble-radius', bubbleRadius || (config as any)?.bubble_radius)
-      if (sendButtonColor || (config as any)?.send_button_color) panelRef.current.style.setProperty('--cbw-send-bg', sendButtonColor || (config as any)?.send_button_color)
-      if (panelHeight || (config as any)?.chat_panel_height) {
-        panelRef.current.style.setProperty('--cbw-panel-height', panelHeight || (config as any)?.chat_panel_height)
-      }
-      if (panelWidth || (config as any)?.chat_panel_width) {
-        panelRef.current.style.setProperty('--cbw-panel-width', panelWidth || (config as any)?.chat_panel_width)
-      }
+      panelRef.current.style.setProperty('--cbw-bot-msg-color', effectiveBotMsgColor)
+      panelRef.current.style.setProperty('--cbw-user-msg-color', effectiveUserMsgColor)
+      panelRef.current.style.setProperty('--cbw-bot-msg-text-color', effectiveBotMsgTextColor)
+      panelRef.current.style.setProperty('--cbw-user-msg-text-color', effectiveUserMsgTextColor)
+      panelRef.current.style.setProperty('--cbw-header-color', effectiveHeaderColor)
+      panelRef.current.style.setProperty('--cbw-header-text-color', effectiveHeaderTextColor)
+      panelRef.current.style.setProperty('--cbw-font-family', effectiveFontFamily)
+      if (effectivePanelBg) panelRef.current.style.setProperty('--cbw-panel-bg', effectivePanelBg)
+      if (effectiveChatBg) panelRef.current.style.setProperty('--cbw-chat-bg', effectiveChatBg)
+      if (effectiveInputBg) panelRef.current.style.setProperty('--cbw-input-bg', effectiveInputBg)
+      if (effectiveInputText) panelRef.current.style.setProperty('--cbw-input-text', effectiveInputText)
+      if (effectiveBubbleRadius) panelRef.current.style.setProperty('--cbw-bubble-radius', effectiveBubbleRadius)
+      if (effectiveSendBtnColor) panelRef.current.style.setProperty('--cbw-send-bg', effectiveSendBtnColor)
+      if (effectivePanelHeight) panelRef.current.style.setProperty('--cbw-panel-height', effectivePanelHeight)
+      if (effectivePanelWidth) panelRef.current.style.setProperty('--cbw-panel-width', effectivePanelWidth)
       
       // Position - skip in preview mode for full container fill
       if (!previewMode) {
@@ -90,7 +168,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
         }
       }
     }
-  }, [color, config, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, pos, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, previewMode])
+  }, [color, effectiveBotMsgColor, effectiveUserMsgColor, effectiveBotMsgTextColor, effectiveUserMsgTextColor, effectiveHeaderColor, effectiveHeaderTextColor, effectiveFontFamily, pos, effectivePanelHeight, effectivePanelWidth, effectivePanelBg, effectiveInputBg, effectiveInputText, effectiveChatBg, effectiveBubbleRadius, effectiveSendBtnColor, previewMode])
 
   useEffect(() => {
     if (resetSession) {
@@ -106,7 +184,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       if (useOverrides && s.messages.length === 1 && s.messages[0].type === 'welcome') {
         const msg = welcome || config?.welcome_message
         if (msg && s.messages[0].content !== msg) {
-          const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as Message
+          const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as ChatMessage
           setMessages([wm])
           saveSession(chatbotId, { sessionId: s.sessionId, messages: [wm] })
         } else {
@@ -117,7 +195,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       }
     } else if (welcome || config?.welcome_message) {
       const msg = welcome || config?.welcome_message
-      const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as Message
+      const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as ChatMessage
       setMessages([wm])
       saveSession(chatbotId, { sessionId: s.sessionId, messages: [wm] })
     }
@@ -128,7 +206,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
     const text = input.trim()
     if (!text) return
     setInput('')
-    const um = { role: 'user', content: text, ts: Date.now() } as Message
+    const um = { role: 'user', content: text, ts: Date.now() } as ChatMessage
     emitEvent('MESSAGE_SENT', { content: text })
     setMessages((m) => {
       const nm = [...m, um]
@@ -141,11 +219,11 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}/chat`
       let token = embedToken
       if (!token && embedTokenUrl) {
-        try { const tr = await fetch(embedTokenUrl); if (tr.ok) { const t = await tr.text(); token = t; setEmbedToken(t) } } catch {}
+        try { const tr = await fetch(embedTokenUrl); if (tr.ok) { const t = await tr.text(); token = t; setEmbedToken(t) } } catch (e) { logger.warn('Embed token fetch failed', e) }
       }
       let captchaToken = ''
       if (captchaSiteKey && (window as any).getCaptchaToken) {
-        try { captchaToken = await (window as any).getCaptchaToken(captchaSiteKey) } catch {}
+        try { captchaToken = await (window as any).getCaptchaToken(captchaSiteKey) } catch (e) { logger.warn('Captcha token fetch failed', e) }
       }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (token) {
@@ -164,7 +242,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
 
       // Check if this is a handoff response
       const isHandoff = !!data.handoff_request_id
-      const am: Message = { 
+      const am: ChatMessage = { 
         id: data.message_id, 
         role: 'assistant', 
         content: ans, 
@@ -180,10 +258,14 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       })
       if (!open) setUnread((u) => u + 1)
     } catch (e: any) {
-      emitEvent('ERROR', { message: e.message })
-      console.error('Chat error:', e)
-      await new Promise((r) => setTimeout(r, 300))
-      const em = { role: 'assistant', content: 'Şu an bir hata oluştu, lütfen tekrar deneyin.', ts: Date.now() } as Message
+      const error = e instanceof Error ? e : new Error(String(e))
+      logger.error('Chat request failed', error)
+      emitEvent('ERROR', { type: 'chat_error', message: error.message })
+      
+      // Use standard delay constant
+      await new Promise((r) => setTimeout(r, ERROR_DISPLAY_DELAY_MS))
+      
+      const em = { role: 'assistant', content: DEFAULT_ERROR_MESSAGE.tr, ts: Date.now() } as ChatMessage
       setMessages((m) => {
         const nm = [...m, em]
         saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })
@@ -215,8 +297,8 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message_id: id, thumbs_up: isPositive }),
       })
-    } catch {
-      // Silent fail for feedback
+    } catch (e) {
+      logger.warn('Feedback failed', e)
     }
   }
 
@@ -241,6 +323,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
   const toggle = () => setOpen((v) => {
     const nv = !v
     if (nv) setUnread(0)
+    // onOpenChange handled by effect
     return nv
   })
 
@@ -277,7 +360,7 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
           botIcon={botIcon}
           suggestions={suggestions}
           onPickSuggestion={pickSuggestion}
-          maxChars={config?.max_chars}
+          maxChars={config?.max_chars ?? DEFAULT_MAX_CHARS}
           hideBranding={hideBrand}
           customBranding={customBrand}
           onFeedback={handleFeedback}
@@ -289,35 +372,4 @@ export function WidgetApp({ chatbotId, apiBase, themeColor, headerColor, headerT
       )}
     </div>
   )
-}
-
-type SessionData = { sessionId: string; messages: Message[] }
-function storageKey(chatbotId: string) { return `chatbot_session_${chatbotId}` }
-function getSession(chatbotId: string): SessionData {
-  try {
-    const raw = localStorage.getItem(storageKey(chatbotId))
-    if (raw) {
-      const parsed = JSON.parse(raw) as SessionData
-      if (parsed.sessionId && Array.isArray(parsed.messages)) return parsed
-    }
-  } catch {}
-  const sid = crypto.randomUUID()
-  const init: SessionData = { sessionId: sid, messages: [] }
-  saveSession(chatbotId, init)
-  return init
-}
-function saveSession(chatbotId: string, data: SessionData) {
-  try { localStorage.setItem(storageKey(chatbotId), JSON.stringify(data)) } catch {}
-}
-function clearSession(chatbotId: string) {
-  try { localStorage.removeItem(storageKey(chatbotId)) } catch {}
-}
-function setSessionId(chatbotId: string, sessionId: string) {
-  saveSession(chatbotId, { sessionId, messages: [] })
-}
-function ensureSession(chatbotId: string, sid: string, setSid: (v: string) => void): string {
-  if (sid && sid.length > 0) return sid
-  const s = getSession(chatbotId)
-  setSid(s.sessionId)
-  return s.sessionId
 }

@@ -121,12 +121,12 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		result := p.Process(ctx, source, bot, "en", plan)
 
 		assert.Error(t, result.Error)
-		assert.Contains(t, result.Error.Error(), "connection refused")
+		assert.Equal(t, ErrCodeScrapeFailedNetwork, result.Error.Error())
 		assert.True(t, mockScraper.AssertCalled("FetchRawHTML"))
 		assert.True(t, mockScraper.AssertCalled("ScrapeURLWithFallback"))
 	})
 
-	t.Run("Handles empty content", func(t *testing.T) {
+	t.Run("Handles empty content returns ERR_DYNAMIC_REQUIRED", func(t *testing.T) {
 		mockOAI := &rag.MockLLMClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
@@ -135,7 +135,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		mockScraper.SetResponse(testURL, "") // Empty content
 
 		// Insert test data
-		_, _ = db.Exec(`INSERT INTO plans (id, name, code, config) VALUES ('p3', 'Free3', 'free3', '{}'::jsonb) ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO plans (id, name, code, config) VALUES ('p3', 'Free3', 'free3', '{"scraping": {"dynamic_enabled": false}}'::jsonb) ON CONFLICT DO NOTHING`)
 		_, _ = db.Exec(`INSERT INTO users (id, email, password_hash, plan_id) VALUES ('u3', 'test3@test.com', 'h', 'p3') ON CONFLICT DO NOTHING`)
 		_, _ = db.Exec(`INSERT INTO chatbots (id, user_id, name, discovery_mode) VALUES ('bot-3', 'u3', 'Bot3', 'disabled') ON CONFLICT DO NOTHING`)
 		_, _ = db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, source_url) VALUES ('src-3', 'bot-3', 'url', $1) ON CONFLICT DO NOTHING`, testURL)
@@ -149,12 +149,47 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 			SourceURL:  &testURL,
 		}
 		bot := &models.Chatbot{ID: "bot-3", DiscoveryMode: "disabled"}
-		plan := &models.Plan{Config: models.PlanConfig{}}
+		plan := &models.Plan{Config: models.PlanConfig{
+			Scraping: models.ScrapingConfig{DynamicEnabled: false},
+		}}
 
 		result := p.Process(ctx, source, bot, "en", plan)
 
-		assert.NoError(t, result.Error)
-		assert.Equal(t, 0, result.ChunkCount)
+		assert.Error(t, result.Error)
+		assert.Equal(t, ErrCodeDynamicRequired, result.Error.Error())
+	})
+
+	t.Run("Handles empty content returns ERR_EMPTY_CONTENT when dynamic enabled", func(t *testing.T) {
+		mockOAI := &rag.MockLLMClient{}
+		mockVC := &rag.MockVectorClient{}
+		mockScraper := scraper.NewMockScraper()
+
+		testURL := "https://example.com/empty-dynamic"
+		mockScraper.SetResponse(testURL, "") // Empty content even with dynamic
+
+		// Insert test data with dynamic enabled
+		_, _ = db.Exec(`INSERT INTO plans (id, name, code, config) VALUES ('p3d', 'Pro3', 'pro3', '{"scraping": {"dynamic_enabled": true}}'::jsonb) ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO users (id, email, password_hash, plan_id) VALUES ('u3d', 'test3d@test.com', 'h', 'p3d') ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO chatbots (id, user_id, name, discovery_mode) VALUES ('bot-3d', 'u3d', 'Bot3d', 'disabled') ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, source_url) VALUES ('src-3d', 'bot-3d', 'url', $1) ON CONFLICT DO NOTHING`, testURL)
+
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+
+		source := &models.DataSource{
+			ID:         "src-3d",
+			ChatbotID:  "bot-3d",
+			SourceType: "url",
+			SourceURL:  &testURL,
+		}
+		bot := &models.Chatbot{ID: "bot-3d", DiscoveryMode: "disabled"}
+		plan := &models.Plan{Config: models.PlanConfig{
+			Scraping: models.ScrapingConfig{DynamicEnabled: true},
+		}}
+
+		result := p.Process(ctx, source, bot, "en", plan)
+
+		assert.Error(t, result.Error)
+		assert.Equal(t, ErrCodeEmptyContent, result.Error.Error())
 	})
 
 	t.Run("Successful scrape and processing", func(t *testing.T) {
@@ -253,5 +288,54 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 		// ExtractLinks may or may not be called depending on whether discovery proceeds
 		// The important thing is that the mock scraper is being used correctly
 		assert.Equal(t, 1, mockScraper.CallCount("FetchRawHTML"))
+	})
+
+	t.Run("Skips discovery when MaxURLsPerBot is 1", func(t *testing.T) {
+		mockOAI := &rag.MockFullClient{}
+		mockVC := &rag.MockVectorClient{}
+		mockScraper := scraper.NewMockScraper()
+
+		testURL := "https://example.com/single-url-plan"
+		mockScraper.SetResponse(testURL, "Test content for single url plan.")
+		mockScraper.SetHTMLResponse(testURL, `<html><body><a href="/page1">Link1</a></body></html>`)
+		mockScraper.SetLinks(testURL, []string{
+			"https://example.com/page1",
+		})
+
+		// Insert test data with MaxURLsPerBot=1
+		_, _ = db.Exec(`INSERT INTO plans (id, name, code, config) VALUES ('p6', 'Free6', 'free6', '{"scraping": {"max_pages_per_crawl": 5, "max_urls_per_bot": 1}}'::jsonb) ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO users (id, email, password_hash, plan_id) VALUES ('u6', 'test6@test.com', 'h', 'p6') ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO chatbots (id, user_id, name, discovery_mode) VALUES ('bot-6', 'u6', 'Bot6', 'auto') ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, source_url, is_discovered) VALUES ('src-6', 'bot-6', 'url', $1, false) ON CONFLICT DO NOTHING`, testURL)
+
+		// Mock embedding calls
+		mockOAI.On("CreateCompletion", mock.Anything, mock.Anything).Return(&models.CompletionResult{
+			Content: `{"capability_summary": "test", "suggested_questions": []}`,
+		}, nil).Maybe()
+		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Maybe()
+		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+
+		source := &models.DataSource{
+			ID:           "src-6",
+			ChatbotID:    "bot-6",
+			SourceType:   "url",
+			SourceURL:    &testURL,
+			IsDiscovered: false,
+		}
+		bot := &models.Chatbot{ID: "bot-6", UserID: "u6", DiscoveryMode: "auto"}
+		plan := &models.Plan{Config: models.PlanConfig{
+			Scraping: models.ScrapingConfig{
+				MaxPagesPerCrawl: 5,
+				MaxURLsPerBot:    1, // Key: limit is 1, discovery should skip
+			},
+		}}
+
+		_ = p.Process(ctx, source, bot, "en", plan)
+
+		// When MaxURLsPerBot=1, ExtractLinks should NOT be called
+		// because discovery is skipped early
+		assert.Equal(t, 0, mockScraper.CallCount("ExtractLinks"))
 	})
 }

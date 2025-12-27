@@ -136,7 +136,7 @@ const DashboardLayout = () => {
   }
 
   return (
-    <div className="h-screen bg-background text-foreground flex">
+    <div className="h-screen bg-background text-foreground flex overflow-hidden">
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
@@ -152,8 +152,8 @@ const DashboardLayout = () => {
           // Mobile behavior
           'w-72',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
-          // Desktop behavior
-          'lg:static lg:translate-x-0',
+          // Desktop behavior - always fixed, never static
+          'lg:translate-x-0',
           isCollapsed ? 'lg:w-[72px] lg:hover:w-72' : 'lg:w-72',
           // Premium shadow
           'shadow-[4px_0_24px_rgba(0,0,0,0.06)]',
@@ -354,7 +354,11 @@ const DashboardLayout = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+      <main className={cn(
+        "flex-1 flex flex-col min-w-0 overflow-hidden bg-background",
+        // Add margin-left to account for fixed sidebar on desktop
+        isCollapsed ? "lg:ml-[72px]" : "lg:ml-72"
+      )}>
         {/* Top Header */}
         <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">

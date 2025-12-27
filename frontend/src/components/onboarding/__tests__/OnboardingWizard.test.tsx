@@ -6,6 +6,16 @@ import { ToastProvider } from '@/components/ui/toast'
 import OnboardingWizard from '../OnboardingWizard'
 import { api } from '@/api/client'
 
+const navigate = vi.fn()
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<any>('react-router-dom')
+  return {
+    ...actual,
+    useNavigate: () => navigate,
+  }
+})
+
 const renderOnboarding = () => {
   return render(
     <ToastProvider>
@@ -171,6 +181,11 @@ describe('OnboardingWizard', () => {
         await screen.findByRole('heading', { name: /Tebrikler/i }, { timeout: 3000 }),
       ).toBeInTheDocument()
       expect(screen.getByText(/kullanıma hazır\./i)).toBeInTheDocument()
+
+      const viewBotBtn = screen.getByRole('button', { name: /Botu Görüntüle/i })
+      await user.click(viewBotBtn)
+
+      expect(navigate).toHaveBeenCalledWith('/dashboard/chatbots/test-bot-id')
     })
   })
 

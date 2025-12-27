@@ -28,7 +28,7 @@ func TestAuth_Refresh_GeneratesNewAccessToken(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "refresh-success+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, err := json.Marshal(regBody)
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)

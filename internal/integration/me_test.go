@@ -51,7 +51,7 @@ func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
 	email := fmt.Sprintf("free-default-%d@example.com", time.Now().UnixNano())
 	regBody := map[string]string{
 		"email":     email,
-		"password":  "pass1234",
+		"password":  "Test@123",
 		"full_name": "Free Default",
 	}
 	b, err := json.Marshal(regBody)

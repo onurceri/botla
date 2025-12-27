@@ -25,6 +25,7 @@ const (
 	ErrEmailAndPasswordReq     = "ERR_EMAIL_AND_PASSWORD_REQUIRED" //nolint:gosec
 	ErrInvalidEmailFormat      = "ERR_INVALID_EMAIL_FORMAT"
 	ErrPasswordTooShort        = "ERR_PASSWORD_TOO_SHORT"
+	ErrPasswordWeak            = "ERR_PASSWORD_WEAK"
 	ErrEmailExists             = "ERR_EMAIL_EXISTS"
 	ErrInvalidCredentials      = "ERR_INVALID_CREDENTIALS" //nolint:gosec
 	ErrInvalidRequestBody      = "ERR_INVALID_REQUEST_BODY"

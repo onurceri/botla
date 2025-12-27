@@ -47,6 +47,7 @@ describe('HealthPanel', () => {
         { name: 'database', status: 'ok', latency_ms: 5, checked_at: new Date().toISOString() },
         { name: 'redis', status: 'ok', latency_ms: 2, checked_at: new Date().toISOString() },
       ],
+      last_updated: new Date().toISOString(),
     })
 
     render(<HealthPanel />, { wrapper: createWrapper() })
@@ -68,6 +69,7 @@ describe('HealthPanel', () => {
         { name: 'database', status: 'ok', latency_ms: 5, checked_at: new Date().toISOString() },
         { name: 'openai', status: 'degraded', latency_ms: 2000, message: 'High latency', checked_at: new Date().toISOString() },
       ],
+      last_updated: new Date().toISOString(),
     })
 
     render(<HealthPanel />, { wrapper: createWrapper() })

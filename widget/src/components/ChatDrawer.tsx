@@ -1,20 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { Message as MsgComp } from './Message'
 import { Suggestions } from './Suggestions'
-
-type Msg = { id?: string; role: 'user' | 'assistant'; content: string; ts?: number; feedback?: boolean; type?: 'welcome' | 'handoff' | 'normal'; handoffRequestId?: string; emailSubmitted?: boolean }
-
-type CustomBranding = {
-  logo_url?: string
-  text?: string
-  link?: string
-}
+import type { ChatMessage, CustomBranding } from '../types'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL || 'https://botla.app'
 
 export function ChatDrawer(
-  { color: _color, messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, onFeedback, onSubmitEmail, isPreviewMode = false }:
-  { color: string; messages: Msg[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; onFeedback?: (id: string, isPositive: boolean) => void; onSubmitEmail?: (requestId: string, email: string) => Promise<void>; isPreviewMode?: boolean }
+  { messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, onFeedback, onSubmitEmail, isPreviewMode = false }:
+  { messages: ChatMessage[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; onFeedback?: (id: string, isPositive: boolean) => void; onSubmitEmail?: (requestId: string, email: string) => Promise<void>; isPreviewMode?: boolean }
 ) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -49,14 +42,15 @@ export function ChatDrawer(
     }
   }, [input])
 
-  const handleInput = (e: any) => {
-    const val = e.currentTarget.value
+  const handleInput = (e: Event) => {
+    const target = e.currentTarget as HTMLTextAreaElement
+    const val = target.value
     if (val.length <= MAX_CHARS) {
       setInput(val)
     }
   }
 
-  const handleKeyDown = (e: any) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (!loading && input.trim()) {

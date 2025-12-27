@@ -19,7 +19,7 @@ func TestAuth_Register_SQLInjectionEmail(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := "'; DROP TABLE users;--"
-	regBody := map[string]string{"email": email, "password": "testpassword123", "full_name": "SQL Injection"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "SQL Injection"}
 	b, err := json.Marshal(regBody)
 	if err != nil {
 		t.Fatalf("marshal failed: %v", err)
@@ -58,7 +58,7 @@ func TestAuth_Register_XSSFullName(t *testing.T) {
 
 	email := "xss+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	fullName := "<script>alert('xss')</script>"
-	regBody := map[string]string{"email": email, "password": "testpassword123", "full_name": fullName}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": fullName}
 	b, err := json.Marshal(regBody)
 	if err != nil {
 		t.Fatalf("marshal failed: %v", err)

@@ -37,7 +37,7 @@ describe('api/admin', () => {
       
       const response = await adminApi.getDetailedHealth()
       
-      expect(spy).toHaveBeenCalledWith('/api/v1/admin/health/detailed')
+      expect(spy).toHaveBeenCalledWith('/api/v1/admin/health/detailed', { params: undefined })
       expect(response).toEqual(payload)
     })
   })

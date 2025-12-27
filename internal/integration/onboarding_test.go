@@ -11,10 +11,10 @@ import (
 
 // authToken helper for onboarding tests
 func authTokenOnboarding(t *testing.T, base string, email string) string {
-	regBody := map[string]string{"email": email, "password": "test1234", "full_name": "User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
 	http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
-	lb := map[string]string{"email": email, "password": "test1234"}
+	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
 	res, _ := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	var tr tokenResp
@@ -33,7 +33,7 @@ func TestOnboardingFlow(t *testing.T) {
 
 	// 1. Register a new user
 	email := fmt.Sprintf("onboarding-flow+%d@example.com", time.Now().UnixNano())
-	regBody := map[string]string{"email": email, "password": "test1234", "full_name": "Onboarding User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Onboarding User"}
 	regBytes, _ := json.Marshal(regBody)
 	regRes, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
 	if err != nil {
@@ -154,7 +154,7 @@ func TestOnboardingSkip(t *testing.T) {
 
 	// Register and login
 	email := fmt.Sprintf("onboarding-skip+%d@example.com", time.Now().UnixNano())
-	regBody := map[string]string{"email": email, "password": "test1234", "full_name": "Skip User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Skip User"}
 	regBytes, _ := json.Marshal(regBody)
 	regRes, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
 	regRes.Body.Close()
@@ -193,7 +193,7 @@ func TestOnboardingStatePersistedAcrossSessions(t *testing.T) {
 
 	// Register and login
 	email := fmt.Sprintf("onboarding-persist+%d@example.com", time.Now().UnixNano())
-	regBody := map[string]string{"email": email, "password": "test1234", "full_name": "Persist User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Persist User"}
 	regBytes, _ := json.Marshal(regBody)
 	http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
 

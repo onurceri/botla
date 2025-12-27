@@ -20,7 +20,7 @@ func TestAuth_RefreshWithExpiredToken(t *testing.T) {
 
 	email := "refexp+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	// Register to get a user ID
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "Ref Exp User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Ref Exp User"}
 	b, _ := json.Marshal(regBody)
 	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {

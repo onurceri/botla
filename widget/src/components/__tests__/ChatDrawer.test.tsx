@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, within, cleanup } from '@testing-library/preact'
-import { ChatDrawer } from '@botla/ui-shared'
+
+// Mock react-markdown to avoid React/Preact compatibility issues in tests
+vi.mock('react-markdown', () => ({
+  default: ({ children }: { children: string }) => children
+}))
+
+import { ChatDrawer } from '../ChatDrawer'
 
 describe('ChatDrawer', () => {
   afterEach(() => {
     cleanup()
   })
+  
   it('does not send on Enter when loading', async () => {
     const onSend = vi.fn()
     render(

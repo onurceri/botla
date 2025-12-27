@@ -1,5 +1,5 @@
 /** @jsxImportSource react */
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Message } from './Message'
 import { Suggestions } from './Suggestions'
 import { LoadingIndicator } from './LoadingIndicator'
@@ -9,18 +9,18 @@ interface ChatDrawerProps {
   messages: ChatMessage[]
   loading: boolean
   input: string
-  setInput: (value: string) => void
+  setInput: (_v: string) => void
   onSend: () => void
   onClose: () => void
   botName?: string
   botIcon?: string
   suggestions?: string[]
-  onPickSuggestion?: (question: string) => void
+  onPickSuggestion?: (_q: string) => void
   maxChars?: number
   hideBranding?: boolean
   customBranding?: CustomBranding
-  onFeedback?: (id: string, isPositive: boolean) => void
-  onSubmitEmail?: (requestId: string, email: string) => Promise<void>
+  onFeedback?: (_id: string, _isPositive: boolean) => void
+  onSubmitEmail?: (_requestId: string, _email: string) => Promise<void>
   isPreviewMode?: boolean
   marketingUrl?: string
   classNames?: {

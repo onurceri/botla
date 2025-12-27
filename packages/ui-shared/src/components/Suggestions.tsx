@@ -4,7 +4,7 @@ import { useState } from 'react'
 interface SuggestionsProps {
   items: string[]
   disabled?: boolean
-  onPick: (question: string) => void
+  onPick: (_question: string) => void
   classNames?: {
     container?: string
     header?: string

@@ -26,6 +26,36 @@ func hashToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
+// isStrongPassword validates password meets complexity requirements:
+// - At least 8 characters
+// - At least one uppercase letter
+// - At least one lowercase letter
+// - At least one digit
+// - At least one special character (@$!%*?&)
+func isStrongPassword(password string) bool {
+	if len(password) < 8 {
+		return false
+	}
+
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	specialChars := "@$!%*?&"
+
+	for _, c := range password {
+		switch {
+		case 'A' <= c && c <= 'Z':
+			hasUpper = true
+		case 'a' <= c && c <= 'z':
+			hasLower = true
+		case '0' <= c && c <= '9':
+			hasDigit = true
+		case strings.ContainsRune(specialChars, c):
+			hasSpecial = true
+		}
+	}
+
+	return hasUpper && hasLower && hasDigit && hasSpecial
+}
+
 type AuthHandlers struct {
 	DB               *sql.DB
 	Secret           string
@@ -75,8 +105,8 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidEmailFormat)
 		return
 	}
-	if len(req.Password) < 8 {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrPasswordTooShort)
+	if !isStrongPassword(req.Password) {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrPasswordWeak)
 		return
 	}
 	var existing string

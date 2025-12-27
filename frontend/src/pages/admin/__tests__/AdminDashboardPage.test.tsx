@@ -34,6 +34,7 @@ describe('AdminDashboardPage', () => {
       uptime: '10d',
       environment: 'production',
       dependencies: [],
+      last_updated: new Date().toISOString(),
     })
   })
 
@@ -68,8 +69,8 @@ describe('AdminDashboardPage', () => {
     expect(screen.getByText(expectedMessages)).toBeInTheDocument()
     
     // Check subtitles
-    expect(screen.getByText('+10 today')).toBeInTheDocument()
-    expect(screen.getByText('+500 today')).toBeInTheDocument()
+    expect(screen.getByText('Bugün +10')).toBeInTheDocument()
+    expect(screen.getByText('Bugün +500')).toBeInTheDocument()
   })
 
   it('handles empty stats gracefully', async () => {

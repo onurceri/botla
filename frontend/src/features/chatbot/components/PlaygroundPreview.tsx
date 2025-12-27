@@ -153,6 +153,8 @@ export default function PlaygroundPreview(props: Props) {
     hideBranding,
     customBranding,
     panelHeight,
+    panelWidth,
+    autoOpen,
   ])
 
   // Send config to iframe
@@ -190,7 +192,7 @@ export default function PlaygroundPreview(props: Props) {
     }, 300) // 300ms debounce for live preview updates
 
     return () => clearTimeout(timeoutId)
-  }, [sendConfig, refreshKey])
+  }, [sendConfig, refreshKey, buildConfig])
 
   // Listen for messages from iframe (optional - for debugging)
   useEffect(() => {
@@ -204,7 +206,64 @@ export default function PlaygroundPreview(props: Props) {
   }, [])
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative overflow-hidden">
+      {/* Decorative Website Mockup Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 pointer-events-none">
+        {/* Browser Chrome */}
+        <div className="h-8 bg-slate-200/80 border-b border-slate-300/50 flex items-center px-3 gap-2">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
+          </div>
+          <div className="flex-1 mx-4">
+            <div className="h-4 bg-white/80 rounded-md max-w-[200px] mx-auto shadow-inner" />
+          </div>
+        </div>
+
+        {/* Website Header */}
+        <div className="h-12 bg-white/60 border-b border-slate-200/60 flex items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/30 to-orange-400/30" />
+            <div className="w-20 h-3 bg-slate-300/60 rounded-full" />
+          </div>
+          <div className="flex gap-4">
+            <div className="w-12 h-2.5 bg-slate-200/80 rounded-full" />
+            <div className="w-14 h-2.5 bg-slate-200/80 rounded-full" />
+            <div className="w-10 h-2.5 bg-slate-200/80 rounded-full" />
+          </div>
+        </div>
+
+        {/* Hero Section */}
+        <div className="px-6 py-8">
+          <div className="max-w-[200px] mx-auto text-center space-y-3">
+            <div className="w-3/4 h-4 bg-slate-300/50 rounded-full mx-auto" />
+            <div className="w-full h-3 bg-slate-200/50 rounded-full" />
+            <div className="w-2/3 h-3 bg-slate-200/50 rounded-full mx-auto" />
+            <div className="w-20 h-6 bg-primary/20 rounded-lg mx-auto mt-4" />
+          </div>
+        </div>
+
+        {/* Content Grid */}
+        <div className="px-4 grid grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white/40 rounded-xl p-3 space-y-2 border border-slate-200/30">
+              <div className="w-full h-12 bg-slate-200/40 rounded-lg" />
+              <div className="w-3/4 h-2 bg-slate-200/50 rounded-full" />
+              <div className="w-1/2 h-2 bg-slate-200/40 rounded-full" />
+            </div>
+          ))}
+        </div>
+
+        {/* Additional Content */}
+        <div className="px-4 mt-4 space-y-2">
+          <div className="w-2/3 h-3 bg-slate-200/40 rounded-full" />
+          <div className="w-full h-2 bg-slate-200/30 rounded-full" />
+          <div className="w-5/6 h-2 bg-slate-200/30 rounded-full" />
+        </div>
+      </div>
+
+      {/* Widget iframe - on top of the mockup */}
       <iframe
         ref={iframeRef}
         src={`${WIDGET_URL}/preview.html`}

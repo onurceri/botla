@@ -30,11 +30,18 @@ migrate-up:
 migrate-down:
 	 migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" down
 
+reset-db:
+	$(MAKE) migrate-down
+	$(MAKE) migrate-up
+
 migrate-down-one:
 	migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" down 1
 
 migrate-version:
 	 -migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" version
+
+migrate-force:
+	migrate -path=$(MIGRATIONS_DIR) -database="$(DATABASE_URL)" force $(v)
 
 migrate-up-test:
 	 migrate -path=$(MIGRATIONS_DIR) -database="$(TEST_DATABASE_URL)" up

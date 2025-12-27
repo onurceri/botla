@@ -16,10 +16,10 @@ type chatbot struct {
 }
 
 func authToken(t *testing.T, base string, email string) string {
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "User"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
 	http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
-	lb := map[string]string{"email": email, "password": "pass1234"}
+	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
 	res, _ := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	var tr tokenResp

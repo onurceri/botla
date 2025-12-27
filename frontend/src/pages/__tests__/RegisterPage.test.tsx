@@ -84,4 +84,36 @@ describe('RegisterPage', () => {
       expect(submit).not.toBeDisabled()
     })
   })
+
+  it('shows translated error message for known error code', async () => {
+    const user = userEvent.setup()
+    const postSpy = vi.spyOn(api, 'post').mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { data: { code: 'ERR_PASSWORD_WEAK', status: 400 } },
+      message: 'Request failed with status code 400',
+    } as any)
+
+    render(
+      <ToastProvider>
+        <MemoryRouter>
+          <RegisterPage />
+        </MemoryRouter>
+      </ToastProvider>,
+    )
+
+    await user.type(screen.getByLabelText('Ad Soyad'), 'Test')
+    await user.type(screen.getByLabelText('Email'), 'test@example.com')
+    await user.type(screen.getByLabelText('Şifre'), 'weak')
+    await user.click(screen.getAllByRole('button', { name: 'Kayıt Ol' })[0])
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalled()
+    })
+
+    expect(
+      screen.getByText(
+        'Şifre büyük harf, küçük harf, rakam ve özel karakter (@$!%*?&) içermelidir',
+      ),
+    ).toBeInTheDocument()
+  })
 })

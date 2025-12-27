@@ -38,7 +38,7 @@ UPDATE plans SET config = jsonb_build_object(
     ),
     'guardrails', jsonb_build_object(
         'can_customize_thresholds', false,
-        'can_use_smart_fallback', false,
+        'can_use_smart_fallback', true,
         'can_use_escalate_fallback', false,
         'can_manage_topics', false,
         'can_customize_messages', false

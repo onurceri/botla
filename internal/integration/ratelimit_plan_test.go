@@ -26,7 +26,7 @@ func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
 
 	// Verify that rate limit headers are present on authenticated requests
 	email := fmt.Sprintf("ratelimit+%d@example.com", time.Now().UnixNano())
-	regBody := map[string]string{"email": email, "password": "pass1234", "full_name": "Rate Test"}
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Rate Test"}
 	rb, _ := json.Marshal(regBody)
 	var resReg *http.Response
 	resReg, err = http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))

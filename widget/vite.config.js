@@ -4,6 +4,8 @@ import { readFileSync, writeFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
+import { visualizer } from 'rollup-plugin-visualizer'
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
@@ -35,9 +37,24 @@ function previewHtmlPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [preact({ jsxImportSource: 'preact' }), previewHtmlPlugin()],
+  plugins: [
+    preact({ jsxImportSource: 'preact' }), 
+    previewHtmlPlugin(),
+    visualizer({
+      filename: 'dist/stats.html',
+      open: false,
+      gzipSize: true,
+    }),
+  ],
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
+    alias: {
+      react: 'preact/compat',
+      'react-dom': 'preact/compat',
+      'react-dom/client': 'preact/compat',
+      'react/jsx-runtime': 'preact/jsx-runtime',
+    },
   },
   resolve: {
     alias: {

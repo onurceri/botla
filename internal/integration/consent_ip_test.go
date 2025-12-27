@@ -19,8 +19,8 @@ func TestConsentIPExtraction(t *testing.T) {
 
 	// Create regular user
 	userEmail := fmt.Sprintf("user_ip_%d@example.com", time.Now().UnixNano())
-	userID := registerUser(t, te.DB, te.Server.URL, userEmail, "password123")
-	userToken := loginUser(t, te.Server.URL, userEmail, "password123")
+	userID := registerUser(t, te.DB, te.Server.URL, userEmail, "Test@123")
+	userToken := loginUser(t, te.Server.URL, userEmail, "Test@123")
 
 	t.Run("Extracts IP from X-Forwarded-For", func(t *testing.T) {
 		marketing := true
