@@ -10,12 +10,12 @@ import (
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/internal/workers"
 )
 
 func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) (http.Handler, *processing.SourceQueue) {
@@ -117,7 +117,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		}
 	}
 
-	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC)
+	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC, 2)
 	if err != nil {
 		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
 	}

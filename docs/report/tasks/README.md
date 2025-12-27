@@ -69,16 +69,16 @@ Bu klasör, sistem analiz raporundaki tüm bulguları çözmek için oluşturulm
 - [x] 001 - Request-ID Middleware
 - [x] 002 - Job State Table  
 - [x] 003 - Job Progress API
-- [ ] 004 - Integrate Job Tracking
+- [x] 004 - Integrate Job Tracking
 
 ### Sprint 2: Reliability (Hafta 2)
-- [ ] 005 - Step Retry Mechanism
-- [ ] 006 - PDF Deduplication
-- [ ] 007 - SSRF Protection
+- [x] 005 - Step Retry Mechanism
+- [x] 006 - PDF Deduplication
+- [x] 007 - SSRF Protection
 
 ### Sprint 3: Scale & Quality (Hafta 3)
-- [ ] 008 - OpenAPI Spec
-- [ ] 009 - Worker Pool
+- [x] 008 - OpenAPI Spec
+- [x] 009 - Worker Pool
 - [ ] 010 - Async Pipeline Tests
 - [ ] 011 - Multi-Tenant Tests
 

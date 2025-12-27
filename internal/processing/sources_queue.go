@@ -33,14 +33,21 @@ type SourceQueue struct {
 	urlProcessor  *URLProcessor
 	pdfProcessor  *PDFProcessor
 	textProcessor *TextProcessor
+
+	workerCount int
 }
 
 // StartSourceQueue creates and starts a new source processing queue
-func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient) (*SourceQueue, error) {
+func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, workerCount int) (*SourceQueue, error) {
 	c := make(chan string, 64)
 	stop := make(chan struct{})
 
 	log := logger.New("INFO")
+
+	if workerCount > 16 {
+		log.Warn("worker_count_capped", map[string]any{"requested": workerCount, "capped": 16})
+		workerCount = 16
+	}
 
 	q := &SourceQueue{
 		ch:           c,
@@ -55,9 +62,13 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 		urlProcessor:  NewURLProcessor(dbpool, oai, vc, log, nil),
 		pdfProcessor:  NewPDFProcessor(dbpool, st, oai, vc, log),
 		textProcessor: NewTextProcessor(dbpool, st, oai, vc, log),
+		workerCount:   workerCount,
 	}
 
-	go q.worker()
+	for i := 0; i < workerCount; i++ {
+		q.wg.Add(1)
+		go q.worker(i)
+	}
 
 	// Ensure collection exists at startup
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -188,7 +199,7 @@ RecoverLoop:
 }
 
 // worker processes jobs from the queue
-func (q *SourceQueue) worker() {
+func (q *SourceQueue) worker(workerID int) {
 	if q.ch == nil {
 		return
 	}
@@ -196,8 +207,9 @@ func (q *SourceQueue) worker() {
 		select {
 		case <-q.stopCh:
 			if q.log != nil {
-				q.log.Info("source_queue_shutdown", nil)
+				q.log.Info("source_queue_shutdown", map[string]any{"worker_id": workerID})
 			}
+			q.wg.Done()
 			return
 		case jobID := <-q.ch:
 			// Add a small delay to prevent rapid-fire API calls (rate limiting)
@@ -458,4 +470,12 @@ func defaultLang(code string) string {
 		s = s[:i]
 	}
 	return s
+}
+
+func (q *SourceQueue) WorkerCount() int {
+	return q.workerCount
+}
+
+func (q *SourceQueue) QueueLength() int {
+	return len(q.ch)
 }

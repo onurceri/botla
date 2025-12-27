@@ -92,12 +92,12 @@ Add queue worker count and length to health response.
 
 ## Acceptance Criteria
 
-- [ ] Configurable worker count via WORKER_COUNT
-- [ ] Workers process jobs in parallel
-- [ ] Graceful shutdown waits for in-flight jobs
-- [ ] Worker count capped at 16
-- [ ] Queue health visible in health endpoint
-- [ ] All tests pass
+- [x] Configurable worker count via WORKER_COUNT
+- [x] Workers process jobs in parallel
+- [x] Graceful shutdown waits for in-flight jobs
+- [x] Worker count capped at 16
+- [x] Queue health visible in health endpoint
+- [x] All tests pass
 
 ---
 

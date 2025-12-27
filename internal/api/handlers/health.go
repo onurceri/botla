@@ -9,12 +9,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
 type HealthHandlers struct {
 	DB  *sql.DB
 	Cfg *config.Config
+	Queue *processing.SourceQueue
 }
 
 func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +33,18 @@ func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
 	} else {
 		dep["qdrant"] = "ok"
 	}
+	
+	queueStats := map[string]any{
+		"status": "ok",
+		"workers": 0,
+		"pending": 0,
+	}
+	if h.Queue != nil {
+		queueStats["workers"] = h.Queue.WorkerCount()
+		queueStats["pending"] = h.Queue.QueueLength()
+	}
+	dep["queue"] = queueStats
+
 	status := http.StatusOK
 	if dep["db"] != "ok" || dep["qdrant"] != "ok" {
 		status = http.StatusServiceUnavailable

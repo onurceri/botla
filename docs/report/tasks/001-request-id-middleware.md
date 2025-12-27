@@ -316,13 +316,13 @@ func TestRequestID_Integration(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] Every HTTP response includes `X-Request-ID` header
-- [ ] If client provides `X-Request-ID`, it's preserved
-- [ ] Request ID is accessible via `RequestIDFromContext(ctx)`
-- [ ] Logger methods with `Ctx` suffix include request_id in output
-- [ ] All unit tests pass
-- [ ] Integration test passes
-- [ ] Manual verification confirms headers are present
+- [x] Every HTTP response includes `X-Request-ID` header
+- [x] If client provides `X-Request-ID`, it's preserved
+- [x] Request ID is accessible via `RequestIDFromContext(ctx)`
+- [x] Logger methods with `Ctx` suffix include request_id in output
+- [x] All unit tests pass
+- [x] Integration test passes
+- [x] Manual verification confirms headers are present
 
 ---
 

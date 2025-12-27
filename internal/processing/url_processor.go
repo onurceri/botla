@@ -67,7 +67,9 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	})
 
 	// Step 1: Fetch
-	onStep(models.StepFetchSource)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepFetchSource, *lastStep) && models.StepFetchSource != *lastStep) {
+		onStep(models.StepFetchSource)
+	}
 
 	// Create scrape config with CSS selectors if defined
 	var scrapeConfig *scraper.ScrapeConfig
@@ -107,7 +109,9 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
 
 	// Step 2: Parse
-	onStep(models.StepParseContent)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepParseContent, *lastStep) && models.StepParseContent != *lastStep) {
+		onStep(models.StepParseContent)
+	}
 
 	// Step 2: Extract text content for embedding
 	content, err := p.Scraper.ScrapeURLWithFallback(
@@ -188,7 +192,9 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
 	// Step 3: Chunk
-	onStep(models.StepChunkText)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepChunkText, *lastStep) && models.StepChunkText != *lastStep) {
+		onStep(models.StepChunkText)
+	}
 
 	// Chunk and embed
 	p.logInfo("url_processing_chunking_started", map[string]any{
@@ -209,7 +215,9 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
 
 	// Step 4: Embed
-	onStep(models.StepEmbedChunks)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepEmbedChunks, *lastStep) && models.StepEmbedChunks != *lastStep) {
+		onStep(models.StepEmbedChunks)
+	}
 
 	p.logInfo("url_processing_embedding_started", map[string]any{
 		"source_id":   s.ID,
@@ -232,7 +240,9 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, newHash)
 
 	// Step 5: Store
-	onStep(models.StepStoreVectors)
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepStoreVectors, *lastStep) && models.StepStoreVectors != *lastStep) {
+		onStep(models.StepStoreVectors)
+	}
 
 	// Update hash after successful embedding
 	_ = db.UpdateSourceHash(ctx, p.DB, s.ID, newHash)

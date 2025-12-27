@@ -463,12 +463,12 @@ func TestFailJob(t *testing.T) {
 
 ## Acceptance Criteria
 
-- [ ] Migration creates `training_jobs` table successfully
-- [ ] Rollback migration drops table cleanly
-- [ ] `TrainingJob` model with all fields
-- [ ] CRUD operations work correctly
-- [ ] All unit tests pass
-- [ ] Indexes verified with `\d training_jobs`
+- [x] Migration creates `training_jobs` table successfully
+- [x] Rollback migration drops table cleanly
+- [x] `TrainingJob` model with all fields
+- [x] CRUD operations work correctly
+- [x] All unit tests pass
+- [x] Indexes verified with `\d training_jobs`
 
 ---
 

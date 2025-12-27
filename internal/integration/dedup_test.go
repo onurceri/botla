@@ -19,7 +19,7 @@ func TestPDFDeduplication_Integration(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := fmt.Sprintf("dedup-%d@example.com", time.Now().UnixNano())
-	token := authToken(t, te.Server.URL, email)
+	token := authTokenDedup(t, te.Server.URL, email)
 	chatbotID := createChatbotForDedup(t, te.Server.URL, token, "Dedup Bot")
 
 	// Relax PDF limit for this test to avoid ERR_PDF_LIMIT_REACHED
@@ -55,7 +55,7 @@ func TestTextDeduplication_Integration(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := fmt.Sprintf("textdedup-%d@example.com", time.Now().UnixNano())
-	token := authToken(t, te.Server.URL, email)
+	token := authTokenDedup(t, te.Server.URL, email)
 	chatbotID := createChatbotForDedup(t, te.Server.URL, token, "Text Dedup Bot")
 
 	textContent := "This is some unique text content for testing"
@@ -81,7 +81,7 @@ func TestDeduplication_DifferentChatbots_Allowed(t *testing.T) {
 	defer TeardownTestEnv(te)
 
 	email := fmt.Sprintf("crossbot-%d@example.com", time.Now().UnixNano())
-	token := authToken(t, te.Server.URL, email)
+	token := authTokenDedup(t, te.Server.URL, email)
 	chatbot1 := createChatbotForDedup(t, te.Server.URL, token, "Bot 1")
 	chatbot2 := createChatbotForDedup(t, te.Server.URL, token, "Bot 2")
 
@@ -156,4 +156,44 @@ func uploadText(t *testing.T, baseURL, token, chatbotID, text string) *http.Resp
 		t.Fatal(err)
 	}
 	return resp
+}
+
+func authTokenDedup(t *testing.T, base string, email string) string {
+	t.Helper()
+	// Register
+	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
+	b, _ := json.Marshal(regBody)
+	resp, err := http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("auth register request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("auth register failed: %d %s", resp.StatusCode, string(body))
+	}
+
+	// Login
+	lb := map[string]string{"email": email, "password": "Test@123"}
+	lbj, _ := json.Marshal(lb)
+	resp, err = http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	if err != nil {
+		t.Fatalf("auth login request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("auth login failed: %d %s", resp.StatusCode, string(body))
+	}
+
+	var tr struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
+		t.Fatalf("decode token failed: %v", err)
+	}
+	if tr.Token == "" {
+		t.Fatal("empty token received")
+	}
+	return tr.Token
 }

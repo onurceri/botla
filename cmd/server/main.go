@@ -99,8 +99,8 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 
 	// Initialize tokenizer with R2 training data
 	if storageService != nil {
-		if err := tokenizer.Init(context.Background(), storageService); err != nil {
-			log.Warn("tokenizer_init_fallback", map[string]any{"error": err.Error()})
+		if tokErr := tokenizer.Init(context.Background(), storageService); tokErr != nil {
+			log.Warn("tokenizer_init_fallback", map[string]any{"error": tokErr.Error()})
 		} else {
 			log.Info("tokenizer_loaded", nil)
 		}
@@ -114,7 +114,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	}
 
 	// Start source processing queue
-	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient)
+	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, cfg.WORKER_COUNT)
 	if err != nil {
 		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init source queue: %w", err)

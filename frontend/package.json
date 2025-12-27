@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "e2e": "playwright test --project=chromium",
     "e2e:headed": "playwright test --project=chromium --headed",
-    "e2e:ci": "E2E_BASE_URL=http://localhost:5173 playwright test --project=chromium"
+    "e2e:ci": "E2E_BASE_URL=http://localhost:5173 playwright test --project=chromium",
+    "generate-types": "bash scripts/generate-types.sh"
   },
   "dependencies": {
     "@botla/ui-shared": "file:../packages/ui-shared",
@@ -69,6 +70,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^27.2.0",
+    "openapi-typescript": "^7.10.1",
     "prettier": "^3.7.4",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.3",

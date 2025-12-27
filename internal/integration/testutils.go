@@ -109,6 +109,14 @@ func CleanupAllIntegrationSchemas() error {
 }
 
 func SetupTestEnv() (*TestEnv, error) {
+	return setupTestEnvCommon(false)
+}
+
+func SetupTestEnvWithMocks() (*TestEnv, error) {
+	return setupTestEnvCommon(true)
+}
+
+func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 	// Run cleanup once at the start of the test suite to remove stale schemas
 	cleanupOnce.Do(func() {
 		_ = CleanupAllIntegrationSchemas()
@@ -291,9 +299,16 @@ func SetupTestEnv() (*TestEnv, error) {
 	}, nil)
 
 	vs := &MockVectorStore{}
-	// For now, continue using real clients by default to keep existing tests passing
-	// New tests can manually create a mux with mocks.
-	mux, q := NewTestMux(cfg, db, vs, nil, nil)
+	
+	var llm rag.LLMClient
+	var vc rag.VectorClient
+	
+	if useMocks {
+		llm = mockLLM
+		vc = mockVC
+	}
+
+	mux, q := NewTestMux(cfg, db, vs, llm, vc)
 	srv := httptest.NewServer(mux)
 	return &TestEnv{Cfg: cfg, DB: db, Schema: schema, Server: srv, VectorStore: vs, MockVC: mockVC, MockLLM: mockLLM, Queue: q}, nil
 }
