@@ -185,7 +185,7 @@ describe('OnboardingWizard', () => {
       const viewBotBtn = screen.getByRole('button', { name: /Botu Görüntüle/i })
       await user.click(viewBotBtn)
 
-      expect(navigate).toHaveBeenCalledWith('/dashboard/chatbots/test-bot-id')
+      expect(navigate).toHaveBeenCalledWith('/dashboard/chatbots/test-bot-id/playground')
     })
   })
 

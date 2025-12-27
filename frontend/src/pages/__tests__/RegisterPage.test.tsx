@@ -110,10 +110,8 @@ describe('RegisterPage', () => {
       expect(postSpy).toHaveBeenCalled()
     })
 
-    expect(
-      screen.getByText(
-        'Şifre büyük harf, küçük harf, rakam ve özel karakter (@$!%*?&) içermelidir',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Şifre büyük harf, küçük harf, rakam ve özel karakter (@$!%*?&) içermelidir',
+    )
   })
 })

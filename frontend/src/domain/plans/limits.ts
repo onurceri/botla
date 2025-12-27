@@ -3,7 +3,7 @@
  * Provides utilities to check if a user can perform actions based on their plan.
  */
 
-import { PlanLimits, getPlanLimits, type PlanCode } from './index';
+import { PlanLimits, getPlanLimits } from './index';
 
 /**
  * Result of a limit check
