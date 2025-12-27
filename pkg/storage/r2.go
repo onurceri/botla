@@ -106,9 +106,24 @@ func (s *R2Storage) GetSignedURL(ctx context.Context, key string, expires time.D
 	return presignedUrl.URL, nil
 }
 
-// Helper to generate a unique key
+// GenerateKey creates a unique key with timestamp prefix (legacy).
 func GenerateKey(prefix, filename string) string {
 	timestamp := time.Now().UnixNano()
 	base := path.Base(strings.ReplaceAll(filename, "\\", "/"))
 	return fmt.Sprintf("%s/%d_%s", strings.TrimSuffix(prefix, "/"), timestamp, base)
+}
+
+// GenerateSourceKey creates a hierarchical storage key for user sources.
+// Path format: org/{orgID}/ws/{wsID}/bot/{botID}/sources/{timestamp}_{filename}
+func GenerateSourceKey(orgID, wsID, botID, filename string) string {
+	timestamp := time.Now().UnixNano()
+	base := path.Base(strings.ReplaceAll(filename, "\\", "/"))
+	return fmt.Sprintf("org/%s/ws/%s/bot/%s/sources/%d_%s",
+		orgID, wsID, botID, timestamp, base)
+}
+
+// SystemKey returns a key for system files (tokenizer, config, etc.).
+// Path format: system/{parts...}
+func SystemKey(parts ...string) string {
+	return "system/" + strings.Join(parts, "/")
 }
