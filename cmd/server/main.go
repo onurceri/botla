@@ -23,6 +23,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -93,6 +94,15 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		storageService, err = storage.NewR2Storage(cfg.R2_ACCOUNT_ID, cfg.R2_ACCESS_KEY_ID, cfg.R2_SECRET_ACCESS_KEY, cfg.R2_BUCKET_NAME)
 		if err != nil {
 			log.Error("storage_init_failed", map[string]any{"error": err.Error()})
+		}
+	}
+
+	// Initialize tokenizer with R2 training data
+	if storageService != nil {
+		if err := tokenizer.Init(context.Background(), storageService); err != nil {
+			log.Warn("tokenizer_init_fallback", map[string]any{"error": err.Error()})
+		} else {
+			log.Info("tokenizer_loaded", nil)
 		}
 	}
 

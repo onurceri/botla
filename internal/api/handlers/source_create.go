@@ -44,20 +44,20 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, b
 
 	switch sourceType {
 	case "pdf":
-		h.handlePDFUpload(w, r, bot.ID, plan, cfg)
+		h.handlePDFUpload(w, r, bot, plan, cfg)
 	case "url":
 		h.handleURLSource(w, r, bot.ID, plan, cfg)
 	case "text":
-		h.handleTextSource(w, r, bot.ID, userID, plan, cfg)
+		h.handleTextSource(w, r, bot, userID, plan, cfg)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
 // handlePDFUpload handles PDF file upload
-func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request, chatbotID string, plan *models.Plan, cfg langconfig.LanguageConfig) {
+func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, plan *models.Plan, cfg langconfig.LanguageConfig) {
 	// Check file count limit
-	cnt, err := db.CountSourcesByType(r.Context(), h.DB, chatbotID, "pdf")
+	cnt, err := db.CountSourcesByType(r.Context(), h.DB, bot.ID, "pdf")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -103,7 +103,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 	}
 
 	if h.Storage == nil {
-		h.logError("storage_missing", map[string]any{"chatbot_id": chatbotID, "path": r.URL.Path})
+		h.logError("storage_missing", map[string]any{"chatbot_id": bot.ID, "path": r.URL.Path})
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -116,16 +116,16 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 	}
 	hval := computeHash(buf.Bytes())
 
-	key := storage.GenerateKey("sources", header.Filename)
+	key := generateSourceStorageKey(bot, header.Filename)
 	uploadedKey, err := h.Storage.UploadFile(r.Context(), key, bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		h.logError("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
+		h.logError("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": bot.ID})
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	ds := models.DataSource{
-		ChatbotID:        chatbotID,
+		ChatbotID:        bot.ID,
 		SourceType:       "pdf",
 		Status:           "pending",
 		Hash:             &hval,
@@ -191,7 +191,7 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 }
 
 // handleTextSource handles inline text source creation
-func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Request, chatbotID, userID string, plan *models.Plan, cfg langconfig.LanguageConfig) {
+func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, userID string, plan *models.Plan, cfg langconfig.LanguageConfig) {
 	text := strings.TrimSpace(r.FormValue("text"))
 	if text == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -209,7 +209,7 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 	}
 
 	if h.Storage == nil {
-		h.logError("storage_missing", map[string]any{"chatbot_id": chatbotID, "path": r.URL.Path})
+		h.logError("storage_missing", map[string]any{"chatbot_id": bot.ID, "path": r.URL.Path})
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -221,17 +221,17 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 	}
 
 	hval := computeHash([]byte(text))
-	key := storage.GenerateKey("sources", "inline.txt")
+	key := generateSourceStorageKey(bot, "inline.txt")
 	uploadedKey, err := h.Storage.UploadFile(r.Context(), key, bytes.NewBufferString(text))
 	if err != nil {
-		h.logError("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": chatbotID})
+		h.logError("storage_upload_error", map[string]any{"error": err.Error(), "key": key, "chatbot_id": bot.ID})
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	of := "inline.txt"
 	ds := models.DataSource{
-		ChatbotID:        chatbotID,
+		ChatbotID:        bot.ID,
 		SourceType:       "text",
 		Status:           "pending",
 		Hash:             &hval,
@@ -250,4 +250,14 @@ func (h *SourcesHandlers) persistAndEnqueue(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	api.WriteJSON(w, http.StatusCreated, map[string]string{"id": newID})
+}
+
+// generateSourceStorageKey creates a hierarchical R2 key for source files.
+// Uses org/ws/bot path structure when IDs are available.
+func generateSourceStorageKey(bot *models.Chatbot, filename string) string {
+	if bot.OrganizationID != nil && bot.WorkspaceID != nil {
+		return storage.GenerateSourceKey(*bot.OrganizationID, *bot.WorkspaceID, bot.ID, filename)
+	}
+	// Fallback for legacy bots without org/ws (shouldn't happen with current system)
+	return storage.GenerateKey("sources", filename)
 }

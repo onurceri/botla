@@ -84,3 +84,6 @@ mem.prof
 #.trae/
 
 .agent/
+
+# Tokenizer data (loaded from R2 in production)
+data/sentences/

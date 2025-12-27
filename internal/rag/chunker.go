@@ -11,6 +11,7 @@ import (
 	"github.com/neurosnap/sentences/english"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 )
 
 // ChunkText splits raw text into token-aware chunks preserving paragraph and sentence boundaries.
@@ -140,15 +141,21 @@ func splitSentences(text string, langCode string) []string {
 	var tok sentences.SentenceTokenizer
 	var err error
 
-	// Try to load trained model
-	if cfg.TokenizerData != "" {
-		// In a real app, we should cache the tokenizer instance
-		// For now, we load it per request (optimization needed later)
-		// Read the file content
-		content, rerr := os.ReadFile(cfg.TokenizerData)
-		if rerr == nil {
-			data, berr := sentences.LoadTraining(content)
-			if berr == nil {
+	// Load trained model based on environment
+	// Production: R2 cache | Development: local files
+	isProduction := os.Getenv("GO_ENV") == "production"
+
+	if isProduction {
+		// Production: use R2 cached data
+		if content, ok := tokenizer.GetTrainingData(langCode); ok {
+			if data, err := sentences.LoadTraining(content); err == nil {
+				tok = sentences.NewSentenceTokenizer(data)
+			}
+		}
+	} else if cfg.TokenizerData != "" {
+		// Development: read from local file
+		if content, err := os.ReadFile(cfg.TokenizerData); err == nil {
+			if data, err := sentences.LoadTraining(content); err == nil {
 				tok = sentences.NewSentenceTokenizer(data)
 			}
 		}

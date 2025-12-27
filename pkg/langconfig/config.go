@@ -42,7 +42,7 @@ var Configs = map[string]LanguageConfig{
 		},
 		TokenMultiplier: 1.3,
 		OCRLanguage:     "tur",
-		TokenizerData:   "data/sentences/turkish.json",
+		TokenizerData:   "data/sentences/turkish.json", // Local fallback only
 		UserMessages: UserMessages{
 			NoInfoFound:       "Yeterli bilgi bulamadım.",
 			ErrorMessage:      "Şu an bir hata oluştu, lütfen tekrar deneyin.",
@@ -105,7 +105,7 @@ var Configs = map[string]LanguageConfig{
 		},
 		TokenMultiplier: 1.0,
 		OCRLanguage:     "eng",
-		TokenizerData:   "data/sentences/english.json",
+		TokenizerData:   "data/sentences/english.json", // Local fallback only
 		UserMessages: UserMessages{
 			NoInfoFound:       "I could not find enough information.",
 			ErrorMessage:      "An error occurred, please try again later.",
