@@ -36,13 +36,23 @@ func (h *SourcesHandlers) getAvailableIngestionCount(r *http.Request, userID str
 
 // persistAndEnqueueInternal saves the data source to database and enqueues for processing without writing response
 func (h *SourcesHandlers) persistAndEnqueueInternal(r *http.Request, ds *models.DataSource) (string, error) {
-	newID, err := db.CreateDataSource(r.Context(), h.DB, ds)
+	ctx := r.Context()
+	newID, err := db.CreateDataSource(ctx, h.DB, ds)
 	if err != nil {
 		h.logError("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": ds.ChatbotID, "source_type": ds.SourceType})
 		return "", fmt.Errorf("create data source: %w", err)
 	}
 	if h.Queue != nil {
-		h.Queue.Enqueue(newID)
+		_, err = h.Queue.EnqueueSource(ctx, newID, ds.ChatbotID)
+		if err != nil {
+			h.logError("enqueue_source_failed", map[string]any{
+				"source_id": newID,
+				"error":     err.Error(),
+			})
+			// Source is created, job failed to enqueue - mark source as failed
+			msg := "queue_failed"
+			_ = db.UpdateSourceProcessing(ctx, h.DB, newID, "failed", &msg, 0, nil)
+		}
 	}
 	return newID, nil
 }

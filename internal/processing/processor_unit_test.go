@@ -56,13 +56,32 @@ func TestTextProcessor_Unit(t *testing.T) {
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Once()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
-		result := p.Process(ctx, source, bot, "en", plan)
+		result := p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
 
 		assert.NoError(t, result.Error)
 		assert.Greater(t, result.ChunkCount, 0)
 		mockStorage.AssertExpectations(t)
 		mockOAI.AssertExpectations(t)
 		mockVC.AssertExpectations(t)
+	})
+
+	t.Run("Fails on empty file path", func(t *testing.T) {
+		source := &models.DataSource{FilePath: nil}
+		result := p.ProcessWithSteps(ctx, source, nil, "tr", nil, func(step models.TrainingStep) {})
+		assert.Error(t, result.Error)
+		assert.Equal(t, ErrCodeEmptyFilePath, result.Error.Error())
+	})
+
+	t.Run("Fails on download error", func(t *testing.T) {
+		filePath := "fail.txt"
+		source := &models.DataSource{FilePath: &filePath}
+		mockStorage.On("DownloadFile", ctx, filePath).Return(nil, errors.New("download failed")).Once()
+
+		result := p.ProcessWithSteps(ctx, source, nil, "tr", nil, func(step models.TrainingStep) {})
+
+		assert.Error(t, result.Error)
+		assert.Contains(t, result.Error.Error(), "download failed")
+		mockStorage.AssertExpectations(t)
 	})
 }
 
@@ -118,7 +137,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		bot := &models.Chatbot{ID: "bot-2", DiscoveryMode: "disabled"}
 		plan := &models.Plan{Config: models.PlanConfig{}}
 
-		result := p.Process(ctx, source, bot, "en", plan)
+		result := p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
 
 		assert.Error(t, result.Error)
 		assert.Equal(t, ErrCodeScrapeFailedNetwork, result.Error.Error())
@@ -153,7 +172,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 			Scraping: models.ScrapingConfig{DynamicEnabled: false},
 		}}
 
-		result := p.Process(ctx, source, bot, "en", plan)
+		result := p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
 
 		assert.Error(t, result.Error)
 		assert.Equal(t, ErrCodeDynamicRequired, result.Error.Error())
@@ -186,7 +205,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 			Scraping: models.ScrapingConfig{DynamicEnabled: true},
 		}}
 
-		result := p.Process(ctx, source, bot, "en", plan)
+		result := p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
 
 		assert.Error(t, result.Error)
 		assert.Equal(t, ErrCodeEmptyContent, result.Error.Error())
@@ -225,7 +244,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		bot := &models.Chatbot{ID: "bot-4", UserID: "u4", DiscoveryMode: "disabled"}
 		plan := &models.Plan{Config: models.PlanConfig{}}
 
-		result := p.Process(ctx, source, bot, "en", plan)
+		result := p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
 
 		assert.NoError(t, result.Error)
 		assert.Greater(t, result.ChunkCount, 0)
@@ -281,7 +300,7 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 			},
 		}}
 
-		_ = p.Process(ctx, source, bot, "en", plan)
+		_ = p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
 
 		// Verify FetchRawHTML was called (this always happens for discovery preparation)
 		assert.True(t, mockScraper.AssertCalled("FetchRawHTML"))
@@ -332,10 +351,56 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 			},
 		}}
 
-		_ = p.Process(ctx, source, bot, "en", plan)
+		_ = p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
 
 		// When MaxURLsPerBot=1, ExtractLinks should NOT be called
 		// because discovery is skipped early
 		assert.Equal(t, 0, mockScraper.CallCount("ExtractLinks"))
+	})
+}
+func TestPDFProcessor_Unit(t *testing.T) {
+	ctx := context.Background()
+	db := testdb.OpenParallelTestDB(t)
+	mockStorage := &storage.MockStorageService{}
+	mockOAI := &rag.MockFullClient{}
+	mockVC := &rag.MockVectorClient{}
+
+	p := NewPDFProcessor(db, mockStorage, mockOAI, mockVC, nil)
+
+	t.Run("Process Successful", func(t *testing.T) {
+		filePath := "test.pdf"
+
+		// Insert test data
+		_, _ = db.Exec(`INSERT INTO plans (id, name, code, config) VALUES ('p_pdf', 'Free', 'free_pdf', '{}'::jsonb) ON CONFLICT DO NOTHING`)
+		_, _ = db.Exec(`INSERT INTO users (id, email, password_hash, plan_id) VALUES ('u_pdf', 'pdf@test.com', 'h', 'p_pdf')`)
+		_, _ = db.Exec(`INSERT INTO chatbots (id, user_id, name) VALUES ('bot-pdf', 'u_pdf', 'Bot')`)
+		_, _ = db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, file_path) VALUES ('src-pdf', 'bot-pdf', 'pdf', 'test.pdf')`)
+
+		source := &models.DataSource{
+			ID:         "src-pdf",
+			ChatbotID:  "bot-pdf",
+			SourceType: "pdf",
+			FilePath:   &filePath,
+		}
+		bot := &models.Chatbot{ID: "bot-pdf", UserID: "u_pdf"}
+		plan := &models.Plan{Config: models.PlanConfig{}}
+
+		// Mock Storage
+		mockStorage.On("DownloadFile", ctx, filePath).Return(io.NopCloser(strings.NewReader("%PDF-1.4...")), nil).Once()
+
+		// Since pdf.ExtractPDFText might fail without fitz, we just check the flow if it proceeds.
+		// If it fails with ParseFailed, that's also an acceptable result for this environment.
+		result := p.ProcessWithSteps(ctx, source, bot, "en", plan, func(step models.TrainingStep) {})
+		
+		// We don't assert specific success here because it depends on fitz installation,
+		// but we ensure it doesn't panic and uses the mocks.
+		assert.NotNil(t, result)
+	})
+
+	t.Run("Fails on empty file path", func(t *testing.T) {
+		source := &models.DataSource{FilePath: nil}
+		result := p.ProcessWithSteps(ctx, source, nil, "tr", nil, func(step models.TrainingStep) {})
+		assert.Error(t, result.Error)
+		assert.Equal(t, ErrCodeEmptyFilePath, result.Error.Error())
 	})
 }

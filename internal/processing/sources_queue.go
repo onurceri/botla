@@ -64,24 +64,39 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 		return nil, fmt.Errorf("ensure embeddings collection: %w", err)
 	}
 
-	// Recover pending sources at startup
-	go q.recoverPendingSources()
+	// Recover pending jobs at startup
+	go q.recoverPendingJobs()
 
 	return q, nil
 }
 
-// Enqueue adds a source ID to the processing queue
-func (q *SourceQueue) Enqueue(id string) {
+// EnqueueSource creates a training job and enqueues it for processing
+func (q *SourceQueue) EnqueueSource(ctx context.Context, sourceID, chatbotID string) (string, error) {
 	if q == nil || q.ch == nil {
-		return
+		return "", fmt.Errorf("queue not initialized")
 	}
+
+	// Create training job record
+	job, err := db.CreateTrainingJob(ctx, q.db, sourceID, chatbotID)
+	if err != nil {
+		return "", fmt.Errorf("create training job: %w", err)
+	}
+
+	// Enqueue the job ID
 	select {
-	case q.ch <- id:
-	default:
-		// drop if full
+	case q.ch <- job.ID:
 		if q.log != nil {
-			q.log.Warn("source_queue_full", map[string]any{"dropped_id": id})
+			q.log.Info("job_enqueued", map[string]any{
+				"job_id":    job.ID,
+				"source_id": sourceID,
+			})
 		}
+		return job.ID, nil
+	default:
+		// Queue full, mark job as failed
+		failedStep := models.StepFetchSource
+		_ = db.FailJob(ctx, q.db, job.ID, failedStep, "QUEUE_FULL", "Processing queue is full")
+		return "", fmt.Errorf("queue full")
 	}
 }
 
@@ -94,12 +109,12 @@ func (q *SourceQueue) Stop() {
 	q.wg.Wait()
 }
 
-// recoverPendingSources finds and enqueues sources stuck in 'pending' status at startup
-func (q *SourceQueue) recoverPendingSources() {
+// recoverPendingJobs finds and enqueues jobs stuck in 'pending' status at startup
+func (q *SourceQueue) recoverPendingJobs() {
 	defer func() {
 		if r := recover(); r != nil {
 			if q.log != nil {
-				q.log.Error("recover_pending_sources_panic", map[string]any{"panic": r})
+				q.log.Error("recover_pending_jobs_panic", map[string]any{"panic": r})
 			}
 		}
 	}()
@@ -111,47 +126,44 @@ func (q *SourceQueue) recoverPendingSources() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Check if DB is reachable to avoid panic in QueryContext with uninitialized DB
+	// Check if DB is reachable
 	if err := q.db.PingContext(ctx); err != nil {
 		if q.log != nil {
-			q.log.Warn("recover_pending_sources_db_unreachable", map[string]any{"error": err.Error()})
+			q.log.Warn("recover_pending_jobs_db_unreachable", map[string]any{"error": err.Error()})
 		}
 		return
 	}
 
-	// Find sources with pending status (stuck from previous runs)
-	rows, err := q.db.QueryContext(ctx, `
-		SELECT id FROM data_sources 
-		WHERE status = 'pending' AND deleted_at IS NULL 
-		ORDER BY created_at ASC
-		LIMIT 100
-	`)
+	// Find jobs with pending status
+	jobs, err := db.GetPendingJobs(ctx, q.db, 100)
 	if err != nil {
 		if q.log != nil {
-			q.log.Warn("recover_pending_sources_query_failed", map[string]any{"error": err.Error()})
+			q.log.Warn("recover_pending_jobs_query_failed", map[string]any{"error": err.Error()})
 		}
 		return
 	}
-	defer func() { _ = rows.Close() }()
 
 	var recovered int
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			continue
+	for _, job := range jobs {
+		select {
+		case q.ch <- job.ID:
+			recovered++
+		default:
+			if q.log != nil {
+				q.log.Warn("recover_pending_jobs_queue_full", map[string]any{"job_id": job.ID})
+			}
+			break
 		}
-		q.Enqueue(id)
-		recovered++
 	}
 
 	if recovered > 0 && q.log != nil {
-		q.log.Info("recover_pending_sources_completed", map[string]any{
+		q.log.Info("recover_pending_jobs_completed", map[string]any{
 			"recovered_count": recovered,
 		})
 	}
 }
 
-// worker processes sources from the queue
+// worker processes jobs from the queue
 func (q *SourceQueue) worker() {
 	if q.ch == nil {
 		return
@@ -163,86 +175,133 @@ func (q *SourceQueue) worker() {
 				q.log.Info("source_queue_shutdown", nil)
 			}
 			return
-		case id := <-q.ch:
+		case jobID := <-q.ch:
 			// Add a small delay to prevent rapid-fire API calls (rate limiting)
 			// Skip in tests to avoid timeouts
 			if os.Getenv("GO_ENV") != "test" {
 				time.Sleep(500 * time.Millisecond)
 			}
-			q.processSource(id)
+			q.processJob(jobID)
 		}
 	}
 }
 
-// processSource handles processing of a single source
-func (q *SourceQueue) processSource(id string) {
-	q.markProcessing(id)
+// processJob handles processing of a single job
+func (q *SourceQueue) processJob(jobID string) {
+	ctx := context.Background()
 
-	s, bot, langCode, plan, ok := q.loadSourceAndLang(id)
-	if !ok {
+	// Load job
+	job, err := db.GetTrainingJob(ctx, q.db, jobID)
+	if err != nil || job == nil {
+		if q.log != nil {
+			q.log.Error("job_not_found", map[string]any{"job_id": jobID, "error": err})
+		}
 		return
 	}
 
+	// Update job to running
+	step := models.StepFetchSource
+	if err := db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &step); err != nil {
+		if q.log != nil {
+			q.log.Error("update_job_failed", map[string]any{"job_id": jobID, "error": err.Error()})
+		}
+	}
+
+	// Load source and dependencies
+	source, bot, langCode, plan, ok := q.loadSourceAndLang(job.SourceID)
+	if !ok {
+		_ = db.FailJob(ctx, q.db, jobID, models.StepFetchSource, "SOURCE_NOT_FOUND", "Source not found")
+		return
+	}
+
+	// Mark source as processing
+	q.markProcessing(job.SourceID)
+
 	if q.log != nil {
-		q.log.Info("source_processing_dispatch", map[string]any{
-			"source_id":   id,
-			"source_type": s.SourceType,
-			"chatbot_id":  s.ChatbotID,
-			"lang_code":   langCode,
+		q.log.Info("job_processing_start", map[string]any{
+			"job_id":      jobID,
+			"source_id":   job.SourceID,
+			"source_type": source.SourceType,
+			"chatbot_id":  job.ChatbotID,
 		})
 	}
 
+	// Process with step tracking
 	var result ProcessResult
-
-	switch s.SourceType {
+	switch source.SourceType {
 	case "url":
-		result = q.urlProcessor.Process(context.Background(), s, bot, langCode, plan)
+		result = q.urlProcessor.ProcessWithSteps(ctx, source, bot, langCode, plan, func(s models.TrainingStep) {
+			_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &s)
+		})
 	case "pdf":
-		result = q.pdfProcessor.Process(context.Background(), s, bot, langCode, plan)
+		result = q.pdfProcessor.ProcessWithSteps(ctx, source, bot, langCode, plan, func(s models.TrainingStep) {
+			_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &s)
+		})
 	case "text":
-		result = q.textProcessor.Process(context.Background(), s, bot, langCode, plan)
+		result = q.textProcessor.ProcessWithSteps(ctx, source, bot, langCode, plan, func(s models.TrainingStep) {
+			_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusRunning, &s)
+		})
 	default:
-		q.fail(id, "unknown_source_type")
+		_ = db.FailJob(ctx, q.db, jobID, models.StepFetchSource, "UNKNOWN_TYPE", "Unknown source type: "+source.SourceType)
+		q.fail(job.SourceID, "unknown_source_type")
 		return
 	}
 
 	if result.Error != nil {
-		q.fail(id, result.Error.Error())
+		failedStep := result.FailedStep
+		if failedStep == "" {
+			failedStep = models.StepFetchSource
+		}
+		_ = db.FailJob(ctx, q.db, jobID, failedStep, "PROCESSING_ERROR", result.Error.Error())
+		q.fail(job.SourceID, result.Error.Error())
 		return
 	}
 
 	if result.Skipped {
-		q.complete(id, result.ChunkCount) // No tokens used if skipped
+		// Mark job as completed with skipped status
+		completedStep := models.StepStoreVectors
+		_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusCompleted, &completedStep)
+		q.complete(job.SourceID, result.ChunkCount)
 		return
 	}
 
-	q.complete(id, result.ChunkCount) // Tokens are tracked inside Process
+	// Mark job as completed
+	completedStep := models.StepStoreVectors
+	_ = db.UpdateJobStatus(ctx, q.db, jobID, models.JobStatusCompleted, &completedStep)
+	q.complete(job.SourceID, result.ChunkCount)
 
-	// Enqueue any newly discovered sources
-	for _, newID := range result.NewSourceIDs {
-		q.Enqueue(newID)
+	// Enqueue any newly discovered sources (create jobs for them)
+	for _, newSourceID := range result.NewSourceIDs {
+		if _, err := q.EnqueueSource(ctx, newSourceID, source.ChatbotID); err != nil {
+			if q.log != nil {
+				q.log.Warn("enqueue_discovered_source_failed", map[string]any{
+					"source_id": newSourceID,
+					"error":     err.Error(),
+				})
+			}
+		}
 	}
 }
 
 // loadSourceAndLang loads source, chatbot, and plan data
-func (q *SourceQueue) loadSourceAndLang(id string) (*models.DataSource, *models.Chatbot, string, *models.Plan, bool) {
+func (q *SourceQueue) loadSourceAndLang(sourceID string) (*models.DataSource, *models.Chatbot, string, *models.Plan, bool) {
 	ctx := context.Background()
 
-	s, err := db.GetSourceByID(ctx, q.db, id)
+	s, err := db.GetSourceByID(ctx, q.db, sourceID)
 	if err != nil || s == nil {
-		q.fail(id, "source_not_found")
+		q.fail(sourceID, "source_not_found")
 		return nil, nil, "", nil, false
 	}
 
 	bot, err := db.GetChatbotByID(ctx, q.db, s.ChatbotID)
 	if err != nil || bot == nil {
-		q.fail(id, "chatbot_not_found")
+		q.fail(sourceID, "chatbot_not_found")
 		return nil, nil, "", nil, false
 	}
 
 	plan, err := db.GetPlanByUserID(ctx, q.db, bot.UserID)
 	if err != nil {
-		q.fail(id, "plan_error")
+		q.fail(sourceID, "plan_error")
 		return nil, nil, "", nil, false
 	}
 

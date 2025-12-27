@@ -34,27 +34,33 @@ func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, 
 	}
 }
 
-// Process processes a text source
-func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
+// ProcessWithSteps processes a text source with step callbacks
+func (p *TextProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, onStep StepCallback) ProcessResult {
 	if s.FilePath == nil || *s.FilePath == "" {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyFilePath}, FailedStep: models.StepFetchSource}
 	}
+
+	// Step 1: Fetch
+	onStep(models.StepFetchSource)
 
 	var content string
 	if p.Storage != nil {
 		rc, err := p.Storage.DownloadFile(ctx, *s.FilePath)
 		if err != nil {
-			return ProcessResult{Error: &ProcessingError{Msg: err.Error()}}
+			return ProcessResult{Error: &ProcessingError{Msg: err.Error()}, FailedStep: models.StepFetchSource}
 		}
 		b, err := io.ReadAll(rc)
 		_ = rc.Close()
 		if err != nil {
-			return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}, FailedStep: models.StepFetchSource}
 		}
 		content = string(b)
 	} else {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}, FailedStep: models.StepFetchSource}
 	}
+
+	// Step 2: Parse
+	onStep(models.StepParseContent)
 
 	if content == "" {
 		return ProcessResult{ChunkCount: 0}
@@ -69,20 +75,29 @@ func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *
 	}
 	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
+	// Step 3: Chunk
+	onStep(models.StepChunkText)
+
 	// Chunk and embed
 	rc, rerr := rag.ChunkText(content, 512, langCode)
 	if rerr != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
+
+	// Step 4: Embed
+	onStep(models.StepEmbedChunks)
 
 	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
 	if !ok {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
 	}
 
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
+
+	// Step 5: Store
+	onStep(models.StepStoreVectors)
 
 	// Calculate token usage
 	var tokens int
@@ -94,6 +109,7 @@ func (p *TextProcessor) Process(ctx context.Context, s *models.DataSource, bot *
 
 	return ProcessResult{ChunkCount: len(rc)}
 }
+
 
 // persistIngestionMetadata extracts and saves metadata for the source
 func (p *TextProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource, maxQuestions int) {

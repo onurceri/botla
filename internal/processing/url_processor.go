@@ -46,13 +46,17 @@ type ProcessResult struct {
 	Skipped      bool
 	Error        error
 	NewSourceIDs []string
+	FailedStep   models.TrainingStep
 }
 
-// Process processes a URL source
-func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan) ProcessResult {
+// StepCallback is called when a step is started
+type StepCallback func(step models.TrainingStep)
+
+// ProcessWithSteps processes a URL source with step callbacks
+func (p *URLProcessor) ProcessWithSteps(ctx context.Context, s *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, onStep StepCallback) ProcessResult {
 	if s.SourceURL == nil || *s.SourceURL == "" {
 		p.logWarn("url_processing_empty_url", map[string]any{"source_id": s.ID})
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyURL}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyURL}, FailedStep: models.StepFetchSource}
 	}
 
 	p.logInfo("url_processing_started", map[string]any{
@@ -61,6 +65,9 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 		"discovery_mode": bot.DiscoveryMode,
 		"chatbot_id":     s.ChatbotID,
 	})
+
+	// Step 1: Fetch
+	onStep(models.StepFetchSource)
 
 	// Create scrape config with CSS selectors if defined
 	var scrapeConfig *scraper.ScrapeConfig
@@ -97,6 +104,9 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 		})
 	}
 
+	// Step 2: Parse
+	onStep(models.StepParseContent)
+
 	// Step 2: Extract text content for embedding
 	content, err := p.Scraper.ScrapeURLWithFallback(
 		scraper.ScrapingTask{URL: *s.SourceURL},
@@ -110,7 +120,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"url":       *s.SourceURL,
 			"error":     err.Error(),
 		})
-		return ProcessResult{Error: &ProcessingError{Msg: categorizeScraperError(err)}}
+		return ProcessResult{Error: &ProcessingError{Msg: categorizeScraperError(err)}, FailedStep: models.StepParseContent}
 	}
 
 	// Step 3: Handle empty content case
@@ -124,9 +134,9 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 		})
 		// Return specific error if dynamic scraping could help but is not available
 		if !plan.Config.Scraping.DynamicEnabled {
-			return ProcessResult{Error: &ProcessingError{Msg: ErrCodeDynamicRequired}}
+			return ProcessResult{Error: &ProcessingError{Msg: ErrCodeDynamicRequired}, FailedStep: models.StepParseContent}
 		}
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyContent}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyContent}, FailedStep: models.StepParseContent}
 	}
 
 	p.logInfo("url_processing_content_extracted", map[string]any{
@@ -173,6 +183,9 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 	}
 	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
+	// Step 3: Chunk
+	onStep(models.StepChunkText)
+
 	// Chunk and embed
 	p.logInfo("url_processing_chunking_started", map[string]any{
 		"source_id":     s.ID,
@@ -186,8 +199,11 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"source_id": s.ID,
 			"error":     rerr.Error(),
 		})
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
+
+	// Step 4: Embed
+	onStep(models.StepEmbedChunks)
 
 	p.logInfo("url_processing_embedding_started", map[string]any{
 		"source_id":   s.ID,
@@ -196,7 +212,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 
 	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
 	if !ok {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
 	}
 
 	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
@@ -204,8 +220,11 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 			"source_id": s.ID,
 			"error":     err.Error(),
 		})
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
+
+	// Step 5: Store
+	onStep(models.StepStoreVectors)
 
 	// Update hash after successful embedding
 	_ = db.UpdateSourceHash(ctx, p.DB, s.ID, newHash)
@@ -227,6 +246,7 @@ func (p *URLProcessor) Process(ctx context.Context, s *models.DataSource, bot *m
 
 	return ProcessResult{ChunkCount: len(rc)}
 }
+
 
 // DiscoveryMode constants for URL discovery behavior
 const (
