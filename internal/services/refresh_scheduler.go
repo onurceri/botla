@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"sync"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/pkg/logger"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // RefreshPolicy constants
@@ -174,7 +174,7 @@ func (s *RefreshScheduler) processDueChatbots(ctx context.Context) {
 func (s *RefreshScheduler) FindDueForRefresh(ctx context.Context, now time.Time) ([]models.Chatbot, error) {
 	bots, err := db.GetChatbotsDueForRefresh(ctx, s.DB, now)
 	if err != nil {
-		return nil, fmt.Errorf("getting due chatbots: %w", err)
+		return nil, pkgerrors.Wrapf(err, "getting due chatbots")
 	}
 	return bots, nil
 }
@@ -184,7 +184,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	// Get user's plan to check limits
 	plan, err := db.GetPlanByUserID(ctx, s.DB, bot.UserID)
 	if err != nil {
-		return fmt.Errorf("getting user plan: %w", err)
+		return pkgerrors.Wrapf(err, "getting user plan")
 	}
 	if plan == nil {
 		s.logWarn("user_plan_not_found", map[string]any{"user_id": bot.UserID})
@@ -195,7 +195,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	now := time.Now()
 	usage, err := db.GetAutoRefreshCountForMonth(ctx, s.DB, bot.UserID, now)
 	if err != nil {
-		return fmt.Errorf("getting auto refresh count: %w", err)
+		return pkgerrors.Wrapf(err, "getting auto refresh count")
 	}
 
 	// Get limit from plan config - use refresh.max_monthly if available
@@ -212,7 +212,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	// Get URL sources for this chatbot
 	sources, err := db.GetURLSourcesForChatbot(ctx, s.DB, bot.ID)
 	if err != nil {
-		return fmt.Errorf("getting url sources: %w", err)
+		return pkgerrors.Wrapf(err, "getting url sources")
 	}
 
 	if len(sources) == 0 {

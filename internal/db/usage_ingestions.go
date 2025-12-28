@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // monthStart normalizes a time to the first day of the month (UTC date component)
@@ -24,7 +25,7 @@ func IncrementSuccessfulIngestion(ctx context.Context, pool *sql.DB, userID stri
                       updated_at = NOW()
     `, userID, pm, delta)
 	if err != nil {
-		return fmt.Errorf("increment successful ingestion: %w", err)
+		return pkgerrors.Wrapf(err, "increment successful ingestion")
 	}
 	return nil
 }
@@ -40,7 +41,7 @@ func AddEmbeddingTokens(ctx context.Context, pool *sql.DB, userID string, at tim
                       updated_at = NOW()
     `, userID, pm, tokens)
 	if err != nil {
-		return fmt.Errorf("add embedding tokens: %w", err)
+		return pkgerrors.Wrapf(err, "add embedding tokens")
 	}
 	return nil
 }
@@ -57,7 +58,7 @@ func GetMonthlyIngestionUsage(ctx context.Context, pool *sql.DB, userID string, 
 		return 0, 0, nil
 	}
 	if err != nil {
-		return sources, tokens, fmt.Errorf("get monthly ingestion usage: %w", err)
+		return sources, tokens, pkgerrors.Wrapf(err, "get monthly ingestion usage")
 	}
 	return sources, tokens, nil
 }
@@ -75,7 +76,7 @@ func GetAutoRefreshCountForMonth(ctx context.Context, pool *sql.DB, userID strin
 		return 0, nil
 	}
 	if err != nil {
-		return 0, fmt.Errorf("get auto refresh count: %w", err)
+		return 0, pkgerrors.Wrapf(err, "get auto refresh count")
 	}
 	return count, nil
 }
@@ -91,7 +92,7 @@ func IncrementAutoRefreshCount(ctx context.Context, pool *sql.DB, userID string,
                       updated_at = NOW()`,
 		userID, pm, delta)
 	if err != nil {
-		return fmt.Errorf("increment auto refresh count: %w", err)
+		return pkgerrors.Wrapf(err, "increment auto refresh count")
 	}
 	return nil
 }

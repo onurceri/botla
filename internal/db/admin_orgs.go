@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type OrganizationFilter struct {
@@ -42,7 +43,7 @@ func AdminListOrganizations(ctx context.Context, pool *sql.DB, filter Organizati
 
 	rows, err := pool.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query organizations: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "query organizations")
 	}
 	defer func() {
 		_ = rows.Close()
@@ -66,7 +67,7 @@ func AdminListOrganizations(ctx context.Context, pool *sql.DB, filter Organizati
 			&o.ChatbotCount,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("scan organization: %w", err)
+			return nil, 0, pkgerrors.Wrapf(err, "scan organization")
 		}
 
 		orgs = append(orgs, o)
@@ -100,7 +101,7 @@ func GetOrganizationByID(ctx context.Context, pool *sql.DB, id string) (*models.
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get organization by id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get organization by id")
 	}
 
 	return &o, nil

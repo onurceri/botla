@@ -11,6 +11,7 @@ import (
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // MaxRetries is the maximum number of retry attempts for a failed job.
@@ -57,7 +58,7 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := vc.EnsureEmbeddingsCollection(ctx); err != nil {
-		return nil, fmt.Errorf("ensure embeddings collection: %w", err)
+		return nil, pkgerrors.Wrapf(err, "ensure embeddings collection")
 	}
 
 	// Start workers
@@ -78,7 +79,7 @@ func (sq *SourceQueue) EnqueueSource(ctx context.Context, sourceID, chatbotID st
 	// Create training job record
 	job, err := db.CreateTrainingJob(ctx, sq.db, sourceID, chatbotID)
 	if err != nil {
-		return "", fmt.Errorf("create training job: %w", err)
+		return "", pkgerrors.Wrapf(err, "create training job")
 	}
 
 	// Enqueue the job ID

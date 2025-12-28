@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type QueueStats struct {
@@ -44,7 +45,7 @@ func GetQueueStats(ctx context.Context, db *sql.DB) ([]QueueStats, error) {
 		WHERE deleted_at IS NULL AND status IN ('pending', 'processing', 'error')
 	`).Scan(&dsStats.PendingCount, &dsStats.ProcessingCount, &dsStats.FailedCount, &dsStats.OldestPending)
 	if err != nil {
-		return nil, fmt.Errorf("scan source queue stats: %w", err)
+		return nil, pkgerrors.Wrapf(err, "scan source queue stats")
 	}
 	stats = append(stats, dsStats)
 
@@ -59,7 +60,7 @@ func GetQueueStats(ctx context.Context, db *sql.DB) ([]QueueStats, error) {
 		WHERE status = 'pending'
 	`).Scan(&discoveryStats.PendingCount, &discoveryStats.OldestPending)
 	if err != nil {
-		return nil, fmt.Errorf("scan discovery queue stats: %w", err)
+		return nil, pkgerrors.Wrapf(err, "scan discovery queue stats")
 	}
 	stats = append(stats, discoveryStats)
 
@@ -85,7 +86,7 @@ func GetStuckJobs(ctx context.Context, db *sql.DB, threshold time.Duration) ([]S
 		  AND deleted_at IS NULL
 	`, threshold.Milliseconds())
 	if err != nil {
-		return nil, fmt.Errorf("query stuck jobs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query stuck jobs")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -99,7 +100,7 @@ func GetStuckJobs(ctx context.Context, db *sql.DB, threshold time.Duration) ([]S
 			&job.Status, &job.StartedAt, &durationSec, &errMsg,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan stuck job: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan stuck job")
 		}
 		if errMsg.Valid {
 			job.ErrorMessage = errMsg.String

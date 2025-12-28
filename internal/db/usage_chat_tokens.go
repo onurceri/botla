@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // ErrTokenQuotaExceeded is returned when a user has exceeded their monthly token quota.
@@ -60,7 +61,7 @@ func ReserveChatTokens(ctx context.Context, pool *sql.DB, userID string, estimat
 			// The WHERE clause rejected the insert or update - limit exceeded
 			return ErrTokenQuotaExceeded
 		}
-		return fmt.Errorf("reserve chat tokens: %w", err)
+		return pkgerrors.Wrapf(err, "reserve chat tokens")
 	}
 
 	return nil
@@ -88,7 +89,7 @@ func AdjustChatTokens(ctx context.Context, pool *sql.DB, userID string, deltaTok
 		WHERE user_id = $1 AND period_month = $2::date
 	`, userID, pm, deltaTokens)
 	if err != nil {
-		return fmt.Errorf("adjust chat tokens: %w", err)
+		return pkgerrors.Wrapf(err, "adjust chat tokens")
 	}
 	return nil
 }
@@ -107,7 +108,7 @@ func GetMonthlyChatTokens(ctx context.Context, pool *sql.DB, userID string) (int
 		return 0, nil
 	}
 	if err != nil {
-		return 0, fmt.Errorf("get monthly chat tokens: %w", err)
+		return 0, pkgerrors.Wrapf(err, "get monthly chat tokens")
 	}
 	return tokens, nil
 }
@@ -126,7 +127,7 @@ func IncrementChatTokens(ctx context.Context, pool *sql.DB, userID string, token
 			updated_at = NOW()
 	`, userID, pm, tokens)
 	if err != nil {
-		return fmt.Errorf("increment chat tokens: %w", err)
+		return pkgerrors.Wrapf(err, "increment chat tokens")
 	}
 	return nil
 }

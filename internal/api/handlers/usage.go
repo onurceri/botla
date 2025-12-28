@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/middleware"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // UsageHandlers handles usage-related endpoints
@@ -61,40 +61,40 @@ func (h *UsageHandlers) getUserUsage(ctx context.Context, userID string, workspa
 		chatbotsCount, err = db.CountChatbotsByUserID(ctx, h.DB, userID)
 	}
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("count chatbots: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "count chatbots")
 	}
 
 	filesCount, err := db.GetFileCountByUserID(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get file count: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get file count")
 	}
 	urlsCount, err := db.GetURLCountByUserID(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get url count: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get url count")
 	}
 	tokensUsed, err := db.GetMonthlyTokenUsage(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get monthly token usage: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get monthly token usage")
 	}
 	storageUsedMB, err := db.GetStorageUsedMBByUserID(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get storage used: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get storage used")
 	}
 	usedIngestions, usedEmbedTokens, err := db.GetMonthlyIngestionUsage(ctx, h.DB, userID, time.Now())
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get monthly ingestion usage: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get monthly ingestion usage")
 	}
 	maxFilesBot, err := db.GetMaxFileCountInAnyBot(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get max file count: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get max file count")
 	}
 	maxURLsBot, err := db.GetMaxURLCountInAnyBot(ctx, h.DB, userID)
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get max url count: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get max url count")
 	}
 	refreshCount, err := db.GetMonthlyRefreshCount(ctx, h.DB, userID, time.Now())
 	if err != nil {
-		return models.Usage{}, fmt.Errorf("get monthly refresh count: %w", err)
+		return models.Usage{}, pkgerrors.Wrapf(err, "get monthly refresh count")
 	}
 
 	return models.Usage{

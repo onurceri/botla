@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/logger"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // DefaultMaxSuggestions is the fallback limit when plan config is not available.
@@ -160,7 +160,7 @@ func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) (
 		ORDER BY chunk_count DESC
 	`, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("query source questions: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query source questions")
 	}
 	defer func() {
 		_ = rows.Close()
@@ -185,7 +185,7 @@ func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) (
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("source questions rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "source questions rows err")
 	}
 	return sources, nil
 }
@@ -229,7 +229,7 @@ func logWarnIfPresent(log *logger.Logger, event string, data map[string]any) {
 // DeleteSourceVectors deletes vectors associated with a source from Qdrant.
 func DeleteSourceVectors(ctx context.Context, vc rag.VectorClient, sourceID string) error {
 	if err := vc.DeleteBySourceID(ctx, sourceID); err != nil {
-		return fmt.Errorf("delete source vectors: %w", err)
+		return pkgerrors.Wrapf(err, "delete source vectors")
 	}
 	return nil
 }

@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // AdminSource represents a data source for admin views with additional metadata
@@ -50,7 +51,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 	var total int
 	err := pool.QueryRowContext(ctx, countQuery, filter.ChatbotID, filter.SourceType, filter.Status, filter.OwnerID).Scan(&total)
 	if err != nil {
-		return nil, 0, fmt.Errorf("count admin sources: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "count admin sources")
 	}
 
 	// Data query
@@ -85,7 +86,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 
 	rows, err := pool.QueryContext(ctx, dataQuery, filter.ChatbotID, filter.SourceType, filter.Status, filter.OwnerID, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query admin sources: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "query admin sources")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -113,7 +114,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 			&createdAt,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("scan admin source: %w", err)
+			return nil, 0, pkgerrors.Wrapf(err, "scan admin source")
 		}
 		if orgName.Valid {
 			s.OrganizationName = &orgName.String
@@ -138,7 +139,7 @@ func AdminListSources(ctx context.Context, pool *sql.DB, filter SourceFilter, li
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("admin sources rows err: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "admin sources rows err")
 	}
 
 	if sources == nil {
@@ -159,7 +160,7 @@ func AdminGetSourceStats(ctx context.Context, pool *sql.DB) (map[string]int, err
 
 	rows, err := pool.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("query source stats: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query source stats")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -168,13 +169,13 @@ func AdminGetSourceStats(ctx context.Context, pool *sql.DB) (map[string]int, err
 		var status string
 		var count int
 		if err := rows.Scan(&status, &count); err != nil {
-			return nil, fmt.Errorf("scan source stat: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan source stat")
 		}
 		stats[status] = count
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("source stats rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "source stats rows err")
 	}
 	return stats, nil
 }
@@ -188,12 +189,12 @@ func AdminReprocessSource(ctx context.Context, pool *sql.DB, id string) error {
 	`
 	result, err := pool.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("reprocess source: %w", err)
+		return pkgerrors.Wrapf(err, "reprocess source")
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("rows affected: %w", err)
+		return pkgerrors.Wrapf(err, "rows affected")
 	}
 
 	if rowsAffected == 0 {
@@ -250,7 +251,7 @@ func AdminGetSourceByID(ctx context.Context, pool *sql.DB, id string) (*AdminSou
 		&createdAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get admin source by id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get admin source by id")
 	}
 	if orgName.Valid {
 		s.OrganizationName = &orgName.String

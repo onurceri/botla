@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 func CreateDataSource(ctx context.Context, pool *sql.DB, s *models.DataSource) (string, error) {
@@ -36,7 +36,7 @@ func CreateDataSource(ctx context.Context, pool *sql.DB, s *models.DataSource) (
 		).Scan(&legacyID); e == nil {
 			return legacyID, nil
 		}
-		return "", fmt.Errorf("scan data source id: %w", err)
+		return "", pkgerrors.Wrapf(err, "scan data source id")
 	}
 	return id, nil
 }
@@ -65,7 +65,7 @@ func CreateDiscoveredSource(ctx context.Context, pool *sql.DB, chatbotID string,
 		chatbotID, sourceURL,
 	).Scan(&id)
 	if err != nil {
-		return "", fmt.Errorf("create discovered source: %w", err)
+		return "", pkgerrors.Wrapf(err, "create discovered source")
 	}
 	return id, nil
 }
@@ -79,7 +79,7 @@ func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string)
         WHERE chatbot_id=$1 AND deleted_at IS NULL
         ORDER BY created_at DESC`, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("query sources by chatbot id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query sources by chatbot id")
 	}
 	defer func() { _ = rows.Close() }()
 	out := []models.DataSource{}
@@ -90,12 +90,12 @@ func ListSourcesByChatbotID(ctx context.Context, pool *sql.DB, chatbotID string)
 			&d.Status, &d.ErrorMessage, &d.ChunkCount, &d.ProcessedAt, &d.CreatedAt, &d.Hash, &d.DeletedAt,
 			&d.SizeBytes, &d.LastRefreshedAt, &d.IsDiscovered, &d.CapabilitySummary,
 		); err != nil {
-			return nil, fmt.Errorf("scan source: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan source")
 		}
 		out = append(out, d)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "rows err")
 	}
 	return out, nil
 }
@@ -113,7 +113,7 @@ func GetSourceByID(ctx context.Context, pool *sql.DB, id string) (*models.DataSo
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get source by id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get source by id")
 	}
 	return &d, nil
 }
@@ -127,7 +127,7 @@ func GetURLSourcesForChatbot(ctx context.Context, pool *sql.DB, chatbotID string
         WHERE chatbot_id = $1 AND source_type = 'url' AND deleted_at IS NULL
         ORDER BY created_at DESC`, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("query url sources: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query url sources")
 	}
 	defer func() { _ = rows.Close() }()
 	var out []models.DataSource
@@ -135,12 +135,12 @@ func GetURLSourcesForChatbot(ctx context.Context, pool *sql.DB, chatbotID string
 		var s models.DataSource
 		if err := rows.Scan(&s.ID, &s.ChatbotID, &s.SourceType, &s.SourceURL, &s.Status, &s.ErrorMessage,
 			&s.ChunkCount, &s.CreatedAt, &s.Hash, &s.DeletedAt, &s.LastRefreshedAt); err != nil {
-			return nil, fmt.Errorf("scan url source: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan url source")
 		}
 		out = append(out, s)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "rows err")
 	}
 	return out, nil
 }
@@ -156,7 +156,7 @@ func UpdateSourceProcessing(ctx context.Context, pool *sql.DB, id string, status
 		status, errorMessage, chunkCount, processedAt, id,
 	)
 	if err != nil {
-		return fmt.Errorf("update source processing: %w", err)
+		return pkgerrors.Wrapf(err, "update source processing")
 	}
 	return nil
 }
@@ -164,7 +164,7 @@ func UpdateSourceProcessing(ctx context.Context, pool *sql.DB, id string, status
 func DeleteSource(ctx context.Context, pool *sql.DB, id string) error {
 	_, err := pool.ExecContext(ctx, `DELETE FROM data_sources WHERE id=$1`, id)
 	if err != nil {
-		return fmt.Errorf("delete source: %w", err)
+		return pkgerrors.Wrapf(err, "delete source")
 	}
 	return nil
 }
@@ -174,7 +174,7 @@ func SoftDeleteSource(ctx context.Context, pool *sql.DB, id string) error {
 	now := time.Now()
 	_, err := pool.ExecContext(ctx, `UPDATE data_sources SET deleted_at=$2 WHERE id=$1`, id, now)
 	if err != nil {
-		return fmt.Errorf("soft delete source: %w", err)
+		return pkgerrors.Wrapf(err, "soft delete source")
 	}
 	return nil
 }
@@ -182,7 +182,7 @@ func SoftDeleteSource(ctx context.Context, pool *sql.DB, id string) error {
 func UpdateSourceCapability(ctx context.Context, pool *sql.DB, id string, summary string) error {
 	_, err := pool.ExecContext(ctx, `UPDATE data_sources SET capability_summary=$1 WHERE id=$2`, summary, id)
 	if err != nil {
-		return fmt.Errorf("update source capability: %w", err)
+		return pkgerrors.Wrapf(err, "update source capability")
 	}
 	return nil
 }
@@ -193,12 +193,12 @@ func UpdateSourceSuggestions(ctx context.Context, pool *sql.DB, id string, sugge
 	if suggestions != nil {
 		js, err = json.Marshal(suggestions)
 		if err != nil {
-			return fmt.Errorf("marshal suggestions: %w", err)
+			return pkgerrors.Wrapf(err, "marshal suggestions")
 		}
 	}
 	_, err = pool.ExecContext(ctx, `UPDATE data_sources SET suggested_questions=$1 WHERE id=$2`, js, id)
 	if err != nil {
-		return fmt.Errorf("update source suggestions: %w", err)
+		return pkgerrors.Wrapf(err, "update source suggestions")
 	}
 	return nil
 }
@@ -212,7 +212,7 @@ func CountSourcesByType(ctx context.Context, pool *sql.DB, chatbotID string, sou
 		WHERE chatbot_id=$1 AND source_type=$2 AND deleted_at IS NULL AND status != 'failed'
 	`, chatbotID, sourceType).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("count sources by type: %w", err)
+		return count, pkgerrors.Wrapf(err, "count sources by type")
 	}
 	return count, nil
 }
@@ -226,7 +226,7 @@ func GetFileCountByUserID(ctx context.Context, pool *sql.DB, userID string) (int
 		WHERE c.user_id = $1 AND ds.source_type IN ('pdf', 'text')
 	`, userID).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("get file count by user id: %w", err)
+		return count, pkgerrors.Wrapf(err, "get file count by user id")
 	}
 	return count, nil
 }
@@ -240,7 +240,7 @@ func GetURLCountByUserID(ctx context.Context, pool *sql.DB, userID string) (int,
 		WHERE c.user_id = $1 AND ds.source_type = 'url'
 	`, userID).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("get url count by user id: %w", err)
+		return count, pkgerrors.Wrapf(err, "get url count by user id")
 	}
 	return count, nil
 }
@@ -257,7 +257,7 @@ func GetMaxFileCountInAnyBot(ctx context.Context, pool *sql.DB, userID string) (
 		) as counts
 	`, userID).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("get max file count in any bot: %w", err)
+		return count, pkgerrors.Wrapf(err, "get max file count in any bot")
 	}
 	return count, nil
 }
@@ -274,7 +274,7 @@ func GetMaxURLCountInAnyBot(ctx context.Context, pool *sql.DB, userID string) (i
 		) as counts
 	`, userID).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("get max url count in any bot: %w", err)
+		return count, pkgerrors.Wrapf(err, "get max url count in any bot")
 	}
 	return count, nil
 }
@@ -283,7 +283,7 @@ func SourceExists(ctx context.Context, pool *sql.DB, chatbotID, url string) (boo
 	var exists bool
 	err := pool.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM data_sources WHERE chatbot_id=$1 AND source_url=$2)`, chatbotID, url).Scan(&exists)
 	if err != nil {
-		return exists, fmt.Errorf("check source existence: %w", err)
+		return exists, pkgerrors.Wrapf(err, "check source existence")
 	}
 	return exists, nil
 }
@@ -300,7 +300,7 @@ func GetLastDeletedAtForURL(ctx context.Context, pool *sql.DB, chatbotID, url st
 		return sql.NullTime{}, nil
 	}
 	if err != nil {
-		return t, fmt.Errorf("get last deleted at for url: %w", err)
+		return t, pkgerrors.Wrapf(err, "get last deleted at for url")
 	}
 	return t, nil
 }
@@ -315,7 +315,7 @@ func GetStorageUsedMBByUserID(ctx context.Context, pool *sql.DB, userID string) 
         WHERE c.user_id = $1 AND ds.deleted_at IS NULL
     `, userID).Scan(&totalBytes)
 	if err != nil {
-		return 0, fmt.Errorf("get storage used: %w", err)
+		return 0, pkgerrors.Wrapf(err, "get storage used")
 	}
 	// convert to MB
 	return int(totalBytes / (1024 * 1024)), nil
@@ -325,7 +325,7 @@ func GetStorageUsedMBByUserID(ctx context.Context, pool *sql.DB, userID string) 
 func UpdateSourceHash(ctx context.Context, pool *sql.DB, id string, hash string) error {
 	_, err := pool.ExecContext(ctx, `UPDATE data_sources SET hash=$1 WHERE id=$2`, hash, id)
 	if err != nil {
-		return fmt.Errorf("update source hash: %w", err)
+		return pkgerrors.Wrapf(err, "update source hash")
 	}
 	return nil
 }
@@ -338,7 +338,7 @@ func UpdateSourceForRefresh(ctx context.Context, pool *sql.DB, id string) error 
 		SET status='pending', last_refreshed_at=$1, error_message=NULL
 		WHERE id=$2`, now, id)
 	if err != nil {
-		return fmt.Errorf("update source for refresh: %w", err)
+		return pkgerrors.Wrapf(err, "update source for refresh")
 	}
 	return nil
 }
@@ -352,7 +352,7 @@ func GetMonthlyRefreshCount(ctx context.Context, pool *sql.DB, userID string, mo
 		WHERE user_id=$1 AND period_month=$2
 	`, userID, periodMonth).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("get monthly refresh count: %w", err)
+		return count, pkgerrors.Wrapf(err, "get monthly refresh count")
 	}
 	return count, nil
 }
@@ -366,7 +366,7 @@ func IncrementRefreshCount(ctx context.Context, pool *sql.DB, userID string, mon
 		DO UPDATE SET refresh_count = usage_ingestions.refresh_count + 1, updated_at = NOW()
 	`, userID, periodMonth)
 	if err != nil {
-		return fmt.Errorf("increment refresh count: %w", err)
+		return pkgerrors.Wrapf(err, "increment refresh count")
 	}
 	return nil
 }
@@ -383,7 +383,7 @@ func SourceExistsByHash(ctx context.Context, db *sql.DB, chatbotID, hash string)
 		)
 	`, chatbotID, hash).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("check source hash: %w", err)
+		return false, pkgerrors.Wrapf(err, "check source hash")
 	}
 	return exists, nil
 }
@@ -402,7 +402,7 @@ func GetSourceByHash(ctx context.Context, db *sql.DB, chatbotID, hash string) (*
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get source by hash: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get source by hash")
 	}
 	return &s, nil
 }

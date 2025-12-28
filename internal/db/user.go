@@ -3,9 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 func GetUserByID(ctx context.Context, pool *sql.DB, id string) (*models.User, error) {
@@ -24,7 +24,7 @@ func GetUserByID(ctx context.Context, pool *sql.DB, id string) (*models.User, er
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get user by id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get user by id")
 	}
 	if len(onboardingDataJSON) > 0 {
 		var data models.OnboardingData
@@ -51,7 +51,7 @@ func GetUserByEmail(ctx context.Context, pool *sql.DB, email string) (*models.Us
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get user by email: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get user by email")
 	}
 	if len(onboardingDataJSON) > 0 {
 		var data models.OnboardingData
@@ -66,7 +66,7 @@ func GetUserByEmail(ctx context.Context, pool *sql.DB, email string) (*models.Us
 func UpdateOnboardingState(ctx context.Context, pool *sql.DB, userID string, step int, data *models.OnboardingData) error {
 	dataJSON, err := data.Value()
 	if err != nil {
-		return fmt.Errorf("serialize onboarding data: %w", err)
+		return pkgerrors.Wrapf(err, "serialize onboarding data")
 	}
 	_, err = pool.ExecContext(ctx, `
 		UPDATE users 
@@ -74,7 +74,7 @@ func UpdateOnboardingState(ctx context.Context, pool *sql.DB, userID string, ste
 		WHERE id = $1 AND deleted_at IS NULL
 	`, userID, step, dataJSON)
 	if err != nil {
-		return fmt.Errorf("update onboarding state: %w", err)
+		return pkgerrors.Wrapf(err, "update onboarding state")
 	}
 	return nil
 }
@@ -87,7 +87,7 @@ func SkipOnboarding(ctx context.Context, pool *sql.DB, userID string) error {
 		WHERE id = $1 AND deleted_at IS NULL
 	`, userID)
 	if err != nil {
-		return fmt.Errorf("skip onboarding: %w", err)
+		return pkgerrors.Wrapf(err, "skip onboarding")
 	}
 	return nil
 }
@@ -106,7 +106,7 @@ func CompleteOnboarding(ctx context.Context, pool *sql.DB, userID, botID string)
 	data.CreatedBotID = botID
 	updatedDataJSON, err := data.Value()
 	if err != nil {
-		return fmt.Errorf("serialize updated onboarding data: %w", err)
+		return pkgerrors.Wrapf(err, "serialize updated onboarding data")
 	}
 
 	_, err = pool.ExecContext(ctx, `
@@ -118,7 +118,7 @@ func CompleteOnboarding(ctx context.Context, pool *sql.DB, userID, botID string)
 		WHERE id = $1 AND deleted_at IS NULL
 	`, userID, updatedDataJSON)
 	if err != nil {
-		return fmt.Errorf("complete onboarding: %w", err)
+		return pkgerrors.Wrapf(err, "complete onboarding")
 	}
 	return nil
 }

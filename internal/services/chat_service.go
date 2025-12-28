@@ -3,14 +3,13 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
-
 	"errors"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/logger"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // =============================================================================
@@ -67,7 +66,7 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 	// 1. Get and validate plan
 	plan, err := db.GetPlanByUserID(ctx, s.DB, req.UserID)
 	if err != nil {
-		return nil, fmt.Errorf("get plan: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get plan")
 	}
 	if plan == nil {
 		return nil, ErrPlanNotFound
@@ -104,7 +103,7 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 			if errors.Is(err, db.ErrTokenQuotaExceeded) {
 				return nil, ErrTokenQuotaExceeded
 			}
-			return nil, fmt.Errorf("reserve tokens: %w", err)
+			return nil, pkgerrors.Wrapf(err, "reserve tokens")
 		}
 	}
 

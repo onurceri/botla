@@ -7,6 +7,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/config"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // =============================================================================
@@ -89,7 +90,7 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 	if err != nil {
 		c, e := s.Factory.GetClient("openai")
 		if e != nil || c == nil {
-			return "", 0, fmt.Errorf("openai client not configured: %w", e)
+			return "", 0, pkgerrors.Wrapf(e, "openai client not configured")
 		}
 		client = c
 		modelName = config.DefaultModelName
@@ -113,7 +114,7 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 		if s.Log != nil {
 			s.Log.Error("restricted_smart_fallback_error", map[string]any{"error": err.Error(), "model": cc.Bot.Model})
 		}
-		return "", 0, fmt.Errorf("create low-tier completion: %w", err)
+		return "", 0, pkgerrors.Wrapf(err, "create low-tier completion")
 	}
 
 	return res.Content, res.UsageTokens, nil

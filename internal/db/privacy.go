@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type PrivacyRequest struct {
@@ -62,7 +63,7 @@ func CreateDataExport(ctx context.Context, pool *sql.DB, exp DataExport) (*DataE
 		&created.ID, &created.UserID, &created.RequestedBy, &created.Format, &created.Status, &created.CreatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create data export: %w", err)
+		return nil, pkgerrors.Wrapf(err, "create data export")
 	}
 	return &created, nil
 }
@@ -82,7 +83,7 @@ func GetDataExport(ctx context.Context, pool *sql.DB, id string) (*DataExport, e
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get data export: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get data export")
 	}
 	return &exp, nil
 }
@@ -95,7 +96,7 @@ func UpdateDataExport(ctx context.Context, pool *sql.DB, exp DataExport) error {
 		WHERE id = $1
 	`, exp.ID, exp.Status, exp.DownloadURL, exp.FileSizeBytes, exp.ExpiresAt, exp.ErrorMessage, exp.CompletedAt)
 	if err != nil {
-		return fmt.Errorf("update data export: %w", err)
+		return pkgerrors.Wrapf(err, "update data export")
 	}
 	return nil
 }
@@ -111,7 +112,7 @@ func CreatePrivacyRequest(ctx context.Context, pool *sql.DB, req PrivacyRequest)
 		&created.ID, &created.UserID, &created.UserEmail, &created.RequestType, &created.Status, &created.Reason, &created.CreatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create privacy request: %w", err)
+		return nil, pkgerrors.Wrapf(err, "create privacy request")
 	}
 	return &created, nil
 }
@@ -131,7 +132,7 @@ func GetPrivacyRequest(ctx context.Context, pool *sql.DB, id string) (*PrivacyRe
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get privacy request: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get privacy request")
 	}
 	return &req, nil
 }
@@ -157,7 +158,7 @@ func ListPrivacyRequests(ctx context.Context, pool *sql.DB, status string, limit
 
 	rows, err := pool.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list privacy requests: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "list privacy requests")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -172,7 +173,7 @@ func ListPrivacyRequests(ctx context.Context, pool *sql.DB, status string, limit
 			&req.CompletedAt, &req.ExportURL, &req.ExportExpiresAt, &req.CreatedAt, &totalCount,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("scan privacy request: %w", err)
+			return nil, 0, pkgerrors.Wrapf(err, "scan privacy request")
 		}
 		requests = append(requests, req)
 	}
@@ -199,7 +200,7 @@ func UpdatePrivacyRequestStatus(ctx context.Context, pool *sql.DB, id, status, a
 
 	_, err := pool.ExecContext(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("update privacy request status: %w", err)
+		return pkgerrors.Wrapf(err, "update privacy request status")
 	}
 	return nil
 }
@@ -217,7 +218,7 @@ func CompletePrivacyExportRequest(ctx context.Context, pool *sql.DB, id, adminID
 		WHERE id = $1
 	`, id, adminID, exportURL, exportExpiresAt)
 	if err != nil {
-		return fmt.Errorf("complete privacy export request: %w", err)
+		return pkgerrors.Wrapf(err, "complete privacy export request")
 	}
 	return nil
 }
@@ -225,7 +226,7 @@ func CompletePrivacyExportRequest(ctx context.Context, pool *sql.DB, id, adminID
 func AnonymizeUserData(ctx context.Context, pool *sql.DB, userID string) error {
 	tx, err := pool.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
+		return pkgerrors.Wrapf(err, "begin tx")
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -243,35 +244,35 @@ func AnonymizeUserData(ctx context.Context, pool *sql.DB, userID string) error {
 		WHERE id = $1
 	`, userID)
 	if err != nil {
-		return fmt.Errorf("anonymize user: %w", err)
+		return pkgerrors.Wrapf(err, "anonymize user")
 	}
 
 	// Delete user's chatbots (this will cascade to data_sources, conversations, messages, etc.)
 	_, err = tx.ExecContext(ctx, `DELETE FROM chatbots WHERE user_id = $1`, userID)
 	if err != nil {
-		return fmt.Errorf("delete user chatbots: %w", err)
+		return pkgerrors.Wrapf(err, "delete user chatbots")
 	}
 
 	// Delete user's owned organizations (cascades to workspaces, etc.)
 	_, err = tx.ExecContext(ctx, `DELETE FROM organizations WHERE owner_id = $1`, userID)
 	if err != nil {
-		return fmt.Errorf("delete user organizations: %w", err)
+		return pkgerrors.Wrapf(err, "delete user organizations")
 	}
 
 	// Delete user's refresh tokens
 	_, err = tx.ExecContext(ctx, `DELETE FROM refresh_tokens WHERE user_id = $1`, userID)
 	if err != nil {
-		return fmt.Errorf("delete user refresh tokens: %w", err)
+		return pkgerrors.Wrapf(err, "delete user refresh tokens")
 	}
 
 	// Delete user's memberships
 	_, err = tx.ExecContext(ctx, `DELETE FROM memberships WHERE user_id = $1`, userID)
 	if err != nil {
-		return fmt.Errorf("delete user memberships: %w", err)
+		return pkgerrors.Wrapf(err, "delete user memberships")
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
+		return pkgerrors.Wrapf(err, "commit tx")
 	}
 	return nil
 }
@@ -283,7 +284,7 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 	var avatarURL sql.NullString
 	err := pool.QueryRowContext(ctx, `SELECT avatar_url FROM users WHERE id = $1`, userID).Scan(&avatarURL)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("query user avatar: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query user avatar")
 	}
 	if avatarURL.Valid && avatarURL.String != "" {
 		files = append(files, avatarURL.String)
@@ -292,19 +293,19 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 	// 2. Get chatbot bot_icons
 	rows, err := pool.QueryContext(ctx, `SELECT bot_icon FROM chatbots WHERE user_id = $1 AND bot_icon IS NOT NULL AND bot_icon != ''`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query chatbot icons: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query chatbot icons")
 	}
 	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var icon string
 		if scanErr := rows.Scan(&icon); scanErr != nil {
-			return nil, fmt.Errorf("scan chatbot icon: %w", scanErr)
+			return nil, pkgerrors.Wrapf(scanErr, "scan chatbot icon")
 		}
 		files = append(files, icon)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("chatbot icons rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "chatbot icons rows err")
 	}
 
 	// 3. Get data source file paths
@@ -315,19 +316,19 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 		WHERE cb.user_id = $1 AND ds.file_path IS NOT NULL AND ds.file_path != ''
 	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query data source file paths: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query data source file paths")
 	}
 	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var path string
 		if scanErr := rows.Scan(&path); scanErr != nil {
-			return nil, fmt.Errorf("scan data source file path: %w", scanErr)
+			return nil, pkgerrors.Wrapf(scanErr, "scan data source file path")
 		}
 		files = append(files, path)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("data source file paths rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "data source file paths rows err")
 	}
 
 	// 4. Get organization branding logos
@@ -337,14 +338,14 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 		WHERE owner_id = $1 AND branding IS NOT NULL
 	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query organization branding: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query organization branding")
 	}
 	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var brandingBytes []byte
 		if scanErr := rows.Scan(&brandingBytes); scanErr != nil {
-			return nil, fmt.Errorf("scan organization branding: %w", scanErr)
+			return nil, pkgerrors.Wrapf(scanErr, "scan organization branding")
 		}
 		if len(brandingBytes) > 0 {
 			var cb struct {
@@ -356,7 +357,7 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("organization branding rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "organization branding rows err")
 	}
 
 	return files, nil
@@ -369,7 +370,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 	// 1. Get User
 	user, err := GetUserByID(ctx, pool, userID)
 	if err != nil {
-		return nil, fmt.Errorf("get user: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get user")
 	}
 	if user == nil {
 		return nil, fmt.Errorf("user not found")
@@ -384,7 +385,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 		WHERE m.user_id = $1
 	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query organizations: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query organizations")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -395,7 +396,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 			&org.CreatedAt, &org.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan organization: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan organization")
 		}
 		export.Organizations = append(export.Organizations, org)
 	}
@@ -403,7 +404,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 	// 3. Get Chatbots
 	chatbots, err := GetChatbotsByUserID(ctx, pool, userID)
 	if err != nil {
-		return nil, fmt.Errorf("get chatbots: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get chatbots")
 	}
 	export.Chatbots = chatbots
 
@@ -416,7 +417,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 		WHERE b.user_id = $1
 	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query conversations: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query conversations")
 	}
 	defer func() { _ = convRows.Close() }()
 
@@ -428,7 +429,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 			&conv.CreatedAt, &conv.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan conversation: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan conversation")
 		}
 		export.Conversations = append(export.Conversations, conv)
 		conversationIDs = append(conversationIDs, conv.ID)
@@ -444,7 +445,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 			ORDER BY created_at ASC
 		`, conversationIDs)
 		if queryErr != nil {
-			return nil, fmt.Errorf("query messages: %w", queryErr)
+			return nil, pkgerrors.Wrapf(queryErr, "query messages")
 		}
 		defer func() { _ = msgRows.Close() }()
 
@@ -455,7 +456,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 				&msg.TokensUsed, &msg.ThumbsUp, &msg.CreatedAt,
 			)
 			if err != nil {
-				return nil, fmt.Errorf("scan message: %w", err)
+				return nil, pkgerrors.Wrapf(err, "scan message")
 			}
 			export.Messages = append(export.Messages, msg)
 		}
@@ -471,7 +472,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 		WHERE b.user_id = $1
 	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query action logs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query action logs")
 	}
 	defer func() { _ = actionRows.Close() }()
 
@@ -483,7 +484,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 			&l.DurationMs, &l.CreatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan action log: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan action log")
 		}
 		export.ActionLogs = append(export.ActionLogs, l)
 	}
@@ -491,7 +492,7 @@ func GetUserDataForExport(ctx context.Context, pool *sql.DB, userID string) (*Us
 	// 7. Get Consents
 	consents, err := GetUserConsents(ctx, pool, userID)
 	if err != nil {
-		return nil, fmt.Errorf("get consents: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get consents")
 	}
 	export.Consents = consents
 

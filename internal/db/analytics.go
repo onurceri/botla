@@ -3,11 +3,11 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // IncrementAnalytics updates the analytics table for a given chatbot and date.
@@ -41,7 +41,7 @@ func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, dat
 
 	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, msgInc, convInc, tokens, handoffInc)
 	if err != nil {
-		return fmt.Errorf("increment analytics: %w", err)
+		return pkgerrors.Wrapf(err, "increment analytics")
 	}
 	return nil
 }
@@ -61,7 +61,7 @@ func GetMonthlyTokenUsage(ctx context.Context, pool *sql.DB, userID string) (int
 	`
 	err := pool.QueryRowContext(ctx, query, userID, startStr).Scan(&total)
 	if err != nil {
-		return 0, fmt.Errorf("get monthly token usage: %w", err)
+		return 0, pkgerrors.Wrapf(err, "get monthly token usage")
 	}
 	return total, nil
 }
@@ -111,7 +111,7 @@ func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, date
 
 	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, upInc, downInc)
 	if err != nil {
-		return fmt.Errorf("increment feedback: %w", err)
+		return pkgerrors.Wrapf(err, "increment feedback")
 	}
 	return nil
 }
@@ -140,7 +140,7 @@ func GetAnalyticsOverview(ctx context.Context, pool *sql.DB, chatbotID string) (
 		&stats.HandoffCount,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get analytics overview: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get analytics overview")
 	}
 
 	totalFeedback := stats.PositiveFeedback + stats.NegativeFeedback
@@ -179,7 +179,7 @@ func GetAnalyticsTrends(ctx context.Context, pool *sql.DB, chatbotID string, day
 	`
 	rows, err := pool.QueryContext(ctx, query, chatbotID, days-1) // days-1 because inclusive range
 	if err != nil {
-		return nil, fmt.Errorf("query analytics trends: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query analytics trends")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -196,12 +196,12 @@ func GetAnalyticsTrends(ctx context.Context, pool *sql.DB, chatbotID string, day
 			&da.HandoffCount,
 			&da.AvgResponseTimeMs,
 		); err != nil {
-			return nil, fmt.Errorf("scan daily analytics: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan daily analytics")
 		}
 		results = append(results, da)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("analytics trends rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "analytics trends rows err")
 	}
 	return results, nil
 }
@@ -223,7 +223,7 @@ func TrackUnansweredQuery(ctx context.Context, pool *sql.DB, chatbotID, queryTex
 	`
 	_, err := pool.ExecContext(ctx, query, chatbotID, queryText)
 	if err != nil {
-		return fmt.Errorf("track unanswered query: %w", err)
+		return pkgerrors.Wrapf(err, "track unanswered query")
 	}
 	return nil
 }
@@ -279,7 +279,7 @@ func GetGlobalAnalytics(ctx context.Context, pool *sql.DB, userID string, orgID,
 
 	rows, err := pool.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("query global analytics: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query global analytics")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -287,12 +287,12 @@ func GetGlobalAnalytics(ctx context.Context, pool *sql.DB, userID string, orgID,
 	for rows.Next() {
 		var p AnalyticsPoint
 		if err := rows.Scan(&p.Date, &p.Messages, &p.Conversations, &p.Tokens, &p.ThumbsUp, &p.ThumbsDown, &p.Handoffs); err != nil {
-			return nil, fmt.Errorf("scan analytics point: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan analytics point")
 		}
 		data = append(data, p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("global analytics rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "global analytics rows err")
 	}
 	return data, nil
 }

@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/lib/pq"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // AdminChatbot represents a chatbot for admin views with additional metadata
@@ -48,7 +48,7 @@ func AdminListChatbots(ctx context.Context, pool *sql.DB, filter ChatbotFilter, 
 	var total int
 	err := pool.QueryRowContext(ctx, countQuery, filter.Name, filter.OrganizationID, filter.OwnerID).Scan(&total)
 	if err != nil {
-		return nil, 0, fmt.Errorf("count admin chatbots: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "count admin chatbots")
 	}
 
 	// Data query - simplified to avoid LATERAL issues
@@ -79,7 +79,7 @@ func AdminListChatbots(ctx context.Context, pool *sql.DB, filter ChatbotFilter, 
 
 	rows, err := pool.QueryContext(ctx, dataQuery, filter.Name, filter.OrganizationID, filter.OwnerID, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query admin chatbots: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "query admin chatbots")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -104,7 +104,7 @@ func AdminListChatbots(ctx context.Context, pool *sql.DB, filter ChatbotFilter, 
 			&updatedAt,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("scan admin chatbot: %w", err)
+			return nil, 0, pkgerrors.Wrapf(err, "scan admin chatbot")
 		}
 		if workspaceID.Valid {
 			c.WorkspaceID = &workspaceID.String
@@ -122,7 +122,7 @@ func AdminListChatbots(ctx context.Context, pool *sql.DB, filter ChatbotFilter, 
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("admin chatbots rows err: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "admin chatbots rows err")
 	}
 
 	if chatbots == nil {
@@ -173,7 +173,7 @@ func AdminGetChatbot(ctx context.Context, pool *sql.DB, id string) (*AdminChatbo
 		&updatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get admin chatbot: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get admin chatbot")
 	}
 	if workspaceID.Valid {
 		c.WorkspaceID = &workspaceID.String
@@ -201,12 +201,12 @@ func AdminResetChatbotSources(ctx context.Context, pool *sql.DB, chatbotID strin
 
 	result, err := pool.ExecContext(ctx, query, chatbotID)
 	if err != nil {
-		return 0, fmt.Errorf("reset chatbot sources: %w", err)
+		return 0, pkgerrors.Wrapf(err, "reset chatbot sources")
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("rows affected: %w", err)
+		return 0, pkgerrors.Wrapf(err, "rows affected")
 	}
 	return rowsAffected, nil
 }
@@ -220,7 +220,7 @@ func AdminGetChatbotSourceIDs(ctx context.Context, pool *sql.DB, chatbotID strin
 
 	rows, err := pool.QueryContext(ctx, query, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("query source ids: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query source ids")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -228,13 +228,13 @@ func AdminGetChatbotSourceIDs(ctx context.Context, pool *sql.DB, chatbotID strin
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("scan source id: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan source id")
 		}
 		ids = append(ids, id)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("source ids rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "source ids rows err")
 	}
 	return ids, nil
 }
@@ -249,7 +249,7 @@ func AdminDeleteChatbotVectors(ctx context.Context, pool *sql.DB, chatbotID stri
 	`
 	_, err := pool.ExecContext(ctx, query, chatbotID)
 	if err != nil {
-		return fmt.Errorf("delete chatbot vectors: %w", err)
+		return pkgerrors.Wrapf(err, "delete chatbot vectors")
 	}
 	return nil
 }

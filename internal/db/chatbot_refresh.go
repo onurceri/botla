@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // GetChatbotsDueForRefresh returns chatbots with auto refresh enabled that are due for refresh
@@ -34,7 +34,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
           AND c.deleted_at IS NULL
         ORDER BY c.next_refresh_at ASC`, now)
 	if err != nil {
-		return nil, fmt.Errorf("query chatbots due for refresh: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query chatbots due for refresh")
 	}
 	defer func() { _ = rows.Close() }()
 	var out []models.Chatbot
@@ -57,7 +57,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 			&c.ConfidenceThreshold, &fmj, &trj,
 			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		); err != nil {
-			return nil, fmt.Errorf("scan chatbot for refresh: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan chatbot for refresh")
 		}
 		if len(sj) > 0 {
 			var arr []string
@@ -102,7 +102,7 @@ func GetChatbotsDueForRefresh(ctx context.Context, pool *sql.DB, now time.Time) 
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("chatbots due for refresh rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "chatbots due for refresh rows err")
 	}
 	return out, nil
 }
@@ -117,7 +117,7 @@ func UpdateChatbotRefreshTimes(ctx context.Context, pool *sql.DB, botID string, 
         WHERE id = $3 AND deleted_at IS NULL`,
 		nextRefresh, lastRefresh, botID)
 	if err != nil {
-		return fmt.Errorf("update chatbot refresh times: %w", err)
+		return pkgerrors.Wrapf(err, "update chatbot refresh times")
 	}
 	return nil
 }

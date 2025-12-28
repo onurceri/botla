@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/lib/pq"
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (string, error) {
@@ -74,7 +74,7 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 		bot.HandoffEnabled, bot.HandoffType, hcJSON,
 	).Scan(&id)
 	if err != nil {
-		return "", fmt.Errorf("create chatbot: %w", err)
+		return "", pkgerrors.Wrapf(err, "create chatbot")
 	}
 	return id, nil
 }
@@ -103,7 +103,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
         WHERE c.user_id=$1 AND c.deleted_at IS NULL
         ORDER BY c.created_at DESC`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query chatbots by user id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query chatbots by user id")
 	}
 	defer func() { _ = rows.Close() }()
 	return scanChatbots(rows)
@@ -134,7 +134,7 @@ func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID strin
         WHERE c.workspace_id=$1 AND c.deleted_at IS NULL
         ORDER BY c.created_at DESC`, workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("query chatbots by workspace: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query chatbots by workspace")
 	}
 	defer func() { _ = rows.Close() }()
 	return scanChatbots(rows)
@@ -162,7 +162,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			&c.ConfidenceThreshold, &tcj, &fmj, &trj,
 			&c.HandoffEnabled, &c.HandoffType, &hcj,
 		); err != nil {
-			return nil, fmt.Errorf("scan chatbot: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan chatbot")
 		}
 		if len(sj) > 0 {
 			var arr []string
@@ -217,7 +217,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("scan chatbots rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "scan chatbots rows err")
 	}
 	return out, nil
 }
@@ -265,7 +265,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get chatbot by id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get chatbot by id")
 	}
 	if len(sj) > 0 {
 		var arr []string
@@ -330,7 +330,7 @@ func GetUserByBotID(ctx context.Context, pool *sql.DB, botID string) (*models.Us
 		&u.ID, &u.Email, &u.FullName, &u.PlanID, &u.PreferredLanguageID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get user by bot id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get user by bot id")
 	}
 	return &u, nil
 }
@@ -396,7 +396,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.ID,
 	)
 	if err != nil {
-		return fmt.Errorf("update chatbot: %w", err)
+		return pkgerrors.Wrapf(err, "update chatbot")
 	}
 	return nil
 }
@@ -404,11 +404,11 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, id string, suggestions []string) error {
 	js, err := json.Marshal(suggestions)
 	if err != nil {
-		return fmt.Errorf("marshal suggestions: %w", err)
+		return pkgerrors.Wrapf(err, "marshal suggestions")
 	}
 	_, err = pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, all_suggested_questions=$1, updated_at=NOW() WHERE id=$2`, js, id)
 	if err != nil {
-		return fmt.Errorf("update chatbot suggestions: %w", err)
+		return pkgerrors.Wrapf(err, "update chatbot suggestions")
 	}
 	return nil
 }
@@ -416,7 +416,7 @@ func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, id string, sugg
 func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]string, error) {
 	tx, err := pool.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
+		return nil, pkgerrors.Wrapf(err, "begin tx")
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -425,11 +425,11 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
         UPDATE chatbots SET deleted_at=NOW()
         WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL`, id, userID)
 	if err != nil {
-		return nil, fmt.Errorf("mark chatbot as deleted: %w", err)
+		return nil, pkgerrors.Wrapf(err, "mark chatbot as deleted")
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return nil, fmt.Errorf("rows affected: %w", err)
+		return nil, pkgerrors.Wrapf(err, "rows affected")
 	}
 	if rows == 0 {
 		return nil, nil
@@ -441,7 +441,7 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
 		SELECT id FROM data_sources 
 		WHERE chatbot_id=$1 AND deleted_at IS NULL`, id)
 	if err != nil {
-		return nil, fmt.Errorf("query sources for deletion: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query sources for deletion")
 	}
 	defer func() { _ = sourceRows.Close() }()
 
@@ -449,12 +449,12 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
 	for sourceRows.Next() {
 		var sid string
 		if scanErr := sourceRows.Scan(&sid); scanErr != nil {
-			return nil, fmt.Errorf("scan source id for deletion: %w", scanErr)
+			return nil, pkgerrors.Wrapf(scanErr, "scan source id for deletion")
 		}
 		sourceIDs = append(sourceIDs, sid)
 	}
 	if rowsErr := sourceRows.Err(); rowsErr != nil {
-		return nil, fmt.Errorf("source rows err: %w", rowsErr)
+		return nil, pkgerrors.Wrapf(rowsErr, "source rows err")
 	}
 
 	// 3. Cascade soft delete sources
@@ -462,17 +462,17 @@ func SoftDeleteChatbot(ctx context.Context, pool *sql.DB, id, userID string) ([]
         UPDATE data_sources SET deleted_at=NOW()
         WHERE chatbot_id=$1 AND deleted_at IS NULL`, id)
 	if err != nil {
-		return nil, fmt.Errorf("cascade soft delete sources: %w", err)
+		return nil, pkgerrors.Wrapf(err, "cascade soft delete sources")
 	}
 
 	// 4. Hard delete analytics (since they don't support soft delete and we want to cascade)
 	_, err = tx.ExecContext(ctx, `DELETE FROM analytics WHERE chatbot_id=$1`, id)
 	if err != nil {
-		return nil, fmt.Errorf("hard delete analytics: %w", err)
+		return nil, pkgerrors.Wrapf(err, "hard delete analytics")
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+		return nil, pkgerrors.Wrapf(err, "commit tx")
 	}
 
 	return sourceIDs, nil
@@ -485,7 +485,7 @@ func CountChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) (in
         WHERE user_id=$1 AND deleted_at IS NULL
     `, userID).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("count chatbots by user id: %w", err)
+		return count, pkgerrors.Wrapf(err, "count chatbots by user id")
 	}
 	return count, nil
 }
@@ -497,7 +497,7 @@ func CountChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID str
         WHERE workspace_id=$1 AND deleted_at IS NULL
     `, workspaceID).Scan(&count)
 	if err != nil {
-		return count, fmt.Errorf("count chatbots by workspace: %w", err)
+		return count, pkgerrors.Wrapf(err, "count chatbots by workspace")
 	}
 	return count, nil
 }

@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/onurceri/botla-co/pkg/config"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 func buildDSN(cfg *config.Config) string {
@@ -25,7 +26,7 @@ func New(cfg *config.Config) (*sql.DB, error) {
 	dsn := buildDSN(cfg)
 	conn, err := sql.Open("pgx", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("open db: %w", err)
+		return nil, pkgerrors.Wrapf(err, "open db")
 	}
 	conn.SetMaxOpenConns(25)
 	conn.SetMaxIdleConns(5)
@@ -33,7 +34,7 @@ func New(cfg *config.Config) (*sql.DB, error) {
 	defer cancel()
 	if err := conn.PingContext(ctx); err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("ping db: %w", err)
+		return nil, pkgerrors.Wrapf(err, "ping db")
 	}
 	return conn, nil
 }

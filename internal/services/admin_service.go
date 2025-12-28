@@ -3,12 +3,12 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net"
 	"net/http"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/pkg/logger"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type AdminService struct {
@@ -46,7 +46,7 @@ func (s *AdminService) LogAction(ctx context.Context, adminID, action, targetTyp
 			"action":   action,
 			"error":    err.Error(),
 		})
-		return fmt.Errorf("insert audit log: %w", err)
+		return pkgerrors.Wrapf(err, "insert audit log")
 	}
 
 	return nil

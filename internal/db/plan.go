@@ -3,9 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 func GetPlanByUserID(ctx context.Context, pool *sql.DB, userID string) (*models.Plan, error) {
@@ -22,7 +22,7 @@ func GetPlanByUserID(ctx context.Context, pool *sql.DB, userID string) (*models.
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get plan by user id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get plan by user id")
 	}
 	return &p, nil
 }

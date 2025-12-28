@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type AuditLogEntry struct {
@@ -32,7 +34,7 @@ type AuditFilter struct {
 func InsertAuditLog(ctx context.Context, pool *sql.DB, entry AuditLogEntry) error {
 	detailsJSON, err := json.Marshal(entry.Details)
 	if err != nil {
-		return fmt.Errorf("marshal details: %w", err)
+		return pkgerrors.Wrapf(err, "marshal details")
 	}
 
 	query := `
@@ -50,7 +52,7 @@ func InsertAuditLog(ctx context.Context, pool *sql.DB, entry AuditLogEntry) erro
 		entry.UserAgent,
 	)
 	if err != nil {
-		return fmt.Errorf("insert audit log: %w", err)
+		return pkgerrors.Wrapf(err, "insert audit log")
 	}
 
 	return nil
@@ -101,7 +103,7 @@ func ListAuditLogs(ctx context.Context, pool *sql.DB, filter AuditFilter, limit,
 
 	rows, err := pool.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query audit logs: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "query audit logs")
 	}
 	defer func() {
 		_ = rows.Close()
@@ -126,12 +128,12 @@ func ListAuditLogs(ctx context.Context, pool *sql.DB, filter AuditFilter, limit,
 			&totalCount,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("scan audit log: %w", err)
+			return nil, 0, pkgerrors.Wrapf(err, "scan audit log")
 		}
 
 		if len(detailsJSON) > 0 {
 			if err := json.Unmarshal(detailsJSON, &entry.Details); err != nil {
-				return nil, 0, fmt.Errorf("unmarshal details: %w", err)
+				return nil, 0, pkgerrors.Wrapf(err, "unmarshal details")
 			}
 		}
 
@@ -139,7 +141,7 @@ func ListAuditLogs(ctx context.Context, pool *sql.DB, filter AuditFilter, limit,
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("rows error: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "rows error")
 	}
 
 	return logs, totalCount, nil

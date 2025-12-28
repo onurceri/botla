@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type ErrorLogEntry struct {
@@ -36,7 +37,7 @@ func ListErrorLogs(ctx context.Context, pool *sql.DB, severity string, limit, of
 
 	rows, err := pool.QueryContext(ctx, query, severity, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query error logs: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "query error logs")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -53,7 +54,7 @@ func ListErrorLogs(ctx context.Context, pool *sql.DB, severity string, limit, of
 			&total,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("scan error log: %w", err)
+			return nil, 0, pkgerrors.Wrapf(err, "scan error log")
 		}
 		if stack.Valid {
 			l.StackTrace = stack.String
@@ -99,7 +100,7 @@ func GetErrorLogByID(ctx context.Context, pool *sql.DB, id string) (*ErrorLogEnt
 		&userID, &botID, &orgID, &l.Severity, &ctxData, &l.CreatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get error log: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get error log")
 	}
 
 	if stack.Valid {
@@ -137,7 +138,7 @@ func GetErrorStats(ctx context.Context, pool *sql.DB) (map[string]int, error) {
 		GROUP BY severity
 	`)
 	if err != nil {
-		return nil, fmt.Errorf("query error stats: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query error stats")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -146,7 +147,7 @@ func GetErrorStats(ctx context.Context, pool *sql.DB) (map[string]int, error) {
 		var sev string
 		var count int
 		if err := rows.Scan(&sev, &count); err != nil {
-			return nil, fmt.Errorf("scan error stat: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan error stat")
 		}
 		stats[sev] = count
 	}
