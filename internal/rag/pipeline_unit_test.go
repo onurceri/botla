@@ -99,7 +99,7 @@ func TestSearchContextTiered_Unit(t *testing.T) {
 	})
 }
 
-func TestGenerateEmbeddingsForSource_Unit(t *testing.T) {
+func TestEmbeddingService_GenerateForSource_Unit(t *testing.T) {
 	ctx := context.Background()
 	mockEmb := &MockEmbeddingClient{}
 	mockVC := &MockVectorClient{}
@@ -122,7 +122,8 @@ func TestGenerateEmbeddingsForSource_Unit(t *testing.T) {
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, vectors[0], mock.Anything).Return(nil).Once()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, vectors[1], mock.Anything).Return(nil).Once()
 
-		err := GenerateEmbeddingsForSource(ctx, mockEmb, mockVC, chunks, chatbotID, sourceID, sourceType)
+		svc := NewEmbeddingService(mockEmb, mockVC, nil)
+		err := svc.GenerateForSource(ctx, chunks, chatbotID, sourceID, sourceType)
 
 		assert.NoError(t, err)
 		mockEmb.AssertExpectations(t)
@@ -132,7 +133,8 @@ func TestGenerateEmbeddingsForSource_Unit(t *testing.T) {
 	t.Run("Embedding Failure", func(t *testing.T) {
 		mockEmb.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return(nil, assert.AnError).Twice() // Includes retry
 
-		err := GenerateEmbeddingsForSource(ctx, mockEmb, mockVC, chunks, chatbotID, sourceID, sourceType)
+		svc := NewEmbeddingService(mockEmb, mockVC, nil)
+		err := svc.GenerateForSource(ctx, chunks, chatbotID, sourceID, sourceType)
 
 		assert.Error(t, err)
 		mockEmb.AssertExpectations(t)

@@ -47,7 +47,7 @@ func newQdrantServerUpsert(firstFail *bool) *httptest.Server {
 	}))
 }
 
-func TestGenerateEmbeddings_RetryAndWarn(t *testing.T) {
+func TestEmbeddingService_Generate_RetryAndWarn(t *testing.T) {
 	of := true
 	qf := true
 	oai := newOpenAIServerBatch(&of)
@@ -71,12 +71,13 @@ func TestGenerateEmbeddings_RetryAndWarn(t *testing.T) {
 	}
 	emb, _ := NewOpenAIClient(cfg)
 	vc, _ := NewQdrantClientFromEnv()
-	if err := GenerateEmbeddings(context.Background(), emb, vc, chunks, "cb"); err != nil {
+	svc := NewEmbeddingService(emb, vc, nil)
+	if err := svc.Generate(context.Background(), chunks, "cb"); err != nil {
 		t.Fatalf("gen err: %v", err)
 	}
 }
 
-func TestGenerateEmbeddingsForSource_UpsertError(t *testing.T) {
+func TestEmbeddingService_GenerateForSource_UpsertError(t *testing.T) {
 	of := false
 	oai := newOpenAIServerBatch(&of)
 	defer oai.Close()
@@ -106,25 +107,27 @@ func TestGenerateEmbeddingsForSource_UpsertError(t *testing.T) {
 	}
 	emb, _ := NewOpenAIClient(cfg)
 	vc, _ := NewQdrantClientFromEnv()
-	if err := GenerateEmbeddingsForSource(context.Background(), emb, vc, chunks, "cb", "src", "file"); err == nil {
+	svc := NewEmbeddingService(emb, vc, nil)
+	if err := svc.GenerateForSource(context.Background(), chunks, "cb", "src", "file"); err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 // EMB-001: Generate embeddings for 0 chunks
-func TestGenerateEmbeddings_Empty(t *testing.T) {
-	err := GenerateEmbeddings(context.Background(), nil, nil, nil, "cb")
+func TestEmbeddingService_Generate_Empty(t *testing.T) {
+	svc := NewEmbeddingService(nil, nil, nil)
+	err := svc.Generate(context.Background(), nil, "cb")
 	if err != nil {
 		t.Fatalf("expected nil error for empty input, got %v", err)
 	}
-	err = GenerateEmbeddings(context.Background(), nil, nil, []models.Chunk{}, "cb")
+	err = svc.Generate(context.Background(), []models.Chunk{}, "cb")
 	if err != nil {
 		t.Fatalf("expected nil error for empty chunks, got %v", err)
 	}
 }
 
 // EMB-003: Generate embeddings for 26 chunks (batching)
-func TestGenerateEmbeddings_Batching(t *testing.T) {
+func TestEmbeddingService_Generate_Batching(t *testing.T) {
 	// Mock OpenAI to count requests
 	reqCount := 0
 	oaiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +183,8 @@ func TestGenerateEmbeddings_Batching(t *testing.T) {
 	// The code uses time.NewTicker(time.Second / 58) which is ~17ms.
 	// 2 batches = ~34ms wait. This is fast enough for a test.
 
-	err := GenerateEmbeddings(context.Background(), emb, vc, chunks, "cb")
+	svc := NewEmbeddingService(emb, vc, nil)
+	err := svc.Generate(context.Background(), chunks, "cb")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

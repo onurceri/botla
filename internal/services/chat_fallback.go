@@ -52,41 +52,27 @@ func (s *ChatService) applyLowTierFallback(ctx context.Context, cc *chatContext)
 }
 
 // =============================================================================
-// MESSAGE TEMPLATES - Localized fallback messages
+// MESSAGE TEMPLATES - Delegated to GuardrailService
 // =============================================================================
 
 // getStaticFallbackMessage returns the "no info found" message.
 func (s *ChatService) getStaticFallbackMessage(cc *chatContext) string {
-	if cc.Bot.FallbackMessages != nil && cc.Bot.FallbackMessages.NoInfoFound != "" {
-		return cc.Bot.FallbackMessages.NoInfoFound
-	}
-	return cc.LangConfig.UserMessages.NoInfoFound
+	return s.Guardrails.GetStaticFallbackMessage(cc.Bot.FallbackMessages, cc.LangConfig)
 }
 
 // getErrorMessage returns the error message.
 func (s *ChatService) getErrorMessage(cc *chatContext) string {
-	if cc.Bot.FallbackMessages != nil && cc.Bot.FallbackMessages.ErrorMessage != "" {
-		return cc.Bot.FallbackMessages.ErrorMessage
-	}
-	return cc.LangConfig.UserMessages.ErrorMessage
+	return s.Guardrails.GetErrorMessage(cc.Bot.FallbackMessages, cc.LangConfig)
 }
 
 // getHandoffMessage returns the handoff suggestion message.
 func (s *ChatService) getHandoffMessage(cc *chatContext) string {
-	if cc.Bot.FallbackMessages != nil && cc.Bot.FallbackMessages.HandoffMessage != "" {
-		return cc.Bot.FallbackMessages.HandoffMessage
-	}
-	return cc.LangConfig.UserMessages.HandoffSuggestion
+	return s.Guardrails.GetHandoffMessage(cc.Bot.FallbackMessages, cc.LangConfig)
 }
 
 // getEmptyStateMessage returns a softer message for when the bot has no knowledge sources.
-// This is friendlier than the standard "no info found" message.
 func (s *ChatService) getEmptyStateMessage(cc *chatContext) string {
-	if cc.LangConfig.UserMessages.EmptyStateMessage != "" {
-		return cc.LangConfig.UserMessages.EmptyStateMessage
-	}
-	// Fallback to NoInfoFound if EmptyStateMessage is not configured
-	return s.getStaticFallbackMessage(cc)
+	return s.Guardrails.GetEmptyStateMessage(cc.Bot.FallbackMessages, cc.LangConfig)
 }
 
 // =============================================================================
@@ -131,37 +117,4 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 	}
 
 	return res.Content, res.UsageTokens, nil
-}
-
-// =============================================================================
-// PLAN ENFORCEMENT - Ensures fallback mode respects plan restrictions
-// =============================================================================
-
-// enforcePlanFallbackMode ensures the fallback mode respects plan restrictions.
-// Free plan cannot use smart/escalate, non-Ultra cannot use escalate.
-func (s *ChatService) enforcePlanFallbackMode(cfg *models.ThresholdConfig, guardrails *models.GuardrailsConfig) *models.ThresholdConfig {
-	if cfg == nil || guardrails == nil {
-		return cfg
-	}
-
-	// Create a copy to avoid modifying the original
-	result := *cfg
-
-	switch result.FallbackMode {
-	case "smart":
-		if !guardrails.CanUseSmartFallback {
-			result.FallbackMode = "static"
-		}
-	case "escalate":
-		if !guardrails.CanUseEscalateFallback {
-			// Downgrade to smart if allowed, otherwise static
-			if guardrails.CanUseSmartFallback {
-				result.FallbackMode = "smart"
-			} else {
-				result.FallbackMode = "static"
-			}
-		}
-	}
-
-	return &result
 }
