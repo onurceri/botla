@@ -3,9 +3,9 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // ModelService handles logic related to AI models
@@ -24,7 +24,7 @@ func (s *ModelService) GetAvailableModels(ctx context.Context, allowedModels []s
 	// Fetch all active models from DB
 	rows, err := s.DB.QueryContext(ctx, "SELECT id, provider, model_name, api_model_id, name, max_tokens, is_active FROM ai_models WHERE is_active = true")
 	if err != nil {
-		return nil, fmt.Errorf("query models: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query models")
 	}
 	defer func() {
 		_ = rows.Close()
@@ -71,7 +71,7 @@ func (s *ModelService) GetAPIModelID(ctx context.Context, modelName string) (str
 		modelName,
 	).Scan(&apiModelID)
 	if err != nil {
-		return "", fmt.Errorf("get api model id: %w", err)
+		return "", pkgerrors.Wrapf(err, "get api model id")
 	}
 	return apiModelID, nil
 }
@@ -84,7 +84,7 @@ func (s *ModelService) GetModelByName(ctx context.Context, modelName string) (*m
 		modelName,
 	).Scan(&m.ID, &m.Provider, &m.ModelName, &m.APIModelID, &m.Name, &m.MaxTokens, &m.IsActive)
 	if err != nil {
-		return nil, fmt.Errorf("get model by name: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get model by name")
 	}
 	return &m, nil
 }

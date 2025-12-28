@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type UserFilter struct {
@@ -47,7 +48,7 @@ func AdminListUsers(ctx context.Context, pool *sql.DB, filter UserFilter, limit,
 
 	rows, err := pool.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("query users: %w", err)
+		return nil, 0, pkgerrors.Wrapf(err, "query users")
 	}
 	defer func() {
 		_ = rows.Close()
@@ -74,7 +75,7 @@ func AdminListUsers(ctx context.Context, pool *sql.DB, filter UserFilter, limit,
 			&totalCount,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("scan user: %w", err)
+			return nil, 0, pkgerrors.Wrapf(err, "scan user")
 		}
 
 		users = append(users, u)
@@ -121,7 +122,7 @@ func AdminUpdateUser(ctx context.Context, pool *sql.DB, userID string, updates m
 
 	_, err := pool.ExecContext(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("update user: %w", err)
+		return pkgerrors.Wrapf(err, "update user")
 	}
 
 	return nil

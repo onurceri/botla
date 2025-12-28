@@ -3,7 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type PlatformOverviewStats struct {
@@ -19,25 +20,25 @@ func GetPlatformOverviewStats(ctx context.Context, pool *sql.DB) (*PlatformOverv
 	// Get total users
 	err := pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE deleted_at IS NULL").Scan(&stats.TotalUsers)
 	if err != nil {
-		return nil, fmt.Errorf("count users: %w", err)
+		return nil, pkgerrors.Wrapf(err, "count users")
 	}
 
 	// Get total organizations
 	err = pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM organizations").Scan(&stats.TotalOrganizations)
 	if err != nil {
-		return nil, fmt.Errorf("count organizations: %w", err)
+		return nil, pkgerrors.Wrapf(err, "count organizations")
 	}
 
 	// Get total chatbots
 	err = pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM chatbots WHERE deleted_at IS NULL").Scan(&stats.TotalChatbots)
 	if err != nil {
-		return nil, fmt.Errorf("count chatbots: %w", err)
+		return nil, pkgerrors.Wrapf(err, "count chatbots")
 	}
 
 	// Get total messages
 	err = pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM messages").Scan(&stats.TotalMessages)
 	if err != nil {
-		return nil, fmt.Errorf("count messages: %w", err)
+		return nil, pkgerrors.Wrapf(err, "count messages")
 	}
 
 	return stats, nil

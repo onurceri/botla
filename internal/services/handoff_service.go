@@ -12,6 +12,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/langconfig"
 	"github.com/onurceri/botla-co/pkg/logger"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // HandoffService handles human agent handoff logic
@@ -62,7 +63,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	// Check for existing active handoff request
 	exists, err := db.HasActiveHandoffRequest(ctx, s.DB, conversationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check existing handoff: %w", err)
+		return nil, pkgerrors.Wrapf(err, "failed to check existing handoff")
 	}
 	if exists {
 		return nil, ErrHandoffExists
@@ -80,7 +81,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 		if msg == "" {
 			msg = "failed to create handoff request"
 		}
-		return nil, fmt.Errorf("%s: %w", msg, err)
+		return nil, pkgerrors.Wrapf(err, "%s", msg)
 	}
 
 	result := &HandoffResult{
@@ -144,7 +145,7 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		if msg == "" {
 			msg = "failed to load conversation"
 		}
-		return fmt.Errorf("%s: %w", msg, err)
+		return pkgerrors.Wrapf(err, "%s", msg)
 	}
 
 	// Build email body
@@ -230,7 +231,7 @@ func (s *HandoffService) buildHandoffEmailBody(botName, requestID string, messag
 func (s *HandoffService) GetHandoffRequests(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error) {
 	requests, err := db.GetHandoffRequestsByBotID(ctx, s.DB, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("get handoff requests: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get handoff requests")
 	}
 	return requests, nil
 }
@@ -251,7 +252,7 @@ func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, sta
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrHandoffNotFound
 		}
-		return fmt.Errorf("update handoff status: %w", err)
+		return pkgerrors.Wrapf(err, "update handoff status")
 	}
 	return nil
 }

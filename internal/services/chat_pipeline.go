@@ -2,12 +2,12 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // =============================================================================
@@ -18,7 +18,7 @@ import (
 func (s *ChatService) getOrCreateConversation(ctx context.Context, cc *chatContext) error {
 	conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, cc.Bot.ID, cc.Request.SessionID)
 	if err != nil {
-		return fmt.Errorf("get/create conversation: %w", err)
+		return pkgerrors.Wrapf(err, "get/create conversation")
 	}
 	if conv == nil {
 		return errConversationCreateFailed
@@ -39,7 +39,7 @@ func (s *ChatService) saveUserMessage(ctx context.Context, cc *chatContext) erro
 	}
 
 	if _, err := db.CreateMessage(ctx, s.DB, msg); err != nil {
-		return fmt.Errorf("save user message: %w", err)
+		return pkgerrors.Wrapf(err, "save user message")
 	}
 
 	_ = db.IncrementConversationMessageCount(ctx, s.DB, cc.Conversation.ID)

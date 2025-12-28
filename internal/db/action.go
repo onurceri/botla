@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // ErrVersionConflict is returned when an optimistic lock fails due to concurrent modification
@@ -20,7 +20,7 @@ func GetEnabledActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*mo
 	`
 	rows, err := db.QueryContext(ctx, query, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("query enabled actions: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query enabled actions")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -31,12 +31,12 @@ func GetEnabledActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*mo
 			&a.ID, &a.ChatbotID, &a.Name, &a.Description, &a.ActionType,
 			&a.Config, &a.Parameters, &a.ToolName, &a.Enabled, &a.Version, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan enabled action: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan enabled action")
 		}
 		actions = append(actions, &a)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("enabled actions rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "enabled actions rows err")
 	}
 	return actions, nil
 }
@@ -50,7 +50,7 @@ func GetActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*models.Ch
 	`
 	rows, err := db.QueryContext(ctx, query, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("query actions: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query actions")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -61,12 +61,12 @@ func GetActions(ctx context.Context, db *sql.DB, chatbotID string) ([]*models.Ch
 			&a.ID, &a.ChatbotID, &a.Name, &a.Description, &a.ActionType,
 			&a.Config, &a.Parameters, &a.ToolName, &a.Enabled, &a.Version, &a.CreatedAt, &a.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan action: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan action")
 		}
 		actions = append(actions, &a)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("actions rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "actions rows err")
 	}
 	return actions, nil
 }
@@ -82,7 +82,7 @@ func CreateAction(ctx context.Context, db *sql.DB, action *models.ChatbotAction)
 		action.Config, action.Parameters, action.ToolName, action.Enabled,
 	).Scan(&action.ID, &action.Version, &action.CreatedAt, &action.UpdatedAt)
 	if err != nil {
-		return fmt.Errorf("create action: %w", err)
+		return pkgerrors.Wrapf(err, "create action")
 	}
 	return nil
 }
@@ -104,7 +104,7 @@ func UpdateAction(ctx context.Context, db *sql.DB, action *models.ChatbotAction)
 		if err == sql.ErrNoRows {
 			return ErrVersionConflict
 		}
-		return fmt.Errorf("update action: %w", err)
+		return pkgerrors.Wrapf(err, "update action")
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func DeleteAction(ctx context.Context, db *sql.DB, id string) error {
 	query := `DELETE FROM chatbot_actions WHERE id = $1`
 	_, err := db.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("delete action: %w", err)
+		return pkgerrors.Wrapf(err, "delete action")
 	}
 	return nil
 }
@@ -133,7 +133,7 @@ func GetActionByID(ctx context.Context, db *sql.DB, id string) (*models.ChatbotA
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get action by id: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get action by id")
 	}
 	return &a, nil
 }
@@ -154,7 +154,7 @@ func GetActionByToolName(ctx context.Context, db *sql.DB, chatbotID, toolName st
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get action by tool name: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get action by tool name")
 	}
 	return &a, nil
 }

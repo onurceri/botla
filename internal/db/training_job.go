@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // CreateTrainingJob creates a new training job for a data source
@@ -22,7 +22,7 @@ func CreateTrainingJob(ctx context.Context, db *sql.DB, sourceID, chatbotID stri
 		&job.ProgressPercent, &job.RetryCount, &job.CreatedAt, &job.UpdatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create training job: %w", err)
+		return nil, pkgerrors.Wrapf(err, "create training job")
 	}
 	return &job, nil
 }
@@ -47,7 +47,7 @@ func GetTrainingJob(ctx context.Context, db *sql.DB, id string) (*models.Trainin
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get training job: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get training job")
 	}
 
 	if currentStep.Valid {
@@ -101,7 +101,7 @@ func UpdateJobStatus(ctx context.Context, db *sql.DB, id string, status models.J
 		WHERE id = $1
 	`, id, status, stepStr, progress, startedAt, completedAt)
 	if err != nil {
-		return fmt.Errorf("update job status: %w", err)
+		return pkgerrors.Wrapf(err, "update job status")
 	}
 	return nil
 }
@@ -115,7 +115,7 @@ func FailJob(ctx context.Context, db *sql.DB, id string, step models.TrainingSte
 		WHERE id = $1
 	`, id, step, errCode, errMsg)
 	if err != nil {
-		return fmt.Errorf("fail job: %w", err)
+		return pkgerrors.Wrapf(err, "fail job")
 	}
 	return nil
 }
@@ -128,7 +128,7 @@ func CompleteJob(ctx context.Context, db *sql.DB, id string) error {
 		WHERE id = $1
 	`, id)
 	if err != nil {
-		return fmt.Errorf("complete job: %w", err)
+		return pkgerrors.Wrapf(err, "complete job")
 	}
 	return nil
 }
@@ -141,7 +141,7 @@ func CancelJob(ctx context.Context, db *sql.DB, id string) error {
 		WHERE id = $1
 	`, id)
 	if err != nil {
-		return fmt.Errorf("cancel job: %w", err)
+		return pkgerrors.Wrapf(err, "cancel job")
 	}
 	return nil
 }
@@ -162,7 +162,7 @@ func MarkStepCompleted(ctx context.Context, db *sql.DB, jobID string, step model
 	var metadataRaw []byte
 	err := db.QueryRowContext(ctx, `SELECT metadata FROM training_jobs WHERE id = $1`, jobID).Scan(&metadataRaw)
 	if err != nil {
-		return fmt.Errorf("get metadata: %w", err)
+		return pkgerrors.Wrapf(err, "get metadata")
 	}
 
 	var metadata struct {
@@ -201,7 +201,7 @@ func MarkStepCompleted(ctx context.Context, db *sql.DB, jobID string, step model
 	newMeta, _ := json.Marshal(metadata)
 	_, err = db.ExecContext(ctx, `UPDATE training_jobs SET metadata = $2 WHERE id = $1`, jobID, newMeta)
 	if err != nil {
-		return fmt.Errorf("update metadata: %w", err)
+		return pkgerrors.Wrapf(err, "update metadata")
 	}
 	return nil
 }
@@ -211,7 +211,7 @@ func GetLastCompletedStep(ctx context.Context, db *sql.DB, jobID string) (*model
 	var metadataRaw []byte
 	err := db.QueryRowContext(ctx, `SELECT metadata FROM training_jobs WHERE id = $1`, jobID).Scan(&metadataRaw)
 	if err != nil {
-		return nil, fmt.Errorf("get metadata: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get metadata")
 	}
 
 	var metadata struct {
@@ -259,7 +259,7 @@ func IncrementRetryCount(ctx context.Context, db *sql.DB, jobID string) (int, er
 		RETURNING retry_count
 	`, jobID).Scan(&count)
 	if err != nil {
-		return 0, fmt.Errorf("increment retry count: %w", err)
+		return 0, pkgerrors.Wrapf(err, "increment retry count")
 	}
 	return count, nil
 }
@@ -287,7 +287,7 @@ func GetJobBySourceID(ctx context.Context, db *sql.DB, sourceID string) (*models
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get job by source: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get job by source")
 	}
 
 	if currentStep.Valid {
@@ -326,7 +326,7 @@ func GetJobsByChatbotID(ctx context.Context, db *sql.DB, chatbotID string, limit
 		LIMIT $2
 	`, chatbotID, limit)
 	if err != nil {
-		return nil, fmt.Errorf("get jobs by chatbot: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get jobs by chatbot")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -368,7 +368,7 @@ func GetJobsByChatbotID(ctx context.Context, db *sql.DB, chatbotID string, limit
 		jobs = append(jobs, &job)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error for jobs by chatbot: %w", err)
+		return nil, pkgerrors.Wrapf(err, "rows iteration error for jobs by chatbot")
 	}
 	return jobs, nil
 }
@@ -383,7 +383,7 @@ func GetPendingJobs(ctx context.Context, db *sql.DB, limit int) ([]*models.Train
 		LIMIT $1
 	`, limit)
 	if err != nil {
-		return nil, fmt.Errorf("get pending jobs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get pending jobs")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -396,7 +396,7 @@ func GetPendingJobs(ctx context.Context, db *sql.DB, limit int) ([]*models.Train
 		jobs = append(jobs, &job)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error for pending jobs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "rows iteration error for pending jobs")
 	}
 	return jobs, nil
 }
@@ -411,7 +411,7 @@ func GetRetryableJobs(ctx context.Context, db *sql.DB, maxRetries, limit int) ([
 		LIMIT $2
 	`, maxRetries, limit)
 	if err != nil {
-		return nil, fmt.Errorf("get retryable jobs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get retryable jobs")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -429,7 +429,7 @@ func GetRetryableJobs(ctx context.Context, db *sql.DB, maxRetries, limit int) ([
 		jobs = append(jobs, &job)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error for retryable jobs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "rows iteration error for retryable jobs")
 	}
 	return jobs, nil
 }
@@ -444,7 +444,7 @@ func GetRunningJobs(ctx context.Context, db *sql.DB, limit int) ([]*models.Train
 		LIMIT $1
 	`, limit)
 	if err != nil {
-		return nil, fmt.Errorf("get running jobs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get running jobs")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -466,7 +466,7 @@ func GetRunningJobs(ctx context.Context, db *sql.DB, limit int) ([]*models.Train
 		jobs = append(jobs, &job)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error for running jobs: %w", err)
+		return nil, pkgerrors.Wrapf(err, "rows iteration error for running jobs")
 	}
 	return jobs, nil
 }
@@ -477,7 +477,7 @@ func UpdateJobMetadata(ctx context.Context, db *sql.DB, id string, metadata []by
 		UPDATE training_jobs SET metadata = $2 WHERE id = $1
 	`, id, metadata)
 	if err != nil {
-		return fmt.Errorf("update job metadata: %w", err)
+		return pkgerrors.Wrapf(err, "update job metadata")
 	}
 	return nil
 }

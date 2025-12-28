@@ -3,11 +3,11 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type RetentionConfig struct {
@@ -81,12 +81,12 @@ func (j *RetentionJob) cleanConversations(ctx context.Context) (int64, error) {
 
 	result, err := j.DB.ExecContext(ctx, query, cutoff)
 	if err != nil {
-		return 0, fmt.Errorf("cleaning conversations: %w", err)
+		return 0, pkgerrors.Wrapf(err, "cleaning conversations")
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("getting rows affected: %w", err)
+		return 0, pkgerrors.Wrapf(err, "getting rows affected")
 	}
 	return rows, nil
 }
@@ -101,12 +101,12 @@ func (j *RetentionJob) cleanErrorLogs(ctx context.Context) (int64, error) {
 	if err != nil {
 		// If table doesn't exist, ignore error or log it.
 		// For now, return error so we know.
-		return 0, fmt.Errorf("cleaning error logs: %w", err)
+		return 0, pkgerrors.Wrapf(err, "cleaning error logs")
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("getting rows affected: %w", err)
+		return 0, pkgerrors.Wrapf(err, "getting rows affected")
 	}
 	return rows, nil
 }
@@ -161,11 +161,11 @@ func (j *RetentionJob) cleanExpiredExports(ctx context.Context) (int64, error) {
 	// 4. Delete from data_exports table
 	res2, err := j.DB.ExecContext(ctx, `DELETE FROM data_exports WHERE expires_at < $1`, now)
 	if err != nil {
-		return totalDeleted, fmt.Errorf("cleaning data exports: %w", err)
+		return totalDeleted, pkgerrors.Wrapf(err, "cleaning data exports")
 	}
 	affected, err := res2.RowsAffected()
 	if err != nil {
-		return totalDeleted, fmt.Errorf("getting rows affected: %w", err)
+		return totalDeleted, pkgerrors.Wrapf(err, "getting rows affected")
 	}
 	totalDeleted += affected
 
@@ -179,12 +179,12 @@ func (j *RetentionJob) cleanAuditLogs(ctx context.Context) (int64, error) {
 
 	result, err := j.DB.ExecContext(ctx, query, cutoff)
 	if err != nil {
-		return 0, fmt.Errorf("cleaning audit logs: %w", err)
+		return 0, pkgerrors.Wrapf(err, "cleaning audit logs")
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("getting rows affected: %w", err)
+		return 0, pkgerrors.Wrapf(err, "getting rows affected")
 	}
 	return rows, nil
 }

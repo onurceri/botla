@@ -3,11 +3,11 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/logger"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type AnalyticsService struct {
@@ -26,7 +26,7 @@ func NewAnalyticsService(db *sql.DB, log *logger.Logger) *AnalyticsService {
 func (s *AnalyticsService) GetChatbotOverview(ctx context.Context, chatbotID string) (*models.AnalyticsOverview, error) {
 	res, err := db.GetAnalyticsOverview(ctx, s.DB, chatbotID)
 	if err != nil {
-		return nil, fmt.Errorf("get analytics overview: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get analytics overview")
 	}
 	return res, nil
 }
@@ -35,7 +35,7 @@ func (s *AnalyticsService) GetChatbotOverview(ctx context.Context, chatbotID str
 func (s *AnalyticsService) GetChatbotTrends(ctx context.Context, chatbotID string, days int) (*models.TrendData, error) {
 	daily, err := db.GetAnalyticsTrends(ctx, s.DB, chatbotID, days)
 	if err != nil {
-		return nil, fmt.Errorf("get analytics trends: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get analytics trends")
 	}
 	return &models.TrendData{Daily: daily}, nil
 }
@@ -43,7 +43,7 @@ func (s *AnalyticsService) GetChatbotTrends(ctx context.Context, chatbotID strin
 // TrackUnansweredQuery records a low confidence query
 func (s *AnalyticsService) TrackUnansweredQuery(ctx context.Context, chatbotID, query string) error {
 	if err := db.TrackUnansweredQuery(ctx, s.DB, chatbotID, query); err != nil {
-		return fmt.Errorf("track unanswered query: %w", err)
+		return pkgerrors.Wrapf(err, "track unanswered query")
 	}
 	return nil
 }

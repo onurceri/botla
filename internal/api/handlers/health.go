@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/config"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type HealthHandlers struct {
@@ -74,7 +74,7 @@ func qdrantHealthy(ctx context.Context, cfg *config.Config) error {
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("qdrant health check request: %w", err)
+		return pkgerrors.Wrapf(err, "qdrant health check request")
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {

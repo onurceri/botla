@@ -3,13 +3,13 @@ package handlers
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // checkIngestionQuota validates monthly ingestion quota
@@ -40,7 +40,7 @@ func (h *SourcesHandlers) persistAndEnqueueInternal(r *http.Request, ds *models.
 	newID, err := db.CreateDataSource(ctx, h.DB, ds)
 	if err != nil {
 		h.logError("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": ds.ChatbotID, "source_type": ds.SourceType})
-		return "", fmt.Errorf("create data source: %w", err)
+		return "", pkgerrors.Wrapf(err, "create data source")
 	}
 	if h.Queue != nil {
 		_, err = h.Queue.EnqueueSource(ctx, newID, ds.ChatbotID)

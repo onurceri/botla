@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"html"
 	"net/http"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/middleware"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // MeResponse represents the /me endpoint response
@@ -78,7 +78,7 @@ func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) ([
 		ORDER BY o.created_at
 	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("query user organizations: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query user organizations")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -86,12 +86,12 @@ func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) ([
 	for rows.Next() {
 		var org Organization
 		if err = rows.Scan(&org.ID, &org.Name, &org.Role); err != nil {
-			return nil, fmt.Errorf("scan user organization: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan user organization")
 		}
 		orgs = append(orgs, org)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("user organizations rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "user organizations rows err")
 	}
 	return orgs, nil
 }

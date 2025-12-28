@@ -3,11 +3,11 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/logger"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // RAGService provides operations related to RAG vector management
@@ -35,7 +35,7 @@ func (s *RAGService) DeleteBotVectors(ctx context.Context, chatbotID string) err
 	// Get all source IDs for this chatbot
 	rows, err := s.DB.QueryContext(ctx, `SELECT id FROM data_sources WHERE chatbot_id = $1 AND deleted_at IS NULL`, chatbotID)
 	if err != nil {
-		return fmt.Errorf("querying source IDs: %w", err)
+		return pkgerrors.Wrapf(err, "querying source IDs")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -53,7 +53,7 @@ func (s *RAGService) DeleteBotVectors(ctx context.Context, chatbotID string) err
 	}
 
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterating rows: %w", err)
+		return pkgerrors.Wrapf(err, "iterating rows")
 	}
 	return nil
 }
@@ -64,7 +64,7 @@ func (s *RAGService) DeleteSourceVectors(ctx context.Context, sourceID string) e
 		return nil
 	}
 	if err := s.VectorClient.DeleteBySourceID(ctx, sourceID); err != nil {
-		return fmt.Errorf("deleting source vectors: %w", err)
+		return pkgerrors.Wrapf(err, "deleting source vectors")
 	}
 	return nil
 }

@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // SourceUsageStats represents usage statistics for a data source
@@ -45,7 +46,7 @@ func GetSourceUsageStats(ctx context.Context, pool *sql.DB, chatbotID string, da
 
 	rows, err := pool.QueryContext(ctx, query, chatbotID, cutoff)
 	if err != nil {
-		return nil, fmt.Errorf("query source usage stats: %w", err)
+		return nil, pkgerrors.Wrapf(err, "query source usage stats")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -54,12 +55,12 @@ func GetSourceUsageStats(ctx context.Context, pool *sql.DB, chatbotID string, da
 		var s SourceUsageStats
 		if err := rows.Scan(&s.SourceID, &s.SourceName, &s.SourceType, &s.TimesUsed,
 			&s.AvgRelevance, &s.PositiveFeedback, &s.NegativeFeedback, &s.LastUsed); err != nil {
-			return nil, fmt.Errorf("scan source usage stat: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan source usage stat")
 		}
 		stats = append(stats, s)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("source usage stats rows err: %w", err)
+		return nil, pkgerrors.Wrapf(err, "source usage stats rows err")
 	}
 	return stats, nil
 }

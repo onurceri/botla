@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
+
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type UserConsent struct {
@@ -23,7 +24,7 @@ func GetUserConsents(ctx context.Context, pool *sql.DB, userID string) ([]UserCo
 		WHERE user_id = $1
 	`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("get user consents: %w", err)
+		return nil, pkgerrors.Wrapf(err, "get user consents")
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -34,7 +35,7 @@ func GetUserConsents(ctx context.Context, pool *sql.DB, userID string) ([]UserCo
 			&c.ID, &c.UserID, &c.ConsentType, &c.Granted, &c.GrantedAt, &c.RevokedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan user consent: %w", err)
+			return nil, pkgerrors.Wrapf(err, "scan user consent")
 		}
 		consents = append(consents, c)
 	}
@@ -61,7 +62,7 @@ func UpsertConsent(ctx context.Context, pool *sql.DB, userID, consentType string
 	`, userID, consentType, granted, ip, userAgent, revokedAt)
 
 	if err != nil {
-		return fmt.Errorf("upsert consent: %w", err)
+		return pkgerrors.Wrapf(err, "upsert consent")
 	}
 	return nil
 }
