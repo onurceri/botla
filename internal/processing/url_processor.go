@@ -18,11 +18,12 @@ import (
 
 // URLProcessor handles URL source processing
 type URLProcessor struct {
-	DB           *sql.DB
-	OpenAIClient rag.LLMClient
-	VectorClient rag.VectorClient
-	Log          *logger.Logger
-	Scraper      scraper.Scraper
+	DB              *sql.DB
+	OpenAIClient    rag.LLMClient
+	VectorClient    rag.VectorClient
+	Log             *logger.Logger
+	Scraper         scraper.Scraper
+	EmbeddingService *rag.EmbeddingService
 }
 
 // NewURLProcessor creates a new URLProcessor.
@@ -31,12 +32,18 @@ func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *lo
 	if s == nil {
 		s = scraper.NewDefaultScraper()
 	}
+	// Create EmbeddingService if we have an EmbeddingClient
+	var embSvc *rag.EmbeddingService
+	if emb, ok := oai.(rag.EmbeddingClient); ok {
+		embSvc = rag.NewEmbeddingService(emb, vc, log)
+	}
 	return &URLProcessor{
-		DB:           db,
-		OpenAIClient: oai,
-		VectorClient: vc,
-		Log:          log,
-		Scraper:      s,
+		DB:               db,
+		OpenAIClient:     oai,
+		VectorClient:     vc,
+		Log:              log,
+		Scraper:          s,
+		EmbeddingService: embSvc,
 	}
 }
 
@@ -224,12 +231,11 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		"chunk_count": len(rc),
 	})
 
-	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
-	if !ok {
+	if p.EmbeddingService == nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
 	}
 
-	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+	if err := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 		p.logWarn("url_processing_embedding_failed", map[string]any{
 			"source_id": s.ID,
 			"error":     err.Error(),

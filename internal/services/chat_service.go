@@ -32,6 +32,7 @@ type ChatService struct {
 	Embedder      rag.EmbeddingClient
 	QC            rag.VectorClient
 	Log           *logger.Logger
+	Guardrails    *GuardrailService
 	SyncAnalytics bool // When true, analytics run synchronously (useful for testing)
 }
 
@@ -45,11 +46,12 @@ func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.Embeddi
 		}
 	}
 	return &ChatService{
-		DB:       db,
-		Factory:  factory,
-		Embedder: embedder,
-		QC:       qc,
-		Log:      log,
+		DB:         db,
+		Factory:    factory,
+		Embedder:   embedder,
+		QC:         qc,
+		Log:        log,
+		Guardrails: NewGuardrailService(log),
 	}
 }
 

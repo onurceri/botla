@@ -75,14 +75,8 @@ func (s *ChatService) initChatContext(
 	langCode := normalizeLangCode(bot.LanguageCode)
 	cc.LangConfig = langconfig.Get(langCode)
 
-	// Threshold config with defaults
-	cc.ThresholdCfg = bot.ThresholdConfig
-	if cc.ThresholdCfg == nil {
-		cc.ThresholdCfg = models.DefaultThresholdConfig()
-	}
-
-	// Enforce plan-based fallback mode restrictions
-	cc.ThresholdCfg = s.enforcePlanFallbackMode(cc.ThresholdCfg, guardrailsCfg)
+	// Threshold config with defaults and plan enforcement
+	cc.ThresholdCfg = s.Guardrails.InitializeThresholdConfig(bot.ThresholdConfig, guardrailsCfg)
 
 	// Bot display name
 	cc.BotName = bot.Name

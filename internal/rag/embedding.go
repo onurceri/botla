@@ -11,17 +11,36 @@ import (
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
-// GenerateEmbeddings orchestrates batch embedding creation and Qdrant upsert.
+// EmbeddingService handles batch embedding creation and vector storage.
+// It provides rate limiting, retry logic, and cost tracking.
+type EmbeddingService struct {
+	embedder EmbeddingClient
+	vector   VectorClient
+	log      *logger.Logger
+}
+
+// NewEmbeddingService creates a new EmbeddingService with the given clients.
+func NewEmbeddingService(embedder EmbeddingClient, vector VectorClient, log *logger.Logger) *EmbeddingService {
+	if log == nil {
+		log = logger.New("INFO")
+	}
+	return &EmbeddingService{
+		embedder: embedder,
+		vector:   vector,
+		log:      log,
+	}
+}
+
+// Generate orchestrates batch embedding creation and Qdrant upsert.
 // - Batching: 25 chunks per request
 // - Rate limiting: ~58 req/sec (~3480/min)
-// - Retry: up to 3x per batch with exponential backoff handled in client
-// - Error recovery: skip failed items; continue others
+// - Retry: up to 2x per batch
+// - Error recovery: returns on first failure
 // - Cost tracking: logs approximate cost based on chunk token counts
-func GenerateEmbeddings(ctx context.Context, emb EmbeddingClient, vc VectorClient, chunks []models.Chunk, chatbotID string) error {
+func (s *EmbeddingService) Generate(ctx context.Context, chunks []models.Chunk, chatbotID string) error {
 	if len(chunks) == 0 || chatbotID == "" {
 		return nil
 	}
-	log := logger.New("INFO")
 
 	// soft rate limiter: ~58 req/sec
 	ticker := time.NewTicker(time.Second / 58)
@@ -44,18 +63,18 @@ func GenerateEmbeddings(ctx context.Context, emb EmbeddingClient, vc VectorClien
 			texts[i] = ch.Text
 			totalTokens += ch.TokenCount
 		}
-		vectors, berr := emb.CreateEmbeddingsBatch(batchCtx, texts)
+		vectors, berr := s.embedder.CreateEmbeddingsBatch(batchCtx, texts)
 		cancel()
 		if berr != nil {
-			log.Warn("embedding_batch_failed", map[string]any{"error": berr.Error(), "start_index": start, "count": len(batch)})
+			s.log.Warn("embedding_batch_failed", map[string]any{"error": berr.Error(), "start_index": start, "count": len(batch)})
 			// retry one more time quickly honoring limiter
 			<-ticker.C
 			batchCtx2, cancel2 := context.WithTimeout(ctx, 30*time.Second)
-			vectors, berr = emb.CreateEmbeddingsBatch(batchCtx2, texts)
+			vectors, berr = s.embedder.CreateEmbeddingsBatch(batchCtx2, texts)
 			cancel2()
 		}
 		if berr != nil {
-			log.Error("embedding_batch_final_failed", map[string]any{"error": berr.Error(), "start_index": start, "count": len(batch)})
+			s.log.Error("embedding_batch_final_failed", map[string]any{"error": berr.Error(), "start_index": start, "count": len(batch)})
 			return fmt.Errorf("create embeddings batch: %w", berr)
 		}
 		// upsert each vector
@@ -70,19 +89,21 @@ func GenerateEmbeddings(ctx context.Context, emb EmbeddingClient, vc VectorClien
 				CreatedAt:    time.Now(),
 			}
 			batchCtx3, cancel3 := context.WithTimeout(ctx, 10*time.Second)
-			if err := vc.UpsertEmbedding(batchCtx3, id, vectors[i], payload); err != nil {
-				log.Warn("qdrant_upsert_failed", map[string]any{"error": err.Error(), "id": id})
+			if err := s.vector.UpsertEmbedding(batchCtx3, id, vectors[i], payload); err != nil {
+				s.log.Warn("qdrant_upsert_failed", map[string]any{"error": err.Error(), "id": id})
 			}
 			cancel3()
 		}
 	}
 
 	cost := float64(totalTokens) * 0.02 / 1_000_000.0
-	log.Info("embedding_pipeline_completed", map[string]any{"chunks": len(chunks), "total_tokens": totalTokens, "estimated_cost_usd": cost})
+	s.log.Info("embedding_pipeline_completed", map[string]any{"chunks": len(chunks), "total_tokens": totalTokens, "estimated_cost_usd": cost})
 	return nil
 }
 
-func GenerateEmbeddingsForSource(ctx context.Context, emb EmbeddingClient, vc VectorClient, chunks []models.Chunk, chatbotID, sourceID, sourceType string) error {
+// GenerateForSource generates embeddings for a specific source.
+// Each embedding includes source metadata for filtering and deletion.
+func (s *EmbeddingService) GenerateForSource(ctx context.Context, chunks []models.Chunk, chatbotID, sourceID, sourceType string) error {
 	if len(chunks) == 0 || chatbotID == "" || sourceID == "" {
 		return nil
 	}
@@ -101,12 +122,12 @@ func GenerateEmbeddingsForSource(ctx context.Context, emb EmbeddingClient, vc Ve
 		for i, ch := range batch {
 			texts[i] = ch.Text
 		}
-		vectors, berr := emb.CreateEmbeddingsBatch(batchCtx, texts)
+		vectors, berr := s.embedder.CreateEmbeddingsBatch(batchCtx, texts)
 		cancel()
 		if berr != nil {
 			<-ticker.C
 			batchCtx2, cancel2 := context.WithTimeout(ctx, 30*time.Second)
-			vectors, berr = emb.CreateEmbeddingsBatch(batchCtx2, texts)
+			vectors, berr = s.embedder.CreateEmbeddingsBatch(batchCtx2, texts)
 			cancel2()
 		}
 		if berr != nil {
@@ -116,7 +137,7 @@ func GenerateEmbeddingsForSource(ctx context.Context, emb EmbeddingClient, vc Ve
 			pid := MakePointID(sourceID, start+i)
 			payload := EmbeddingPayload{ChatbotID: chatbotID, SourceID: sourceID, ChunkIndex: start + i, OriginalText: batch[i].Text, SourceType: sourceType, CreatedAt: time.Now()}
 			batchCtx3, cancel3 := context.WithTimeout(ctx, 10*time.Second)
-			if err := vc.UpsertEmbedding(batchCtx3, pid, vectors[i], payload); err != nil {
+			if err := s.vector.UpsertEmbedding(batchCtx3, pid, vectors[i], payload); err != nil {
 				cancel3()
 				return fmt.Errorf("upsert embedding: %w", err)
 			}
@@ -126,6 +147,7 @@ func GenerateEmbeddingsForSource(ctx context.Context, emb EmbeddingClient, vc Ve
 	return nil
 }
 
+// MakePointID creates a deterministic UUID-like ID from sourceID and chunk index.
 func MakePointID(sourceID string, index int) string {
 	s := sourceID + ":" + strconv.Itoa(index)
 	h := sha256.Sum256([]byte(s))

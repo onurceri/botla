@@ -16,21 +16,28 @@ import (
 
 // TextProcessor handles text source processing
 type TextProcessor struct {
-	DB           *sql.DB
-	Storage      storage.StorageService
-	OpenAIClient rag.LLMClient
-	VectorClient rag.VectorClient
-	Log          *logger.Logger
+	DB               *sql.DB
+	Storage          storage.StorageService
+	OpenAIClient     rag.LLMClient
+	VectorClient     rag.VectorClient
+	Log              *logger.Logger
+	EmbeddingService *rag.EmbeddingService
 }
 
 // NewTextProcessor creates a new TextProcessor
 func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger) *TextProcessor {
+	// Create EmbeddingService if we have an EmbeddingClient
+	var embSvc *rag.EmbeddingService
+	if emb, ok := oai.(rag.EmbeddingClient); ok {
+		embSvc = rag.NewEmbeddingService(emb, vc, log)
+	}
 	return &TextProcessor{
-		DB:           db,
-		Storage:      st,
-		OpenAIClient: oai,
-		VectorClient: vc,
-		Log:          log,
+		DB:               db,
+		Storage:          st,
+		OpenAIClient:     oai,
+		VectorClient:     vc,
+		Log:              log,
+		EmbeddingService: embSvc,
 	}
 }
 
@@ -99,12 +106,11 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *m
 		onStep(models.StepEmbedChunks)
 	}
 
-	emb, ok := p.OpenAIClient.(rag.EmbeddingClient)
-	if !ok {
+	if p.EmbeddingService == nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
 	}
 
-	if err := rag.GenerateEmbeddingsForSource(ctx, emb, p.VectorClient, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+	if err := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
 
