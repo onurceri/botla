@@ -10,13 +10,15 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/processing"
+	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
 type HealthHandlers struct {
-	DB  *sql.DB
-	Cfg *config.Config
-	Queue *processing.SourceQueue
+	DB         *sql.DB
+	Cfg        *config.Config
+	Queue      *processing.SourceQueue
+	LLMFactory *rag.ClientFactory
 }
 
 func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +37,7 @@ func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	queueStats := map[string]any{
-		"status": "ok",
+		"status":  "ok",
 		"workers": 0,
 		"pending": 0,
 	}
@@ -44,6 +46,14 @@ func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
 		queueStats["pending"] = h.Queue.QueueLength()
 	}
 	dep["queue"] = queueStats
+
+	// Add LLM circuit breaker status
+	if h.LLMFactory != nil {
+		llmStatus := h.LLMFactory.GetCircuitBreakerStatus()
+		if len(llmStatus) > 0 {
+			dep["llm"] = llmStatus
+		}
+	}
 
 	status := http.StatusOK
 	if dep["db"] != "ok" || dep["qdrant"] != "ok" {
