@@ -1,7 +1,6 @@
 package services
 
 import (
-	"context"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -16,6 +15,8 @@ import (
 // chatContext holds all state during chat processing pipeline.
 // This struct is passed through each step of the chat processing pipeline,
 // accumulating data as each step completes.
+//
+// Use ChatContextBuilder to create instances of this struct.
 type chatContext struct {
 	// Input - provided at initialization
 	Request   models.ChatRequest
@@ -51,38 +52,4 @@ type chatContext struct {
 
 	// Timing
 	StartTime time.Time
-}
-
-// initChatContext creates and initializes a new chat context with all derived values.
-// Note: Capabilities are NOT fetched here to keep this function pure and testable.
-// They are fetched later in ProcessChat when needed.
-func (s *ChatService) initChatContext(
-	ctx context.Context,
-	req models.ChatRequest,
-	bot *models.Chatbot,
-	ragConfig models.RAGConfig,
-	guardrailsCfg *models.GuardrailsConfig,
-) *chatContext {
-	cc := &chatContext{
-		Request:       req,
-		Bot:           bot,
-		RAGConfig:     ragConfig,
-		GuardrailsCfg: guardrailsCfg,
-		StartTime:     time.Now(),
-	}
-
-	// Language config
-	langCode := normalizeLangCode(bot.LanguageCode)
-	cc.LangConfig = langconfig.Get(langCode)
-
-	// Threshold config with defaults and plan enforcement
-	cc.ThresholdCfg = s.Guardrails.InitializeThresholdConfig(bot.ThresholdConfig, guardrailsCfg)
-
-	// Bot display name
-	cc.BotName = bot.Name
-	if bot.BotDisplayName != nil && *bot.BotDisplayName != "" {
-		cc.BotName = *bot.BotDisplayName
-	}
-
-	return cc
 }

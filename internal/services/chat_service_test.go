@@ -115,8 +115,8 @@ func TestParseHandoffRequestID(t *testing.T) {
 // INIT CHAT CONTEXT TESTS
 // =============================================================================
 
-func TestInitChatContext_BotName(t *testing.T) {
-	service := &ChatService{}
+func TestChatContextBuilder_BotName(t *testing.T) {
+	builder := NewChatContextBuilder(NewGuardrailService(nil))
 
 	tests := []struct {
 		name           string
@@ -154,7 +154,7 @@ func TestInitChatContext_BotName(t *testing.T) {
 			req := models.ChatRequest{Message: "test", SessionID: "s1"}
 			ragConfig := models.RAGConfig{TopK: 5, MaxContextTokens: 4000}
 
-			cc := service.initChatContext(context.Background(), req, bot, ragConfig, nil)
+			cc := builder.Build(context.Background(), req, bot, ragConfig, nil)
 
 			if cc.BotName != tc.wantBotName {
 				t.Errorf("BotName = %q, want %q", cc.BotName, tc.wantBotName)
@@ -163,8 +163,8 @@ func TestInitChatContext_BotName(t *testing.T) {
 	}
 }
 
-func TestInitChatContext_ThresholdConfig(t *testing.T) {
-	service := &ChatService{}
+func TestChatContextBuilder_ThresholdConfig(t *testing.T) {
+	builder := NewChatContextBuilder(NewGuardrailService(nil))
 
 	t.Run("uses bot threshold config when set", func(t *testing.T) {
 		customConfig := &models.ThresholdConfig{
@@ -180,7 +180,7 @@ func TestInitChatContext_ThresholdConfig(t *testing.T) {
 		req := models.ChatRequest{Message: "test"}
 		ragConfig := models.RAGConfig{}
 
-		cc := service.initChatContext(context.Background(), req, bot, ragConfig, nil)
+		cc := builder.Build(context.Background(), req, bot, ragConfig, nil)
 
 		if cc.ThresholdCfg != customConfig {
 			t.Error("should use custom threshold config")
@@ -199,7 +199,7 @@ func TestInitChatContext_ThresholdConfig(t *testing.T) {
 		req := models.ChatRequest{Message: "test"}
 		ragConfig := models.RAGConfig{}
 
-		cc := service.initChatContext(context.Background(), req, bot, ragConfig, nil)
+		cc := builder.Build(context.Background(), req, bot, ragConfig, nil)
 
 		if cc.ThresholdCfg == nil {
 			t.Fatal("ThresholdCfg should not be nil")
