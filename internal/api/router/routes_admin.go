@@ -3,8 +3,8 @@ package router
 import (
 	"net/http"
 
+	"github.com/onurceri/botla-co/internal/api/guards"
 	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/internal/api/middleware"
 	pkgMiddleware "github.com/onurceri/botla-co/pkg/middleware"
 )
 
@@ -12,7 +12,7 @@ func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *h
 	// Base admin handler with Auth and Admin middleware
 	adminChain := func(h http.HandlerFunc) http.Handler {
 		return pkgMiddleware.AuthMiddleware(secret)(
-			middleware.RequirePlatformAdmin(h),
+			guards.RequirePlatformAdmin(h),
 		)
 	}
 
