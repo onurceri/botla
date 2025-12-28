@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"errors"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
@@ -25,6 +24,10 @@ import (
 // =============================================================================
 
 // ChatService handles core chat logic, shared between authenticated and public endpoints.
+// ChatService is composed of focused sub-services for better maintainability:
+//   - Quota: Token quota enforcement
+//   - Context: Chat context initialization
+//   - Guardrails: Content filtering and fallback messages
 type ChatService struct {
 	DB            *sql.DB
 	Factory       *rag.ClientFactory
@@ -32,10 +35,12 @@ type ChatService struct {
 	QC            rag.VectorClient
 	Log           *logger.Logger
 	Guardrails    *GuardrailService
+	Quota         *QuotaEnforcer
+	Context       *ChatContextBuilder
 	SyncAnalytics bool // When true, analytics run synchronously (useful for testing)
 }
 
-// NewChatService creates a new ChatService instance.
+// NewChatService creates a new ChatService instance with all sub-services composed.
 func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc rag.VectorClient, log *logger.Logger) *ChatService {
 	if embedder == nil {
 		if client, err := factory.GetClient("openai"); err == nil {
@@ -44,13 +49,16 @@ func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.Embeddi
 			}
 		}
 	}
+	guardrails := NewGuardrailService(log)
 	return &ChatService{
 		DB:         db,
 		Factory:    factory,
 		Embedder:   embedder,
 		QC:         qc,
 		Log:        log,
-		Guardrails: NewGuardrailService(log),
+		Guardrails: guardrails,
+		Quota:      NewQuotaEnforcer(db),
+		Context:    NewChatContextBuilder(guardrails),
 	}
 }
 
@@ -87,40 +95,34 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 		}
 	}
 
-	// 3. Token Check & Reservation (Atomic)
+	// 3. Token Check & Reservation (Atomic) - delegated to QuotaEnforcer
 	maxMonthlyTokens := plan.Config.Chat.MaxMonthlyTokens
 	var estimatedTokens int
 
 	if maxMonthlyTokens > 0 {
 		estimatedTokens = req.Chatbot.MaxTokens
 		if estimatedTokens <= 0 {
-			estimatedTokens = 512 // Default estimate if not set
+			estimatedTokens = GetDefaultTokenEstimate()
 		}
 
 		// Reserve tokens optimistically
-		err := db.ReserveChatTokens(ctx, s.DB, req.UserID, estimatedTokens, maxMonthlyTokens)
+		err := s.Quota.ReserveTokens(ctx, req.UserID, estimatedTokens, maxMonthlyTokens)
 		if err != nil {
-			if errors.Is(err, db.ErrTokenQuotaExceeded) {
-				return nil, ErrTokenQuotaExceeded
-			}
-			return nil, pkgerrors.Wrapf(err, "reserve tokens")
+			return nil, err
 		}
 	}
 
 	// 4. Process Chat
 	result, err := s.ProcessChat(ctx, req.ChatRequest, req.Chatbot, plan.Config.Chat.RAG)
 
-	// 5. Adjust Token Usage
+	// 5. Adjust Token Usage - delegated to QuotaEnforcer
 	if maxMonthlyTokens > 0 {
 		if err != nil {
 			// On error, refund the reserved tokens
-			_ = db.AdjustChatTokens(context.Background(), s.DB, req.UserID, -estimatedTokens)
+			s.Quota.RefundTokens(context.Background(), req.UserID, estimatedTokens)
 		} else {
 			// Adjust based on actual usage
-			delta := result.TokensUsed - estimatedTokens
-			if delta != 0 {
-				_ = db.AdjustChatTokens(context.Background(), s.DB, req.UserID, delta)
-			}
+			s.Quota.AdjustTokens(context.Background(), req.UserID, estimatedTokens, result.TokensUsed)
 		}
 	}
 
@@ -150,8 +152,8 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 		guardrailsCfg = &plan.Config.Guardrails
 	}
 
-	// Step 1: Initialize chat context
-	cc := s.initChatContext(ctx, req, bot, ragConfig, guardrailsCfg)
+	// Step 1: Initialize chat context - delegated to ChatContextBuilder
+	cc := s.Context.Build(ctx, req, bot, ragConfig, guardrailsCfg)
 
 	// Step 2: Get or create conversation
 	if err := s.getOrCreateConversation(ctx, cc); err != nil {
