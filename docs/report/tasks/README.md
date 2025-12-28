@@ -11,7 +11,7 @@ The architecture review confirmed that the Botla-co codebase has **HIGH architec
 | Priority | Task | Status | Complexity |
 |---|---|---|---|
 | P1 | [001-error-wrapping-standardization](./001-error-wrapping-standardization.md) | ✅ Completed | Low |
-| P1 | [002-middleware-clarification](./002-middleware-clarification.md) | 🔲 Not Started | Low |
+| P1 | [002-middleware-clarification](./002-middleware-clarification.md) | ✅ Completed | Low |
 | P2 | [003-service-layer-extraction](./003-service-layer-extraction.md) | 🔲 Not Started | Medium |
 | P2 | [004-bootstrap-modularization](./004-bootstrap-modularization.md) | 🔲 Not Started | Medium |
 | P3 | [005-subsystem-interface-boundaries](./005-subsystem-interface-boundaries.md) | 🔲 Not Started | High |
