@@ -22,8 +22,18 @@ type OpenRouterClient struct {
 	defaultModel string
 }
 
+type OpenRouterClientOption func(*OpenRouterClient)
+
+func WithOpenRouterHTTPClient(client *http.Client) OpenRouterClientOption {
+	return func(c *OpenRouterClient) {
+		if client != nil {
+			c.http = client
+		}
+	}
+}
+
 // NewOpenRouterClient creates an OpenRouter client from config
-func NewOpenRouterClient(cfg *config.Config) (*OpenRouterClient, error) {
+func NewOpenRouterClient(cfg *config.Config, opts ...OpenRouterClientOption) (*OpenRouterClient, error) {
 	k := ""
 	if cfg != nil {
 		k = cfg.OPENROUTER_API_KEY
@@ -57,22 +67,19 @@ func NewOpenRouterClient(cfg *config.Config) (*OpenRouterClient, error) {
 	}
 
 	httpClient := &http.Client{Timeout: to}
-	if GlobalHTTPClient != nil {
-		httpClient = GlobalHTTPClient
-	}
-
-	return &OpenRouterClient{
+	client := &OpenRouterClient{
 		apiKey:       k,
 		http:         httpClient,
 		base:         base,
 		defaultModel: defModel,
-	}, nil
+	}
+	for _, opt := range opts {
+		opt(client)
+	}
+	return client, nil
 }
 
 func (c *OpenRouterClient) getHTTPClient() *http.Client {
-	if GlobalHTTPClient != nil {
-		return GlobalHTTPClient
-	}
 	return c.http
 }
 

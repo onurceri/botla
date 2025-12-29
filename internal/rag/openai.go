@@ -22,11 +22,18 @@ type OpenAIClient struct {
 	defaultModel string
 }
 
-// GlobalHTTPClient can be set in tests to override all clients
-var GlobalHTTPClient *http.Client
+type OpenAIClientOption func(*OpenAIClient)
+
+func WithHTTPClient(client *http.Client) OpenAIClientOption {
+	return func(c *OpenAIClient) {
+		if client != nil {
+			c.http = client
+		}
+	}
+}
 
 // NewOpenAIClient creates an OpenAI client from config
-func NewOpenAIClient(cfg *config.Config) (*OpenAIClient, error) {
+func NewOpenAIClient(cfg *config.Config, opts ...OpenAIClientOption) (*OpenAIClient, error) {
 	if cfg == nil || cfg.OPENAI_API_KEY == "" {
 		return nil, errors.New("OPENAI_API_KEY is empty")
 	}
@@ -46,15 +53,16 @@ func NewOpenAIClient(cfg *config.Config) (*OpenAIClient, error) {
 		defModel = config.DefaultModelName
 	}
 	httpClient := &http.Client{Timeout: to}
-	if GlobalHTTPClient != nil {
-		httpClient = GlobalHTTPClient
-	}
-	return &OpenAIClient{
+	client := &OpenAIClient{
 		apiKey:       cfg.OPENAI_API_KEY,
 		http:         httpClient,
 		base:         base,
 		defaultModel: defModel,
-	}, nil
+	}
+	for _, opt := range opts {
+		opt(client)
+	}
+	return client, nil
 }
 
 // Embeddings
@@ -74,9 +82,6 @@ type embeddingResponse struct {
 }
 
 func (c *OpenAIClient) getHTTPClient() *http.Client {
-	if GlobalHTTPClient != nil {
-		return GlobalHTTPClient
-	}
 	return c.http
 }
 

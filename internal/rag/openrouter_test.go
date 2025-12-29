@@ -353,3 +353,107 @@ func TestOpenRouterClient_CreateCompletionWithTools_IncludesErrorBody(t *testing
 		t.Fatalf("expected error to include response body, got: %s", err.Error())
 	}
 }
+
+func TestNewOpenRouterClient_WithHTTPClient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/chat/completions" {
+			w.Header().Set("Content-Type", "application/json")
+			msg := "Hello"
+			resp := chatResponse{
+				Choices: []struct {
+					Message ChatMessage `json:"message"`
+				}{
+					{Message: ChatMessage{Content: &msg}},
+				},
+			}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	mockHTTPClient := srv.Client()
+	mockHTTPClient.Timeout = 10 * time.Second
+
+	cfg := &config.Config{
+		OPENROUTER_API_KEY:  "test-key",
+		OPENROUTER_API_BASE: srv.URL,
+	}
+
+	client, err := NewOpenRouterClient(cfg, WithOpenRouterHTTPClient(mockHTTPClient))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client, got nil")
+	}
+	if client.http != mockHTTPClient {
+		t.Error("HTTP client was not injected correctly")
+	}
+
+	ctx := context.Background()
+	params := models.CompletionParams{
+		Model:       "test-model",
+		UserMessage: "hi",
+	}
+	res, err := client.CreateCompletion(ctx, params)
+	if err != nil {
+		t.Fatalf("CreateCompletion failed: %v", err)
+	}
+	if res.Content != "Hello" {
+		t.Errorf("Expected 'Hello', got '%s'", res.Content)
+	}
+}
+
+func TestNewOpenRouterClient_WithNilHTTPClient(t *testing.T) {
+	cfg := &config.Config{
+		OPENROUTER_API_KEY: "test-key",
+	}
+
+	client, err := NewOpenRouterClient(cfg, WithOpenRouterHTTPClient(nil))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client, got nil")
+	}
+	if client.http == nil {
+		t.Error("Expected non-nil HTTP client when nil is passed (should use default)")
+	}
+}
+
+func TestNewOpenRouterClient_WithoutOptions(t *testing.T) {
+	cfg := &config.Config{
+		OPENROUTER_API_KEY: "test-key",
+	}
+
+	client, err := NewOpenRouterClient(cfg)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client, got nil")
+	}
+	if client.http == nil {
+		t.Error("Expected non-nil HTTP client")
+	}
+	if client.http.Timeout != 30*time.Second {
+		t.Errorf("Expected default timeout of 30s, got %v", client.http.Timeout)
+	}
+}
+
+func TestNewOpenRouterClient_MultipleOptions(t *testing.T) {
+	mockHTTPClient := &http.Client{Timeout: 5 * time.Second}
+	cfg := &config.Config{
+		OPENROUTER_API_KEY: "test-key",
+	}
+
+	client, err := NewOpenRouterClient(cfg, WithOpenRouterHTTPClient(mockHTTPClient))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client.http != mockHTTPClient {
+		t.Error("HTTP client was not injected correctly with multiple options")
+	}
+}
