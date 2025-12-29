@@ -207,3 +207,67 @@ func TestLoadConfig_CookieSecure_Production(t *testing.T) {
 		t.Errorf("expected CookieSecure to be true in production, got %v", c.CookieSecure)
 	}
 }
+
+func TestLoadConfig_AnalyticsWorkerCount_Default(t *testing.T) {
+	setAllEnv()
+	os.Unsetenv("ANALYTICS_WORKER_COUNT")
+	c := LoadConfig()
+	if c == nil {
+		t.Fatalf("config load failed")
+	}
+	if c.ANALYTICS_WORKER_COUNT != 10 {
+		t.Errorf("expected ANALYTICS_WORKER_COUNT default to be 10, got %d", c.ANALYTICS_WORKER_COUNT)
+	}
+}
+
+func TestLoadConfig_AnalyticsWorkerCount_Custom(t *testing.T) {
+	setAllEnv()
+	os.Setenv("ANALYTICS_WORKER_COUNT", "20")
+	defer os.Unsetenv("ANALYTICS_WORKER_COUNT")
+	c := LoadConfig()
+	if c == nil {
+		t.Fatalf("config load failed")
+	}
+	if c.ANALYTICS_WORKER_COUNT != 20 {
+		t.Errorf("expected ANALYTICS_WORKER_COUNT to be 20, got %d", c.ANALYTICS_WORKER_COUNT)
+	}
+}
+
+func TestLoadConfig_AnalyticsWorkerCount_Invalid(t *testing.T) {
+	setAllEnv()
+	os.Setenv("ANALYTICS_WORKER_COUNT", "invalid")
+	defer os.Unsetenv("ANALYTICS_WORKER_COUNT")
+	c := LoadConfig()
+	if c == nil {
+		t.Fatalf("config load failed")
+	}
+	if c.ANALYTICS_WORKER_COUNT != 10 {
+		t.Errorf("expected ANALYTICS_WORKER_COUNT to default to 10 for invalid value, got %d", c.ANALYTICS_WORKER_COUNT)
+	}
+}
+
+func TestLoadConfig_AnalyticsWorkerCount_Zero(t *testing.T) {
+	setAllEnv()
+	os.Setenv("ANALYTICS_WORKER_COUNT", "0")
+	defer os.Unsetenv("ANALYTICS_WORKER_COUNT")
+	c := LoadConfig()
+	if c == nil {
+		t.Fatalf("config load failed")
+	}
+	if c.ANALYTICS_WORKER_COUNT != 10 {
+		t.Errorf("expected ANALYTICS_WORKER_COUNT to default to 10 for zero value, got %d", c.ANALYTICS_WORKER_COUNT)
+	}
+}
+
+func TestLoadConfig_AnalyticsWorkerCount_Negative(t *testing.T) {
+	setAllEnv()
+	os.Setenv("ANALYTICS_WORKER_COUNT", "-5")
+	defer os.Unsetenv("ANALYTICS_WORKER_COUNT")
+	c := LoadConfig()
+	if c == nil {
+		t.Fatalf("config load failed")
+	}
+	if c.ANALYTICS_WORKER_COUNT != 10 {
+		t.Errorf("expected ANALYTICS_WORKER_COUNT to default to 10 for negative value, got %d", c.ANALYTICS_WORKER_COUNT)
+	}
+}

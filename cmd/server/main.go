@@ -143,7 +143,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	retentionJob := services.NewRetentionJob(pool, log, storageService)
 
 	// Initialize worker pool
-	workerPool := workers.NewWorkerPool(log, 10)
+	workerPool := workers.NewWorkerPool(log, cfg.ANALYTICS_WORKER_COUNT)
 
 	return &application{
 		cfg:              cfg,
@@ -203,7 +203,7 @@ func (app *application) start() {
 		middleware.SecurityHeadersMiddleware()(
 			middleware.RecoveryMiddleware(app.log)(
 				middleware.RequestLogger(app.log)(
-					middleware.MaxBytesMiddleware(1*1024*1024)( // 1MB limit
+					middleware.MaxBytesMiddleware(1 * 1024 * 1024)( // 1MB limit
 						planLoader(
 							middleware.RateLimitMiddleware(app.rateLimiter)(mux)))))))
 

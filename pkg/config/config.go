@@ -11,33 +11,34 @@ import (
 )
 
 type Config struct {
-	DB_HOST               string
-	DB_PORT               string
-	DB_NAME               string
-	DB_USER               string
-	DB_PASSWORD           string
-	DB_SCHEMA             string
-	DB_SSLMODE            string
-	REDIS_URL             string
-	QDRANT_URL            string
-	QDRANT_API_KEY        string
-	OPENAI_API_KEY        string
-	OPENAI_API_BASE       string
-	OPENAI_TIMEOUT_MS     int
-	OPENROUTER_API_KEY    string
-	OPENROUTER_API_BASE   string
-	OPENROUTER_TIMEOUT_MS int
-	IYZICO_API_KEY        string
-	IYZICO_SECRET_KEY     string
-	JWT_SECRET            string
-	PORT                  string
-	CORS_ALLOWED_ORIGINS  string
-	WORKER_COUNT          int
-	R2_ACCOUNT_ID         string
-	R2_ACCESS_KEY_ID      string
-	R2_SECRET_ACCESS_KEY  string
-	R2_BUCKET_NAME        string
-	DEFAULT_CHATBOT_MODEL string
+	DB_HOST                string
+	DB_PORT                string
+	DB_NAME                string
+	DB_USER                string
+	DB_PASSWORD            string
+	DB_SCHEMA              string
+	DB_SSLMODE             string
+	REDIS_URL              string
+	QDRANT_URL             string
+	QDRANT_API_KEY         string
+	OPENAI_API_KEY         string
+	OPENAI_API_BASE        string
+	OPENAI_TIMEOUT_MS      int
+	OPENROUTER_API_KEY     string
+	OPENROUTER_API_BASE    string
+	OPENROUTER_TIMEOUT_MS  int
+	IYZICO_API_KEY         string
+	IYZICO_SECRET_KEY      string
+	JWT_SECRET             string
+	PORT                   string
+	CORS_ALLOWED_ORIGINS   string
+	WORKER_COUNT           int
+	ANALYTICS_WORKER_COUNT int
+	R2_ACCOUNT_ID          string
+	R2_ACCESS_KEY_ID       string
+	R2_SECRET_ACCESS_KEY   string
+	R2_BUCKET_NAME         string
+	DEFAULT_CHATBOT_MODEL  string
 
 	// RAG Configuration
 	RAG_TOPK               int
@@ -144,6 +145,7 @@ func LoadConfig() *Config {
 			return v
 		}(),
 		WORKER_COUNT:           parseIntEnv("WORKER_COUNT", 4),
+		ANALYTICS_WORKER_COUNT: parseIntEnv("ANALYTICS_WORKER_COUNT", 10),
 		R2_ACCOUNT_ID:          os.Getenv("R2_ACCOUNT_ID"),
 		R2_ACCESS_KEY_ID:       os.Getenv("R2_ACCESS_KEY_ID"),
 		R2_SECRET_ACCESS_KEY:   os.Getenv("R2_SECRET_ACCESS_KEY"),
