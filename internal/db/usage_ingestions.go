@@ -96,3 +96,35 @@ func IncrementAutoRefreshCount(ctx context.Context, pool *sql.DB, userID string,
 	}
 	return nil
 }
+
+// IncrementSuccessfulIngestionTx increments sources_count for the current month within a transaction
+func IncrementSuccessfulIngestionTx(ctx context.Context, tx *sql.Tx, userID string, at time.Time, delta int) error {
+	pm := monthStart(at)
+	_, err := tx.ExecContext(ctx, `
+        INSERT INTO usage_ingestions(user_id, period_month, sources_count, embedding_tokens, updated_at)
+        VALUES ($1, $2, $3, 0, NOW())
+        ON CONFLICT (user_id, period_month)
+        DO UPDATE SET sources_count = usage_ingestions.sources_count + EXCLUDED.sources_count,
+                      updated_at = NOW()
+    `, userID, pm, delta)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "increment successful ingestion tx")
+	}
+	return nil
+}
+
+// AddEmbeddingTokensTx adds to embedding_tokens counter for the current month within a transaction
+func AddEmbeddingTokensTx(ctx context.Context, tx *sql.Tx, userID string, at time.Time, tokens int) error {
+	pm := monthStart(at)
+	_, err := tx.ExecContext(ctx, `
+        INSERT INTO usage_ingestions(user_id, period_month, sources_count, embedding_tokens, updated_at)
+        VALUES ($1, $2, 0, $3, NOW())
+        ON CONFLICT (user_id, period_month)
+        DO UPDATE SET embedding_tokens = usage_ingestions.embedding_tokens + EXCLUDED.embedding_tokens,
+                      updated_at = NOW()
+    `, userID, pm, tokens)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "add embedding tokens tx")
+	}
+	return nil
+}

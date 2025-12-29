@@ -18,11 +18,11 @@ import (
 
 // URLProcessor handles URL source processing
 type URLProcessor struct {
-	DB              *sql.DB
-	OpenAIClient    rag.LLMClient
-	VectorClient    rag.VectorClient
-	Log             *logger.Logger
-	Scraper         scraper.Scraper
+	DB               *sql.DB
+	OpenAIClient     rag.LLMClient
+	VectorClient     rag.VectorClient
+	Log              *logger.Logger
+	Scraper          scraper.Scraper
 	EmbeddingService *rag.EmbeddingService
 }
 
@@ -258,8 +258,40 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	for _, ch := range rc {
 		tokens += ch.TokenCount
 	}
-	_ = db.IncrementSuccessfulIngestion(ctx, p.DB, bot.UserID, time.Now(), 1)
-	_ = db.AddEmbeddingTokens(ctx, p.DB, bot.UserID, time.Now(), tokens)
+
+	// Update statistics within a transaction to ensure atomicity
+	tx, err := p.DB.BeginTx(ctx, nil)
+	if err != nil {
+		p.logWarn("url_processing_stats_tx_begin_failed", map[string]any{
+			"source_id": s.ID,
+			"error":     err.Error(),
+		})
+	} else {
+		defer func() {
+			if err != nil {
+				_ = tx.Rollback()
+			}
+		}()
+		if err = db.IncrementSuccessfulIngestionTx(ctx, tx, bot.UserID, time.Now(), 1); err != nil {
+			p.logWarn("url_processing_stats_increment_failed", map[string]any{
+				"source_id": s.ID,
+				"error":     err.Error(),
+			})
+		} else if err = db.AddEmbeddingTokensTx(ctx, tx, bot.UserID, time.Now(), tokens); err != nil {
+			p.logWarn("url_processing_stats_tokens_failed", map[string]any{
+				"source_id": s.ID,
+				"error":     err.Error(),
+			})
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				p.logWarn("url_processing_stats_tx_commit_failed", map[string]any{
+					"source_id": s.ID,
+					"error":     commitErr.Error(),
+				})
+				err = commitErr
+			}
+		}
+	}
 
 	p.logInfo("url_processing_completed", map[string]any{
 		"source_id":    s.ID,
@@ -270,7 +302,6 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 
 	return ProcessResult{ChunkCount: len(rc)}
 }
-
 
 // DiscoveryMode constants for URL discovery behavior
 const (
