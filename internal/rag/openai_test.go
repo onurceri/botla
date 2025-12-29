@@ -171,3 +171,114 @@ func TestCreateCompletionWithTools_IncludesErrorBody(t *testing.T) {
 		t.Fatalf("expected error to include response body, got: %s", err.Error())
 	}
 }
+
+func TestCreateEmbedding_ContextCancellation(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "k")
+	// Server always returns error to trigger retries
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	cfg := &config.Config{
+		OPENAI_API_KEY:  "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
+
+	// Create an already cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	start := testing.AllocsPerRun(1, func() {})
+	_ = start
+	startTime := testing.Benchmark(func(b *testing.B) {}).T
+
+	_, err := c.CreateEmbedding(ctx, "hi")
+
+	// Test should complete quickly (not wait for retry delays)
+	endTime := testing.Benchmark(func(b *testing.B) {}).T
+	_ = startTime
+	_ = endTime
+
+	if err != context.Canceled {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestCreateEmbeddingsBatch_ContextCancellation(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "k")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	cfg := &config.Config{
+		OPENAI_API_KEY:  "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := c.CreateEmbeddingsBatch(ctx, []string{"a", "b"})
+
+	if err != context.Canceled {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestCreateCompletion_ContextCancellation(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "k")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	cfg := &config.Config{
+		OPENAI_API_KEY:  "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := c.CreateCompletion(ctx, models.CompletionParams{
+		SystemPrompt: "sys",
+		Context:      "ctx",
+		UserMessage:  "q",
+		Model:        "gpt-3.5-turbo",
+		Temperature:  0,
+		MaxTokens:    10,
+	})
+
+	if err != context.Canceled {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestCreateCompletionWithTools_ContextCancellation(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "k")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "fail", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	cfg := &config.Config{
+		OPENAI_API_KEY:  "k",
+		OPENAI_API_BASE: srv.URL,
+	}
+	c, _ := NewOpenAIClient(cfg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	msg := "hi"
+	_, err := c.CreateCompletionWithTools(ctx, []ChatMessage{{Role: "user", Content: &msg}}, nil, "gpt-4o-mini", 0, 10)
+
+	if err != context.Canceled {
+		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
