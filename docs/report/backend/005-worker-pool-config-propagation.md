@@ -19,6 +19,17 @@ In `cmd/server/main.go`, the analytics worker pool is initialized with a hardcod
     - Check logs for worker pool initialization if available.
 
 ## Checklist
-- [ ] Choose appropriate config variable (`WORKER_COUNT` or new one)
-- [ ] Update `cmd/server/main.go` initialization
-- [ ] Verify build and run
+- [x] Choose appropriate config variable (`WORKER_COUNT` or new one) - Added `ANALYTICS_WORKER_COUNT`
+- [x] Update `cmd/server/main.go` initialization - Uses `cfg.ANALYTICS_WORKER_COUNT`
+- [x] Verify build and run - Build passes, tests pass
+
+## Implementation Details
+- **Config field:** `ANALYTICS_WORKER_COUNT` in `pkg/config/config.go`
+- **Default value:** 10
+- **Environment variable:** `ANALYTICS_WORKER_COUNT`
+- **Changed files:**
+  - `pkg/config/config.go:36` - Added field
+  - `pkg/config/config.go:147` - Added parsing
+  - `cmd/server/main.go:146` - Updated initialization
+  - `pkg/config/config_test.go` - Added 5 tests
+  - `internal/workers/pool_test.go` - Added 4 tests
