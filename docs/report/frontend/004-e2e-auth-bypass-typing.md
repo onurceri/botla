@@ -16,6 +16,6 @@ In `src/App.tsx`, the E2E check uses `@ts-ignore` to access `import.meta.env.VIT
     - Access `import.meta.env.VITE_E2E` directly.
 
 ## Checklist
-- [ ] Update TypeScript definitions for `ImportMetaEnv`
-- [ ] Remove `@ts-ignore` in `src/App.tsx`
-- [ ] Compile check
+- [x] Update TypeScript definitions for `ImportMetaEnv`
+- [x] Remove `@ts-ignore` in `src/App.tsx`
+- [x] Compile check
