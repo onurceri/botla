@@ -41,9 +41,46 @@ import {
   AdminPrivacyPage,
 } from '@/pages/admin'
 
-// Helper to validate stored tokens
-const isValidToken = (token: string | null): boolean => {
-  return token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
+// Helper to validate stored tokens - checks JWT format and expiry
+export const isValidToken = (token: string | null): boolean => {
+  // Basic null/empty checks
+  if (token === null || token === 'undefined' || token === 'null' || token.length === 0) {
+    return false
+  }
+
+  // JWT format check: must have exactly 3 parts separated by dots
+  const parts = token.split('.')
+  if (parts.length !== 3) {
+    return false
+  }
+
+  // Each part must be non-empty and valid base64url
+  const base64urlRegex = /^[A-Za-z0-9_-]+$/
+  for (const part of parts) {
+    if (part.length === 0 || !base64urlRegex.test(part)) {
+      return false
+    }
+  }
+
+  // Optional: Check expiry from payload
+  try {
+    // Decode the payload (second part) - replace base64url chars with base64
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const decoded = JSON.parse(atob(payload))
+    
+    // If exp claim exists, check if token is expired
+    if (decoded.exp && typeof decoded.exp === 'number') {
+      const now = Math.floor(Date.now() / 1000)
+      if (decoded.exp < now) {
+        return false
+      }
+    }
+  } catch {
+    // If decoding fails, the token structure is invalid
+    return false
+  }
+
+  return true
 }
 
 const isAuthenticated = () => {

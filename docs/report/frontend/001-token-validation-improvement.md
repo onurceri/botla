@@ -16,6 +16,7 @@ In `src/App.tsx`, the `isValidToken` function only checks for non-null/non-empty
     - Test with valid JWT -> Should return true.
 
 ## Checklist
-- [ ] Update `isValidToken` in `src/App.tsx`
-- [ ] Ensure it returns false for non-JWT strings
-- [ ] Verify functionality with invalid local storage token
+- [x] Update `isValidToken` in `src/App.tsx`
+- [x] Ensure it returns false for non-JWT strings
+- [x] Verify functionality with invalid local storage token
+
