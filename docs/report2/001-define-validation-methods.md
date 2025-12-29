@@ -9,15 +9,15 @@ Scope:
 - Include unit tests for all validation logic.
 
 Checklist:
-[ ] Identify happy paths for each configuration sub-struct (e.g., positive limits, valid enums).
-[ ] Identify edge cases (negative numbers, zero values where positive is required, empty lists).
-[ ] Create `internal/models/plan_validation_test.go`.
-[ ] Write failing unit tests for `PlanConfig.Validate()` covering all sub-configs.
-[ ] Implement `Validate()` methods in `internal/models/plan.go` to satisfy tests.
-[ ] Ensure all error messages are descriptive (e.g., "scraping.max_urls_per_bot must be >= 0").
-[ ] Refactor for clarity.
-[ ] Run `go test ./internal/models/...` and ensure all pass.
-[ ] Run `golangci-lint run ./internal/models/...`.
+- [x] Identify happy paths for each configuration sub-struct (e.g., positive limits, valid enums).
+- [x] Identify edge cases (negative numbers, zero values where positive is required, empty lists).
+- [x] Create `internal/models/plan_validation_test.go`.
+- [x] Write failing unit tests for `PlanConfig.Validate()` covering all sub-configs.
+- [x] Implement `Validate()` methods in `internal/models/plan.go` to satisfy tests.
+- [x] Ensure all error messages are descriptive (e.g., "scraping.max_urls_per_bot must be >= 0").
+- [x] Refactor for clarity.
+- [x] Run `go test ./internal/models/...` and ensure all pass.
+- [x] Run `golangci-lint run ./internal/models/`.
 
 Edge Cases:
 - `MaxChatbots <= 0`: Plans should allow at least one chatbot or explicit enterprise-level definitions.
