@@ -86,8 +86,7 @@ export const isValidToken = (token: string | null): boolean => {
 const isAuthenticated = () => {
   // In E2E mode, bypass auth gating for visual tests
   // VITE_E2E is set in Playwright webServer env
-  // @ts-ignore
-  if (import.meta.env && (import.meta.env as any).VITE_E2E) return true
+  if (import.meta.env.VITE_E2E) return true
   const token = typeof window !== 'undefined' ? window.localStorage.getItem('botla_token') : null
   return isValidToken(token)
 }
