@@ -22,10 +22,10 @@ func TestAuth_Cookies(t *testing.T) {
 		t.Fatalf("plan: %v", err)
 	}
 	email := fmt.Sprintf("cookieuser+%d@example.com", time.Now().UnixNano())
-	
+
 	// We need actual hash if we login with password, but here we test handler that generates tokens directly
 	// Or we can register first.
-	
+
 	// Let's use RegisterHandler to get cookies first.
 	h := &AuthHandlers{DB: db, Secret: "testsecret"}
 
@@ -88,7 +88,7 @@ func TestAuth_Cookies(t *testing.T) {
 	if rr3.Code != http.StatusOK {
 		t.Errorf("refresh with cookie failed: %d", rr3.Code)
 	}
-	
+
 	// Check if we got new cookies
 	newCookies := rr3.Result().Cookies()
 	foundNewToken := false
@@ -104,15 +104,15 @@ func TestAuth_Cookies(t *testing.T) {
 	// 4. Test Logout clears cookies
 	rr4 := httptest.NewRecorder()
 	req4 := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
-	req4.AddCookie(&http.Cookie{Name: "botla_refresh_token", Value: refreshToken}) 
-	// Note: Logout usually needs refresh token to find what to revoke. 
+	req4.AddCookie(&http.Cookie{Name: "botla_refresh_token", Value: refreshToken})
+	// Note: Logout usually needs refresh token to find what to revoke.
 	// If we send empty body and cookie, it should work.
 	h.LogoutHandler(rr4, req4)
 
 	if rr4.Code != http.StatusOK {
 		t.Errorf("logout failed: %d", rr4.Code)
 	}
-	
+
 	logoutCookies := rr4.Result().Cookies()
 	clearedAccess := false
 	clearedRefresh := false
@@ -124,8 +124,91 @@ func TestAuth_Cookies(t *testing.T) {
 			clearedRefresh = true
 		}
 	}
-	
+
 	if !clearedAccess || !clearedRefresh {
 		t.Error("logout did not clear cookies")
+	}
+}
+
+func TestAuth_CookieSecureFlag_Development(t *testing.T) {
+	db := testdb.OpenTestDB(t)
+
+	h := &AuthHandlers{DB: db, Secret: "testsecret", CookieSecure: false}
+
+	rr := httptest.NewRecorder()
+	reqBody := fmt.Sprintf(`{"email":"dev-%d@example.com","password":"Test@123","full_name":"Dev User"}`, time.Now().UnixNano())
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(reqBody))
+	h.RegisterHandler(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("register failed: %d, %s", rr.Code, rr.Body.String())
+	}
+
+	cookies := rr.Result().Cookies()
+	for _, c := range cookies {
+		if c.Name == "botla_token" || c.Name == "botla_refresh_token" {
+			if c.Secure != false {
+				t.Errorf("%s cookie Secure should be false in development, got %v", c.Name, c.Secure)
+			}
+			if c.SameSite != http.SameSiteStrictMode {
+				t.Errorf("%s cookie SameSite should be StrictMode, got %v", c.Name, c.SameSite)
+			}
+		}
+	}
+}
+
+func TestAuth_CookieSecureFlag_Production(t *testing.T) {
+	db := testdb.OpenTestDB(t)
+
+	h := &AuthHandlers{DB: db, Secret: "testsecret", CookieSecure: true}
+
+	rr := httptest.NewRecorder()
+	reqBody := fmt.Sprintf(`{"email":"prod-%d@example.com","password":"Test@123","full_name":"Prod User"}`, time.Now().UnixNano())
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(reqBody))
+	h.RegisterHandler(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("register failed: %d, %s", rr.Code, rr.Body.String())
+	}
+
+	cookies := rr.Result().Cookies()
+	for _, c := range cookies {
+		if c.Name == "botla_token" || c.Name == "botla_refresh_token" {
+			if c.Secure != true {
+				t.Errorf("%s cookie Secure should be true in production, got %v", c.Name, c.Secure)
+			}
+			if c.SameSite != http.SameSiteStrictMode {
+				t.Errorf("%s cookie SameSite should be StrictMode, got %v", c.Name, c.SameSite)
+			}
+		}
+	}
+}
+
+func TestAuth_LogoutHandler_CookieSecureFlag(t *testing.T) {
+	db := testdb.OpenTestDB(t)
+
+	h := &AuthHandlers{DB: db, Secret: "testsecret", CookieSecure: true}
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+	h.LogoutHandler(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400 for missing refresh token, got %d", rr.Code)
+	}
+
+	cookies := rr.Result().Cookies()
+	for _, c := range cookies {
+		if c.Name == "botla_token" || c.Name == "botla_refresh_token" {
+			if c.MaxAge != -1 {
+				t.Errorf("%s cookie MaxAge should be -1 for clearing", c.Name)
+			}
+			if c.Secure != true {
+				t.Errorf("%s cookie Secure should be true when CookieSecure=true, got %v", c.Name, c.Secure)
+			}
+			if c.SameSite != http.SameSiteStrictMode {
+				t.Errorf("%s cookie SameSite should be StrictMode, got %v", c.Name, c.SameSite)
+			}
+		}
 	}
 }

@@ -59,6 +59,7 @@ func isStrongPassword(password string) bool {
 type AuthHandlers struct {
 	DB               *sql.DB
 	Secret           string
+	CookieSecure     bool
 	OrgService       *services.OrganizationService
 	WorkspaceService *services.WorkspaceService
 }
@@ -82,8 +83,6 @@ type loginRequest struct {
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
-
-
 
 func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -296,6 +295,8 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   h.CookieSecure,
+		SameSite: http.SameSiteStrictMode,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     "botla_refresh_token",
@@ -303,6 +304,8 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   h.CookieSecure,
+		SameSite: http.SameSiteStrictMode,
 	})
 
 	w.WriteHeader(http.StatusOK)
@@ -334,7 +337,7 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		Path:     "/",
 		Expires:  time.Now().Add(1 * time.Hour),
 		HttpOnly: true,
-		Secure:   false, // Set to true in production (checking r.TLS or config)
+		Secure:   h.CookieSecure,
 		SameSite: http.SameSiteStrictMode,
 	})
 	http.SetCookie(w, &http.Cookie{
@@ -343,7 +346,7 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		Path:     "/",
 		Expires:  time.Now().Add(7 * 24 * time.Hour),
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   h.CookieSecure,
 		SameSite: http.SameSiteStrictMode,
 	})
 

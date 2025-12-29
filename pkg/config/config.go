@@ -48,6 +48,9 @@ type Config struct {
 
 	// Environment
 	GO_ENV string
+
+	// Cookie Configuration
+	CookieSecure bool
 }
 
 var fatalf = func(msg string) {
@@ -150,6 +153,7 @@ func LoadConfig() *Config {
 		RAG_MAX_CONTEXT_TOKENS: parseIntEnv("RAG_MAX_CONTEXT_TOKENS", 2000),
 		CHAT_TIMEOUT_MS:        parseIntEnv("CHAT_TIMEOUT_MS", 60000),
 		GO_ENV:                 os.Getenv("GO_ENV"),
+		CookieSecure:           os.Getenv("GO_ENV") == "production",
 	}
 }
 
