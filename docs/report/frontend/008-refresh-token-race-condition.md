@@ -20,6 +20,6 @@ In `src/api/client.ts`, the refresh token logic shares a promise. If the refresh
     - Ensure all 5 requests retry with new token.
 
 ## Checklist
-- [ ] Review refresh logic in `client.ts`
-- [ ] Ensure retried requests pick up new token
-- [ ] Verify with concurrent requests
+- [x] Review refresh logic in `client.ts`
+- [x] Ensure retried requests pick up new token
+- [x] Verify with concurrent requests
