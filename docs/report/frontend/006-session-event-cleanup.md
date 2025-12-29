@@ -17,6 +17,6 @@ In `App.tsx`, the `session-expired` event listener might be re-registered unnece
     - Trigger session expiry. Ensure only one toast/redirect happens.
 
 ## Checklist
-- [ ] Refactor `session-expired` useEffect
-- [ ] Ensure robust cleanup
-- [ ] Verify single event handling
+- [x] Refactor `session-expired` useEffect
+- [x] Ensure robust cleanup
+- [x] Verify single event handling

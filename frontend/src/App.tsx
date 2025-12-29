@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import DashboardPage from '@/pages/DashboardPage'
@@ -98,15 +98,23 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 // Component to handle session expiry notifications
 function SessionExpiryHandler() {
   const { toast } = useToast()
+  
+  // Use a ref to always have the latest toast function without causing effect re-runs
+  const toastRef = useRef(toast)
+  useEffect(() => {
+    toastRef.current = toast
+  }, [toast])
+  
+  // Stable event handler using useCallback with no dependencies
+  const handleSessionExpired = useCallback(() => {
+    toastRef.current('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.', 'error')
+  }, [])
 
   useEffect(() => {
-    const handleSessionExpired = () => {
-      toast('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.', 'error')
-    }
-
+    // Effect runs only once on mount, cleanup uses the same stable function reference
     window.addEventListener('session-expired', handleSessionExpired)
     return () => window.removeEventListener('session-expired', handleSessionExpired)
-  }, [toast])
+  }, [handleSessionExpired])
 
   return null
 }
