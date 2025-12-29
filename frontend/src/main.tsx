@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PostHogProvider } from './providers/PostHogProvider'
+import { ErrorBoundary } from './components/ui/error-boundary'
 import './index.css'
 import App from './App'
 
@@ -20,10 +21,12 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <PostHogProvider>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </PostHogProvider>
+    <ErrorBoundary>
+      <PostHogProvider>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </PostHogProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

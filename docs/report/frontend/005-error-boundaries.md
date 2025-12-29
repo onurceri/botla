@@ -18,6 +18,7 @@ The application lacks a top-level Error Boundary. Uncaught JS errors in componen
     - Verify fallback UI is shown instead of white screen.
 
 ## Checklist
-- [ ] Create `ErrorBoundary` component
-- [ ] Integrate into `App.tsx`
-- [ ] Verify error catching behavior
+- [x] Create `ErrorBoundary` component
+- [x] Integrate into `App.tsx`
+- [x] Verify error catching behavior
+
