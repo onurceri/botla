@@ -144,9 +144,9 @@ func TestSlicesEqual(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		got := slicesEqual(tc.a, tc.b)
+		got := SlicesEqual(tc.a, tc.b)
 		if got != tc.expected {
-			t.Errorf("slicesEqual(%v, %v) = %v, want %v", tc.a, tc.b, got, tc.expected)
+			t.Errorf("SlicesEqual(%v, %v) = %v, want %v", tc.a, tc.b, got, tc.expected)
 		}
 	}
 }

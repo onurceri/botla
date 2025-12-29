@@ -18,6 +18,7 @@ import {
   updateScrapingConfig,
   deleteChatbot,
   createChatbot,
+  getSuggestionJobStatus,
 } from '@/api/chatbot'
 import type {
   ChatbotUpdateRequest,
@@ -87,16 +88,35 @@ export function useRefreshSource(chatbotId: string) {
 export function useRegenerateSuggestions(chatbotId: string) {
   const queryClient = useQueryClient()
 
+  const pollJobStatus = async (): Promise<void> => {
+    const maxAttempts = 60
+    const pollInterval = 1000
+    let attempts = 0
+
+    while (attempts < maxAttempts) {
+      const status = await getSuggestionJobStatus(chatbotId)
+
+      if (status.status === 'completed') {
+        return
+      }
+
+      if (status.status === 'failed') {
+        throw new Error(status.error_message || 'Suggestion regeneration failed')
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollInterval))
+      attempts++
+    }
+
+    throw new Error('Suggestion regeneration timed out')
+  }
+
   return useMutation({
     mutationFn: async () => {
-      // Backend returns 202 Accepted immediately and processes suggestions async.
-      // TODO: When Backend Task 007 implements job ID response, add polling here.
       await api.post(`/api/v1/chatbots/${chatbotId}/suggestions/regenerate`)
+      await pollJobStatus()
     },
     onSuccess: () => {
-      // Invalidate chatbot to refetch suggestions.
-      // Note: Since backend is async, new suggestions may not be ready yet.
-      // The useSuggestionPolling hook in PlaygroundTab handles periodic refetching.
       queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) })
     },
   })
