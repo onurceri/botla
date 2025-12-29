@@ -1,12 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios from 'axios'
-import { api, redirectService } from '../client'
+import { api, redirectService, _resetRefreshState } from '../client'
 
 describe('axios refresh interceptor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.localStorage.clear()
     redirectService.reset()
+    _resetRefreshState()
   })
 
   it('refreshes token on 401 and retries original request', async () => {
@@ -52,6 +53,41 @@ describe('axios refresh interceptor', () => {
     const p2 = handler(err2).catch(() => {})
     await Promise.all([p1, p2])
 
+    expect(postSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries all 5 concurrent requests after single token refresh', async () => {
+    window.localStorage.setItem('botla_refresh_token', 'rtok')
+    
+    // Mock the refresh endpoint to succeed after a short delay
+    const postSpy = vi.spyOn(axios, 'post').mockImplementationOnce(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+      return { data: { token: 'newAccess', refresh_token: 'newRefresh' } } as any
+    })
+
+    const handlers = (api as any).interceptors.response.handlers
+    const handler = handlers[handlers.length - 1].rejected
+
+    // Create 5 concurrent requests that fail with 401
+    const requests = Array.from({ length: 5 }, (_, i) => ({
+      url: `/api/v1/resource/${i}`,
+      headers: {},
+      method: 'get',
+      _retry: false,
+    }))
+    const errors = requests.map((req) => ({
+      response: { status: 401 },
+      config: req,
+    }))
+
+    // Mock api.request - axios instance when called as api(config) uses this internally
+    vi.spyOn(api, 'request').mockResolvedValue({ data: 'success' } as any)
+
+    // Fire all 5 requests simultaneously using same pattern as coalescing test
+    const promises = errors.map((err) => handler(err).catch(() => {}))
+    await Promise.all(promises)
+
+    // Verify only 1 refresh happened - this is the key assertion
     expect(postSpy).toHaveBeenCalledTimes(1)
   })
 

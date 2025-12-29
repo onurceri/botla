@@ -10,6 +10,32 @@ export const api = axios.create({
 let refreshPromise: Promise<void> | null = null
 let isRedirecting = false
 
+// Queue for failed requests waiting for token refresh
+interface FailedRequest {
+  resolve: (value: unknown) => void
+  reject: (reason: unknown) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config: any
+}
+
+let failedQueue: FailedRequest[] = []
+
+/**
+ * Process the failed request queue after token refresh
+ * @param error - If provided, reject all requests with this error. If null, retry all requests.
+ */
+const processQueue = (error: Error | null = null) => {
+  failedQueue.forEach((request) => {
+    if (error) {
+      request.reject(error)
+    } else {
+      // Retry the request - cookies will automatically include the new token
+      request.resolve(api(request.config))
+    }
+  })
+  failedQueue = []
+}
+
 /**
  * Singleton service to manage redirect behavior.
  * This pattern provides better encapsulation and test isolation compared to mutable globals.
@@ -74,6 +100,13 @@ export const redirectService = RedirectService.getInstance()
 
 // Legacy exports for backward compatibility (deprecated, prefer redirectService)
 export const _resetRedirecting = () => {
+  isRedirecting = false
+}
+
+// Reset refresh state for test isolation
+export const _resetRefreshState = () => {
+  failedQueue = []
+  refreshPromise = null
   isRedirecting = false
 }
 
@@ -158,26 +191,40 @@ api.interceptors.response.use(
 
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
-      try {
-        if (!refreshPromise) {
-          refreshPromise = axios
-            .post(
-              `${api.defaults.baseURL}/api/v1/auth/refresh`, 
-              {}, 
-              { withCredentials: true }
-            )
-            .then(() => {
-              // Cookies set by server
-            })
-            .finally(() => {
-              refreshPromise = null
-            })
-        }
+      
+      // If a refresh is already in progress, queue this request
+      if (refreshPromise) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject, config: originalRequest })
+        })
+      }
 
+      // Start the refresh process
+      refreshPromise = axios
+        .post(
+          `${api.defaults.baseURL}/api/v1/auth/refresh`, 
+          {}, 
+          { withCredentials: true }
+        )
+        .then(() => {
+          // Refresh successful - process queued requests
+          processQueue(null)
+        })
+        .catch((refreshError) => {
+          // Refresh failed - reject all queued requests
+          processQueue(refreshError)
+          handleSessionExpired()
+          throw refreshError
+        })
+        .finally(() => {
+          refreshPromise = null
+        })
+
+      try {
         await refreshPromise
+        // Retry the original request that triggered the refresh
         return api(originalRequest)
       } catch {
-        handleSessionExpired()
         return Promise.reject(err)
       }
     }
