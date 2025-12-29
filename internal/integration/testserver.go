@@ -9,6 +9,7 @@ import (
 	"github.com/onurceri/botla-co/internal/api/router"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/repository"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
@@ -144,7 +145,9 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// Create mock tool name generator for tests
 	mockClient := &mockToolsClient{}
 	tng := rag.NewToolNameGenerator(mockClient)
-	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: tng, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	actionRepo := repository.NewPostgresActionRepo(pool)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	acth := &handlers.ActionHandlers{ActionRepo: actionRepo, ChatbotRepo: chatbotRepo, ToolNameGenerator: tng, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
@@ -200,7 +203,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// RAG service and queue wrapper for admin chatbot/source handlers
 	ragSvc := services.NewRAGService(pool, actualVC, log)
 	queueWrapper := &services.Queue{SourceQueue: q}
-	ach := handlers.NewAdminChatbotHandlers(pool, adminSvc, ragSvc, queueWrapper)
+	adminChatbotRepo := repository.NewPostgresAdminChatbotRepo(pool)
+	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
 	ash := handlers.NewAdminSourceHandlers(pool, adminSvc, ragSvc, queueWrapper)
 	router.RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)
 

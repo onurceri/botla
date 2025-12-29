@@ -7,6 +7,7 @@ import (
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/repository"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
@@ -37,6 +38,11 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
 	toolNameGenerator := rag.NewToolNameGenerator(oaiClient)
 
+	// Repositories
+	actionRepo := repository.NewPostgresActionRepo(pool)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	adminChatbotRepo := repository.NewPostgresAdminChatbotRepo(pool)
+
 	// Handlers
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg, Queue: q, LLMFactory: factory}
 	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, CookieSecure: cfg.CookieSecure, OrgService: orgSvc, WorkspaceService: workspaceSvc}
@@ -56,7 +62,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	tjh := &handlers.TrainingJobHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	acth := &handlers.ActionHandlers{DB: pool, ToolNameGenerator: toolNameGenerator, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	acth := &handlers.ActionHandlers{ActionRepo: actionRepo, ChatbotRepo: chatbotRepo, ToolNameGenerator: toolNameGenerator, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
@@ -79,7 +85,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	ragSvc := services.NewRAGService(pool, qdClient, log)
 	// Queue wrapper for source processing
 	queueWrapper := &services.Queue{SourceQueue: q}
-	ach := handlers.NewAdminChatbotHandlers(pool, adminSvc, ragSvc, queueWrapper)
+	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
 	ash := handlers.NewAdminSourceHandlers(pool, adminSvc, ragSvc, queueWrapper)
 
 	// Health

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,14 +8,15 @@ import (
 	"strconv"
 
 	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/repository"
 	"github.com/onurceri/botla-co/internal/services"
 )
 
 type ActionHandlers struct {
-	DB                *sql.DB
+	ActionRepo        repository.ActionRepository
+	ChatbotRepo       repository.ChatbotRepository
 	ToolNameGenerator *rag.ToolNameGenerator
 	WorkspaceService  *services.WorkspaceService
 	OrgService        *services.OrganizationService
@@ -32,7 +32,7 @@ type createActionRequest struct {
 }
 
 func (h *ActionHandlers) authorize(w http.ResponseWriter, r *http.Request) (string, *models.Chatbot, bool) {
-	bot, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	bot, botID, ok := getChatbotContextWithRepo(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	return botID, bot, ok
 }
 
@@ -42,7 +42,7 @@ func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actions, err := db.GetActions(r.Context(), h.DB, botID)
+	actions, err := h.ActionRepo.List(r.Context(), botID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -107,7 +107,7 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request) {
 		Enabled:     req.Enabled,
 	}
 
-	if err := db.CreateAction(r.Context(), h.DB, action); err != nil {
+	if err := h.ActionRepo.Create(r.Context(), action); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -122,7 +122,7 @@ func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actionID := r.PathValue("actionId")
-	action, err := db.GetActionByID(r.Context(), h.DB, actionID)
+	action, err := h.ActionRepo.GetByID(r.Context(), actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -142,7 +142,7 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actionID := r.PathValue("actionId")
-	action, err := db.GetActionByID(r.Context(), h.DB, actionID)
+	action, err := h.ActionRepo.GetByID(r.Context(), actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -201,8 +201,8 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	action.Enabled = req.Enabled
 
-	if err = db.UpdateAction(r.Context(), h.DB, action); err != nil {
-		if errors.Is(err, db.ErrVersionConflict) {
+	if err = h.ActionRepo.Update(r.Context(), action); err != nil {
+		if errors.Is(err, repository.ErrVersionConflict) {
 			http.Error(w, "Action was modified by another request, please refresh and try again", http.StatusConflict)
 			return
 		}
@@ -220,7 +220,7 @@ func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actionID := r.PathValue("actionId")
-	action, err := db.GetActionByID(r.Context(), h.DB, actionID)
+	action, err := h.ActionRepo.GetByID(r.Context(), actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -230,7 +230,7 @@ func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = db.DeleteAction(r.Context(), h.DB, actionID); err != nil {
+	if err = h.ActionRepo.Delete(r.Context(), actionID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -262,7 +262,7 @@ func (h *ActionHandlers) GetLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	offset := (page - 1) * limit
-	logs, err := db.GetActionLogs(r.Context(), h.DB, botID, limit, offset)
+	logs, err := h.ActionRepo.GetLogs(r.Context(), botID, limit, offset)
 	if err != nil {
 		http.Error(w, "Failed to fetch logs", http.StatusInternalServerError)
 		return
