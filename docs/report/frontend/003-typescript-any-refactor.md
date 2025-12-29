@@ -18,7 +18,8 @@ Multiple mutation hooks in `src/hooks/mutations/useChatbotMutations.ts` use `any
     - Compile project with `tsc --noEmit` (or just check IDE).
 
 ## Checklist
-- [ ] Identify all usages of `any` in `useChatbotMutations.ts`
-- [ ] Import or define correct request interfaces
-- [ ] Apply types to mutation functions
-- [ ] Verify type checking passes
+- [x] Identify all usages of `any` in `useChatbotMutations.ts`
+- [x] Import or define correct request interfaces
+- [x] Apply types to mutation functions
+- [x] Verify type checking passes
+
