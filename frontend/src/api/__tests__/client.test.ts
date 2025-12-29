@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import axios from 'axios'
-import { api, _resetRedirecting, _setRedirectToLogin } from '../client'
+import { api, redirectService } from '../client'
 
 describe('axios refresh interceptor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.localStorage.clear()
-    _resetRedirecting()
+    redirectService.reset()
   })
 
   it('refreshes token on 401 and retries original request', async () => {
@@ -74,7 +74,7 @@ describe('axios refresh interceptor', () => {
     
     // Set up the mock redirect function BEFORE triggering the handler
     const redirectMock = vi.fn()
-    _setRedirectToLogin(redirectMock)
+    redirectService.setRedirectFn(redirectMock)
     
     const handlers = (api as any).interceptors.response.handlers
     const handler = handlers[handlers.length - 1].rejected
@@ -89,12 +89,7 @@ describe('axios refresh interceptor', () => {
 
     expect(redirectMock).toHaveBeenCalled()
     
-    // Restore original redirect function
-    _setRedirectToLogin(() => {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login'
-      }
-    })
+    // Cleanup handled by redirectService.reset() in beforeEach
     vi.useRealTimers()
     vi.unstubAllEnvs()
   })
@@ -105,7 +100,7 @@ describe('axios refresh interceptor', () => {
     
     // Set up the mock redirect function to track if it gets called
     const redirectMock = vi.fn()
-    _setRedirectToLogin(redirectMock)
+    redirectService.setRedirectFn(redirectMock)
     
     const handlers = (api as any).interceptors.response.handlers
     const handler = handlers[handlers.length - 1].rejected
@@ -122,12 +117,7 @@ describe('axios refresh interceptor', () => {
     // Verify session expiry was NOT triggered
     expect(redirectMock).not.toHaveBeenCalled()
     
-    // Restore original redirect function
-    _setRedirectToLogin(() => {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login'
-      }
-    })
+    // Cleanup handled by redirectService.reset() in beforeEach
     vi.useRealTimers()
     vi.unstubAllEnvs()
   })

@@ -18,6 +18,6 @@
     - Run tests in parallel if possible.
 
 ## Checklist
-- [ ] Analyze usages of `_redirectToLogin`
-- [ ] Refactor to safer pattern (e.g. factory or strict reset)
-- [ ] Update tests
+- [x] Analyze usages of `_redirectToLogin`
+- [x] Refactor to safer pattern (e.g. factory or strict reset)
+- [x] Update tests

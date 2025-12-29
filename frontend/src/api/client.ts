@@ -9,18 +9,80 @@ export const api = axios.create({
 
 let refreshPromise: Promise<void> | null = null
 let isRedirecting = false
+
+/**
+ * Singleton service to manage redirect behavior.
+ * This pattern provides better encapsulation and test isolation compared to mutable globals.
+ */
+class RedirectService {
+  private static instance: RedirectService | null = null
+  private redirectFn: () => void
+  
+  // Store the default function for reset capability
+  private readonly defaultRedirectFn = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login'
+    }
+  }
+  
+  private constructor() {
+    this.redirectFn = this.defaultRedirectFn
+  }
+  
+  static getInstance(): RedirectService {
+    if (!RedirectService.instance) {
+      RedirectService.instance = new RedirectService()
+    }
+    return RedirectService.instance
+  }
+  
+  /**
+   * Set a custom redirect function (useful for testing)
+   */
+  setRedirectFn(fn: () => void): void {
+    this.redirectFn = fn
+  }
+  
+  /**
+   * Execute the redirect function
+   */
+  redirect(): void {
+    this.redirectFn()
+  }
+  
+  /**
+   * Reset redirect function to default (call in test teardown)
+   */
+  reset(): void {
+    this.redirectFn = this.defaultRedirectFn
+    isRedirecting = false
+  }
+  
+  /**
+   * Reset the singleton instance (for complete test isolation)
+   */
+  static resetInstance(): void {
+    if (RedirectService.instance) {
+      RedirectService.instance.redirectFn = RedirectService.instance.defaultRedirectFn
+    }
+    isRedirecting = false
+  }
+}
+
+// Export the singleton instance
+export const redirectService = RedirectService.getInstance()
+
+// Legacy exports for backward compatibility (deprecated, prefer redirectService)
 export const _resetRedirecting = () => {
   isRedirecting = false
 }
 
-// Exported for testing - allows mocking the redirect behavior
-export let _redirectToLogin = () => {
-  if (typeof window !== 'undefined') {
-    window.location.href = '/login'
-  }
-}
 export const _setRedirectToLogin = (fn: () => void) => {
-  _redirectToLogin = fn
+  redirectService.setRedirectFn(fn)
+}
+
+export const _redirectToLogin = () => {
+  redirectService.redirect()
 }
 
 // Helper to check if a stored value is valid (not undefined, null, or "undefined" string)
@@ -48,7 +110,7 @@ const handleSessionExpired = () => {
 
   // Small delay to allow toast to show before redirect
   setTimeout(() => {
-    _redirectToLogin()
+    redirectService.redirect()
   }, 1500)
 }
 
