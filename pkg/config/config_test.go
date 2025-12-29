@@ -182,3 +182,28 @@ func splitKV(s string) (string, string) {
 	}
 	return s, ""
 }
+
+func TestLoadConfig_CookieSecure_Development(t *testing.T) {
+	setAllEnv()
+	os.Unsetenv("GO_ENV")
+	c := LoadConfig()
+	if c == nil {
+		t.Fatalf("config load failed")
+	}
+	if c.CookieSecure != false {
+		t.Errorf("expected CookieSecure to be false in development, got %v", c.CookieSecure)
+	}
+}
+
+func TestLoadConfig_CookieSecure_Production(t *testing.T) {
+	setAllEnv()
+	os.Setenv("GO_ENV", "production")
+	defer os.Unsetenv("GO_ENV")
+	c := LoadConfig()
+	if c == nil {
+		t.Fatalf("config load failed")
+	}
+	if c.CookieSecure != true {
+		t.Errorf("expected CookieSecure to be true in production, got %v", c.CookieSecure)
+	}
+}

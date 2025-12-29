@@ -20,7 +20,7 @@ In `internal/api/handlers/auth.go`, the `Secure` flag for cookies is hardcoded t
     - Test conceptually for production (Secure=true) -> Cookies require HTTPS.
 
 ## Checklist
-- [ ] Add `CookieSecure` field to `Config` struct if needed, or use existing Env check
-- [ ] Update `generateAndSendTokens` in `internal/api/handlers/auth.go`
-- [ ] Update `LogoutHandler` cookie clearing logic to match
-- [ ] Verify `SameSite` attribute is also appropriate (StrictMode is good)
+- [x] Add `CookieSecure` field to `Config` struct if needed, or use existing Env check
+- [x] Update `generateAndSendTokens` in `internal/api/handlers/auth.go`
+- [x] Update `LogoutHandler` cookie clearing logic to match
+- [x] Verify `SameSite` attribute is also appropriate (StrictMode is good)

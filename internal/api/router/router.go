@@ -31,7 +31,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	factory := rag.NewClientFactory(cfg)
 	// Initialize circuit breakers for LLM fault tolerance
 	_ = factory.InitCircuitBreakers()
-	
+
 	oaiClient, _ := rag.NewOpenAIClient(cfg)
 	// qdClient is passed in
 	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
@@ -39,7 +39,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 
 	// Handlers
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg, Queue: q, LLMFactory: factory}
-	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc, WorkspaceService: workspaceSvc}
+	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, CookieSecure: cfg.CookieSecure, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	mh := &handlers.MeHandlers{DB: pool}
 	plh := &handlers.PlanHandlers{DB: pool}
 	uh := &handlers.UsageHandlers{DB: pool}
