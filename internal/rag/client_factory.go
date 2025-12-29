@@ -173,15 +173,6 @@ func (f *ClientFactory) GetClientForModel(modelString string) (LLMClient, string
 		return nil, "", err
 	}
 
-	// Apply GlobalHTTPClient to existing clients if set
-	if GlobalHTTPClient != nil {
-		if oc, ok := client.(*OpenAIClient); ok {
-			oc.http = GlobalHTTPClient
-		} else if orc, ok := client.(*OpenRouterClient); ok {
-			orc.http = GlobalHTTPClient
-		}
-	}
-
 	return client, modelName, nil
 }
 

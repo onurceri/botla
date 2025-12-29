@@ -22,7 +22,7 @@
     - Run `go test -race ./internal/rag/...` to ensure no race conditions.
 
 ## Checklist
-- [ ] Remove `GlobalHTTPClient` variable
-- [ ] Allow identifying/injecting HTTP client in `OpenAIClient` instance
-- [ ] Refactor unit tests to inject client per instance
-- [ ] Run race detector on tests
+- [x] Remove `GlobalHTTPClient` variable
+- [x] Allow identifying/injecting HTTP client in `OpenAIClient` instance
+- [x] Refactor unit tests to inject client per instance
+- [x] Run race detector on tests

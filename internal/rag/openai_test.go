@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/config"
@@ -280,5 +281,107 @@ func TestCreateCompletionWithTools_ContextCancellation(t *testing.T) {
 
 	if err != context.Canceled {
 		t.Fatalf("expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestNewOpenAIClient_WithHTTPClient(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/embeddings" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"data":  []map[string]any{{"embedding": []float64{0.1, 0.2}}},
+				"usage": map[string]int{"prompt_tokens": 1, "total_tokens": 2},
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	mockHTTPClient := srv.Client()
+	mockHTTPClient.Timeout = 10 * time.Second
+
+	cfg := &config.Config{
+		OPENAI_API_KEY:  "test-key",
+		OPENAI_API_BASE: srv.URL,
+	}
+
+	client, err := NewOpenAIClient(cfg, WithHTTPClient(mockHTTPClient))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client, got nil")
+	}
+	if client.http != mockHTTPClient {
+		t.Error("HTTP client was not injected correctly")
+	}
+
+	emb, err := client.CreateEmbedding(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("CreateEmbedding failed: %v", err)
+	}
+	if len(emb) != 2 {
+		t.Errorf("Expected 2 embedding values, got %d", len(emb))
+	}
+}
+
+func TestNewOpenAIClient_WithNilHTTPClient(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	cfg := &config.Config{
+		OPENAI_API_KEY: "test-key",
+	}
+
+	client, err := NewOpenAIClient(cfg, WithHTTPClient(nil))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client, got nil")
+	}
+	if client.http == nil {
+		t.Error("Expected non-nil HTTP client when nil is passed (should use default)")
+	}
+}
+
+func TestNewOpenAIClient_WithoutOptions(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	cfg := &config.Config{
+		OPENAI_API_KEY: "test-key",
+	}
+
+	client, err := NewOpenAIClient(cfg)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client, got nil")
+	}
+	if client.http == nil {
+		t.Error("Expected non-nil HTTP client")
+	}
+	if client.http.Timeout != 30*time.Second {
+		t.Errorf("Expected default timeout of 30s, got %v", client.http.Timeout)
+	}
+}
+
+func TestNewOpenAIClient_MultipleOptions(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "test-key")
+
+	mockHTTPClient := &http.Client{Timeout: 5 * time.Second}
+	cfg := &config.Config{
+		OPENAI_API_KEY: "test-key",
+	}
+
+	client, err := NewOpenAIClient(cfg, WithHTTPClient(mockHTTPClient))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if client.http != mockHTTPClient {
+		t.Error("HTTP client was not injected correctly with multiple options")
 	}
 }
