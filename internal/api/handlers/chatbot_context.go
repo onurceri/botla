@@ -7,6 +7,7 @@ import (
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/repository"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/httputil"
 	"github.com/onurceri/botla-co/pkg/middleware"
@@ -41,6 +42,57 @@ func getChatbotContext(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, w
 	}
 
 	c, err := db.GetChatbotByID(r.Context(), dbConn, botID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, "", false
+	}
+	if c == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return nil, "", false
+	}
+
+	allowed, err := checkChatbotAccess(r.Context(), c, userID, wsService, orgService)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, "", false
+	}
+	if !allowed {
+		w.WriteHeader(http.StatusForbidden)
+		return nil, "", false
+	}
+
+	return c, botID, true
+}
+
+// getChatbotContextWithRepo is like getChatbotContext but uses a ChatbotRepository interface.
+// This enables handlers to use the repository pattern for better testability.
+func getChatbotContextWithRepo(w http.ResponseWriter, r *http.Request, repo repository.ChatbotRepository, wsService *services.WorkspaceService, orgService *services.OrganizationService) (*models.Chatbot, string, bool) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok || userID == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return nil, "", false
+	}
+
+	botID := r.PathValue("id")
+	if botID == "" {
+		w.WriteHeader(http.StatusNotFound)
+		return nil, "", false
+	}
+	if botID == "new" {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, "", false
+	}
+	if !httputil.IsValidUUID(botID) {
+		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		return nil, "", false
+	}
+
+	if repo == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, "", false
+	}
+
+	c, err := repo.GetByID(r.Context(), botID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, "", false

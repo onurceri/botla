@@ -6,26 +6,26 @@ import (
 	"strconv"
 
 	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/repository"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // AdminChatbotHandlers handles admin chatbot management endpoints
 type AdminChatbotHandlers struct {
-	DB           *sql.DB
-	AdminService *services.AdminService
-	RagService   *services.RAGService
-	Queue        *services.Queue
+	AdminChatbotRepo repository.AdminChatbotRepository
+	AdminService     *services.AdminService
+	RagService       *services.RAGService
+	Queue            *services.Queue
 }
 
 // NewAdminChatbotHandlers creates a new AdminChatbotHandlers instance
-func NewAdminChatbotHandlers(database *sql.DB, adminSvc *services.AdminService, ragSvc *services.RAGService, queue *services.Queue) *AdminChatbotHandlers {
+func NewAdminChatbotHandlers(adminChatbotRepo repository.AdminChatbotRepository, adminSvc *services.AdminService, ragSvc *services.RAGService, queue *services.Queue) *AdminChatbotHandlers {
 	return &AdminChatbotHandlers{
-		DB:           database,
-		AdminService: adminSvc,
-		RagService:   ragSvc,
-		Queue:        queue,
+		AdminChatbotRepo: adminChatbotRepo,
+		AdminService:     adminSvc,
+		RagService:       ragSvc,
+		Queue:            queue,
 	}
 }
 
@@ -40,7 +40,7 @@ func (h *AdminChatbotHandlers) ListChatbots(w http.ResponseWriter, r *http.Reque
 		offset = 0
 	}
 
-	filter := db.ChatbotFilter{}
+	filter := repository.AdminChatbotFilter{}
 	if name := r.URL.Query().Get("name"); name != "" {
 		filter.Name = &name
 	}
@@ -51,7 +51,7 @@ func (h *AdminChatbotHandlers) ListChatbots(w http.ResponseWriter, r *http.Reque
 		filter.OwnerID = &ownerID
 	}
 
-	chatbots, total, err := db.AdminListChatbots(r.Context(), h.DB, filter, limit, offset)
+	chatbots, total, err := h.AdminChatbotRepo.ListChatbots(r.Context(), filter, limit, offset)
 	if err != nil {
 		api.WriteError(w, http.StatusInternalServerError, "Failed to list chatbots", api.ErrCodeInternalError)
 		return
@@ -71,7 +71,7 @@ func (h *AdminChatbotHandlers) GetChatbot(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	chatbot, err := db.AdminGetChatbot(r.Context(), h.DB, id)
+	chatbot, err := h.AdminChatbotRepo.GetByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			api.WriteError(w, http.StatusNotFound, "Chatbot not found", api.ErrCodeNotFound)
@@ -93,7 +93,7 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 	}
 
 	// Check if chatbot exists
-	chatbot, err := db.AdminGetChatbot(r.Context(), h.DB, id)
+	chatbot, err := h.AdminChatbotRepo.GetByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			api.WriteError(w, http.StatusNotFound, "Chatbot not found", api.ErrCodeNotFound)
@@ -109,21 +109,21 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 	}
 
 	// Reset chunk counts
-	err = db.AdminDeleteChatbotVectors(r.Context(), h.DB, id)
+	err = h.AdminChatbotRepo.DeleteVectors(r.Context(), id)
 	if err != nil {
 		api.WriteError(w, http.StatusInternalServerError, "Failed to reset vectors", api.ErrCodeInternalError)
 		return
 	}
 
 	// Reset all sources to pending
-	count, err := db.AdminResetChatbotSources(r.Context(), h.DB, id)
+	count, err := h.AdminChatbotRepo.ResetSources(r.Context(), id)
 	if err != nil {
 		api.WriteError(w, http.StatusInternalServerError, "Failed to reset sources", api.ErrCodeInternalError)
 		return
 	}
 
 	// Get pending source IDs and queue them
-	sourceIDs, err := db.AdminGetChatbotSourceIDs(r.Context(), h.DB, id)
+	sourceIDs, err := h.AdminChatbotRepo.GetSourceIDs(r.Context(), id)
 	if err != nil {
 		api.WriteError(w, http.StatusInternalServerError, "Failed to get source IDs", api.ErrCodeInternalError)
 		return
@@ -140,12 +140,14 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 	}
 
 	// Log the action
-	adminID, _ := middleware.UserIDFromContext(r.Context())
-	_ = h.AdminService.LogAction(r.Context(), adminID, "force_refresh_chatbot", "chatbot", &id, map[string]any{
-		"chatbot_name":   chatbot.Name,
-		"sources_reset":  count,
-		"sources_queued": queuedCount,
-	}, r)
+	if h.AdminService != nil {
+		adminID, _ := middleware.UserIDFromContext(r.Context())
+		_ = h.AdminService.LogAction(r.Context(), adminID, "force_refresh_chatbot", "chatbot", &id, map[string]any{
+			"chatbot_name":   chatbot.Name,
+			"sources_reset":  count,
+			"sources_queued": queuedCount,
+		}, r)
+	}
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":         "refreshing",
@@ -153,3 +155,4 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 		"sources_queued": queuedCount,
 	})
 }
+
