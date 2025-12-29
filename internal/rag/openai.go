@@ -115,7 +115,11 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 				return out, nil
 			}
 		}
-		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(1<<attempt) * 200 * time.Millisecond):
+		}
 	}
 	return nil, lastErr
 }
@@ -167,7 +171,11 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 				return out, nil
 			}
 		}
-		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(1<<attempt) * 200 * time.Millisecond):
+		}
 	}
 	return nil, lastErr
 }
@@ -248,7 +256,11 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 				}, nil
 			}
 		}
-		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(1<<attempt) * 200 * time.Millisecond):
+		}
 	}
 	return nil, lastErr
 }
@@ -333,7 +345,11 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 				return &cr, nil
 			}
 		}
-		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(1<<attempt) * 200 * time.Millisecond):
+		}
 	}
 	return nil, lastErr
 }

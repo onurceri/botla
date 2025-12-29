@@ -20,7 +20,7 @@ The current retry logic in `internal/rag/openai.go` sleeps between retries witho
     - Ensure the function returns immediately with context canceled error instead of waiting.
 
 ## Checklist
-- [ ] Locate retry loops in `internal/rag/openai.go`
-- [ ] Replace `time.Sleep` with `select { case <-ctx.Done(): ... case <-time.After(...): ... }`
-- [ ] Add unit test for context cancellation during retry
-- [ ] Run tests to ensure no regressions
+- [x] Locate retry loops in `internal/rag/openai.go`
+- [x] Replace `time.Sleep` with `select { case <-ctx.Done(): ... case <-time.After(...): ... }`
+- [x] Add unit test for context cancellation during retry
+- [x] Run tests to ensure no regressions
