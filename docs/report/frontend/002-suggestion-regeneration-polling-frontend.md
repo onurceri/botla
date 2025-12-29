@@ -19,7 +19,8 @@
     - Ensure the mutation uses `isPending` state to show a loading spinner during this process.
 
 ## Checklist
-- [ ] Sync with Backend Task 007 outcome
-- [ ] Remove hardcoded sleep
-- [ ] Implement polling if async, or rely on promise resolution if sync
-- [ ] Verify UI feedback during regeneration
+- [x] Sync with Backend Task 007 outcome
+- [x] Remove hardcoded sleep
+- [x] Implement polling if async, or rely on promise resolution if sync
+- [x] Verify UI feedback during regeneration
+

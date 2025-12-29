@@ -77,12 +77,14 @@ export function useRegenerateSuggestions(chatbotId: string) {
 
   return useMutation({
     mutationFn: async () => {
+      // Backend returns 202 Accepted immediately and processes suggestions async.
+      // TODO: When Backend Task 007 implements job ID response, add polling here.
       await api.post(`/api/v1/chatbots/${chatbotId}/suggestions/regenerate`)
-      // Wait for backend processing
-      await new Promise((resolve) => setTimeout(resolve, 2000))
     },
     onSuccess: () => {
-      // Invalidate chatbot to refetch suggestions
+      // Invalidate chatbot to refetch suggestions.
+      // Note: Since backend is async, new suggestions may not be ready yet.
+      // The useSuggestionPolling hook in PlaygroundTab handles periodic refetching.
       queryClient.invalidateQueries({ queryKey: CHATBOT_QUERY_KEY(chatbotId) })
     },
   })
