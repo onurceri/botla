@@ -8,28 +8,24 @@ import (
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
-// DefaultMaxSuggestions is the fallback limit when plan config is not available.
 const DefaultMaxSuggestions = 6
 
-// SourceQuestions represents questions from a source with its weight (chunk count).
 type SourceQuestions struct {
 	Questions  []string
 	ChunkCount int
 }
 
-// AggregateWithWeightedSelection selects questions from sources weighted by chunk count.
-// Sources with more chunks get priority. Returns up to maxQuestions unique questions.
 func AggregateWithWeightedSelection(sources []SourceQuestions, existingQuestions []string, maxQuestions int) []string {
 	if maxQuestions <= 0 {
 		maxQuestions = DefaultMaxSuggestions
 	}
 
-	// Build seen set from existing questions
 	seen := make(map[string]struct{}, len(existingQuestions))
 	result := make([]string, 0, maxQuestions)
 
@@ -45,12 +41,10 @@ func AggregateWithWeightedSelection(sources []SourceQuestions, existingQuestions
 		}
 	}
 
-	// Sort sources by chunk count descending (larger sources first)
 	sort.Slice(sources, func(i, j int) bool {
 		return sources[i].ChunkCount > sources[j].ChunkCount
 	})
 
-	// Collect questions from sorted sources
 	for _, src := range sources {
 		for _, q := range src.Questions {
 			t := normalizeQuestion(q)
@@ -72,7 +66,6 @@ func AggregateWithWeightedSelection(sources []SourceQuestions, existingQuestions
 	return result
 }
 
-// normalizeQuestion trims, validates, and caps question length.
 func normalizeQuestion(q string) string {
 	t := strings.TrimSpace(q)
 	if t == "" {
@@ -84,20 +77,15 @@ func normalizeQuestion(q string) string {
 	return t
 }
 
-// AggregateAndPersistChatbotSuggestions aggregates suggestions from all sources.
-// Uses DefaultMaxSuggestions when limit is not specified.
 func AggregateAndPersistChatbotSuggestions(ctx context.Context, pool *sql.DB, chatbotID string, log *logger.Logger) {
 	AggregateAndPersistChatbotSuggestionsWithLimit(ctx, pool, chatbotID, DefaultMaxSuggestions, log)
 }
 
-// AggregateAndPersistChatbotSuggestionsWithLimit queries data_sources for the chatbot
-// and writes unique suggestions to chatbots.suggested_questions respecting the limit.
 func AggregateAndPersistChatbotSuggestionsWithLimit(ctx context.Context, pool *sql.DB, chatbotID string, maxQuestions int, log *logger.Logger) {
 	if maxQuestions <= 0 {
 		maxQuestions = DefaultMaxSuggestions
 	}
 
-	// Fetch existing chatbot suggestions (manual questions take priority)
 	var existingJSON []byte
 	var currentSuggestions []string
 	_ = pool.QueryRowContext(ctx, `SELECT suggested_questions FROM chatbots WHERE id=$1`, chatbotID).Scan(&existingJSON)
@@ -105,43 +93,63 @@ func AggregateAndPersistChatbotSuggestionsWithLimit(ctx context.Context, pool *s
 		_ = json.Unmarshal(existingJSON, &currentSuggestions)
 	}
 
-	// If already at limit, nothing to do
 	if len(currentSuggestions) >= maxQuestions {
 		return
 	}
 
-	// Fetch source questions with chunk counts
 	sources, err := fetchSourceQuestions(ctx, pool, chatbotID)
 	if err != nil {
 		logWarnIfPresent(log, "fetch_source_questions_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		return
 	}
 
-	// Aggregate with weighted selection
 	newSuggestions := AggregateWithWeightedSelection(sources, currentSuggestions, maxQuestions)
 
-	// Only update if changed
-	if len(newSuggestions) != len(currentSuggestions) || !slicesEqual(newSuggestions, currentSuggestions) {
+	if len(newSuggestions) != len(currentSuggestions) || !SlicesEqual(newSuggestions, currentSuggestions) {
 		if err := db.UpdateChatbotSuggestedQuestions(ctx, pool, chatbotID, newSuggestions); err != nil {
 			logWarnIfPresent(log, "update_chatbot_suggestions_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		}
 	}
 }
 
-// ReAggregateSuggestionsForChatbot re-aggregates suggestions after source changes.
-// Call this when a source is deleted or updated.
-func ReAggregateSuggestionsForChatbot(ctx context.Context, pool *sql.DB, chatbotID string, log *logger.Logger) {
-	// Fetch plan limit for this chatbot
+func ReAggregateSuggestionsForChatbotWithJob(ctx context.Context, pool *sql.DB, chatbotID, jobID string, log *logger.Logger) {
+	if err := db.UpdateSuggestionJobStatus(ctx, pool, jobID, models.SuggestionJobStatusRunning); err != nil {
+		logWarnIfPresent(log, "update_job_status_failed", map[string]any{"job_id": jobID, "error": err.Error()})
+		_ = db.FailSuggestionJob(ctx, pool, jobID, "Failed to update job status")
+		return
+	}
+
 	maxQuestions := fetchMaxSuggestionsForChatbot(ctx, pool, chatbotID)
 
-	// Clear existing auto-generated suggestions and rebuild
+	sources, err := fetchSourceQuestions(ctx, pool, chatbotID)
+	if err != nil {
+		logWarnIfPresent(log, "reaggregate_fetch_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
+		_ = db.FailSuggestionJob(ctx, pool, jobID, err.Error())
+		return
+	}
+
+	newSuggestions := AggregateWithWeightedSelection(sources, nil, maxQuestions)
+
+	if err := db.UpdateChatbotSuggestedQuestions(ctx, pool, chatbotID, newSuggestions); err != nil {
+		logWarnIfPresent(log, "reaggregate_update_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
+		_ = db.FailSuggestionJob(ctx, pool, jobID, err.Error())
+		return
+	}
+
+	if err := db.CompleteSuggestionJob(ctx, pool, jobID, newSuggestions); err != nil {
+		logWarnIfPresent(log, "complete_job_failed", map[string]any{"job_id": jobID, "error": err.Error()})
+	}
+}
+
+func ReAggregateSuggestionsForChatbot(ctx context.Context, pool *sql.DB, chatbotID string, log *logger.Logger) {
+	maxQuestions := fetchMaxSuggestionsForChatbot(ctx, pool, chatbotID)
+
 	sources, err := fetchSourceQuestions(ctx, pool, chatbotID)
 	if err != nil {
 		logWarnIfPresent(log, "reaggregate_fetch_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		return
 	}
 
-	// Rebuild from scratch (no existing questions)
 	newSuggestions := AggregateWithWeightedSelection(sources, nil, maxQuestions)
 
 	if err := db.UpdateChatbotSuggestedQuestions(ctx, pool, chatbotID, newSuggestions); err != nil {
@@ -149,13 +157,12 @@ func ReAggregateSuggestionsForChatbot(ctx context.Context, pool *sql.DB, chatbot
 	}
 }
 
-// fetchSourceQuestions retrieves all source questions with their chunk counts.
 func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) ([]SourceQuestions, error) {
 	rows, err := pool.QueryContext(ctx, `
-		SELECT suggested_questions, chunk_count 
-		FROM data_sources 
-		WHERE chatbot_id=$1 
-		  AND suggested_questions IS NOT NULL 
+		SELECT suggested_questions, chunk_count
+		FROM data_sources
+		WHERE chatbot_id=$1
+		  AND suggested_questions IS NOT NULL
 		  AND deleted_at IS NULL
 		ORDER BY chunk_count DESC
 	`, chatbotID)
@@ -190,7 +197,6 @@ func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) (
 	return sources, nil
 }
 
-// fetchMaxSuggestionsForChatbot gets the plan-based limit for suggestions.
 func fetchMaxSuggestionsForChatbot(ctx context.Context, pool *sql.DB, chatbotID string) int {
 	var limit int
 	err := pool.QueryRowContext(ctx, `
@@ -206,8 +212,7 @@ func fetchMaxSuggestionsForChatbot(ctx context.Context, pool *sql.DB, chatbotID 
 	return limit
 }
 
-// slicesEqual checks if two string slices are equal.
-func slicesEqual(a, b []string) bool {
+func SlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -219,14 +224,12 @@ func slicesEqual(a, b []string) bool {
 	return true
 }
 
-// logWarnIfPresent logs a warning if logger is available.
 func logWarnIfPresent(log *logger.Logger, event string, data map[string]any) {
 	if log != nil {
 		log.Warn(event, data)
 	}
 }
 
-// DeleteSourceVectors deletes vectors associated with a source from Qdrant.
 func DeleteSourceVectors(ctx context.Context, vc rag.VectorClient, sourceID string) error {
 	if err := vc.DeleteBySourceID(ctx, sourceID); err != nil {
 		return pkgerrors.Wrapf(err, "delete source vectors")

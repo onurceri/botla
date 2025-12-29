@@ -41,10 +41,10 @@ w.WriteHeader(http.StatusAccepted)
 
 ## Checklist
 - [x] Analyze `suggestions/regenerate` handler (confirmed async with 202)
-- [ ] Create job tracking table/model for suggestion regeneration (or reuse existing job system)
-- [ ] Modify `RegenerateSuggestions` to return job ID in response body
-- [ ] Create `GET /chatbots/{id}/suggestions/status` endpoint
-- [ ] Update `ReAggregateSuggestionsForChatbot` to track job progress
-- [ ] Document polling mechanism for frontend
-- [ ] Update frontend `useRegenerateSuggestions` to implement polling (see TODO)
+- [x] Create job tracking table/model for suggestion regeneration (or reuse existing job system)
+- [x] Modify `RegenerateSuggestions` to return job ID in response body
+- [x] Create `GET /chatbots/{id}/suggestions/status` endpoint
+- [x] Update `ReAggregateSuggestionsForChatbot` to track job progress
+- [x] Document polling mechanism for frontend
+- [x] Update frontend `useRegenerateSuggestions` to implement polling (see TODO)
 

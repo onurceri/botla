@@ -43,6 +43,7 @@ func ChatbotsRawHandler(ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandle
 
 	// Suggestions
 	mux.HandleFunc("POST /api/v1/chatbots/{id}/suggestions/regenerate", sugh.RegenerateSuggestions)
+	mux.HandleFunc("GET /api/v1/chatbots/{id}/suggestions/status", sugh.GetSuggestionJobStatus)
 
 	// Sitemap
 	mux.HandleFunc("POST /api/v1/chatbots/{id}/sitemap/discover", sh.DiscoverSitemap)

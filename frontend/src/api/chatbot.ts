@@ -58,3 +58,15 @@ export const deleteChatbot = async (id: string | number) => {
   const { data } = await api.delete(`/api/v1/chatbots/${id}`)
   return data
 }
+
+export interface SuggestionJobStatus {
+  job_id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  suggested_questions: string[][]
+  error_message?: string
+}
+
+export const getSuggestionJobStatus = async (chatbotId: string): Promise<SuggestionJobStatus> => {
+  const { data } = await api.get(`/api/v1/chatbots/${chatbotId}/suggestions/status`)
+  return data as SuggestionJobStatus
+}
