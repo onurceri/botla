@@ -88,7 +88,10 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 	b, _ := json.Marshal(body)
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create embedding request: %w", err)
+		}
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.getHTTPClient().Do(req)
@@ -141,7 +144,10 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 	b, _ := json.Marshal(body)
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/embeddings", bytes.NewReader(b))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create batch embedding request: %w", err)
+		}
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.getHTTPClient().Do(req)
@@ -226,7 +232,10 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 	b, _ := json.Marshal(reqBody)
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create completion request: %w", err)
+		}
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.getHTTPClient().Do(req)
@@ -317,7 +326,10 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 	}
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/chat/completions", bytes.NewReader(b))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create completion with tools request: %w", err)
+		}
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 		req.Header.Set("Content-Type", "application/json")
 		res, err := c.getHTTPClient().Do(req)

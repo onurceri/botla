@@ -19,7 +19,8 @@ In `internal/rag/openai.go`, the error return from `http.NewRequestWithContext` 
     - Briefly check if `CreateEmbeddingsBatch` or other methods share this pattern and fix them too.
 
 ## Checklist
-- [ ] Locate `http.NewRequestWithContext` call in `CreateEmbedding`
-- [ ] Check `CreateEmbeddingsBatch` and `CreateCompletion` for similar issues
-- [ ] Add proper error handling for request creation
-- [ ] Run tests to ensure no regressions
+- [x] Locate `http.NewRequestWithContext` call in `CreateEmbedding`
+- [x] Check `CreateEmbeddingsBatch` and `CreateCompletion` for similar issues
+- [x] Add proper error handling for request creation
+- [x] Run tests to ensure no regressions
+
