@@ -39,7 +39,7 @@ type Chatbot struct {
 	EmbedSecret           *string           `json:"embed_secret,omitempty"`
 	SecureEmbedEnabled    bool              `json:"secure_embed_enabled"`
 	SuggestedQuestions    []string          `json:"suggested_questions,omitempty"`
-	AllSuggestedQuestions []string          `json:"all_suggested_questions,omitempty"` // Complete LLM-generated pool
+	ManualQuestions       []string          `json:"manual_questions,omitempty"`
 	SuggestionsEnabled    bool              `json:"suggestions_enabled"`
 	IncludePaths          []string          `json:"include_paths,omitempty"`
 	ExcludePaths          []string          `json:"exclude_paths,omitempty"`

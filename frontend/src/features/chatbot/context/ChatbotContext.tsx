@@ -34,6 +34,8 @@ interface ChatbotContextType extends ChatbotFormReturn {
       max_monthly_tokens: number
       min_response_token_limit?: number
       max_response_token_limit?: number
+      max_suggested_questions?: number
+      max_manual_questions?: number
       rag: { top_k: number; max_context_tokens: number }
     }
     files?: {
@@ -52,6 +54,7 @@ interface ChatbotContextType extends ChatbotFormReturn {
   userPlan: string
   availableModels: ModelInfo[]
   isLoading: boolean
+  refetchChatbot: () => void
 }
 
 export const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined)
@@ -74,7 +77,7 @@ export function ChatbotProvider({
   const userPlan = planData?.code || 'free'
 
   // Use React Query for chatbot data (replaces manual api.get)
-  const { data: chatbotData, isLoading } = useChatbot(chatbotId, !isNew)
+  const { data: chatbotData, isLoading, refetch: refetchChatbot } = useChatbot(chatbotId, !isNew)
 
   // Sync form state when chatbot data changes
   useEffect(() => {
@@ -107,7 +110,7 @@ export function ChatbotProvider({
   }, [planConfig, form.handoffEnabled, form.setHandoffEnabled])
 
   return (
-    <ChatbotContext.Provider value={{ ...form, planConfig, userPlan, availableModels, isLoading }}>
+    <ChatbotContext.Provider value={{ ...form, planConfig, userPlan, availableModels, isLoading, refetchChatbot }}>
       {children}
     </ChatbotContext.Provider>
   )

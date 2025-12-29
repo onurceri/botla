@@ -5,45 +5,42 @@ import { Check, MessageSquare, Sparkles, PlusCircle, Trash2, Power } from 'lucid
 type Props = {
   suggestionsEnabled: boolean
   setSuggestionsEnabled: (v: boolean) => void
-  suggestedQuestions: string[]
-  setSuggestedQuestions: (updater: (prev: string[]) => string[]) => void
-  allSuggestedQuestions: string[]
+  suggestedQuestions: string[] // AI-generated questions
+  manualQuestions: string[] // User-added questions
+  setManualQuestions: (updater: (prev: string[]) => string[]) => void
+  maxManualQuestions?: number // Plan-based limit
 }
 
 export default function SuggestionsPanel({
   suggestionsEnabled,
   setSuggestionsEnabled,
   suggestedQuestions,
-  setSuggestedQuestions,
-  allSuggestedQuestions,
+  manualQuestions,
+  setManualQuestions,
+  maxManualQuestions = 3, // Default to free plan limit
 }: Props) {
-  // Toggle a question's visibility
-  const toggleQuestion = (question: string, checked: boolean) => {
-    if (checked) {
-      setSuggestedQuestions((prev) => {
-        if (prev.includes(question)) return prev
-        return [...prev, question]
-      })
-    } else {
-      setSuggestedQuestions((prev) => prev.filter((q) => q !== question))
-    }
-  }
-
-  // Add a custom question
+  const isAtLimit = manualQuestions.length >= maxManualQuestions
+  // Add a custom question to manualQuestions
   const addCustomQuestion = (value: string) => {
     const v = value.trim()
-    if (v) {
-      setSuggestedQuestions((prev) => {
-        const nv = [...prev, v.slice(0, 120)]
-        const uniq = Array.from(new Set(nv.map((s) => s.toLowerCase())))
-        return nv.filter((s, idx) => uniq.indexOf(s.toLowerCase()) === idx)
+    if (v && !isAtLimit) {
+      setManualQuestions((prev) => {
+        if (prev.length >= maxManualQuestions) return prev // Double-check limit
+        // Check for duplicates (case-insensitive)
+        const lowerV = v.toLowerCase().slice(0, 120)
+        const existing = [...prev, ...suggestedQuestions].map((s) => s.toLowerCase())
+        if (existing.includes(lowerV)) return prev
+        return [...prev, v.slice(0, 120)]
       })
     }
   }
 
-  // Combine generated and custom questions for display
-  const customQuestions = suggestedQuestions.filter((q) => !allSuggestedQuestions.includes(q))
-  const hasGeneratedQuestions = allSuggestedQuestions.length > 0
+  // Remove a custom question from manualQuestions
+  const removeCustomQuestion = (question: string) => {
+    setManualQuestions((prev) => prev.filter((q) => q !== question))
+  }
+
+  const hasGeneratedQuestions = suggestedQuestions.length > 0
 
   return (
     <div className="space-y-6">
@@ -91,52 +88,24 @@ export default function SuggestionsPanel({
                 </label>
               </div>
               <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200/50">
-                {suggestedQuestions.filter((q) => allSuggestedQuestions.includes(q)).length}/
-                {allSuggestedQuestions.length} SEÇİLİ
+                {suggestedQuestions.length} AI ÖNERISI
               </span>
             </div>
 
             <div className="grid grid-cols-1 gap-2">
-              {allSuggestedQuestions.map((q, i) => {
-                const isSelected = suggestedQuestions.includes(q)
-                return (
-                  <label
-                    key={i}
-                    className={`
-                      group flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 cursor-pointer
-                      ${
-                        isSelected
-                          ? 'border-primary/30 bg-primary/[0.03] shadow-sm'
-                          : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50'
-                      }
-                    `}
-                  >
-                    <div
-                      className={`
-                      flex items-center justify-center w-5 h-5 rounded-md border-2 transition-all duration-300
-                      ${
-                        isSelected
-                          ? 'bg-primary border-primary text-white'
-                          : 'border-slate-200 bg-white group-hover:border-slate-300'
-                      }
-                    `}
-                    >
-                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={isSelected}
-                      onChange={(e) => toggleQuestion(q, e.target.checked)}
-                    />
-                    <span
-                      className={`text-[12px] font-medium leading-tight transition-colors ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}
-                    >
-                      {q}
-                    </span>
-                  </label>
-                )
-              })}
+              {suggestedQuestions.map((q, i) => (
+                <div
+                  key={i}
+                  className="group flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white transition-all duration-300"
+                >
+                  <div className="flex items-center justify-center w-5 h-5 rounded-md bg-amber-100 text-amber-600">
+                    <Sparkles className="w-3 h-3" />
+                  </div>
+                  <span className="text-[12px] font-medium leading-tight text-slate-700">
+                    {q}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -148,10 +117,13 @@ export default function SuggestionsPanel({
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Kendi Sorularınız
             </label>
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${isAtLimit ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-slate-400 bg-slate-100 border-slate-200/50'}`}>
+              {manualQuestions.length}/{maxManualQuestions}
+            </span>
           </div>
 
           <div className="flex flex-col gap-2">
-            {customQuestions.map((q, i) => (
+            {manualQuestions.map((q, i) => (
               <div
                 key={i}
                 className="group flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white hover:border-slate-200 transition-all duration-300"
@@ -160,11 +132,7 @@ export default function SuggestionsPanel({
                 <span className="text-[12px] font-medium text-slate-700 flex-1 truncate">{q}</span>
                 <button
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100"
-                  onClick={() =>
-                    setSuggestedQuestions((prev) =>
-                      prev.filter((_, idx) => prev.indexOf(q) !== idx || idx !== prev.indexOf(q)),
-                    )
-                  }
+                  onClick={() => removeCustomQuestion(q)}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -175,10 +143,11 @@ export default function SuggestionsPanel({
               <div className="relative flex-1">
                 <Input
                   id="new-question-input"
-                  placeholder="Soru ekle..."
-                  className="bg-slate-50/50 border-slate-100 rounded-xl h-9 px-4 text-[12px] focus:bg-white transition-all focus:ring-1 focus:ring-primary/20"
+                  placeholder={isAtLimit ? `Maksimum ${maxManualQuestions} soru ekleyebilirsiniz` : "Soru ekle..."}
+                  disabled={isAtLimit}
+                  className="bg-slate-50/50 border-slate-100 rounded-xl h-9 px-4 text-[12px] focus:bg-white transition-all focus:ring-1 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === 'Enter' && !isAtLimit) {
                       addCustomQuestion((e.target as HTMLInputElement).value)
                       ;(e.target as HTMLInputElement).value = ''
                     }
@@ -187,12 +156,13 @@ export default function SuggestionsPanel({
               </div>
               <Button
                 type="button"
+                disabled={isAtLimit}
                 onClick={() => {
                   const input = document.getElementById('new-question-input') as HTMLInputElement
                   addCustomQuestion(input.value)
                   input.value = ''
                 }}
-                className="h-9 px-4 rounded-xl font-bold text-[10px] tracking-wider uppercase shadow-sm"
+                className="h-9 px-4 rounded-xl font-bold text-[10px] tracking-wider uppercase shadow-sm disabled:opacity-50"
               >
                 EKLE
               </Button>

@@ -15,6 +15,7 @@ import {
   useUpdateAppearance,
   useRegenerateSuggestions,
 } from '@/hooks/mutations/useChatbotMutations'
+import { useSuggestionPolling } from '@/features/chatbot/hooks/useSuggestionPolling'
 import { Button } from '@/components/ui/button'
 
 export default function PlaygroundTab() {
@@ -66,9 +67,13 @@ export default function PlaygroundTab() {
     suggestionsEnabled,
     setSuggestionsEnabled,
     suggestedQuestions,
-    setSuggestedQuestions,
-    allSuggestedQuestions,
+    manualQuestions,
+    setManualQuestions,
+    refetchChatbot,
   } = useChatbotContext()
+
+  // Poll for suggestions if processing is active
+  useSuggestionPolling(id, refetchChatbot)
 
   const appearancePayload = useMemo(
     () => ({
@@ -91,6 +96,8 @@ export default function PlaygroundTab() {
       bubble_radius: bubbleRadius,
       hide_branding: hideBranding,
       custom_branding: hideBranding ? customBranding : null,
+      suggestions_enabled: suggestionsEnabled,
+      manual_questions: manualQuestions,
     }),
     [
       botDisplayName,
@@ -112,6 +119,8 @@ export default function PlaygroundTab() {
       bubbleRadius,
       hideBranding,
       customBranding,
+      suggestionsEnabled,
+      manualQuestions,
     ],
   )
 
@@ -254,8 +263,9 @@ export default function PlaygroundTab() {
                     suggestionsEnabled={suggestionsEnabled}
                     setSuggestionsEnabled={setSuggestionsEnabled}
                     suggestedQuestions={suggestedQuestions}
-                    setSuggestedQuestions={setSuggestedQuestions}
-                    allSuggestedQuestions={allSuggestedQuestions}
+                    manualQuestions={manualQuestions}
+                    setManualQuestions={setManualQuestions}
+                    maxManualQuestions={planConfig.chat?.max_manual_questions ?? 3}
                   />
 
                   {suggestionsEnabled && (
@@ -319,7 +329,7 @@ export default function PlaygroundTab() {
             previewOpen={previewOpen}
             sessionId={sessionId}
             suggestionsEnabled={suggestionsEnabled}
-            suggestedQuestions={suggestedQuestions}
+            suggestedQuestions={[...manualQuestions, ...suggestedQuestions]}
             refreshKey={previewRefreshKey}
             hideBranding={hideBranding}
             customBranding={customBranding}

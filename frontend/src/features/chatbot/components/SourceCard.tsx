@@ -15,7 +15,6 @@ import {
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getErrorMessage } from '@/utils/errorMessages'
-import { canRefreshSource } from '@/domain'
 import {
   Dialog,
   DialogContent,
@@ -50,6 +49,7 @@ export interface Source {
 interface SourceCardProps {
   source: Source
   userPlan: string
+  refreshAllowed?: boolean
   onDelete: (id: string) => void
   onRefresh: (id: string) => void
   isRefreshing?: boolean
@@ -119,12 +119,12 @@ const getStatusConfig = (status: string) => {
 export default function SourceCard({
   source,
   userPlan,
+  refreshAllowed = false,
   onDelete,
   onRefresh,
   isRefreshing,
 }: SourceCardProps) {
   const [inspectorOpen, setInspectorOpen] = useState(false)
-  const refreshAllowed = canRefreshSource(userPlan)
   const statusConfig = getStatusConfig(source.status)
   const isProcessing = source.status === 'pending' || source.status === 'processing'
   const sourceName = source.original_filename || source.source_url || 'İsimsiz Kaynak'

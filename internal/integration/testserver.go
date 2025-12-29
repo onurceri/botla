@@ -48,6 +48,12 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ph.GetPlan)))
 
+	// PlanService with caching for public plan endpoints
+	planSvc := services.NewPlanService(pool, nil) // nil Redis for tests
+	plansH := handlers.NewPlansHandlers(planSvc)
+	mux.HandleFunc("GET /api/v1/plans", plansH.GetAllPlans)
+	mux.HandleFunc("GET /api/v1/plans/{code}", plansH.GetPlanByCode)
+
 	// Onboarding
 	mux.Handle("GET /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.GetOnboardingState)))
 	mux.Handle("PUT /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.UpdateOnboardingState)))

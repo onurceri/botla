@@ -49,6 +49,7 @@ type ChatbotUpdateRequest struct {
 	TopicRestrictions   *models.TopicConfig     `json:"topic_restrictions,omitempty"`
 	ChatBackgroundColor *string                 `json:"chat_background_color,omitempty"`
 	MaxTokens           *int                    `json:"max_tokens,omitempty"`
+	ManualQuestions     *[]string               `json:"manual_questions,omitempty"`
 }
 
 // ValidateUpdate checks all plan-based restrictions for a chatbot update.
@@ -95,6 +96,9 @@ func (v *ChatbotValidator) ValidateUpdate(ctx context.Context, req ChatbotUpdate
 	if err := v.validateMaxTokens(req, plan); err != nil {
 		return err
 	}
+	if err := v.validateManualQuestions(req, plan); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -131,6 +135,27 @@ func (v *ChatbotValidator) validateMaxTokens(req ChatbotUpdateRequest, plan *mod
 		return &FeatureError{
 			Feature:         "max_tokens",
 			Message:         "Value exceeds the maximum allowed limit for your plan",
+			UpgradeRequired: true,
+		}
+	}
+	return nil
+}
+
+func (v *ChatbotValidator) validateManualQuestions(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
+	if req.ManualQuestions == nil {
+		return nil
+	}
+
+	maxLimit := plan.Config.Chat.MaxManualQuestions
+	// Default fallback if not set in plan (backward compatibility)
+	if maxLimit <= 0 {
+		maxLimit = 3 // Default to free plan limit
+	}
+
+	if len(*req.ManualQuestions) > maxLimit {
+		return &FeatureError{
+			Feature:         "manual_questions",
+			Message:         "You have exceeded the maximum number of manual questions for your plan",
 			UpgradeRequired: true,
 		}
 	}
@@ -281,10 +306,10 @@ func (v *ChatbotValidator) validateTopicRestrictions(req ChatbotUpdateRequest, p
 func (v *ChatbotValidator) validateColors(req ChatbotUpdateRequest) *FeatureError {
 	if req.ChatBackgroundColor != nil {
 		s := strings.TrimSpace(*req.ChatBackgroundColor)
-		if s != "" && !isValidHexColor(s) {
+		if s != "" && !isValidColor(s) {
 			return &FeatureError{
 				Feature:         "color",
-				Message:         "Invalid hex color format",
+				Message:         "Invalid color format (must be HEX or RGBA)",
 				UpgradeRequired: false,
 			}
 		}
@@ -292,16 +317,31 @@ func (v *ChatbotValidator) validateColors(req ChatbotUpdateRequest) *FeatureErro
 	return nil
 }
 
-// isValidHexColor checks if a string is a valid hex color.
-func isValidHexColor(s string) bool {
-	if len(s) != 7 || s[0] != '#' {
+// isValidColor checks if a string is a valid color (HEX or RGBA).
+func isValidColor(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
 		return false
 	}
-	for i := 1; i < 7; i++ {
-		c := s[i]
-		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+
+	// Check for HEX
+	if strings.HasPrefix(s, "#") {
+		if len(s) != 7 && len(s) != 4 && len(s) != 9 {
 			return false
 		}
+		for i := 1; i < len(s); i++ {
+			c := s[i]
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+				return false
+			}
+		}
+		return true
 	}
-	return true
+
+	// Check for RGBA
+	if strings.HasPrefix(strings.ToLower(s), "rgba(") && strings.HasSuffix(s, ")") {
+		return true // Simplified check for now
+	}
+
+	return false
 }

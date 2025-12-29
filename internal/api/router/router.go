@@ -71,6 +71,10 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
 	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc}
 
+	// PlanService with Redis caching for all plan operations
+	planSvc := services.NewPlanService(pool, redisClient)
+	plansH := handlers.NewPlansHandlers(planSvc)
+
 	// RAG service for admin operations (vector deletion)
 	ragSvc := services.NewRAGService(pool, qdClient, log)
 	// Queue wrapper for source processing
@@ -113,6 +117,10 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 
 	// Public Routes
 	registerPublicRoutes(mux, cfg.JWT_SECRET, hoh, ph, pool)
+
+	// Public Plan Routes (no auth required)
+	mux.HandleFunc("GET /api/v1/plans", plansH.GetAllPlans)
+	mux.HandleFunc("GET /api/v1/plans/{code}", plansH.GetPlanByCode)
 
 	// Feedback
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))

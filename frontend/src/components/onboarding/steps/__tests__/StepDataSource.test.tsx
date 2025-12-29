@@ -63,7 +63,9 @@ describe('StepDataSource', () => {
     it('shows character count', () => {
       render(<StepDataSource {...defaultProps} sourceType="text" textContent="Hello" />)
 
-      expect(screen.getByText('Minimum 50 karakter (5/50)')).toBeInTheDocument()
+      // New format shows range and current count separately
+      expect(screen.getByText(/50 - 10\.000 karakter/)).toBeInTheDocument()
+      expect(screen.getByText('5 karakter')).toBeInTheDocument()
     })
   })
 

@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -343,11 +345,67 @@ func runMigrations(t *testing.T, schema string) {
 		if err == nil {
 			return
 		}
+
+		outputStr := string(output)
+
+		// Check if the error is due to a dirty database version
+		// This can happen if a previous migration was interrupted mid-way
+		if dirtyVersion := extractDirtyVersion(outputStr); dirtyVersion > 0 {
+			t.Logf("detected dirty database version %d, forcing version to %d and retrying", dirtyVersion, dirtyVersion-1)
+			if forceErr := forceMigrationVersion(migrationsPath, dbURL, dirtyVersion-1); forceErr != nil {
+				t.Logf("warning: failed to force migration version: %v", forceErr)
+			} else {
+				// Retry immediately after forcing version
+				continue
+			}
+		}
+
 		if i == 2 {
-			t.Fatalf("migration failed: %s (error: %v)", string(output), err)
+			t.Fatalf("migration failed: %s (error: %v)", outputStr, err)
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
+}
+
+// extractDirtyVersion parses the dirty version number from migrate error output.
+// Returns 0 if no dirty version is found.
+// Example: "error: Dirty database version 16. Fix and force version." -> 16
+func extractDirtyVersion(output string) int {
+	// Look for pattern "Dirty database version N"
+	prefix := "Dirty database version "
+	idx := strings.Index(output, prefix)
+	if idx == -1 {
+		return 0
+	}
+
+	// Extract the version number
+	versionStart := idx + len(prefix)
+	versionEnd := versionStart
+	for versionEnd < len(output) && output[versionEnd] >= '0' && output[versionEnd] <= '9' {
+		versionEnd++
+	}
+
+	if versionEnd == versionStart {
+		return 0
+	}
+
+	version, err := strconv.Atoi(output[versionStart:versionEnd])
+	if err != nil {
+		return 0
+	}
+	return version
+}
+
+// forceMigrationVersion forces the database to a specific migration version.
+// This is used to recover from a dirty state.
+func forceMigrationVersion(migrationsPath, dbURL string, version int) error {
+	//nolint:gosec // this is a test helper using dynamic path
+	cmd := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "force", strconv.Itoa(version))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("force version %d failed: %s (error: %w)", version, string(output), err)
+	}
+	return nil
 }
 
 // WithTx opens a transaction, runs fn, and rolls back afterwards.
