@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { listSources, getSourceStatus, deleteSource, refreshSource } from '@/api/source'
 import { useToast } from '@/components/ui/toast'
 
@@ -15,6 +15,8 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
   const [sources, setSources] = useState<Source[]>([])
   const [refreshingId, setRefreshingId] = useState<string | undefined>()
   const { toast } = useToast()
+  // Track which source IDs are currently being polled to avoid duplicates
+  const pollingSourcesRef = useRef<Set<string>>(new Set())
 
   const refreshSources = useCallback(() => {
     if (!isNew && id) {
@@ -26,6 +28,12 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
 
   const pollStatus = useCallback(
     (sid: string) => {
+      // Skip if already polling this source
+      if (pollingSourcesRef.current.has(sid)) {
+        return
+      }
+      pollingSourcesRef.current.add(sid)
+
       let attempts = 0
       let delay = 1000
       let etag: string | undefined
@@ -36,17 +44,20 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
           if (res && !res.notModified) {
             etag = res.etag || etag
             const s = res.data as Source
-            if (s && s.status !== 'pending' && s.status !== 'processing') {
+            if (s && s.status !== 'pending' && s.status !== 'processing' && s.status !== 'queued') {
+              pollingSourcesRef.current.delete(sid)
               refreshSources()
               setRefreshingId(undefined)
               return
             }
           }
         } catch {
+          pollingSourcesRef.current.delete(sid)
           setRefreshingId(undefined)
           return
         }
         if (attempts > 60) {
+          pollingSourcesRef.current.delete(sid)
           setRefreshingId(undefined)
           return
         }
@@ -101,6 +112,16 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
   useEffect(() => {
     refreshSources()
   }, [refreshSources])
+
+  // Auto-start polling for any sources that are already processing when the page loads
+  useEffect(() => {
+    const processingStatuses = ['pending', 'processing', 'queued']
+    const processingSources = sources.filter(s => processingStatuses.includes(s.status))
+    
+    processingSources.forEach(source => {
+      pollStatus(source.id)
+    })
+  }, [sources, pollStatus])
 
   return {
     sources,

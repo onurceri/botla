@@ -62,6 +62,7 @@ type ChatbotUpdateRequest struct {
 	AllowedDomains         []string                 `json:"allowed_domains,omitempty"`
 	EmbedSecret            *string                  `json:"embed_secret,omitempty"`
 	SuggestedQuestions     *[]string                `json:"suggested_questions,omitempty"`
+	ManualQuestions        *[]string                `json:"manual_questions,omitempty"`
 	SuggestionsEnabled     *bool                    `json:"suggestions_enabled,omitempty"`
 	IncludePaths           *[]string                `json:"include_paths,omitempty"`
 	ExcludePaths           *[]string                `json:"exclude_paths,omitempty"`
@@ -97,6 +98,7 @@ func (s *ChatbotService) Update(ctx context.Context, chatbot *models.Chatbot, re
 		TopicRestrictions:   req.TopicRestrictions,
 		ChatBackgroundColor: req.ChatBackgroundColor,
 		MaxTokens:           req.MaxTokens,
+		ManualQuestions:     req.ManualQuestions,
 	}
 
 	if err := s.Validator.ValidateUpdate(ctx, valReq, chatbot.UserID); err != nil {
@@ -167,6 +169,7 @@ type AppearanceRequest struct {
 	HideBranding         *bool                  `json:"hide_branding"`
 	CustomBranding       *models.CustomBranding `json:"custom_branding"`
 	SuggestedQuestions   *[]string              `json:"suggested_questions"`
+	ManualQuestions      *[]string              `json:"manual_questions"`
 	SuggestionsEnabled   *bool                  `json:"suggestions_enabled"`
 }
 
@@ -192,6 +195,7 @@ func (s *ChatbotService) UpdateAppearance(ctx context.Context, bot *models.Chatb
 		HideBranding:         req.HideBranding,
 		CustomBranding:       req.CustomBranding,
 		SuggestedQuestions:   req.SuggestedQuestions,
+		ManualQuestions:      req.ManualQuestions,
 		SuggestionsEnabled:   req.SuggestionsEnabled,
 	})
 }
@@ -376,6 +380,9 @@ func (s *ChatbotService) applyUpdates(c *models.Chatbot, req ChatbotUpdateReques
 	}
 	if req.SuggestedQuestions != nil {
 		c.SuggestedQuestions = normalizeSuggestions(*req.SuggestedQuestions)
+	}
+	if req.ManualQuestions != nil {
+		c.ManualQuestions = normalizeSuggestions(*req.ManualQuestions)
 	}
 	if req.SuggestionsEnabled != nil {
 		c.SuggestionsEnabled = *req.SuggestionsEnabled

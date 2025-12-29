@@ -479,6 +479,7 @@ export default function SourcesTab() {
                   userPlan={userPlan}
                   onDelete={handleDeleteSource}
                   onRefresh={handleRefreshSource}
+                  refreshAllowed={planConfig?.refresh?.enabled}
                   isRefreshing={refreshingId === source.id}
                 />
               ))}

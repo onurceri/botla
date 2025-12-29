@@ -1,45 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PLAN_LIMITS,
   PLAN_DISPLAY,
   normalizePlanCode,
   planCodeToTier,
   getPlanLabel,
-  getPlanLimits,
   type PlanCode,
 } from '../index';
 
 describe('domain/plans', () => {
-  describe('PLAN_LIMITS', () => {
-    it('should define limits for all plan codes', () => {
-      const planCodes: PlanCode[] = ['free', 'pro', 'ultra'];
-      
-      planCodes.forEach((code) => {
-        expect(PLAN_LIMITS[code]).toBeDefined();
-        expect(PLAN_LIMITS[code].maxChatbots).toBeDefined();
-        expect(PLAN_LIMITS[code].features).toBeDefined();
-      });
-    });
-
-    it('should have free plan with most restrictive limits', () => {
-      expect(PLAN_LIMITS.free.maxChatbots).toBe(1);
-      expect(PLAN_LIMITS.free.features.customBranding).toBe(false);
-      expect(PLAN_LIMITS.free.features.handoff).toBe(false);
-    });
-
-    it('should have ultra plan with highest limits', () => {
-      expect(PLAN_LIMITS.ultra.maxChatbots).toBe(100);
-      expect(PLAN_LIMITS.ultra.maxSources).toBe(200);
-      expect(PLAN_LIMITS.ultra.features.customBranding).toBe(true);
-      expect(PLAN_LIMITS.ultra.features.handoff).toBe(true);
-    });
-
-    it('should have increasing limits from free to pro to ultra', () => {
-      expect(PLAN_LIMITS.pro.maxChatbots).toBeGreaterThan(PLAN_LIMITS.free.maxChatbots);
-      expect(PLAN_LIMITS.ultra.maxChatbots).toBeGreaterThan(PLAN_LIMITS.pro.maxChatbots);
-    });
-  });
-
   describe('PLAN_DISPLAY', () => {
     it('should define display info for all plan codes', () => {
       const planCodes: PlanCode[] = ['free', 'pro', 'ultra'];
@@ -126,23 +94,4 @@ describe('domain/plans', () => {
       expect(getPlanLabel('unknown')).toBe('FREE');
     });
   });
-
-  describe('getPlanLimits', () => {
-    it('should return limits for valid plan codes', () => {
-      const freeLimits = getPlanLimits('free');
-      expect(freeLimits.maxChatbots).toBe(1);
-      expect(freeLimits.features.refresh).toBe(false);
-    });
-
-    it('should return free limits for unknown codes', () => {
-      const limits = getPlanLimits('unknown-plan');
-      expect(limits).toEqual(PLAN_LIMITS.free);
-    });
-
-    it('should be case insensitive', () => {
-      const limits = getPlanLimits('PRO');
-      expect(limits.maxChatbots).toBe(PLAN_LIMITS.pro.maxChatbots);
-    });
-  });
 });
-

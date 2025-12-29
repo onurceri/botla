@@ -92,7 +92,7 @@ func GetChatbotsByUserID(ctx context.Context, pool *sql.DB, userID string) ([]mo
                COALESCE(c.input_text_color, '#000000') AS input_text_color,
                COALESCE(c.send_button_color, '#ebb800') AS send_button_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
+               c.suggested_questions, c.manual_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
@@ -123,7 +123,7 @@ func GetChatbotsByWorkspace(ctx context.Context, pool *sql.DB, workspaceID strin
                COALESCE(c.input_text_color, '#000000') AS input_text_color,
                COALESCE(c.send_button_color, '#ebb800') AS send_button_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
+               c.suggested_questions, c.manual_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
@@ -145,7 +145,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 	var out []models.Chatbot
 	for rows.Next() {
 		var c models.Chatbot
-		var sj, asj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
+		var sj, mqj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.WorkspaceID, &c.OrganizationID, &c.Name, &c.Description, &c.CustomInstruction, &c.LanguageCode, &c.Model,
 			&c.Temperature, &c.MaxTokens, &c.ThemeColor, &c.WelcomeMessage,
@@ -155,7 +155,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
 			&c.ChatBackgroundColor, &c.BubbleRadius, &c.InputBackgroundColor, &c.InputTextColor, &c.SendButtonColor,
 			&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
-			&sj, &asj, &c.SuggestionsEnabled,
+			&sj, &mqj, &c.SuggestionsEnabled,
 			&ipj, &epj, &swj, &c.DiscoveryMode,
 			&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 			&c.HideBranding, &cbj,
@@ -169,10 +169,10 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 			_ = json.Unmarshal(sj, &arr)
 			c.SuggestedQuestions = arr
 		}
-		if len(asj) > 0 {
+		if len(mqj) > 0 {
 			var arr []string
-			_ = json.Unmarshal(asj, &arr)
-			c.AllSuggestedQuestions = arr
+			_ = json.Unmarshal(mqj, &arr)
+			c.ManualQuestions = arr
 		}
 		if len(ipj) > 0 {
 			var arr []string
@@ -224,7 +224,7 @@ func scanChatbots(rows *sql.Rows) ([]models.Chatbot, error) {
 
 func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatbot, error) {
 	var c models.Chatbot
-	var sj, asj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
+	var sj, mqj, ipj, epj, swj, cbj, tcj, fmj, trj, hcj []byte
 	err := pool.QueryRowContext(ctx, `
         SELECT c.id, c.user_id, c.workspace_id, c.organization_id, c.name, c.description, COALESCE(c.custom_instruction,'') AS custom_instruction, COALESCE(l.code,'') AS language_code, c.model,
                temperature, max_tokens, theme_color, welcome_message,
@@ -237,7 +237,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
                COALESCE(c.input_text_color, '#000000') AS input_text_color,
                COALESCE(c.send_button_color, '#ebb800') AS send_button_color,
                c.bot_icon, c.bot_display_name, c.allowed_domains, c.embed_secret, c.secure_embed_enabled,
-               c.suggested_questions, c.all_suggested_questions, c.suggestions_enabled,
+               c.suggested_questions, c.manual_questions, c.suggestions_enabled,
                c.include_paths, c.exclude_paths, c.selector_whitelist, COALESCE(c.discovery_mode, 'auto') AS discovery_mode,
                COALESCE(c.refresh_policy, 'manual') AS refresh_policy, c.refresh_frequency, c.next_refresh_at, c.last_refresh_at,
                COALESCE(c.hide_branding, false) AS hide_branding, c.custom_branding,
@@ -254,7 +254,7 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		&c.ChatFontFamily, &c.ChatHeaderColor, &c.ChatHeaderTextColor,
 		&c.ChatBackgroundColor, &c.BubbleRadius, &c.InputBackgroundColor, &c.InputTextColor, &c.SendButtonColor,
 		&c.BotIcon, &c.BotDisplayName, &c.AllowedDomains, &c.EmbedSecret, &c.SecureEmbedEnabled,
-		&sj, &asj, &c.SuggestionsEnabled,
+		&sj, &mqj, &c.SuggestionsEnabled,
 		&ipj, &epj, &swj, &c.DiscoveryMode,
 		&c.RefreshPolicy, &c.RefreshFrequency, &c.NextRefreshAt, &c.LastRefreshAt,
 		&c.HideBranding, &cbj,
@@ -272,10 +272,10 @@ func GetChatbotByID(ctx context.Context, pool *sql.DB, id string) (*models.Chatb
 		_ = json.Unmarshal(sj, &arr)
 		c.SuggestedQuestions = arr
 	}
-	if len(asj) > 0 {
+	if len(mqj) > 0 {
 		var arr []string
-		_ = json.Unmarshal(asj, &arr)
-		c.AllSuggestedQuestions = arr
+		_ = json.Unmarshal(mqj, &arr)
+		c.ManualQuestions = arr
 	}
 	if len(ipj) > 0 {
 		var arr []string
@@ -336,10 +336,13 @@ func GetUserByBotID(ctx context.Context, pool *sql.DB, botID string) (*models.Us
 }
 
 func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error {
-	// suggested_questions is JSONB, so marshal to JSON
-	var sj []byte
+	// suggested_questions and manual_questions are JSONB, so marshal to JSON
+	var sj, mqj []byte
 	if bot.SuggestedQuestions != nil {
 		sj, _ = json.Marshal(bot.SuggestedQuestions)
+	}
+	if bot.ManualQuestions != nil {
+		mqj, _ = json.Marshal(bot.ManualQuestions)
 	}
 
 	// For struct pointer fields (JSONB), keep as interface{} to allow NULL
@@ -372,13 +375,14 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
             chat_background_color=$18, bubble_radius=$19, input_background_color=$20, input_text_color=$21, send_button_color=$22,
             bot_icon=$23, bot_display_name=$24,
             updated_at=NOW(), allowed_domains=$25, embed_secret=$26, secure_embed_enabled=$27,
-            suggested_questions=$28, all_suggested_questions=$28, suggestions_enabled=$29,
-            include_paths=$30, exclude_paths=$31, selector_whitelist=$32, discovery_mode=$33,
-            refresh_policy=$34, refresh_frequency=$35,
-            hide_branding=$36, custom_branding=$37,
-            confidence_threshold=$38, threshold_config=$39, fallback_messages=$40, topic_restrictions=$41,
-            handoff_enabled=$42, handoff_type=$43, handoff_config=$44
-        WHERE id=$45`,
+            suggested_questions=COALESCE($28, suggested_questions), suggestions_enabled=$29,
+            manual_questions=COALESCE($30, manual_questions),
+            include_paths=$31, exclude_paths=$32, selector_whitelist=$33, discovery_mode=$34,
+            refresh_policy=$35, refresh_frequency=$36,
+            hide_branding=$37, custom_branding=$38,
+            confidence_threshold=$39, threshold_config=$40, fallback_messages=$41, topic_restrictions=$42,
+            handoff_enabled=$43, handoff_type=$44, handoff_config=$45
+        WHERE id=$46`,
 		bot.Name, bot.Description, bot.CustomInstruction, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
@@ -388,6 +392,7 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 		bot.BotIcon, bot.BotDisplayName,
 		bot.AllowedDomains, bot.EmbedSecret, bot.SecureEmbedEnabled,
 		sj, bot.SuggestionsEnabled,
+		mqj,
 		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 		bot.RefreshPolicy, bot.RefreshFrequency,
 		bot.HideBranding, cbj,
@@ -401,12 +406,13 @@ func UpdateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) error
 	return nil
 }
 
-func UpdateChatbotSuggestions(ctx context.Context, pool *sql.DB, id string, suggestions []string) error {
+// UpdateChatbotSuggestedQuestions updates only the AI-generated suggestions
+func UpdateChatbotSuggestedQuestions(ctx context.Context, pool *sql.DB, id string, suggestions []string) error {
 	js, err := json.Marshal(suggestions)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "marshal suggestions")
 	}
-	_, err = pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, all_suggested_questions=$1, updated_at=NOW() WHERE id=$2`, js, id)
+	_, err = pool.ExecContext(ctx, `UPDATE chatbots SET suggested_questions=$1, updated_at=NOW() WHERE id=$2`, js, id)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "update chatbot suggestions")
 	}

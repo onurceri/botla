@@ -93,6 +93,7 @@ type ChatConfig struct {
 	MaxMonthlyTokens      int       `json:"max_monthly_tokens"`
 	RAG                   RAGConfig `json:"rag"`
 	MaxSuggestedQuestions int       `json:"max_suggested_questions"`  // Plan-based limit: Free=3, Pro=6, Ultra=10
+	MaxManualQuestions    int       `json:"max_manual_questions"`     // Plan-based limit: Free=3, Pro=6, Ultra=10
 	MinResponseTokenLimit int       `json:"min_response_token_limit"` // Min valid value for max_tokens (e.g., 1)
 	MaxResponseTokenLimit int       `json:"max_response_token_limit"` // Max valid value for max_tokens (e.g., 4096 or 8192)
 }

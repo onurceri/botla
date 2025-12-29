@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 import { cn } from '@/lib/utils'
+import { usePlans } from '@/hooks/queries/usePlans'
 
 // --- Components ---
 
@@ -464,60 +465,57 @@ const PricingCard = ({ title, price, features, recommended, cta }: any) => (
 )
 
 const Pricing = ({ authenticated }: { authenticated: boolean }) => {
-  const plans = [
-    {
-      title: 'Free',
-      price: '0 TL',
-      cta: {
-        text: authenticated ? "Dashboard'a Git" : 'Ücretsiz Başla',
-        href: authenticated ? '/dashboard' : '/register',
-      },
+  const { data: apiPlans, isLoading } = usePlans()
+
+  const plans = apiPlans?.map(p => {
+    const isFree = p.code === 'free'
+    const isUltra = p.code === 'ultra'
+    const isPro = p.code === 'pro'
+
+    return {
+      title: p.name || (p.code.charAt(0).toUpperCase() + p.code.slice(1)),
+      price: p.price === 0 ? '0 TL' : `${p.price} ${p.currency}`,
+      recommended: isPro,
+      cta: isUltra 
+        ? { text: 'İletişime Geç', href: 'mailto:sales@botla.app' }
+        : {
+            text: authenticated ? "Dashboard'a Git" : (isFree ? 'Ücretsiz Başla' : "Pro'ya Geç"),
+            href: authenticated ? '/dashboard' : '/register',
+          },
       features: [
-        { text: '1 Adet Chatbot', included: true },
-        { text: 'Aylık 100.000 Token', included: true },
-        { text: '1 Web Sitesi Kaynağı', included: true },
-        { text: '1 PDF Dosyası (Max 5MB)', included: true },
-        { text: 'GPT-4o Mini Modeli', included: true },
-        { text: 'botla.app İmzası', included: true },
-        { text: 'Gelişmiş Guardrails', included: false },
-        { text: 'Dinamik Web Tarama', included: false },
-      ],
-    },
-    {
-      title: 'Pro',
-      price: '199 TL',
-      recommended: true,
-      cta: {
-        text: authenticated ? "Dashboard'a Git" : "Pro'ya Geç",
-        href: authenticated ? '/dashboard' : '/register',
-      },
-      features: [
-        { text: '10 Adet Chatbot', included: true },
-        { text: 'Aylık 1.000.000 Token', included: true },
-        { text: '10 Web Sitesi & 20 PDF', included: true },
-        { text: 'GPT-4o & GPT-4o Mini', included: true },
-        { text: 'OCR (Görsel Tarama)', included: true },
-        { text: 'Dinamik Web Tarama (Crawler)', included: true },
-        { text: 'Gelişmiş Guardrails', included: true },
-        { text: 'Öncelikli Destek', included: true },
-      ],
-    },
-    {
-      title: 'Ultra',
-      price: '999 TL',
-      cta: { text: 'İletişime Geç', href: 'mailto:sales@botla.app' },
-      features: [
-        { text: '100 Adet Chatbot', included: true },
-        { text: 'Aylık 5.000.000 Token', included: true },
-        { text: '50 Site & 100 PDF', included: true },
-        { text: 'GPT-4o & GPT-5 Hazır', included: true },
-        { text: 'Tam Özelleştirme & Branding Kaldırma', included: true },
-        { text: 'İnsan Desteğine Aktarma', included: true },
-        { text: 'Özel Entegrasyonlar', included: true },
-        { text: '7/24 Öncelikli Destek', included: true },
-      ],
-    },
-  ]
+        { text: `${p.limits.max_chatbots} Adet Chatbot`, included: true },
+        { text: `Aylık ${p.limits.max_monthly_ingestions.toLocaleString('tr-TR')} Token`, included: true },
+        { 
+          text: isFree 
+            ? `${p.features.scraping.max_urls_per_bot} Web Sitesi Kaynağı`
+            : `${p.features.scraping.max_urls_per_bot} Site & ${p.features.files.max_files_per_bot} PDF`, 
+          included: true 
+        },
+        isFree ? { text: `1 PDF Dosyası (Max ${p.features.files.max_size_mb}MB)`, included: true } : null,
+        { text: isUltra ? 'GPT-4o & GPT-5 Hazır' : (isPro ? 'GPT-4o & GPT-4o Mini' : 'GPT-4o Mini Modeli'), included: true },
+        isPro || isUltra ? { text: 'OCR (Görsel Tarama)', included: true } : null,
+        isPro || isUltra ? { text: 'Dinamik Web Tarama', included: true } : { text: 'Dinamik Web Tarama', included: false },
+        isUltra ? { text: 'İnsan Desteğine Aktarma', included: true } : null,
+        isFree ? { text: 'botla.app İmzası', included: true } : { text: 'Branding Kaldırma', included: true },
+        { text: isUltra ? '7/24 Öncelikli Destek' : (isPro ? 'Öncelikli Destek' : 'Gelişmiş Guardrails'), included: !isFree },
+      ].filter(f => f !== null),
+    }
+  }) || []
+
+  if (isLoading) {
+    return (
+      <section id="pricing" className="py-32 bg-background relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <Badge>Fiyatlandırma</Badge>
+          <div className="mt-20 flex justify-center gap-8">
+            <div className="w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
+            <div className="w-80 h-[550px] bg-muted animate-pulse rounded-3xl" />
+            <div className="w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section id="pricing" className="scroll-mt-24 py-32 bg-background relative overflow-hidden">

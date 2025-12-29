@@ -10,35 +10,12 @@ export {
   // Types
   type PlanCode,
   type PlanTier,
-  type PlanFeatures,
-  type PlanLimits,
   // Constants
-  PLAN_LIMITS,
   PLAN_DISPLAY,
   // Functions
-  getPlanLimits,
   normalizePlanCode,
   planCodeToTier,
   getPlanLabel,
-  // Limit checks
-  type LimitCheckResult,
-  canCreateChatbot,
-  canAddSource,
-  canAddURL,
-  canAddPDF,
-  canUploadFile,
-  canAddText,
-  canRefreshSource,
-  canUseHandoff,
-  canCustomizeBranding,
-  hasAnalyticsAccess,
-  hasApiAccess,
-  canUseOCR,
-  canUseDynamicScraping,
-  canUseSecureEmbed,
-  getPlanFeatures,
-  formatRemaining,
-  getLimitStatusMessage,
 } from './plans';
 
 // Errors

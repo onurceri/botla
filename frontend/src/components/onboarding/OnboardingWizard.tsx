@@ -44,11 +44,14 @@ function StepContent({
           textContent={state.textContent}
           urlContent={state.urlContent}
           pdfFile={state.pdfFile}
+          planData={actions.planFeatures}
+          planCode={actions.planLimits?.code || 'free'}
           onSourceTypeChange={actions.setSourceType}
           onTextContentChange={actions.setTextContent}
           onUrlContentChange={actions.setUrlContent}
           onFileSelect={actions.handleFileSelect}
           onFileRemove={() => actions.setPdfFile(null)}
+          onSkipStep={actions.skipStep2}
         />
       )
     case 3:

@@ -34,6 +34,7 @@ export interface WizardState extends OnboardingFormState {
   currentStep: StepNumber
   isLoading: boolean
   createdBotId: string | null
+  skipDataSource: boolean
 }
 
 /** Actions available for wizard navigation and form updates */
@@ -43,6 +44,7 @@ export interface WizardActions {
   goToPreviousStep: () => void
   finish: () => void
   skip: () => Promise<void>
+  skipStep2: () => void
 
   // Form updates
   setBotName: (name: string) => void
@@ -64,4 +66,6 @@ export const DEFAULT_SYSTEM_PROMPT =
 
 export const DEFAULT_WELCOME_MESSAGE = 'Merhaba! Size nasıl yardımcı olabilirim?'
 
-export const MAX_FILE_SIZE_MB = 10
+/** Text source limits per plan (baseline minimum) */
+export const MIN_TEXT_LENGTH = 50
+

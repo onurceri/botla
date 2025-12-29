@@ -73,7 +73,7 @@ func TestChatbot_CRUD_DB(t *testing.T) {
 		t.Fatalf("suggestions not read")
 	}
 	// update suggestions
-	if err2 := db.UpdateChatbotSuggestions(context.Background(), dbConn, id, []string{"A", "B"}); err2 != nil {
+	if err2 := db.UpdateChatbotSuggestedQuestions(context.Background(), dbConn, id, []string{"A", "B"}); err2 != nil {
 		t.Fatalf("update sugg: %v", err2)
 	}
 	got2, err2 := db.GetChatbotByID(context.Background(), dbConn, id)

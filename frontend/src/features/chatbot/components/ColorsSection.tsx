@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input'
+import { ColorPicker } from '@/components/ui/color-picker'
 import { ChevronDown, Palette } from 'lucide-react'
 
 type Props = {
@@ -94,7 +95,7 @@ export default function ColorsSection({
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">
               Genel
             </h4>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
               <div className="space-y-2.5">
                 <label
                   htmlFor="font-select"
@@ -104,7 +105,7 @@ export default function ColorsSection({
                 </label>
                 <select
                   id="font-select"
-                  className="flex h-11 w-full rounded-xl border border-slate-200/60 bg-slate-50/50 px-3 py-1 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/5"
+                  className="flex h-11 w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 px-4 py-1 text-[13px] font-medium transition-all hover:bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/5"
                   value={chatFontFamily}
                   onChange={(e) => setChatFontFamily(e.target.value)}
                 >
@@ -116,49 +117,35 @@ export default function ColorsSection({
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label
-                    htmlFor="theme-color"
-                    className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                  >
-                    Varsayılan İkon Rengi
-                  </label>
-                  <div className="flex gap-2.5">
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                      <Input
-                        id="theme-color"
-                        type="color"
-                        value={themeColor}
-                        onChange={(e) => setThemeColor(e.target.value)}
-                        className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                      />
-                    </div>
-                    <Input
-                      value={themeColor}
-                      onChange={(e) => setThemeColor(e.target.value)}
-                      className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
-                    />
-                  </div>
-                </div>
+              <div className="space-y-2.5">
+                <label
+                  htmlFor="bubble-radius"
+                  className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
+                >
+                  Kabarcık Ovalleşmesi
+                </label>
+                <Input
+                  id="bubble-radius"
+                  value={bubbleRadius}
+                  onChange={(e) => setBubbleRadius(e.target.value)}
+                  className="h-11 rounded-2xl border-2 border-slate-100 bg-slate-50/30 px-4 focus:bg-white transition-all font-medium text-[13px]"
+                  placeholder="22px"
+                />
+              </div>
 
-                <div className="space-y-2.5">
-                  <label
-                    htmlFor="bubble-radius"
-                    className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                  >
-                    Kabarcık Ovalleşmesi
-                  </label>
-                  <div className="flex gap-2.5 items-center">
-                    <Input
-                      id="bubble-radius"
-                      value={bubbleRadius}
-                      onChange={(e) => setBubbleRadius(e.target.value)}
-                      className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-sm"
-                      placeholder="22px"
-                    />
-                  </div>
-                </div>
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                <label
+                  htmlFor="theme-color"
+                  className="text-[12px] font-bold text-slate-600 tracking-tight"
+                >
+                  Varsayılan İkon Rengi
+                </label>
+                <ColorPicker
+                  id="theme-color"
+                  value={themeColor}
+                  onChange={setThemeColor}
+                  label="Varsayılan İkon Rengi"
+                />
               </div>
             </div>
           </div>
@@ -167,190 +154,94 @@ export default function ColorsSection({
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">
               Panel & Header
             </h4>
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2.5">
-                <label
-                  htmlFor="chat-bg"
-                  className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                >
-                  Chat Arka Plan
-                </label>
-                <div className="flex gap-2.5">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                    <Input
-                      id="chat-bg"
-                      type="color"
-                      value={chatBackgroundColor}
-                      onChange={(e) => setChatBackgroundColor(e.target.value)}
-                      className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                    />
-                  </div>
-                  <Input
-                    value={chatBackgroundColor}
-                    onChange={(e) => setChatBackgroundColor(e.target.value)}
-                    className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                <div className="space-y-0.5">
+                  <span className="text-[12px] font-bold text-slate-600 tracking-tight">Arka Plan</span>
+                  <p className="text-[10px] text-slate-400 font-medium">Chat panel ana rengi</p>
                 </div>
+                <ColorPicker
+                  id="chat-bg"
+                  value={chatBackgroundColor}
+                  onChange={setChatBackgroundColor}
+                  label="Chat Arka Plan"
+                />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label
-                    htmlFor="header-color"
-                    className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                  >
-                    Header
-                  </label>
-                  <div className="flex gap-2.5">
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                      <Input
-                        id="header-color"
-                        type="color"
-                        value={chatHeaderColor}
-                        onChange={(e) => setChatHeaderColor(e.target.value)}
-                        className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                      />
-                    </div>
-                    <Input
-                      value={chatHeaderColor}
-                      onChange={(e) => setChatHeaderColor(e.target.value)}
-                      className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
-                    />
-                  </div>
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                <div className="space-y-0.5">
+                  <span className="text-[12px] font-bold text-slate-600 tracking-tight">Üst Bilgi</span>
+                  <p className="text-[10px] text-slate-400 font-medium">Header arka planı</p>
                 </div>
-                <div className="space-y-2.5">
-                  <label
-                    htmlFor="header-text-color"
-                    className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                  >
-                    Yazı
-                  </label>
-                  <div className="flex gap-2.5">
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                      <Input
-                        id="header-text-color"
-                        type="color"
-                        value={chatHeaderTextColor}
-                        onChange={(e) => setChatHeaderTextColor(e.target.value)}
-                        className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                      />
-                    </div>
-                    <Input
-                      value={chatHeaderTextColor}
-                      onChange={(e) => setChatHeaderTextColor(e.target.value)}
-                      className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
-                    />
-                  </div>
+                <ColorPicker
+                  id="header-color"
+                  value={chatHeaderColor}
+                  onChange={setChatHeaderColor}
+                  label="Header"
+                />
+              </div>
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                <div className="space-y-0.5">
+                  <span className="text-[12px] font-bold text-slate-600 tracking-tight">Başlık Yazısı</span>
+                  <p className="text-[10px] text-slate-400 font-medium">Header yazı rengi</p>
                 </div>
+                <ColorPicker
+                  id="header-text-color"
+                  value={chatHeaderTextColor}
+                  onChange={setChatHeaderTextColor}
+                  label="Header Yazı"
+                />
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">
-              Bot Mesajları
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2.5">
-                <label
-                  htmlFor="bot-msg-color"
-                  className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                >
-                  Arka Plan
-                </label>
-                <div className="flex gap-2.5">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                    <Input
-                      id="bot-msg-color"
-                      type="color"
-                      value={botMessageColor}
-                      onChange={(e) => setBotMessageColor(e.target.value)}
-                      className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                    />
-                  </div>
-                  <Input
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">
+                Bot Mesajları
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                  <span className="text-[12px] font-bold text-slate-600 tracking-tight">Arka Plan</span>
+                  <ColorPicker
+                    id="bot-msg-color"
                     value={botMessageColor}
-                    onChange={(e) => setBotMessageColor(e.target.value)}
-                    className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
+                    onChange={setBotMessageColor}
+                    label="Bot Mesaj Arka Plan"
                   />
                 </div>
-              </div>
-              <div className="space-y-2.5">
-                <label
-                  htmlFor="bot-text-color"
-                  className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                >
-                  Yazı
-                </label>
-                <div className="flex gap-2.5">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                    <Input
-                      id="bot-text-color"
-                      type="color"
-                      value={botMessageTextColor}
-                      onChange={(e) => setBotMessageTextColor(e.target.value)}
-                      className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                    />
-                  </div>
-                  <Input
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                  <span className="text-[12px] font-bold text-slate-600 tracking-tight">Yazı Rengi</span>
+                  <ColorPicker
+                    id="bot-text-color"
                     value={botMessageTextColor}
-                    onChange={(e) => setBotMessageTextColor(e.target.value)}
-                    className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
+                    onChange={setBotMessageTextColor}
+                    label="Bot Mesaj Yazı"
                   />
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">
-              Kullanıcı Mesajları
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2.5">
-                <label
-                  htmlFor="user-msg-color"
-                  className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                >
-                  Arka Plan
-                </label>
-                <div className="flex gap-2.5">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                    <Input
-                      id="user-msg-color"
-                      type="color"
-                      value={userMessageColor}
-                      onChange={(e) => setUserMessageColor(e.target.value)}
-                      className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                    />
-                  </div>
-                  <Input
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">
+                Kullanıcı Mesajları
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                  <span className="text-[12px] font-bold text-slate-600 tracking-tight">Arka Plan</span>
+                  <ColorPicker
+                    id="user-msg-color"
                     value={userMessageColor}
-                    onChange={(e) => setUserMessageColor(e.target.value)}
-                    className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
+                    onChange={setUserMessageColor}
+                    label="Kullanıcı Mesaj Arka Plan"
                   />
                 </div>
-              </div>
-              <div className="space-y-2.5">
-                <label
-                  htmlFor="user-text-color"
-                  className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                >
-                  Yazı
-                </label>
-                <div className="flex gap-2.5">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                    <Input
-                      id="user-text-color"
-                      type="color"
-                      value={userMessageTextColor}
-                      onChange={(e) => setUserMessageTextColor(e.target.value)}
-                      className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                    />
-                  </div>
-                  <Input
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                  <span className="text-[12px] font-bold text-slate-600 tracking-tight">Yazı Rengi</span>
+                  <ColorPicker
+                    id="user-text-color"
                     value={userMessageTextColor}
-                    onChange={(e) => setUserMessageTextColor(e.target.value)}
-                    className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
+                    onChange={setUserMessageTextColor}
+                    label="Kullanıcı Mesaj Yazı"
                   />
                 </div>
               </div>
@@ -361,80 +252,33 @@ export default function ColorsSection({
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">
               Giriş Alanı
             </h4>
-            <div className="space-y-4">
-              <div className="space-y-2.5">
-                <label
-                  htmlFor="input-bg"
-                  className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                >
-                  Arka Plan
-                </label>
-                <div className="flex gap-2.5">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                    <Input
-                      id="input-bg"
-                      type="color"
-                      value={inputBackgroundColor}
-                      onChange={(e) => setInputBackgroundColor(e.target.value)}
-                      className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                    />
-                  </div>
-                  <Input
-                    value={inputBackgroundColor}
-                    onChange={(e) => setInputBackgroundColor(e.target.value)}
-                    className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                <span className="text-[12px] font-bold text-slate-600 tracking-tight">Arka Plan</span>
+                <ColorPicker
+                  id="input-bg"
+                  value={inputBackgroundColor}
+                  onChange={setInputBackgroundColor}
+                  label="Giriş Alanı Arka Plan"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label
-                    htmlFor="input-text"
-                    className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                  >
-                    Yazı Rengi
-                  </label>
-                  <div className="flex gap-2.5">
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                      <Input
-                        id="input-text"
-                        type="color"
-                        value={inputTextColor}
-                        onChange={(e) => setInputTextColor(e.target.value)}
-                        className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                      />
-                    </div>
-                    <Input
-                      value={inputTextColor}
-                      onChange={(e) => setInputTextColor(e.target.value)}
-                      className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2.5">
-                  <label
-                    htmlFor="send-btn"
-                    className="text-[11px] font-bold text-slate-500 tracking-tight ml-1"
-                  >
-                    Gönder Butonu
-                  </label>
-                  <div className="flex gap-2.5">
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200/60 bg-slate-50/50 shrink-0">
-                      <Input
-                        id="send-btn"
-                        type="color"
-                        value={sendButtonColor}
-                        onChange={(e) => setSendButtonColor(e.target.value)}
-                        className="absolute inset-0 w-[150%] h-[150%] -top-[25%] -left-[25%] p-0 border-0 cursor-pointer"
-                      />
-                    </div>
-                    <Input
-                      value={sendButtonColor}
-                      onChange={(e) => setSendButtonColor(e.target.value)}
-                      className="h-11 rounded-xl bg-slate-50/50 border-slate-200/60 focus:bg-white transition-all font-mono text-xs flex-1"
-                    />
-                  </div>
-                </div>
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                <span className="text-[12px] font-bold text-slate-600 tracking-tight">Yazı Rengi</span>
+                <ColorPicker
+                  id="input-text"
+                  value={inputTextColor}
+                  onChange={setInputTextColor}
+                  label="Giriş Alanı Yazı"
+                />
+              </div>
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/30 border-2 border-slate-100">
+                <span className="text-[12px] font-bold text-slate-600 tracking-tight">Gönder Butonu</span>
+                <ColorPicker
+                  id="send-btn"
+                  value={sendButtonColor}
+                  onChange={setSendButtonColor}
+                  label="Gönder Butonu"
+                />
               </div>
             </div>
           </div>

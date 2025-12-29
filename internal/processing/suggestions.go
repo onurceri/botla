@@ -9,8 +9,8 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/logger"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 // DefaultMaxSuggestions is the fallback limit when plan config is not available.
@@ -122,7 +122,7 @@ func AggregateAndPersistChatbotSuggestionsWithLimit(ctx context.Context, pool *s
 
 	// Only update if changed
 	if len(newSuggestions) != len(currentSuggestions) || !slicesEqual(newSuggestions, currentSuggestions) {
-		if err := db.UpdateChatbotSuggestions(ctx, pool, chatbotID, newSuggestions); err != nil {
+		if err := db.UpdateChatbotSuggestedQuestions(ctx, pool, chatbotID, newSuggestions); err != nil {
 			logWarnIfPresent(log, "update_chatbot_suggestions_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		}
 	}
@@ -144,7 +144,7 @@ func ReAggregateSuggestionsForChatbot(ctx context.Context, pool *sql.DB, chatbot
 	// Rebuild from scratch (no existing questions)
 	newSuggestions := AggregateWithWeightedSelection(sources, nil, maxQuestions)
 
-	if err := db.UpdateChatbotSuggestions(ctx, pool, chatbotID, newSuggestions); err != nil {
+	if err := db.UpdateChatbotSuggestedQuestions(ctx, pool, chatbotID, newSuggestions); err != nil {
 		logWarnIfPresent(log, "reaggregate_update_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 	}
 }

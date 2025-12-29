@@ -17,13 +17,14 @@ import type {
 import {
   DEFAULT_SYSTEM_PROMPT,
   DEFAULT_WELCOME_MESSAGE,
-  MAX_FILE_SIZE_MB,
 } from '../types'
+import { usePlan } from '@/hooks/queries/useProfile'
 
 const initialState: WizardState = {
   currentStep: 1,
   isLoading: false,
   createdBotId: null,
+  skipDataSource: false,
   botName: '',
   sourceType: 'text',
   textContent: '',
@@ -37,9 +38,20 @@ const initialState: WizardState = {
  * Manages all onboarding wizard state, navigation, and API interactions.
  * Returns a tuple of [state, actions] for use in wizard components.
  */
-export function useOnboardingWizard(): [WizardState, WizardActions] {
+export function useOnboardingWizard(): [WizardState, WizardActions & { planLimits: any }] {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { data: planData } = usePlan()
+  
+  const planLimits = planData?.limits || {
+    max_chatbots: 1,
+    max_monthly_ingestions: 100,
+  }
+  
+  const planFeatures = planData?.features || {
+    files: { max_size_mb: 5, max_text_length: 10000 }
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<WizardState>(initialState)
 
@@ -110,7 +122,12 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
       case 1:
         return state.botName.trim().length >= 2
       case 2:
-        if (state.sourceType === 'text') return state.textContent.trim().length >= 50
+        // Step 2 is optional - can always proceed (skipStep2 handles skip case)
+        if (state.skipDataSource) return true
+        if (state.sourceType === 'text') {
+          const maxTextLength = planFeatures.files?.max_text_length || 10000
+          return state.textContent.trim().length >= 50 && state.textContent.trim().length <= maxTextLength
+        }
         if (state.sourceType === 'url') return state.urlContent.trim().startsWith('http')
         if (state.sourceType === 'file') return state.pdfFile !== null
         return false
@@ -121,7 +138,7 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
       default:
         return false
     }
-  }, [state.currentStep, state.botName, state.sourceType, state.textContent, state.urlContent, state.pdfFile, state.systemPrompt])
+  }, [state.currentStep, state.botName, state.sourceType, state.textContent, state.urlContent, state.pdfFile, state.systemPrompt, state.skipDataSource])
 
   // --- Navigation ---
   const goToNextStep = useCallback(async () => {
@@ -143,28 +160,30 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
 
         const createdBotId = chatbot.id as string
 
-        // Add source based on type
-        if (state.sourceType === 'text' && state.textContent.trim()) {
-          const formData = new FormData()
-          formData.append('source_type', 'text')
-          formData.append('text', state.textContent)
-          await api.post(`/api/v1/chatbots/${createdBotId}/sources`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          })
-        } else if (state.sourceType === 'url' && state.urlContent.trim()) {
-          const formData = new FormData()
-          formData.append('source_type', 'url')
-          formData.append('source_url', state.urlContent)
-          await api.post(`/api/v1/chatbots/${createdBotId}/sources`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          })
-        } else if (state.sourceType === 'file' && state.pdfFile) {
-          const formData = new FormData()
-          formData.append('source_type', 'pdf')
-          formData.append('file', state.pdfFile)
-          await api.post(`/api/v1/chatbots/${createdBotId}/sources`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          })
+        // Add source based on type (only if not skipped)
+        if (!state.skipDataSource) {
+          if (state.sourceType === 'text' && state.textContent.trim()) {
+            const formData = new FormData()
+            formData.append('source_type', 'text')
+            formData.append('text', state.textContent)
+            await api.post(`/api/v1/chatbots/${createdBotId}/sources`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            })
+          } else if (state.sourceType === 'url' && state.urlContent.trim()) {
+            const formData = new FormData()
+            formData.append('source_type', 'url')
+            formData.append('source_url', state.urlContent)
+            await api.post(`/api/v1/chatbots/${createdBotId}/sources`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            })
+          } else if (state.sourceType === 'file' && state.pdfFile) {
+            const formData = new FormData()
+            formData.append('source_type', 'pdf')
+            formData.append('file', state.pdfFile)
+            await api.post(`/api/v1/chatbots/${createdBotId}/sources`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            })
+          }
         }
 
         // Mark onboarding as completed
@@ -216,6 +235,14 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
     }
   }, [navigate])
 
+  const skipStep2 = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      skipDataSource: true,
+      currentStep: 3 as StepNumber,
+    }))
+  }, [])
+
   // --- Form updates ---
   const setBotName = useCallback((name: string) => {
     setState((prev) => ({ ...prev, botName: name }))
@@ -258,15 +285,16 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
       return
     }
 
-    const maxSize = MAX_FILE_SIZE_MB * 1024 * 1024
+    const maxFileSizeMB = planFeatures.files?.max_size_mb || 10
+    const maxSize = maxFileSizeMB * 1024 * 1024
     if (file.size > maxSize) {
-      toast(`Dosya boyutu ${MAX_FILE_SIZE_MB}MB'den büyük olamaz.`, 'error')
+      toast(`Dosya boyutu ${maxFileSizeMB}MB'den büyük olamaz.`, 'error')
       if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
 
     setState((prev) => ({ ...prev, pdfFile: file }))
-  }, [toast])
+  }, [toast, planFeatures.files?.max_size_mb])
 
   return [
     state,
@@ -275,6 +303,7 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
       goToPreviousStep,
       finish,
       skip,
+      skipStep2,
       setBotName,
       setSourceType,
       setTextContent,
@@ -284,6 +313,8 @@ export function useOnboardingWizard(): [WizardState, WizardActions] {
       setWelcomeMessage,
       handleFileSelect,
       canProceed,
+      planLimits,
+      planFeatures,
     },
   ]
 }
