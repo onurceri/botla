@@ -141,5 +141,5 @@ func TestPlanService_ConcurrentAccess(t *testing.T) {
 func TestPlanService_CacheKeyFormat(t *testing.T) {
 	assert.Equal(t, "plan:", planCacheKeyPrefix)
 	assert.Equal(t, "plans:all", allPlansCacheKey)
-	assert.Equal(t, 15*time.Minute, planCacheTTL)
+	assert.Equal(t, 24*time.Hour, planCacheTTL)
 }

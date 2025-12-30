@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type PrivacyService struct {
@@ -177,8 +177,8 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 	}
 
 	if req.UserID == nil {
-		if err := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); err != nil {
-			return pkgerrors.Wrapf(err, "update privacy request status")
+		if errStatus := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); errStatus != nil {
+			return pkgerrors.Wrapf(errStatus, "update privacy request status")
 		}
 		return nil
 	}
@@ -283,8 +283,8 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 	}
 
 	// 4. Update request status
-	if err := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); err != nil {
-		return pkgerrors.Wrapf(err, "update privacy request status")
+	if errStatus := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); errStatus != nil {
+		return pkgerrors.Wrapf(errStatus, "update privacy request status")
 	}
 	return nil
 }

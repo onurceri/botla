@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -173,7 +174,7 @@ func (s *PlanService) fetchAllPlans(ctx context.Context) ([]models.Plan, error) 
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "fetch all plans")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var plans []models.Plan
 	for rows.Next() {
@@ -237,4 +238,30 @@ func (s *PlanService) setInCache(ctx context.Context, key string, data []byte) {
 		data:      data,
 		expiresAt: time.Now().Add(planCacheTTL),
 	})
+}
+
+// ValidateAllPlans fetches all active plans from the database and validates each plan's configuration.
+// Returns a combined error if any plan fails validation.
+// Returns nil if all plans are valid or if no plans exist.
+func (s *PlanService) ValidateAllPlans(ctx context.Context) error {
+	plans, err := s.fetchAllPlans(ctx)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "fetching all plans for validation")
+	}
+
+	if len(plans) == 0 {
+		return nil
+	}
+
+	var validationErrors []error
+	for _, plan := range plans {
+		if err := plan.Config.Validate(); err != nil {
+			validationErrors = append(validationErrors, fmt.Errorf("plan %q: %w", plan.Code, err))
+		}
+	}
+
+	if len(validationErrors) > 0 {
+		return errors.Join(validationErrors...)
+	}
+	return nil
 }

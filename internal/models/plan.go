@@ -126,16 +126,16 @@ func (p *PlanConfig) Scan(value interface{}) error {
 
 func (p PlanConfig) Validate() error {
 	if p.MaxChatbots <= 0 {
-		return fmt.Errorf("max_chatbots must be >= 1, got %d", p.MaxChatbots)
+		return fmt.Errorf("config.max_chatbots must be >= 1, got %d", p.MaxChatbots)
 	}
 	if p.MaxMonthlyIngestions < 0 {
-		return fmt.Errorf("max_monthly_ingestions must be >= 0, got %d", p.MaxMonthlyIngestions)
+		return fmt.Errorf("config.max_monthly_ingestions must be >= 0, got %d", p.MaxMonthlyIngestions)
 	}
 	if p.MaxMonthlyEmbeddingTokens < 0 {
-		return fmt.Errorf("max_monthly_embedding_tokens must be >= 0, got %d", p.MaxMonthlyEmbeddingTokens)
+		return fmt.Errorf("config.max_monthly_embedding_tokens must be >= 0, got %d", p.MaxMonthlyEmbeddingTokens)
 	}
 	if p.MinReAddCooldownMinutes < 0 {
-		return fmt.Errorf("min_readd_cooldown_minutes must be >= 0, got %d", p.MinReAddCooldownMinutes)
+		return fmt.Errorf("config.min_readd_cooldown_minutes must be >= 0, got %d", p.MinReAddCooldownMinutes)
 	}
 	if err := p.Scraping.Validate(); err != nil {
 		return err

@@ -134,6 +134,51 @@ func TestPlanConfigValidate(t *testing.T) {
 			t.Error("expected error for MaxMonthlyEmbeddingTokens = -1")
 		}
 	})
+
+	t.Run("scraping config error propagation", func(t *testing.T) {
+		config := validConfig
+		config.Scraping.MaxURLsPerBot = -1
+		err := config.Validate()
+		if err == nil {
+			t.Error("expected error from scraping config")
+		}
+	})
+
+	t.Run("files config error propagation", func(t *testing.T) {
+		config := validConfig
+		config.Files.MaxSizeMB = 0
+		err := config.Validate()
+		if err == nil {
+			t.Error("expected error from files config")
+		}
+	})
+
+	t.Run("chat config error propagation", func(t *testing.T) {
+		config := validConfig
+		config.Chat.MaxMonthlyTokens = -1
+		err := config.Validate()
+		if err == nil {
+			t.Error("expected error from chat config")
+		}
+	})
+
+	t.Run("refresh config error propagation", func(t *testing.T) {
+		config := validConfig
+		config.Refresh.MaxMonthly = -1
+		err := config.Validate()
+		if err == nil {
+			t.Error("expected error from refresh config")
+		}
+	})
+
+	t.Run("rate_limits config error propagation", func(t *testing.T) {
+		config := validConfig
+		config.RateLimits.RequestsPerMinute = 0
+		err := config.Validate()
+		if err == nil {
+			t.Error("expected error from rate_limits config")
+		}
+	})
 }
 
 func TestScrapingConfigValidate(t *testing.T) {
@@ -439,6 +484,23 @@ func TestChatConfigValidate(t *testing.T) {
 			t.Error("expected error when MaxResponseTokenLimit < MinResponseTokenLimit")
 		}
 	})
+
+	t.Run("rag config error propagation", func(t *testing.T) {
+		config := ChatConfig{
+			MaxMonthlyTokens:      1000000,
+			MaxSuggestedQuestions: 5,
+			MaxManualQuestions:    5,
+			MinResponseTokenLimit: 1,
+			MaxResponseTokenLimit: 4096,
+			RAG: RAGConfig{
+				TopK: 0,
+			},
+		}
+		err := config.Validate()
+		if err == nil {
+			t.Error("expected error from rag config")
+		}
+	})
 }
 
 func TestRefreshConfigValidate(t *testing.T) {
@@ -614,4 +676,50 @@ func TestRAGConfigValidate(t *testing.T) {
 			t.Error("expected error for MaxContextTokens = -1")
 		}
 	})
+}
+
+func TestPlanConfigJSONB(t *testing.T) {
+	config := PlanConfig{
+		MaxChatbots: 5,
+		Chat: ChatConfig{
+			DefaultModel: "gpt-4",
+		},
+	}
+
+	// Test Value
+	value, err := config.Value()
+	if err != nil {
+		t.Fatalf("Value() error: %v", err)
+	}
+
+	bytes, ok := value.([]byte)
+	if !ok {
+		t.Fatalf("Value() did not return []byte, got %T", value)
+	}
+
+	// Test Scan
+	var scanned PlanConfig
+	err = scanned.Scan(bytes)
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+
+	if scanned.MaxChatbots != config.MaxChatbots {
+		t.Errorf("expected MaxChatbots %d, got %d", config.MaxChatbots, scanned.MaxChatbots)
+	}
+	if scanned.Chat.DefaultModel != config.Chat.DefaultModel {
+		t.Errorf("expected DefaultModel %s, got %s", config.Chat.DefaultModel, scanned.Chat.DefaultModel)
+	}
+
+	// Test Scan with invalid type
+	err = scanned.Scan(123)
+	if err == nil {
+		t.Error("expected error scanning non-[]byte value")
+	}
+
+	// Test Scan with invalid JSON
+	err = scanned.Scan([]byte("{invalid json"))
+	if err == nil {
+		t.Error("expected error scanning invalid JSON")
+	}
 }
