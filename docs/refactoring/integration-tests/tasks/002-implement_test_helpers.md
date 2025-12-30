@@ -8,14 +8,14 @@ Scope:
 - Use TDD: Write a new test in `internal/integration/fixtures/helpers_test.go` that *uses* these methods before they exist (failing compilation/test), then implement them.
 
 Checklist:
-[ ] Create `internal/integration/fixtures/helpers_test.go`
-[ ] Write failing test using `env.CreateUser("test@example.com")`
-[ ] Implement `CreateUser` in `fixtures`
-[ ] Write failing test using `env.CreateChatbot(user, "MyBot")`
-[ ] Implement `CreateChatbot` in `fixtures`
-[ ] Write failing test using `env.CreateSource(bot, "http://example.com")`
-[ ] Implement `CreateSource` in `fixtures` (handling multipart/DB interactions inside)
-[ ] Run tests to verify helpers
+[x] Create `internal/integration/fixtures/helpers_test.go`
+[x] Write failing test using `env.CreateUser("test@example.com")`
+[x] Implement `CreateUser` in `fixtures`
+[x] Write failing test using `env.CreateChatbot(user, "MyBot")`
+[x] Implement `CreateChatbot` in `fixtures`
+[x] Write failing test using `env.CreateSource(bot, "http://example.com")`
+[x] Implement `CreateSource` in `fixtures` (handling multipart/DB interactions inside)
+[x] Run tests to verify helpers
 
 Edge Cases:
 - `CreateChatbot` needs to handle Plan limits? (Should force Pro plan by default or allow specifying?)
