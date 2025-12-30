@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func startQdrantSearchDelayStub(delay time.Duration) *httptest.Server {
@@ -24,17 +26,17 @@ func startQdrantSearchDelayStub(delay time.Duration) *httptest.Server {
 // TestChat_QdrantSearchTimeout_Fallback verifies that chat works when Qdrant search times out.
 // The LLM is called without RAG context and returns a response.
 func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantSearchDelayStub(200 * time.Millisecond)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	t.Setenv("QDRANT_TIMEOUT_MS", "100")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 

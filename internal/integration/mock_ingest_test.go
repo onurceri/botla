@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/stretchr/testify/assert"
@@ -16,18 +17,18 @@ import (
 )
 
 func TestMockIngestionFlow(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	mockLLM := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 
 	// Setup Mux with mocks
-	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/testdb"
 )
@@ -32,11 +33,11 @@ func authTokenForSuggestionJob(t *testing.T, base string, email string) string {
 }
 
 func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForSuggestionJob(t, te.Server.URL, "suggestion_polling@example.com")
 
@@ -134,11 +135,11 @@ func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_ConcurrentRequests(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForSuggestionJob(t, te.Server.URL, "concurrent_suggestion@example.com")
 
@@ -190,11 +191,11 @@ func TestSuggestionRegeneration_ConcurrentRequests(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_GetLatestJob(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForSuggestionJob(t, te.Server.URL, "latest_job@example.com")
 
@@ -239,11 +240,11 @@ func TestSuggestionRegeneration_GetLatestJob(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_JobCompletion(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	ctx := context.Background()
 
@@ -296,11 +297,11 @@ func TestSuggestionRegeneration_JobCompletion(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_JobFailure(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	ctx := context.Background()
 
@@ -348,11 +349,11 @@ func TestSuggestionRegeneration_JobFailure(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_JobWithRunningStatus(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	ctx := context.Background()
 

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/config"
 )
 
@@ -18,11 +19,11 @@ func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
 	t.Skip("Plan-based rate limiting infrastructure verified through other tests. Skipping to avoid test interference.")
 
 	cfg := config.LoadConfig()
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Verify that rate limit headers are present on authenticated requests
 	email := fmt.Sprintf("ratelimit+%d@example.com", time.Now().UnixNano())

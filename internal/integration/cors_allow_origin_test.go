@@ -3,15 +3,17 @@ package integration
 import (
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestCORS_AllowConfiguredOrigin(t *testing.T) {
 	t.Setenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/health", nil)
 	req.Header.Set("Origin", "http://localhost:5173")

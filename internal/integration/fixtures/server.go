@@ -1,4 +1,4 @@
-package integration
+package fixtures
 
 import (
 	"database/sql"
@@ -143,7 +143,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
 
 	// Create mock tool name generator for tests
-	mockClient := &mockToolsClient{}
+	mockClient := &MockToolsClient{}
 	tng := rag.NewToolNameGenerator(mockClient)
 	actionRepo := repository.NewPostgresActionRepo(pool)
 	chatbotRepo := repository.NewPostgresChatbotRepo(pool)

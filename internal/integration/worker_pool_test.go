@@ -3,17 +3,19 @@ package integration
 import (
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestWorkerPool_ParallelProcessing(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create user and get token
-	token := registerAndGetToken(t, te.Server.URL, "workertest@example.com", TestPassword)
+	token := registerAndGetToken(t, te.Server.URL, "workertest@example.com", fixtures.TestPassword)
 
 	// Create chatbot
 	chatbotID := createChatbot(t, te.Server.URL, token, "Worker Test Bot")
@@ -54,11 +56,11 @@ func TestWorkerPool_ParallelProcessing(t *testing.T) {
 				// We need to find the job associated with this source
 				// Since we don't have job ID directly from createTextSource (it returns source ID),
 				// we query the job table.
-				
+
 				// Assuming one job per source for this test
-				// Actually, job tracking is separate. We can check source processing status as proxy, 
+				// Actually, job tracking is separate. We can check source processing status as proxy,
 				// or fetch the job.
-				
+
 				// Let's check source processing status from data_sources table
 				var status string
 				err := te.DB.QueryRow("SELECT status FROM data_sources WHERE id=$1", id).Scan(&status)

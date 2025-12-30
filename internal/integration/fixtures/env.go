@@ -1,4 +1,4 @@
-package integration
+package fixtures
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -23,22 +24,9 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockVectorStore for testing
-type MockVectorStore struct {
-	mu               sync.Mutex
-	DeletedSourceIDs []string
-}
-
 // TestPassword is a strong password that meets complexity requirements for tests.
 // Requires: uppercase, lowercase, digit, and special character.
 const TestPassword = "Test@123"
-
-func (m *MockVectorStore) DeleteBySourceID(ctx context.Context, sourceID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.DeletedSourceIDs = append(m.DeletedSourceIDs, sourceID)
-	return nil
-}
 
 type TestEnv struct {
 	Cfg         *config.Config
@@ -230,7 +218,7 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 	db.SetMaxOpenConns(1)
 
 	// Restore plans to a clean state from migration 000035
-	restorePlans(db)
+	RestorePlans(db)
 
 	// Relax rate limits and limits for free plan in test environment
 	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits,requests_per_minute}', '1000'::jsonb) WHERE code = $1`, policy.PlanFree.String())
@@ -291,7 +279,7 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 			Message      rag.ChatMessage `json:"message"`
 			FinishReason string          `json:"finish_reason"`
 		}{{
-			Message: rag.ChatMessage{Content: strPtr("Mock tool response")},
+			Message: rag.ChatMessage{Content: StrPtr("Mock tool response")},
 		}},
 		Usage: struct {
 			TotalTokens int `json:"total_tokens"`
@@ -299,10 +287,10 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 	}, nil)
 
 	vs := &MockVectorStore{}
-	
+
 	var llm rag.LLMClient
 	var vc rag.VectorClient
-	
+
 	if useMocks {
 		llm = mockLLM
 		vc = mockVC
@@ -313,7 +301,7 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 	return &TestEnv{Cfg: cfg, DB: db, Schema: schema, Server: srv, VectorStore: vs, MockVC: mockVC, MockLLM: mockLLM, Queue: q}, nil
 }
 
-func strPtr(s string) *string {
+func StrPtr(s string) *string {
 	return &s
 }
 
@@ -377,6 +365,7 @@ func dropIntegrationSchema(schema string) {
 			case <-context.Background().Done():
 				return
 			default:
+				time.Sleep(100 * time.Millisecond) // Added explict sleep since helper context was background
 			}
 		}
 	}
@@ -389,7 +378,7 @@ func getEnvOrDefault(key, defaultVal string) string {
 	return defaultVal
 }
 
-func restorePlans(db *sql.DB) {
+func RestorePlans(db *sql.DB) {
 	// Re-apply plan configs with bare model names (matching migration 000040)
 	// Free
 	res, err := db.Exec(`UPDATE plans SET config = jsonb_build_object(

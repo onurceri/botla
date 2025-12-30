@@ -3,14 +3,16 @@ package integration
 import (
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestRequestID_Integration(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Test 1: Response includes generated request ID
 	resp, err := http.Get(te.Server.URL + "/health")
@@ -33,7 +35,7 @@ func TestRequestID_Integration(t *testing.T) {
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", te.Server.URL+"/health", nil)
 	req.Header.Set("X-Request-ID", "test-id-12345")
-	
+
 	resp2, err := client.Do(req)
 	if err != nil {
 		t.Fatal(err)

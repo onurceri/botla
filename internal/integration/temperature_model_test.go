@@ -10,13 +10,14 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 type TMStub struct {
 	Server   *httptest.Server
 	Requests []CapturedRequest
-	mu       sync.Mutex
+	Mu       sync.Mutex
 }
 
 func baseModelName(model string) string {
@@ -37,9 +38,9 @@ func startTMStub() *TMStub {
 		var req CapturedRequest
 		_ = json.Unmarshal(body, &req)
 
-		s.mu.Lock()
+		s.Mu.Lock()
 		s.Requests = append(s.Requests, req)
-		s.mu.Unlock()
+		s.Mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -84,9 +85,9 @@ func startTMStub() *TMStub {
 			cr.MaxTokens = int(m)
 		}
 
-		s.mu.Lock()
+		s.Mu.Lock()
 		s.Requests = append(s.Requests, cr)
-		s.mu.Unlock()
+		s.Mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -131,9 +132,9 @@ func startTMStub() *TMStub {
 			}
 		}
 
-		s.mu.Lock()
+		s.Mu.Lock()
 		s.Requests = append(s.Requests, cr)
-		s.mu.Unlock()
+		s.Mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -178,11 +179,11 @@ func TestTemperatureParameter(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "temp_test@example.com")
 
@@ -237,9 +238,9 @@ func TestTemperatureParameter(t *testing.T) {
 			resCh.Body.Close()
 
 			// Verify Stub
-			stub.mu.Lock()
+			stub.Mu.Lock()
 			lastReq := stub.Requests[len(stub.Requests)-1]
-			stub.mu.Unlock()
+			stub.Mu.Unlock()
 
 			if lastReq.Temperature != tc.expected {
 				t.Errorf("expected temperature %f, got %f", tc.expected, lastReq.Temperature)
@@ -260,11 +261,11 @@ func TestMaxTokensParameter(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "tokens_test@example.com")
 
@@ -317,9 +318,9 @@ func TestMaxTokensParameter(t *testing.T) {
 			resCh.Body.Close()
 
 			// Verify Stub
-			stub.mu.Lock()
+			stub.Mu.Lock()
 			lastReq := stub.Requests[len(stub.Requests)-1]
-			stub.mu.Unlock()
+			stub.Mu.Unlock()
 
 			if lastReq.MaxTokens != tc.expected {
 				t.Errorf("expected max_tokens %d, got %d", tc.expected, lastReq.MaxTokens)
@@ -350,11 +351,11 @@ func TestModelConfiguration(t *testing.T) {
 	t.Setenv("OPENROUTER_API_KEY", "test-openrouter")
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1") // Matches /v1/chat/completions
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "model_test@example.com")
 
@@ -413,24 +414,24 @@ func TestModelConfiguration(t *testing.T) {
 			resCh.Body.Close()
 
 			// Verify Stub
-			stub.mu.Lock()
+			stub.Mu.Lock()
 			count := len(stub.Requests)
 			var lastReq CapturedRequest
 			if count > 0 {
 				lastReq = stub.Requests[count-1]
 			}
-			stub.mu.Unlock()
+			stub.Mu.Unlock()
 
 			t.Logf("Test: %s, Request Count: %d, Last Model: %s", tc.name, count, lastReq.Model)
 			t.Logf("Chatbot Info - ID: %s, Model: %s", bot.ID, bot.Model)
 
 			if lastReq.Model != tc.expected {
 				// Debug: print all requests
-				stub.mu.Lock()
+				stub.Mu.Lock()
 				for i, r := range stub.Requests {
 					t.Logf("Req[%d]: Model=%s", i, r.Model)
 				}
-				stub.mu.Unlock()
+				stub.Mu.Unlock()
 				t.Errorf("expected model %s, got %s", tc.expected, lastReq.Model)
 			}
 		})
@@ -449,11 +450,11 @@ func TestModelRestrictions(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "restricted_test@example.com")
 
@@ -499,9 +500,9 @@ func TestModelRestrictions(t *testing.T) {
 	resCh.Body.Close()
 
 	// Verify Stub used gpt-4o-mini
-	stub.mu.Lock()
+	stub.Mu.Lock()
 	lastReq := stub.Requests[len(stub.Requests)-1]
-	stub.mu.Unlock()
+	stub.Mu.Unlock()
 
 	if baseModelName(lastReq.Model) != policy.ModelGPT4oMini.String() {
 		t.Errorf("expected fallback to %s, got %s", policy.ModelGPT4oMini.String(), lastReq.Model)
@@ -519,11 +520,11 @@ func TestInvalidModel(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "invalid_model_test@example.com")
 
@@ -560,9 +561,9 @@ func TestInvalidModel(t *testing.T) {
 	resCh.Body.Close()
 
 	// Verify Stub used invalid-model (OpenRouter pass-through)
-	stub.mu.Lock()
+	stub.Mu.Lock()
 	lastReq := stub.Requests[len(stub.Requests)-1]
-	stub.mu.Unlock()
+	stub.Mu.Unlock()
 
 	if baseModelName(lastReq.Model) != policy.ModelGPT4oMini.String() {
 		t.Errorf("expected fallback to %s, got %s", policy.ModelGPT4oMini.String(), lastReq.Model)
@@ -580,11 +581,11 @@ func TestFreePlan_RAGTopK_UsesPlanLimit(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.Server.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "rag_topk@example.com")
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code='free') WHERE email=$1`, "rag_topk@example.com")
@@ -621,10 +622,10 @@ func TestFreePlan_RAGTopK_UsesPlanLimit(t *testing.T) {
 	}
 	resCh.Body.Close()
 
-	qd.mu.Lock()
+	qd.Mu.Lock()
 	limit := qd.LastSearchLimit
 	calls := qd.SearchCalls
-	qd.mu.Unlock()
+	qd.Mu.Unlock()
 
 	if calls == 0 {
 		t.Fatalf("expected at least one search call to Qdrant stub")

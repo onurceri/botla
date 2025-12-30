@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func startOpenAITimeoutStub(delay time.Duration) *httptest.Server {
@@ -41,11 +43,11 @@ func TestChat_OpenAIEmbeddingTimeout_Fallback(t *testing.T) {
 	t.Setenv("QDRANT_URL", qd.URL)
 	t.Setenv("OPENAI_TIMEOUT_MS", "100")
 	t.Setenv("CHAT_TIMEOUT_MS", "100")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 

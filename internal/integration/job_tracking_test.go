@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestJobTracking_FullFlow(t *testing.T) {
@@ -12,11 +14,11 @@ func TestJobTracking_FullFlow(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	te, err := SetupTestEnvWithMocks()
+	te, err := fixtures.SetupTestEnvWithMocks()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "jobtrack@example.com")
 	chatbotID := createChatbot(t, te.Server.URL, token, "Job Track Bot")
@@ -40,7 +42,7 @@ func TestJobTracking_FullFlow(t *testing.T) {
 	var lastStatus string
 	// var lastStep string (unused)
 	var attempts int
-	
+
 	// Wait up to 10 seconds (processing might take a moment in integration tests)
 	timeout := time.After(10 * time.Second)
 	ticker := time.NewTicker(200 * time.Millisecond)
@@ -55,12 +57,12 @@ LOOP:
 		case <-ticker.C:
 			req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/sources/"+sourceID+"/job", nil)
 			req.Header.Set("Authorization", "Bearer "+token)
-			
+
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				continue
 			}
-			
+
 			if resp.StatusCode == http.StatusNotFound {
 				// Job might not be created instantly if using async queue, though EnqueueSource creates it before returning
 				// But maybe the API endpoint queries it?
@@ -84,7 +86,7 @@ LOOP:
 				continue
 			}
 			resp.Body.Close()
-			
+
 			if status, ok := job["status"].(string); ok {
 				lastStatus = status
 				// if step, ok := job["current_step"].(string); ok {

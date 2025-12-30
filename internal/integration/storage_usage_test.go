@@ -5,15 +5,16 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // R2-006: Storage used MB tracking
 func TestStorageUsageTracking(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	userID, _ := insertUser(t, te.DB, "storage-usg@example.com")
 	botID, _ := insertChatbot(t, te.DB, userID, "Storage Bot")

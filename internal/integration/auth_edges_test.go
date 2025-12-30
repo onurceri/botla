@@ -7,14 +7,16 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestAuth_InvalidAccessToken_Me401(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer invalid-token")
@@ -26,11 +28,11 @@ func TestAuth_InvalidAccessToken_Me401(t *testing.T) {
 }
 
 func TestAuth_TamperedAccessToken_Me401(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer header.payload.signaturex")
@@ -42,11 +44,11 @@ func TestAuth_TamperedAccessToken_Me401(t *testing.T) {
 }
 
 func TestAuth_MissingAuthorizationHeader_Me401(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	res, _ := http.DefaultClient.Do(req)
@@ -57,11 +59,11 @@ func TestAuth_MissingAuthorizationHeader_Me401(t *testing.T) {
 }
 
 func TestAuth_ValidAccessToken_Me200(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "me-access+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}

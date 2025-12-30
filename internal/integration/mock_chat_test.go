@@ -7,24 +7,25 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestMockChatFlow(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	mockLLM := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 
 	// Setup Mux with mocks
-	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
@@ -52,7 +53,7 @@ func TestMockChatFlow(t *testing.T) {
 			Message      rag.ChatMessage `json:"message"`
 			FinishReason string          `json:"finish_reason"`
 		}{{
-			Message: rag.ChatMessage{Role: "assistant", Content: strPtr("I am a mock assistant answering based on context.")},
+			Message: rag.ChatMessage{Role: "assistant", Content: fixtures.StrPtr("I am a mock assistant answering based on context.")},
 		}},
 		Usage: struct {
 			TotalTokens int `json:"total_tokens"`

@@ -14,13 +14,14 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/pdf"
 	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
-func updateProPlanConfig(t *testing.T, te *TestEnv) {
+func updateProPlanConfig(t *testing.T, te *fixtures.TestEnv) {
 	_, err := te.DB.Exec(`UPDATE plans SET config = '{
   "scraping": {
     "dynamic_enabled": true,
@@ -98,7 +99,7 @@ func startProLinkedHTMLStub() *httptest.Server {
 	return httptest.NewServer(h)
 }
 
-func waitForProcessingPro(t *testing.T, te *TestEnv, token, sourceID string) {
+func waitForProcessingPro(t *testing.T, te *fixtures.TestEnv, token, sourceID string) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/sources/"+sourceID, nil)
@@ -122,8 +123,8 @@ func waitForProcessingPro(t *testing.T, te *TestEnv, token, sourceID string) {
 	t.Fatalf("timeout waiting for source processing")
 }
 
-func setupStubs(t *testing.T) (*LLMMock, *httptest.Server) {
-	oai := NewLLMMock(t)
+func setupStubs(t *testing.T) (*fixtures.LLMMock, *httptest.Server) {
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
@@ -131,11 +132,11 @@ func setupStubs(t *testing.T) (*LLMMock, *httptest.Server) {
 }
 
 func TestProPlan_ModelSelection(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -188,7 +189,7 @@ func TestProPlan_ModelSelection(t *testing.T) {
 }
 
 func TestProPlan_MonthlyTokenLimit(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	defer oai.Close()
 	defer qd.Close()
@@ -196,11 +197,11 @@ func TestProPlan_MonthlyTokenLimit(t *testing.T) {
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -267,11 +268,11 @@ func TestProPlan_MonthlyTokenLimit(t *testing.T) {
 }
 
 func TestProPlan_PDFLimits(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -384,11 +385,11 @@ func TestProPlan_PDFLimits(t *testing.T) {
 }
 
 func TestProPlan_PDF_OCREnabledFlag(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -419,11 +420,11 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 	defer oai.Close()
 	defer qd.Close()
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -483,11 +484,11 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 }
 
 func TestProPlan_URLLimits(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -566,11 +567,11 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 		t.Skip("dynamic scraping not available: " + dynErr.Error())
 	}
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -642,11 +643,11 @@ func TestProPlan_DiscoveryMode(t *testing.T) {
 	page := startProLinkedHTMLStub()
 	defer page.Close()
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -728,11 +729,11 @@ func TestProPlan_Refresh(t *testing.T) {
 	page := startProDynamicHTMLStub()
 	defer page.Close()
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -802,11 +803,11 @@ func TestProPlan_Refresh(t *testing.T) {
 }
 
 func TestProPlan_Branding(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -852,11 +853,11 @@ func TestProPlan_Branding(t *testing.T) {
 }
 
 func TestProPlan_Security(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 
@@ -894,11 +895,11 @@ func TestProPlan_Security(t *testing.T) {
 }
 
 func TestProPlan_Guardrails(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	updateProPlanConfig(t, te)
 

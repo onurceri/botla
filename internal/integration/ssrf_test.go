@@ -6,6 +6,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 type chatbotInfo struct {
@@ -61,11 +63,11 @@ func createURLSource(t *testing.T, base string, token string, chatbotID string, 
 }
 
 func TestSSRFProtection_Integration(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := ssrfAuthToken(t, te.Server.URL, "ssrf@example.com")
 	chatbotID := ssrfCreateChatbot(t, te.Server.URL, token, "SSRF Test Bot")
@@ -80,7 +82,7 @@ func TestSSRFProtection_Integration(t *testing.T) {
 
 	for _, url := range blockedURLs {
 		resp := createURLSource(t, te.Server.URL, token, chatbotID, url)
-		
+
 		if resp.StatusCode != http.StatusForbidden {
 			t.Errorf("URL %s should be blocked with 403, got %d", url, resp.StatusCode)
 		}
@@ -96,11 +98,11 @@ func TestSSRFProtection_Integration(t *testing.T) {
 }
 
 func TestSSRFProtection_AllowsPublicURLs(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := ssrfAuthToken(t, te.Server.URL, "ssrfpublic@example.com")
 	chatbotID := ssrfCreateChatbot(t, te.Server.URL, token, "Public URL Test")
@@ -108,7 +110,7 @@ func TestSSRFProtection_AllowsPublicURLs(t *testing.T) {
 	// This should succeed (though it might fail to scrape, it should pass SSRF check)
 	resp := createURLSource(t, te.Server.URL, token, chatbotID, "https://example.com")
 	defer resp.Body.Close()
-	
+
 	// Should be 201 Created (might process successfully) or not 403 (SSRF blocked)
 	if resp.StatusCode == http.StatusForbidden {
 		var body map[string]string

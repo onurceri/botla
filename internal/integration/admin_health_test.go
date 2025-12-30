@@ -7,14 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAdminHealth(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create admin user
 	adminEmail := fmt.Sprintf("admin_%d@example.com", time.Now().UnixNano())

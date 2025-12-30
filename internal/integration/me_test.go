@@ -7,14 +7,16 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestMe_ReturnsUserProfile(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "me@example.com")
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
@@ -42,11 +44,11 @@ func TestMe_ReturnsUserProfile(t *testing.T) {
 }
 
 func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := fmt.Sprintf("free-default-%d@example.com", time.Now().UnixNano())
 	regBody := map[string]string{
@@ -105,11 +107,11 @@ func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
 }
 
 func TestMe_ProfileBasicInfo(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "me-basic@example.com"
 	token := authToken(t, te.Server.URL, email)
@@ -152,11 +154,11 @@ func TestMe_ProfileBasicInfo(t *testing.T) {
 }
 
 func TestMe_ProfileIncludesOrganizations(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "me-orgs@example.com"
 	token := authToken(t, te.Server.URL, email)
@@ -206,11 +208,11 @@ func TestMe_ProfileIncludesOrganizations(t *testing.T) {
 }
 
 func TestMe_CrossUserProfileIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	emailA := "user-a@example.com"
 	emailB := "user-b@example.com"
@@ -277,11 +279,11 @@ func TestMe_CrossUserProfileIsolation(t *testing.T) {
 }
 
 func TestMe_DBErrorReturns500(t *testing.T) {
-	te, setupErr := SetupTestEnv()
+	te, setupErr := fixtures.SetupTestEnv()
 	if setupErr != nil {
 		t.Fatalf("setup failed: %v", setupErr)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	closeErr := te.DB.Close()
 	if closeErr != nil {

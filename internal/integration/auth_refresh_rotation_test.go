@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 type refreshReq struct {
@@ -19,11 +21,11 @@ type tokenPair struct {
 }
 
 func TestAuth_RefreshRotationAndLogout(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// register & login
 	email := "rot+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"

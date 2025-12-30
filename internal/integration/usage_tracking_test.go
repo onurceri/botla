@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
@@ -38,11 +39,11 @@ func insertChatbot(t *testing.T, pool *sql.DB, userID string, name string) (stri
 
 // USG-001 to USG-005: Monthly Token Usage Tracking
 func TestMonthlyTokenUsageTracking(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create user
 	userID, _ := insertUser(t, te.DB, "usg-test@example.com")
@@ -114,11 +115,11 @@ func TestMonthlyTokenUsageTracking(t *testing.T) {
 
 // USG-006 to USG-008: Ingestion Usage Tracking
 func TestIngestionUsageTracking(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	userID, _ := insertUser(t, te.DB, "ingest-usg@example.com")
 	ctx := context.Background()

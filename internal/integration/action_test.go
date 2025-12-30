@@ -7,17 +7,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestAction_CRUD(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	token := authTokenForAction(t, te.Server.URL, "action_crud@example.com")
 
 	// Create chatbot
@@ -214,11 +215,11 @@ func TestChatWithTools(t *testing.T) {
 	// Ensure we have a key
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// 2. Create User & Bot
 	token := authTokenForAction(t, te.Server.URL, "tool_user@example.com")
@@ -348,11 +349,11 @@ func TestAgenticLoopLimit(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "loop_user@example.com")
 
@@ -479,11 +480,11 @@ func TestToolExecutionError(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
@@ -502,7 +503,7 @@ func TestToolExecutionError(t *testing.T) {
 	// Use the real LLM client pointed to our mock server
 	llmClient, _ := rag.NewOpenAIClient(te.Cfg)
 
-	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
+	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
@@ -626,11 +627,11 @@ func TestHTTPActionPOST(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
@@ -649,7 +650,7 @@ func TestHTTPActionPOST(t *testing.T) {
 	// Use the real LLM client pointed to our mock server
 	llmClient, _ := rag.NewOpenAIClient(te.Cfg)
 
-	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
+	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
@@ -768,11 +769,11 @@ func TestBuiltinTools(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	mockVC := &rag.MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
@@ -791,7 +792,7 @@ func TestBuiltinTools(t *testing.T) {
 	// Use the real LLM client pointed to our mock server
 	llmClient, _ := rag.NewOpenAIClient(te.Cfg)
 
-	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
+	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, llmClient, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
@@ -879,11 +880,11 @@ func TestDisabledAction(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", mockServer.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "disabled_user@example.com")
 

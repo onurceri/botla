@@ -8,17 +8,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 func TestRetentionJob_Conversations(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// 1. Setup Data
 	// Create user & chatbot via API to ensure valid foreign keys
@@ -100,11 +101,11 @@ func TestRetentionJob_Conversations(t *testing.T) {
 }
 
 func TestRetentionJob_ExpiredExports(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// We need a user for exports
 	_ = authToken(t, te.Server.URL, "export@example.com")
@@ -164,11 +165,11 @@ func TestRetentionJob_ExpiredExports(t *testing.T) {
 }
 
 func TestRetentionJob_AuditLogs(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// We need a user for audit logs
 	_ = authToken(t, te.Server.URL, "admin@example.com")

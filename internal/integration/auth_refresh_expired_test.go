@@ -9,14 +9,15 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/auth"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestAuth_RefreshWithExpiredToken(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "refexp+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	// Register to get a user ID

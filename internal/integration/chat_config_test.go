@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
@@ -29,7 +30,7 @@ type CapturedRequest struct {
 type ConfigStub struct {
 	Server   *httptest.Server
 	Requests []CapturedRequest
-	mu       sync.Mutex
+	Mu       sync.Mutex
 }
 
 func startConfigCheckStub() *ConfigStub {
@@ -43,9 +44,9 @@ func startConfigCheckStub() *ConfigStub {
 		var req CapturedRequest
 		_ = json.Unmarshal(body, &req)
 
-		cs.mu.Lock()
+		cs.Mu.Lock()
 		cs.Requests = append(cs.Requests, req)
-		cs.mu.Unlock()
+		cs.Mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -63,9 +64,9 @@ func startConfigCheckStub() *ConfigStub {
 		var req CapturedRequest
 		_ = json.Unmarshal(body, &req)
 
-		cs.mu.Lock()
+		cs.Mu.Lock()
 		cs.Requests = append(cs.Requests, req)
-		cs.mu.Unlock()
+		cs.Mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -128,9 +129,9 @@ func startConfigCheckStub() *ConfigStub {
 			req.MaxTokens = req.GenerationConfig.MaxOutputTokens
 		}
 
-		cs.mu.Lock()
+		cs.Mu.Lock()
 		cs.Requests = append(cs.Requests, req)
-		cs.mu.Unlock()
+		cs.Mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -152,8 +153,8 @@ func startConfigCheckStub() *ConfigStub {
 }
 
 func (cs *ConfigStub) LastRequest() CapturedRequest {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
+	cs.Mu.Lock()
+	defer cs.Mu.Unlock()
 	if len(cs.Requests) == 0 {
 		return CapturedRequest{}
 	}
@@ -177,11 +178,11 @@ func TestChat_TemperatureConfiguration(t *testing.T) {
 	// Qdrant also needed
 	t.Setenv("QDRANT_URL", stub.Server.URL) // Mocked /v1/embeddings in stub
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "temp_test@example.com")
 
@@ -293,11 +294,11 @@ func TestChat_ModelConfiguration(t *testing.T) {
 	t.Setenv("GOOGLE_AI_API_KEY", "AIza-mock")
 	t.Setenv("OPENROUTER_API_KEY", "sk-or-mock")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "model_test@example.com")
 
@@ -393,11 +394,11 @@ func TestChat_MaxTokensConfiguration(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
 	t.Setenv("QDRANT_URL", stub.Server.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "mtk_test@example.com")
 

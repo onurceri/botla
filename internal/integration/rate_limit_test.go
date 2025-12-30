@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // Rate Limiting Tests
@@ -101,10 +103,10 @@ func rlCreateChatbot(t *testing.T, baseURL, token, name string) string {
 // Helper: auth token creation
 func rlAuthToken(t *testing.T, base string, email string) string {
 	t.Helper()
-	regBody := map[string]string{"email": email, "password": TestPassword, "full_name": "Rate Limit Test User"}
+	regBody := map[string]string{"email": email, "password": fixtures.TestPassword, "full_name": "Rate Limit Test User"}
 	b, _ := json.Marshal(regBody)
 	_, _ = http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
-	lb := map[string]string{"email": email, "password": TestPassword}
+	lb := map[string]string{"email": email, "password": fixtures.TestPassword}
 	lbj, _ := json.Marshal(lb)
 	res, err := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if err != nil {
@@ -122,16 +124,16 @@ func rlAuthToken(t *testing.T, base string, email string) string {
 func TestRateLimit_ChatEndpoint(t *testing.T) {
 	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "3")
 	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 
@@ -171,11 +173,11 @@ func TestRateLimit_ChatEndpoint(t *testing.T) {
 func TestRateLimit_SourceCreation(t *testing.T) {
 	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "2")
 	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Update plan config in DB to match test expectations (low limit for testing)
 	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 3, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
@@ -209,11 +211,11 @@ func TestRateLimit_Recovery(t *testing.T) {
 	// Use a short window for testing recovery
 	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "2")
 	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "2") // 2 second window
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Update plan config in DB to match test expectations
 	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 2, "window_seconds": 2}'::jsonb) WHERE code = 'free'`)
@@ -256,16 +258,16 @@ func TestRateLimit_Recovery(t *testing.T) {
 func TestRateLimit_PerUserIsolationExtended(t *testing.T) {
 	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "2")
 	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 
@@ -302,16 +304,16 @@ func TestRateLimit_PerUserIsolationExtended(t *testing.T) {
 func TestRateLimit_HeadersPresent(t *testing.T) {
 	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "5")
 	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 
@@ -359,16 +361,16 @@ func TestRateLimit_HeadersPresent(t *testing.T) {
 func TestRateLimit_RetryAfterOnBlock(t *testing.T) {
 	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "1")
 	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 

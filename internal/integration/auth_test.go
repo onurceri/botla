@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/auth"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 type tokenResp struct {
@@ -31,11 +32,11 @@ func hashTokenForTest(token string) string {
 }
 
 func TestAuth_Register_Login_Protected(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "user1+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User One"}
@@ -150,11 +151,11 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 }
 
 func TestAuth_Register_InvalidEmailFormat(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	regBody := map[string]string{"email": "invalid-email", "password": "Test@123", "full_name": "Invalid Email"}
 	var b []byte
@@ -182,11 +183,11 @@ func TestAuth_Register_InvalidEmailFormat(t *testing.T) {
 }
 
 func TestAuth_Register_MissingEmail(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	regBody := map[string]string{"password": "Test@123", "full_name": "Missing Email"}
 	var b []byte
@@ -214,11 +215,11 @@ func TestAuth_Register_MissingEmail(t *testing.T) {
 }
 
 func TestAuth_Register_MissingPassword(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "nopassword+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "full_name": "Missing Password"}
@@ -247,11 +248,11 @@ func TestAuth_Register_MissingPassword(t *testing.T) {
 }
 
 func TestAuth_Login_InvalidEmail(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	loginBody := map[string]string{"email": "doesnotexist+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com", "password": "Test@123"}
 	lb, err := json.Marshal(loginBody)
@@ -278,11 +279,11 @@ func TestAuth_Login_InvalidEmail(t *testing.T) {
 }
 
 func TestAuth_Login_InvalidPassword(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "login-bad-pass+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User One"}
@@ -323,11 +324,11 @@ func TestAuth_Login_InvalidPassword(t *testing.T) {
 }
 
 func TestAuth_Login_EmptyEmail(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	loginBody := map[string]string{"email": "", "password": "Test@123"}
 	lb, err := json.Marshal(loginBody)
@@ -346,11 +347,11 @@ func TestAuth_Login_EmptyEmail(t *testing.T) {
 }
 
 func TestAuth_Login_EmptyPassword(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	loginBody := map[string]string{"email": "empty-pass+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com", "password": ""}
 	lb, err := json.Marshal(loginBody)
@@ -369,11 +370,11 @@ func TestAuth_Login_EmptyPassword(t *testing.T) {
 }
 
 func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	baseEmail := fmt.Sprintf("TestCI+%d@Example.com", time.Now().UnixNano())
 	regBody := map[string]string{"email": baseEmail, "password": "Test@123", "full_name": "Case User"}
@@ -423,11 +424,11 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 }
 
 func TestAuth_Login_MultipleSessions(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := fmt.Sprintf("multisession+%d@example.com", time.Now().UnixNano())
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Multi Session User"}
@@ -532,11 +533,11 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 }
 
 func TestAuth_Login_RefreshTokenTracking(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "refresh-track+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User One"}

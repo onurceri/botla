@@ -7,23 +7,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestHandoff_Flow(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Update plan config to allow handoff
 	updateProPlanConfig(t, te)
@@ -164,18 +165,18 @@ func TestHandoff_Flow(t *testing.T) {
 }
 
 func TestHandoff_Analytics(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_analytics@example.com")
 
@@ -264,18 +265,18 @@ func TestHandoff_Analytics(t *testing.T) {
 }
 
 func TestHandoff_Widget(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_widget@example.com")
 
@@ -342,18 +343,18 @@ func TestHandoff_Widget(t *testing.T) {
 }
 
 func TestHandoff_EdgeCases(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_edge@example.com")
 
@@ -462,18 +463,18 @@ func authTokenForHandoff(t *testing.T, base string, email string) string {
 }
 
 func TestHandoff_Status_Lifecycle(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_status@example.com")
 
@@ -582,18 +583,18 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 }
 
 func TestHandoff_DuplicateRequest(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_dup@example.com")
 
@@ -689,18 +690,18 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 }
 
 func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_detail_nf@example.com")
 
@@ -743,18 +744,18 @@ func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
 }
 
 func TestHandoff_UpdateStatus_NotFoundReturns404(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForHandoff(t, te.Server.URL, "handoff_update_nf@example.com")
 

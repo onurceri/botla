@@ -9,15 +9,16 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 )
 
 func TestUpdateAction_OptimisticLocking(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	token := authTokenForAction(t, te.Server.URL, "lock_user@example.com")
 
 	// 1. Create Bot
@@ -40,12 +41,12 @@ func TestUpdateAction_OptimisticLocking(t *testing.T) {
 	}
 	configBytes, _ := json.Marshal(configMap)
 	configRaw := json.RawMessage(configBytes)
-	
+
 	createAction := map[string]any{
 		"name":        "Lock Action",
 		"description": "desc",
 		"action_type": "http",
-		"config":      configRaw, 
+		"config":      configRaw,
 		"parameters":  json.RawMessage(`{}`),
 		"enabled":     true,
 	}
@@ -68,10 +69,10 @@ func TestUpdateAction_OptimisticLocking(t *testing.T) {
 
 	// 3. Update successful (Version 1 -> 2)
 	update1 := map[string]any{
-		"name": "Updated Once",
+		"name":        "Updated Once",
 		"action_type": "http",
-		"config": configRaw,
-		"enabled": true,
+		"config":      configRaw,
+		"enabled":     true,
 	}
 	u1, _ := json.Marshal(update1)
 	reqU1, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions/"+action.ID, bytes.NewReader(u1))
@@ -91,11 +92,11 @@ func TestUpdateAction_OptimisticLocking(t *testing.T) {
 }
 
 func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "db_lock_user@example.com")
 
@@ -133,7 +134,7 @@ func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
 	reqA.Header.Set("Authorization", "Bearer "+token)
 	reqA.Header.Set("Content-Type", "application/json")
 	resA, _ := http.DefaultClient.Do(reqA)
-	
+
 	if resA.StatusCode != http.StatusCreated && resA.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resA.Body)
 		t.Fatalf("create action failed in DB test: %d body: %s", resA.StatusCode, string(body))
@@ -155,14 +156,14 @@ func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get action 1: %v", err)
 	}
-	
+
 	// Simulate "Concurrent" Update 1 (increments version)
-	a1_concurrent := *a1 
+	a1_concurrent := *a1
 	a1_concurrent.Name = "Updated Concurrent"
 	if err := db.UpdateAction(ctx, te.DB, &a1_concurrent); err != nil {
 		t.Fatalf("concurrent update failed: %v", err)
 	}
-	
+
 	// Initial action "a1" is now stale (its version is old)
 	a1.Name = "Updated Stale"
 	err = db.UpdateAction(ctx, te.DB, a1)
@@ -175,11 +176,11 @@ func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
 }
 
 func TestGetOrCreateConversation_Concurrency(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authTokenForAction(t, te.Server.URL, "race_user@example.com")
 

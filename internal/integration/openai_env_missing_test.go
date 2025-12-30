@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	// Use an invalid port to force connection failure
 	t.Setenv("OPENAI_API_BASE", "http://127.0.0.1:1")
@@ -19,11 +21,11 @@ func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("ANTHROPIC_API_KEY", "dummy")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 
@@ -59,15 +61,15 @@ func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 // TestChat_QdrantEnvMissing_Fallback verifies that chat works when QDRANT_URL is missing.
 // The LLM is called without RAG context and returns a response.
 func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", "")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 
 	token := authToken(t, te.Server.URL, "qdenv@example.com")
