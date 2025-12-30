@@ -7,8 +7,8 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/logger"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 // =============================================================================
@@ -106,8 +106,7 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 		}
 
 		// Reserve tokens optimistically
-		err := s.Quota.ReserveTokens(ctx, req.UserID, estimatedTokens, maxMonthlyTokens)
-		if err != nil {
+		if err = s.Quota.ReserveTokens(ctx, req.UserID, estimatedTokens, maxMonthlyTokens); err != nil {
 			return nil, err
 		}
 	}

@@ -10,14 +10,14 @@ Scope:
 - Add integration tests for plan-wide validation.
 
 Checklist:
-[ ] Understand `PlanService` architecture and cache interaction.
-[ ] Identify failure scenarios (database connection error, malformed JSON in DB, invalid plan data).
-[ ] Create `internal/services/plan_service_validation_test.go`.
-[ ] Write integration tests that mock/use a test DB containing a plan with an invalid JSON config.
-[ ] Implement `ValidateAllPlans(ctx context.Context) error` in `internal/services/plan_service.go`.
-[ ] Ensure the method catches the validation error from Task 001.
-[ ] Run `go test ./internal/services/...` and ensure all pass.
-[ ] Run `golangci-lint run ./internal/services/...`.
+[x] Understand `PlanService` architecture and cache interaction.
+[x] Identify failure scenarios (database connection error, malformed JSON in DB, invalid plan data).
+[x] Create `internal/services/plan_service_validation_test.go`.
+[x] Write integration tests that mock/use a test DB containing a plan with an invalid JSON config.
+[x] Implement `ValidateAllPlans(ctx context.Context) error` in `internal/services/plan_service.go`.
+[x] Ensure the method catches the validation error from Task 001.
+[x] Run `go test ./internal/services/...` and ensure all pass.
+[x] Run `golangci-lint run ./internal/services/...`.
 
 Edge Cases:
 - Database query returns no plans (application should probably warn or fail).

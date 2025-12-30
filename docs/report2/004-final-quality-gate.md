@@ -9,12 +9,12 @@ Scope:
 - Final linting and formatting of all changed files.
 
 Checklist:
-[ ] Verify test coverage for `internal/models/plan.go` validation methods.
-[ ] Check for consistency in error message formatting across all tasks.
-[ ] Update `README.md` or internal documentation if it mentions plan configuration.
-[ ] Run `make test-all` to ensure no regressions in other modules.
-[ ] Run `make lint` for the entire project.
-[ ] Verify that all checklist items in tasks 001-003 are marked complete.
+[x] Verify test coverage for `internal/models/plan.go` validation methods.
+[x] Check for consistency in error message formatting across all tasks.
+[x] Update `README.md` or internal documentation if it mentions plan configuration.
+[x] Run `make test-all` to ensure no regressions in other modules.
+[x] Run `make lint` for the entire project.
+[x] Verify that all checklist items in tasks 001-003 are marked complete.
 
 Files Likely to Change:
 - `internal/models/plan.go`

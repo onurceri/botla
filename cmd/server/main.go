@@ -74,6 +74,17 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		return nil, fmt.Errorf("init db: %w", err)
 	}
 
+	// Fail-fast validation of plan configurations
+	planSvc := services.NewPlanService(pool, nil)
+	if vErr := planSvc.ValidateAllPlans(context.Background()); vErr != nil {
+		log.Error("plan_validation_failed", map[string]any{
+			"error":   vErr.Error(),
+			"message": "Application failed to start because one or more plans have invalid configurations in the database",
+		})
+		return nil, fmt.Errorf("validate plans: %w", vErr)
+	}
+	log.Info("plan_validation_success", nil)
+
 	// Initialize Qdrant
 	qdrantClient, err := rag.NewQdrantClientFromEnv()
 	if err != nil {

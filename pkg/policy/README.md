@@ -120,7 +120,7 @@ When replacing magic strings with policy constants:
 
 ## What's NOT in This Package
 
-- **Plan Configurations**: Stored in the `plans` table
+- **Plan Configurations**: Stored in the `plans` table. Note: All plan configurations are validated at server startup via `PlanService.ValidateAllPlans()` to ensure data integrity. Invalid configurations will prevent the server from starting.
 - **Model Metadata**: Stored in the `ai_models` table
 - **Business Logic**: This is just constants, not business rules
 
