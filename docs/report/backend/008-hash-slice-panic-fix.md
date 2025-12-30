@@ -16,6 +16,6 @@ In `internal/processing/url_processor.go`, the code logs the first 16 characters
     - Ensure code does not panic.
 
 ## Checklist
-- [ ] Locate the logging statement in `url_processor.go`
-- [ ] Implement safe slicing logic for hash string
-- [ ] Verify with test case
+- [x] Locate the logging statement in `url_processor.go`
+- [x] Implement safe slicing logic for hash string
+- [x] Verify with test case

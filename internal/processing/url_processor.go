@@ -16,6 +16,19 @@ import (
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
+// safeHashPrefix returns up to maxLen characters of hash.
+// Returns the full hash if it's shorter than maxLen.
+// Returns empty string if hash is empty or maxLen <= 0.
+func safeHashPrefix(hash string, maxLen int) string {
+	if maxLen <= 0 || len(hash) == 0 {
+		return ""
+	}
+	if len(hash) > maxLen {
+		return hash[:maxLen]
+	}
+	return hash
+}
+
 // URLProcessor handles URL source processing
 type URLProcessor struct {
 	DB               *sql.DB
@@ -171,7 +184,7 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		p.logInfo("url_processing_content_unchanged", map[string]any{
 			"source_id": s.ID,
 			"url":       *s.SourceURL,
-			"hash":      newHash[:16], // First 16 chars of hash for brevity
+			"hash":      safeHashPrefix(newHash, 16), // First 16 chars of hash for brevity
 		})
 		return ProcessResult{ChunkCount: s.ChunkCount, Skipped: true}
 	}
@@ -180,8 +193,8 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	if s.Hash != nil {
 		p.logInfo("url_processing_content_changed", map[string]any{
 			"source_id": s.ID,
-			"old_hash":  (*s.Hash)[:16],
-			"new_hash":  newHash[:16],
+			"old_hash":  safeHashPrefix(*s.Hash, 16),
+			"new_hash":  safeHashPrefix(newHash, 16),
 		})
 		if err := DeleteSourceVectors(ctx, p.VectorClient, s.ID); err != nil {
 			p.logWarn("url_processing_delete_vectors_error", map[string]any{
