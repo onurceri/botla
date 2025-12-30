@@ -9,10 +9,10 @@ Scope:
 - Replace manual setup code with `fixtures` calls.
 
 Checklist:
-[ ] Refactor `internal/integration/analytics_full_coverage_test.go`
-[ ] Refactor `internal/integration/url_discovery_test.go`
-[ ] Verify both tests pass
-[ ] Lint check
+[x] Refactor `internal/integration/analytics_full_coverage_test.go`
+[x] Refactor `internal/integration/url_discovery_test.go`
+[x] Verify both tests pass
+[x] Lint check
 
 Edge Cases:
 - `analytics_full_coverage_test.go` does specific analytics setups (manual DB inserts). Ensure helpers don't conflict or obscure necessary details.
