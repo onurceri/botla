@@ -3,6 +3,7 @@ package processing
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
@@ -272,12 +274,36 @@ func (p *JobProcessor) complete(id string, chunks int) {
 }
 
 // isRetryableError determines if an error should trigger a retry.
+// It checks for sentinel errors first (preferred), then falls back to string matching
+// for backward compatibility with errors that haven't been migrated yet.
 func isRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
+
+	// Check sentinel errors first (preferred approach)
+	// Retryable sentinel errors
+	if errors.Is(err, pkgErrors.ErrRateLimit) {
+		return true
+	}
+	if errors.Is(err, pkgErrors.ErrNetwork) {
+		return true
+	}
+	if errors.Is(err, pkgErrors.ErrTimeout) {
+		return true
+	}
+
+	// Non-retryable sentinel errors (explicit return false)
+	if errors.Is(err, pkgErrors.ErrContextCancelled) {
+		return false
+	}
+	if errors.Is(err, pkgErrors.ErrNotFound) {
+		return false
+	}
+
+	// Fallback: string-based matching for backward compatibility
+	// TODO: Remove this once all error sources are migrated to sentinel errors
 	errStr := strings.ToLower(err.Error())
-	// Retry on network errors, rate limits, temporary failures
 	retryable := []string{
 		"connection refused",
 		"timeout",

@@ -15,14 +15,14 @@ Scope:
 - Ensure they are standard Go errors (using `errors.New`).
 
 Checklist:
-[ ] Create `pkg/errors/sentinel.go`.
-[ ] Define `ErrRateLimit`.
-[ ] Define `ErrTimeout`.
-[ ] Define `ErrNetwork` (or `ErrTemporary`).
-[ ] Define `ErrNotFound`.
-[ ] Define `ErrContextCancelled`.
-[ ] Create `pkg/errors/sentinel_test.go` to ensure no error variable collisions (optional but good for TDD verify).
-[ ] Run `go test ./pkg/errors/...`.
+[x] Create `pkg/errors/sentinel.go`.
+[x] Define `ErrRateLimit`.
+[x] Define `ErrTimeout`.
+[x] Define `ErrNetwork` (or `ErrTemporary`).
+[x] Define `ErrNotFound`.
+[x] Define `ErrContextCancelled`.
+[x] Create `pkg/errors/sentinel_test.go` to ensure no error variable collisions (optional but good for TDD verify).
+[x] Run `go test ./pkg/errors/...`.
 
 Edge Cases:
 - Variable naming conflicts.
@@ -42,11 +42,11 @@ Scope:
 - `internal/rag` tests.
 
 Checklist:
-[ ] Create/Update `internal/rag/error_test.go` (or similar) to simulate HTTP 429 and 500 responses.
-[ ] Assert that current implementation FAILS `errors.Is(err, pkgErrors.ErrRateLimit)` (TDD).
-[ ] Modify `internal/rag/openai.go` to check `res.StatusCode` and return wrapped sentinel errors.
-[ ] Handle Context Cancellation by wrapping `pkgErrors.ErrContextCancelled`.
-[ ] Run tests and verify `errors.Is` checks pass.
+[x] Create/Update `internal/rag/error_test.go` (or similar) to simulate HTTP 429 and 500 responses.
+[x] Assert that current implementation FAILS `errors.Is(err, pkgErrors.ErrRateLimit)` (TDD).
+[x] Modify `internal/rag/openai.go` to check `res.StatusCode` and return wrapped sentinel errors.
+[x] Handle Context Cancellation by wrapping `pkgErrors.ErrContextCancelled`.
+[x] Run tests and verify `errors.Is` checks pass.
 
 Edge Cases:
 - API returns 200 checks but body contains error (handled in existing logic, ensure wrapping there too if applicable).
@@ -66,9 +66,9 @@ Scope:
 - `internal/scraper` parsing/fetching logic.
 
 Checklist:
-[ ] Update `internal/scraper/errors_test.go` to assert that specific error conditions return wrapped sentinel errors.
-[ ] Modify `internal/scraper/errors.go` or the fetcher (e.g. `colly.go` or `default_scraper.go`) to map status codes to sentinel errors.
-[ ] Run tests.
+[x] Update `internal/scraper/errors_test.go` to assert that specific error conditions return wrapped sentinel errors.
+[x] Modify `internal/scraper/errors.go` or the fetcher (e.g. `colly.go` or `default_scraper.go`) to map status codes to sentinel errors.
+[x] Run tests.
 
 Edge Cases:
 - `colly` might mask some errors, check how it exposes status codes.
@@ -88,16 +88,16 @@ Scope:
 - `internal/processing/retry_test.go`
 
 Checklist:
-[ ] Modify `internal/processing/retry_test.go`:
+[x] Modify `internal/processing/retry_test.go`:
     - Replace string-based test cases with sentinel error cases.
     - Add test cases where the error is wrapped (e.g., `fmt.Errorf("context: %w", ErrRateLimit)`).
     - Assert `isRetryableError` returns true for these wrapped errors.
-[ ] Run test (Expect FAIL for encapsulated errors if logic not updated, or PASS if only testing the function against new inputs).
-[ ] Modify `internal/processing/job_processor.go`:
+[x] Run test (Expect FAIL for encapsulated errors if logic not updated, or PASS if only testing the function against new inputs).
+[x] Modify `internal/processing/job_processor.go`:
     - Remove/Deprecate the string matching list.
     - Use `errors.Is(err, pkgErrors.ErrRateLimit)`, etc.
-[ ] Run all tests in `internal/processing`.
-[ ] Run all tests in `internal/integration` (to ensure no regressions in full flows).
+[x] Run all tests in `internal/processing`.
+[x] Run all tests in `internal/integration` (to ensure no regressions in full flows).
 
 Edge Cases:
 - Mixed errors (string + wrapped). The refactor should prefer `errors.Is` but might need to keep string matching as a fallback if not all errors are converted yet (safe transition). *Decision: For this task, we aim for full replacement, but a fallback is acceptable if deemed safer.*
