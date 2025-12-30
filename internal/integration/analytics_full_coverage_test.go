@@ -13,7 +13,7 @@ import (
 
 func TestAnalytics_FullCoverage(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
-	qd := startQdrantStub()
+	qd := fixtures.StartQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
@@ -26,13 +26,13 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	defer oai.Close()
 	defer qd.Close()
 
-	// Update plan config to allow handoff
 	updateProPlanConfig(t, te)
 
-	// 1. Setup Chatbot
-	token := authToken(t, te.Server.URL, "analytics_full@example.com")
+	token, err := te.AuthToken("analytics_full@example.com")
+	if err != nil {
+		t.Fatalf("failed to get auth token: %v", err)
+	}
 
-	// Assign Pro Plan to the user so they can enable handoff
 	_, err = te.DB.Exec("UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'pro') WHERE email = 'analytics_full@example.com'")
 	if err != nil {
 		t.Fatalf("failed to assign pro plan: %v", err)
@@ -48,7 +48,6 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
 
-	// Create a dummy source to satisfy foreign key constraints
 	sourceID := "00000000-0000-0000-0000-00000000000c"
 	_, err = te.DB.Exec("INSERT INTO data_sources (id, chatbot_id, source_type, status) VALUES ($1, $2, $3, $4)",
 		sourceID, bot.ID, "text", "completed")
@@ -56,7 +55,6 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 		t.Fatalf("failed to create dummy source: %v", err)
 	}
 
-	// 2. Enable Handoff
 	updateBot := map[string]any{
 		"handoff_enabled": true,
 		"handoff_type":    "email",

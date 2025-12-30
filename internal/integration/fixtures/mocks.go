@@ -28,6 +28,56 @@ func (m *MockVectorStore) DeleteBySourceID(ctx context.Context, sourceID string)
 	return nil
 }
 
+func StartQdrantStub() *httptest.Server {
+	h := http.NewServeMux()
+	h.HandleFunc("/collections/embeddings", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			return
+		}
+		if r.Method == http.MethodPut {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+	h.HandleFunc("/collections/embeddings/points", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+	h.HandleFunc("/collections/embeddings/points/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+	h.HandleFunc("/collections/embeddings/points/search", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]any{
+				"result": []map[string]any{},
+				"status": "ok",
+			})
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
+	return httptest.NewServer(h)
+}
+
 // LLMMock is a configurable mock server for LLM providers (OpenAI compatible)
 type LLMMock struct {
 	Server          *httptest.Server

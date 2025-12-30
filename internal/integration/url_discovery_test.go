@@ -34,7 +34,7 @@ func startLinkedHTMLStub() *httptest.Server {
 
 func TestURLDiscovery_AutoMode(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
-	qd := startQdrantStub()
+	qd := fixtures.StartQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
@@ -50,13 +50,11 @@ func TestURLDiscovery_AutoMode(t *testing.T) {
 
 	token := authToken(t, te.Server.URL, "autodisc@example.com")
 
-	// Upgrade user to pro plan to allow scraping
 	_, err = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'pro') WHERE email = $1`, "autodisc@example.com")
 	if err != nil {
 		t.Fatalf("failed to update user plan: %v", err)
 	}
 
-	// Create chatbot with auto discovery
 	create := map[string]any{
 		"name":           "Auto Discovery Bot",
 		"discovery_mode": "auto",
@@ -128,7 +126,7 @@ func TestURLDiscovery_AutoMode(t *testing.T) {
 
 func TestURLDiscovery_PendingMode(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
-	qd := startQdrantStub()
+	qd := fixtures.StartQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
@@ -144,13 +142,11 @@ func TestURLDiscovery_PendingMode(t *testing.T) {
 
 	token := authToken(t, te.Server.URL, "pendingdisc@example.com")
 
-	// Upgrade user to pro plan to allow scraping
 	_, err = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'pro') WHERE email = $1`, "pendingdisc@example.com")
 	if err != nil {
 		t.Fatalf("failed to update user plan: %v", err)
 	}
 
-	// Create chatbot with pending discovery
 	create := map[string]any{
 		"name":           "Pending Discovery Bot",
 		"discovery_mode": "pending",
