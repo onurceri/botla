@@ -365,7 +365,7 @@ func dropIntegrationSchema(schema string) {
 			case <-context.Background().Done():
 				return
 			default:
-				time.Sleep(100 * time.Millisecond) // Added explict sleep since helper context was background
+				time.Sleep(100 * time.Millisecond) // Added explicit sleep since helper context was background
 			}
 		}
 	}
