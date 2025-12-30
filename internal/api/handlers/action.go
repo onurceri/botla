@@ -55,16 +55,11 @@ func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request) {
-	botID, bot, ok := h.authorize(w, r)
+	botID, _, ok := h.authorize(w, r)
 	if !ok {
 		return
 	}
 
-	base := "tr"
-	if bot != nil {
-		base = api.BaseLang(bot.LanguageCode)
-	}
-	cfg := api.ConfigFromBase(base)
 	var req createActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -72,7 +67,7 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Name == "" || req.ActionType == "" {
-		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrNameAndActionTypeRequired, cfg)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrNameAndActionTypeRequired)
 		return
 	}
 

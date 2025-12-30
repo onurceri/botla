@@ -36,7 +36,7 @@ func (h *PrivacyHandlers) ListPrivacyRequests(w http.ResponseWriter, r *http.Req
 
 	requests, total, err := db.ListPrivacyRequests(r.Context(), h.DB, status, limit, offset)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to list privacy requests", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -52,17 +52,17 @@ func (h *PrivacyHandlers) ListPrivacyRequests(w http.ResponseWriter, r *http.Req
 func (h *PrivacyHandlers) GetPrivacyRequest(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "missing request id", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to get privacy request", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if req == nil {
-		api.WriteError(w, http.StatusNotFound, "privacy request not found", api.ErrCodeNotFound)
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 		return
 	}
 
@@ -72,44 +72,44 @@ func (h *PrivacyHandlers) GetPrivacyRequest(w http.ResponseWriter, r *http.Reque
 func (h *PrivacyHandlers) GetDownloadURL(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "missing request id", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to get privacy request", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if req == nil {
-		api.WriteError(w, http.StatusNotFound, "privacy request not found", api.ErrCodeNotFound)
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 		return
 	}
 
 	if req.RequestType != "export" {
-		api.WriteError(w, http.StatusBadRequest, "request is not an export request", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 	if req.Status != "completed" {
-		api.WriteError(w, http.StatusBadRequest, "export is not ready", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 	if req.ExportURL == nil || *req.ExportURL == "" {
-		api.WriteError(w, http.StatusInternalServerError, "export url missing", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if req.ExportExpiresAt != nil && time.Now().After(*req.ExportExpiresAt) {
-		api.WriteError(w, http.StatusGone, "export expired", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusGone, api.ErrCodeBadRequest)
 		return
 	}
 	if h.PrivacyService == nil || h.PrivacyService.Storage == nil {
-		api.WriteError(w, http.StatusServiceUnavailable, "storage not configured", api.ErrCodeServiceUnavailable)
+		api.WriteErrorCode(w, http.StatusServiceUnavailable, api.ErrCodeServiceUnavailable)
 		return
 	}
 
 	signedURL, err := h.PrivacyService.Storage.GetSignedURL(r.Context(), *req.ExportURL, 1*time.Hour)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to generate signed url", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -121,44 +121,44 @@ func (h *PrivacyHandlers) GetDownloadURL(w http.ResponseWriter, r *http.Request)
 func (h *PrivacyHandlers) DownloadPrivacyExport(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "missing request id", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to get privacy request", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if req == nil {
-		api.WriteError(w, http.StatusNotFound, "privacy request not found", api.ErrCodeNotFound)
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 		return
 	}
 
 	if req.RequestType != "export" {
-		api.WriteError(w, http.StatusBadRequest, "request is not an export request", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 	if req.Status != "completed" {
-		api.WriteError(w, http.StatusBadRequest, "export is not ready", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 	if req.ExportURL == nil || *req.ExportURL == "" {
-		api.WriteError(w, http.StatusInternalServerError, "export url missing", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if req.ExportExpiresAt != nil && time.Now().After(*req.ExportExpiresAt) {
-		api.WriteError(w, http.StatusGone, "export expired", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusGone, api.ErrCodeBadRequest)
 		return
 	}
 	if h.PrivacyService == nil || h.PrivacyService.Storage == nil {
-		api.WriteError(w, http.StatusServiceUnavailable, "storage not configured", api.ErrCodeServiceUnavailable)
+		api.WriteErrorCode(w, http.StatusServiceUnavailable, api.ErrCodeServiceUnavailable)
 		return
 	}
 
 	reader, err := h.PrivacyService.Storage.DownloadFile(r.Context(), *req.ExportURL)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to download export", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	defer func() { _ = reader.Close() }()
@@ -178,40 +178,40 @@ func (h *PrivacyHandlers) DownloadPrivacyExport(w http.ResponseWriter, r *http.R
 func (h *PrivacyHandlers) DownloadDataExport(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "missing export id", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	exp, err := db.GetDataExport(r.Context(), h.DB, id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to get export", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if exp == nil {
-		api.WriteError(w, http.StatusNotFound, "export not found", api.ErrCodeNotFound)
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 		return
 	}
 
 	if exp.Status != "completed" {
-		api.WriteError(w, http.StatusBadRequest, "export is not ready", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 	if exp.DownloadURL == nil || *exp.DownloadURL == "" {
-		api.WriteError(w, http.StatusInternalServerError, "download url missing", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if exp.ExpiresAt != nil && time.Now().After(*exp.ExpiresAt) {
-		api.WriteError(w, http.StatusGone, "export expired", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusGone, api.ErrCodeBadRequest)
 		return
 	}
 	if h.PrivacyService == nil || h.PrivacyService.Storage == nil {
-		api.WriteError(w, http.StatusServiceUnavailable, "storage not configured", api.ErrCodeServiceUnavailable)
+		api.WriteErrorCode(w, http.StatusServiceUnavailable, api.ErrCodeServiceUnavailable)
 		return
 	}
 
 	reader, err := h.PrivacyService.Storage.DownloadFile(r.Context(), *exp.DownloadURL)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to download export", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	defer func() { _ = reader.Close() }()
@@ -232,7 +232,7 @@ func (h *PrivacyHandlers) DownloadDataExport(w http.ResponseWriter, r *http.Requ
 func (h *PrivacyHandlers) ProcessPrivacyRequest(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "missing request id", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
@@ -241,13 +241,13 @@ func (h *PrivacyHandlers) ProcessPrivacyRequest(w http.ResponseWriter, r *http.R
 		DenialReason string `json:"denial_reason,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		api.WriteError(w, http.StatusBadRequest, "invalid request body", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	adminID, _ := middleware.UserIDFromContext(r.Context())
 	if adminID == "" {
-		api.WriteError(w, http.StatusUnauthorized, "unauthorized", api.ErrCodeUnauthorized)
+		api.WriteErrorCode(w, http.StatusUnauthorized, api.ErrCodeUnauthorized)
 		return
 	}
 
@@ -255,11 +255,11 @@ func (h *PrivacyHandlers) ProcessPrivacyRequest(w http.ResponseWriter, r *http.R
 	// Get request first
 	req, errGet := db.GetPrivacyRequest(r.Context(), h.DB, id)
 	if errGet != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to get request", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if req == nil {
-		api.WriteError(w, http.StatusNotFound, "request not found", api.ErrCodeNotFound)
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 		return
 	}
 
@@ -277,12 +277,12 @@ func (h *PrivacyHandlers) ProcessPrivacyRequest(w http.ResponseWriter, r *http.R
 	case "deny":
 		err = db.UpdatePrivacyRequestStatus(r.Context(), h.DB, id, "denied", adminID, &payload.DenialReason)
 	default:
-		api.WriteError(w, http.StatusBadRequest, "invalid action", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to process request: "+err.Error(), api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -304,14 +304,14 @@ func (h *PrivacyHandlers) ProcessPrivacyRequest(w http.ResponseWriter, r *http.R
 func (h *PrivacyHandlers) GenerateUserExport(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("userId")
 	if userID == "" {
-		api.WriteError(w, http.StatusBadRequest, "missing user id", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	adminID, _ := middleware.UserIDFromContext(r.Context())
 	export, err := h.PrivacyService.ExportUserData(r.Context(), userID, adminID)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "failed to generate export: "+err.Error(), api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 

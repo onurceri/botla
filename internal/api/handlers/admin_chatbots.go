@@ -53,7 +53,7 @@ func (h *AdminChatbotHandlers) ListChatbots(w http.ResponseWriter, r *http.Reque
 
 	chatbots, total, err := h.AdminChatbotRepo.ListChatbots(r.Context(), filter, limit, offset)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to list chatbots", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -67,17 +67,17 @@ func (h *AdminChatbotHandlers) ListChatbots(w http.ResponseWriter, r *http.Reque
 func (h *AdminChatbotHandlers) GetChatbot(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing chatbot ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	chatbot, err := h.AdminChatbotRepo.GetByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			api.WriteError(w, http.StatusNotFound, "Chatbot not found", api.ErrCodeNotFound)
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 			return
 		}
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get chatbot", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -88,7 +88,7 @@ func (h *AdminChatbotHandlers) GetChatbot(w http.ResponseWriter, r *http.Request
 func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing chatbot ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
@@ -96,10 +96,10 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 	chatbot, err := h.AdminChatbotRepo.GetByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			api.WriteError(w, http.StatusNotFound, "Chatbot not found", api.ErrCodeNotFound)
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 			return
 		}
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get chatbot", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -111,21 +111,21 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 	// Reset chunk counts
 	err = h.AdminChatbotRepo.DeleteVectors(r.Context(), id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to reset vectors", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
 	// Reset all sources to pending
 	count, err := h.AdminChatbotRepo.ResetSources(r.Context(), id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to reset sources", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
 	// Get pending source IDs and queue them
 	sourceIDs, err := h.AdminChatbotRepo.GetSourceIDs(r.Context(), id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get source IDs", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 

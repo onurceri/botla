@@ -17,23 +17,20 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	s, c, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	s, _, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 	userID, _ := middleware.UserIDFromContext(r.Context())
 
-	base := api.BaseLang(c.LanguageCode)
-	cfg := api.ConfigFromBase(base)
-
 	if s.SourceType != "url" {
-		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrOnlyURLRefresh, cfg)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrOnlyURLRefresh)
 		return
 	}
 
 	// Check if source is already processing
 	if s.Status == "pending" || s.Status == "processing" {
-		api.WriteLocalizedError(w, http.StatusConflict, api.ErrSourceAlreadyProcessing, cfg)
+		api.WriteErrorCode(w, http.StatusConflict, api.ErrSourceAlreadyProcessing)
 		return
 	}
 
@@ -45,21 +42,21 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 
 	// Check if refresh is enabled for this plan
 	if !plan.Config.Refresh.Enabled {
-		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrPlanRefreshUnavailable, cfg)
+		api.WriteErrorCode(w, http.StatusForbidden, api.ErrPlanRefreshUnavailable)
 		return
 	}
 
 	// Check monthly refresh quota
 	usedRefreshes, _ := db.GetMonthlyRefreshCount(r.Context(), h.DB, userID, time.Now())
 	if plan.Config.Refresh.MaxMonthly > 0 && usedRefreshes >= plan.Config.Refresh.MaxMonthly {
-		api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyRefreshExceeded, cfg)
+		api.WriteErrorCode(w, http.StatusPaymentRequired, api.ErrMonthlyRefreshExceeded)
 		return
 	}
 
 	// Check cooldown
 	if remaining, ok := h.checkCooldown(r, s.LastRefreshedAt, plan); !ok {
 		w.Header().Set("Retry-After", strconv.Itoa(int(remaining.Seconds())))
-		api.WriteLocalizedError(w, http.StatusTooManyRequests, api.ErrRefreshCooldownActive, cfg)
+		api.WriteErrorCode(w, http.StatusTooManyRequests, api.ErrRefreshCooldownActive)
 		return
 	}
 

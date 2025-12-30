@@ -34,13 +34,13 @@ func StartQdrantStub() *httptest.Server {
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 			return
 		}
 		if r.Method == http.MethodPut {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 			return
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -49,7 +49,7 @@ func StartQdrantStub() *httptest.Server {
 		if r.Method == http.MethodPut {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 			return
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -58,7 +58,7 @@ func StartQdrantStub() *httptest.Server {
 		if r.Method == http.MethodPost {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 			return
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -67,7 +67,7 @@ func StartQdrantStub() *httptest.Server {
 		if r.Method == http.MethodPost {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]any{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"result": []map[string]any{},
 				"status": "ok",
 			})

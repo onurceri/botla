@@ -304,8 +304,8 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 		}
 		files = append(files, icon)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, pkgerrors.Wrapf(err, "chatbot icons rows err")
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, pkgerrors.Wrapf(rowsErr, "chatbot icons rows err")
 	}
 
 	// 3. Get data source file paths
@@ -327,8 +327,8 @@ func GetUserFilesForDeletion(ctx context.Context, pool *sql.DB, userID string) (
 		}
 		files = append(files, path)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, pkgerrors.Wrapf(err, "data source file paths rows err")
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, pkgerrors.Wrapf(rowsErr, "data source file paths rows err")
 	}
 
 	// 4. Get organization branding logos

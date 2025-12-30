@@ -167,7 +167,9 @@ func (e *TestEnv) AuthToken(email string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("login failed: %w", err)
 	}
-	defer loginResp.Body.Close()
+	defer func() {
+		_ = loginResp.Body.Close()
+	}()
 
 	var tokenResp struct {
 		Token string `json:"token"`

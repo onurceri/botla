@@ -196,10 +196,10 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 			"old_hash":  safeHashPrefix(*s.Hash, 16),
 			"new_hash":  safeHashPrefix(newHash, 16),
 		})
-		if err := DeleteSourceVectors(ctx, p.VectorClient, s.ID); err != nil {
+		if delErr := DeleteSourceVectors(ctx, p.VectorClient, s.ID); delErr != nil {
 			p.logWarn("url_processing_delete_vectors_error", map[string]any{
 				"source_id": s.ID,
-				"error":     err.Error(),
+				"error":     delErr.Error(),
 			})
 		}
 	}
@@ -248,10 +248,10 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
 	}
 
-	if err := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+	if embedErr := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); embedErr != nil {
 		p.logWarn("url_processing_embedding_failed", map[string]any{
 			"source_id": s.ID,
-			"error":     err.Error(),
+			"error":     embedErr.Error(),
 		})
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}

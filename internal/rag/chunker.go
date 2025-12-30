@@ -148,14 +148,14 @@ func splitSentences(text string, langCode string) []string {
 	if isProduction {
 		// Production: use R2 cached data
 		if content, ok := tokenizer.GetTrainingData(langCode); ok {
-			if data, err := sentences.LoadTraining(content); err == nil {
+			if data, loadErr := sentences.LoadTraining(content); loadErr == nil {
 				tok = sentences.NewSentenceTokenizer(data)
 			}
 		}
 	} else if cfg.TokenizerData != "" {
 		// Development: read from local file
-		if content, err := os.ReadFile(cfg.TokenizerData); err == nil {
-			if data, err := sentences.LoadTraining(content); err == nil {
+		if content, readErr := os.ReadFile(cfg.TokenizerData); readErr == nil {
+			if data, loadErr := sentences.LoadTraining(content); loadErr == nil {
 				tok = sentences.NewSentenceTokenizer(data)
 			}
 		}

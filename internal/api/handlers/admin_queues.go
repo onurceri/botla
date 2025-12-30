@@ -27,7 +27,7 @@ func NewAdminQueueHandlers(database *sql.DB, adminSvc *services.AdminService) *A
 func (h *AdminQueueHandlers) GetQueues(w http.ResponseWriter, r *http.Request) {
 	stats, err := db.GetQueueStats(r.Context(), h.DB)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to fetch queue stats", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	api.WriteJSON(w, http.StatusOK, stats)
@@ -44,7 +44,7 @@ func (h *AdminQueueHandlers) GetStuckJobs(w http.ResponseWriter, r *http.Request
 
 	jobs, err := db.GetStuckJobs(r.Context(), h.DB, threshold)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to fetch stuck jobs", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	api.WriteJSON(w, http.StatusOK, jobs)
@@ -54,7 +54,7 @@ func (h *AdminQueueHandlers) GetStuckJobs(w http.ResponseWriter, r *http.Request
 func (h *AdminQueueHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing job ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *AdminQueueHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1 AND status IN ('processing', 'error')
 	`, id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to retry job", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -80,13 +80,13 @@ func (h *AdminQueueHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
 func (h *AdminQueueHandlers) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing job ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	_, err := h.DB.ExecContext(r.Context(), `DELETE FROM data_sources WHERE id = $1`, id)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to delete job", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 

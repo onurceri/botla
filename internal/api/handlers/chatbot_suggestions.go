@@ -54,7 +54,9 @@ func (h *SuggestionsHandlers) RegenerateSuggestions(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(RegenerateResponse{JobID: job.ID})
+	if err := json.NewEncoder(w).Encode(RegenerateResponse{JobID: job.ID}); err != nil {
+		h.Log.Error("encode_response_failed", map[string]any{"error": err.Error()})
+	}
 }
 
 func (h *SuggestionsHandlers) GetSuggestionJobStatus(w http.ResponseWriter, r *http.Request) {
@@ -83,10 +85,12 @@ func (h *SuggestionsHandlers) GetSuggestionJobStatus(w http.ResponseWriter, r *h
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(SuggestionJobStatusResponse{
+	if err := json.NewEncoder(w).Encode(SuggestionJobStatusResponse{
 		JobID:              job.ID,
 		Status:             job.Status.String(),
 		SuggestedQuestions: [][]string{job.SuggestedQuestions},
 		ErrorMessage:       job.ErrorMessage,
-	})
+	}); err != nil {
+		h.Log.Error("encode_response_failed", map[string]any{"error": err.Error()})
+	}
 }

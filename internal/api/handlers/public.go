@@ -63,7 +63,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 		}
 
 		if !httputil.IsValidUUID(botID) {
-			api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 			return
 		}
 
@@ -178,7 +178,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 
 	botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
 	if !httputil.IsValidUUID(botID) {
-		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
@@ -269,7 +269,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	if err == nil && plan != nil {
 		ragConfig = plan.Config.Chat.RAG
 		maxMonthlyTokens = plan.Config.Chat.MaxMonthlyTokens
-		
+
 		// Enforce allowed model if set
 		if len(plan.Config.Chat.AllowedModels) > 0 {
 			allowed := slices.Contains(plan.Config.Chat.AllowedModels, cbot.Model)
@@ -297,11 +297,9 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		if estimatedTokens <= 0 {
 			estimatedTokens = 512 // Default
 		}
-		err := db.ReserveChatTokens(r.Context(), h.DB, cbot.UserID, estimatedTokens, maxMonthlyTokens)
+		err = db.ReserveChatTokens(r.Context(), h.DB, cbot.UserID, estimatedTokens, maxMonthlyTokens)
 		if errors.Is(err, db.ErrTokenQuotaExceeded) {
-			base := api.BaseLang(cbot.LanguageCode)
-			cfg := api.ConfigFromBase(base)
-			api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
+			api.WriteErrorCode(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded)
 			return
 		}
 		if err != nil {
@@ -375,7 +373,7 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	}
 	botID := parts[5]
 	if !httputil.IsValidUUID(botID) {
-		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 

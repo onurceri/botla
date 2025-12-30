@@ -56,7 +56,7 @@ func (h *AdminSourceHandlers) ListSources(w http.ResponseWriter, r *http.Request
 
 	sources, total, err := db.AdminListSources(r.Context(), h.DB, filter, limit, offset)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to list sources", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -70,17 +70,17 @@ func (h *AdminSourceHandlers) ListSources(w http.ResponseWriter, r *http.Request
 func (h *AdminSourceHandlers) GetSource(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing source ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	source, err := db.AdminGetSourceByID(r.Context(), h.DB, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			api.WriteError(w, http.StatusNotFound, "Source not found", api.ErrCodeNotFound)
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 			return
 		}
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get source", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -91,7 +91,7 @@ func (h *AdminSourceHandlers) GetSource(w http.ResponseWriter, r *http.Request) 
 func (h *AdminSourceHandlers) GetSourceStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := db.AdminGetSourceStats(r.Context(), h.DB)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get source stats", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *AdminSourceHandlers) GetSourceStats(w http.ResponseWriter, r *http.Requ
 func (h *AdminSourceHandlers) ReprocessSource(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing source ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
@@ -110,10 +110,10 @@ func (h *AdminSourceHandlers) ReprocessSource(w http.ResponseWriter, r *http.Req
 	source, err := db.AdminGetSourceByID(r.Context(), h.DB, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			api.WriteError(w, http.StatusNotFound, "Source not found", api.ErrCodeNotFound)
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 			return
 		}
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get source", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h *AdminSourceHandlers) ReprocessSource(w http.ResponseWriter, r *http.Req
 
 	// Reset source to pending
 	if err := db.AdminReprocessSource(r.Context(), h.DB, id); err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to reset source", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 

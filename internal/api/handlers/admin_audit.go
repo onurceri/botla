@@ -41,7 +41,7 @@ func (h *AdminAuditHandlers) ListAuditLogs(w http.ResponseWriter, r *http.Reques
 
 	logs, total, err := db.ListAuditLogs(r.Context(), h.DB, filter, limit, offset)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to list audit logs", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 

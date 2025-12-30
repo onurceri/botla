@@ -34,7 +34,7 @@ func RequireOrganizationAccess(orgService *services.OrganizationService, minRole
 				return
 			}
 			if !httputil.IsValidUUID(orgID) {
-				api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+				api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 				return
 			}
 

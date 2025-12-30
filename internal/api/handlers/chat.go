@@ -83,9 +83,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, services.ErrTokenQuotaExceeded) {
-			base := api.BaseLang(cbot.LanguageCode)
-			cfg := api.ConfigFromBase(base)
-			api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded, cfg)
+			api.WriteErrorCode(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded)
 			return
 		}
 

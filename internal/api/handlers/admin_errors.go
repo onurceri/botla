@@ -32,7 +32,7 @@ func (h *AdminErrorHandlers) ListErrors(w http.ResponseWriter, r *http.Request) 
 
 	logs, total, err := db.ListErrorLogs(r.Context(), h.DB, severity, limit, offset)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to list error logs", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -48,17 +48,17 @@ func (h *AdminErrorHandlers) ListErrors(w http.ResponseWriter, r *http.Request) 
 func (h *AdminErrorHandlers) GetError(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing error ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	log, err := db.GetErrorLogByID(r.Context(), h.DB, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			api.WriteError(w, http.StatusNotFound, "Error log not found", api.ErrCodeNotFound)
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 			return
 		}
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get error log", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -69,7 +69,7 @@ func (h *AdminErrorHandlers) GetError(w http.ResponseWriter, r *http.Request) {
 func (h *AdminErrorHandlers) GetErrorStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := db.GetErrorStats(r.Context(), h.DB)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get error stats", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
