@@ -10,15 +10,7 @@ import (
 )
 
 func TestUsageIngestions_CRUD(t *testing.T) {
-	dbConn := testdb.OpenTestDB(t)
-	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
-        user_id VARCHAR(64) NOT NULL,
-        period_month DATE NOT NULL,
-        sources_count INT NOT NULL DEFAULT 0,
-        embedding_tokens INT NOT NULL DEFAULT 0,
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (user_id, period_month)
-    )`)
+	dbConn := testdb.OpenParallelTestDB(t)
 	uid := createUser(t, dbConn)
 	now := time.Now()
 	if err := db.IncrementSuccessfulIngestion(context.Background(), dbConn, uid, now, 2); err != nil {
@@ -34,15 +26,7 @@ func TestUsageIngestions_CRUD(t *testing.T) {
 }
 
 func TestUsageIngestions_Tx_Success(t *testing.T) {
-	dbConn := testdb.OpenTestDB(t)
-	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
-        user_id VARCHAR(64) NOT NULL,
-        period_month DATE NOT NULL,
-        sources_count INT NOT NULL DEFAULT 0,
-        embedding_tokens INT NOT NULL DEFAULT 0,
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (user_id, period_month)
-    )`)
+	dbConn := testdb.OpenParallelTestDB(t)
 	uid := createUser(t, dbConn)
 	now := time.Now()
 
@@ -70,15 +54,7 @@ func TestUsageIngestions_Tx_Success(t *testing.T) {
 }
 
 func TestUsageIngestions_Tx_RollbackOnFailure(t *testing.T) {
-	dbConn := testdb.OpenTestDB(t)
-	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
-        user_id VARCHAR(64) NOT NULL,
-        period_month DATE NOT NULL,
-        sources_count INT NOT NULL DEFAULT 0,
-        embedding_tokens INT NOT NULL DEFAULT 0,
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (user_id, period_month)
-    )`)
+	dbConn := testdb.OpenParallelTestDB(t)
 	uid := createUser(t, dbConn)
 	now := time.Now()
 
@@ -92,7 +68,8 @@ func TestUsageIngestions_Tx_RollbackOnFailure(t *testing.T) {
 		t.Fatalf("increment tx: %v", err)
 	}
 
-	_, _ = dbConn.Exec(`DROP TABLE usage_ingestions`)
+	// Drop table in the SAME transaction to avoid deadlock with ACCESS EXCLUSIVE lock
+	_, _ = tx.Exec(`DROP TABLE usage_ingestions`)
 
 	err = db.AddEmbeddingTokensTx(context.Background(), tx, uid, now, 1000)
 	if err == nil {
@@ -104,6 +81,7 @@ func TestUsageIngestions_Tx_RollbackOnFailure(t *testing.T) {
 		t.Fatalf("rollback tx: %v", err)
 	}
 
+	// Recreate table in a new command to verify rollback worked
 	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
         user_id VARCHAR(64) NOT NULL,
         period_month DATE NOT NULL,
@@ -123,15 +101,7 @@ func TestUsageIngestions_Tx_RollbackOnFailure(t *testing.T) {
 }
 
 func TestUsageIngestions_Tx_Atomicity(t *testing.T) {
-	dbConn := testdb.OpenTestDB(t)
-	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
-        user_id VARCHAR(64) NOT NULL,
-        period_month DATE NOT NULL,
-        sources_count INT NOT NULL DEFAULT 0,
-        embedding_tokens INT NOT NULL DEFAULT 0,
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (user_id, period_month)
-    )`)
+	dbConn := testdb.OpenParallelTestDB(t)
 	uid := createUser(t, dbConn)
 	now := time.Now()
 
@@ -145,7 +115,8 @@ func TestUsageIngestions_Tx_Atomicity(t *testing.T) {
 		t.Fatalf("increment tx: %v", err)
 	}
 
-	_, _ = dbConn.Exec(`DROP TABLE usage_ingestions`)
+	// Drop table in the SAME transaction to avoid deadlock
+	_, _ = tx.Exec(`DROP TABLE usage_ingestions`)
 
 	err = db.AddEmbeddingTokensTx(context.Background(), tx, uid, now, 300)
 	if err == nil {
@@ -157,6 +128,7 @@ func TestUsageIngestions_Tx_Atomicity(t *testing.T) {
 		t.Fatalf("rollback tx: %v", err)
 	}
 
+	// Recreate table
 	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
         user_id VARCHAR(64) NOT NULL,
         period_month DATE NOT NULL,
@@ -176,15 +148,7 @@ func TestUsageIngestions_Tx_Atomicity(t *testing.T) {
 }
 
 func TestUsageIngestions_Tx_Consecutive(t *testing.T) {
-	dbConn := testdb.OpenTestDB(t)
-	_, _ = dbConn.Exec(`CREATE TABLE IF NOT EXISTS usage_ingestions (
-        user_id VARCHAR(64) NOT NULL,
-        period_month DATE NOT NULL,
-        sources_count INT NOT NULL DEFAULT 0,
-        embedding_tokens INT NOT NULL DEFAULT 0,
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (user_id, period_month)
-    )`)
+	dbConn := testdb.OpenParallelTestDB(t)
 	uid := createUser(t, dbConn)
 	now := time.Now()
 

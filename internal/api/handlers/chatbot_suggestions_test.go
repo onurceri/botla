@@ -7,28 +7,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestHandler(t *testing.T) (*SuggestionsHandlers, *sql.DB, func()) {
-	dbConn, err := sql.Open("postgres", "postgres://botla:botla@localhost/botla_test?sslmode=disable")
-	if err != nil {
-		t.Skipf("skipping test: could not connect to database: %v", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := dbConn.PingContext(ctx); err != nil {
-		t.Skipf("skipping test: could not ping database: %v", err)
-	}
+func setupTestHandler(t *testing.T) (*SuggestionsHandlers, *sql.DB) {
+	// Use testdb.OpenParallelTestDB to properly run migrations and create isolated schema
+	dbConn := testdb.OpenParallelTestDB(t)
 
 	log := logger.New("info")
 
@@ -39,26 +30,24 @@ func setupTestHandler(t *testing.T) (*SuggestionsHandlers, *sql.DB, func()) {
 		OrgService:       nil,
 	}
 
-	teardown := func() {
-		dbConn.Close()
-	}
-
-	return h, dbConn, teardown
+	return h, dbConn
 }
 
 func TestRegenerateSuggestions_Success(t *testing.T) {
-	h, dbConn, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
 
 	ctx := context.Background()
 
 	result := testdb.CreateChatbot(t, dbConn)
 	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+chatbotID+"/suggestions/regenerate", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx = context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.RegenerateSuggestions(rec, req)
+	h.RegenerateSuggestions(rec, req.WithContext(ctx))
 
 	assert.Equal(t, http.StatusAccepted, rec.Code)
 
@@ -72,16 +61,18 @@ func TestRegenerateSuggestions_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.Equal(t, chatbotID, job.ChatbotID)
-	assert.Equal(t, models.SuggestionJobStatusPending, job.Status)
+	// Job status may be pending or running due to background goroutine timing
+	assert.True(t, job.Status == models.SuggestionJobStatusPending || job.Status == models.SuggestionJobStatusRunning,
+		"expected status pending or running, got %s", job.Status)
 }
 
 func TestRegenerateSuggestions_MethodNotAllowed(t *testing.T) {
-	h, _, teardown := setupTestHandler(t)
-	defer teardown()
+	h, _ := setupTestHandler(t)
 
-	result := testdb.CreateChatbot(t, nil)
-	chatbotID := result.Chatbot.ID
+	// Use a hardcoded UUID since we only test the method check (doesn't need real entity)
+	chatbotID := uuid.NewString()
 
+	// GET request should be rejected immediately
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/regenerate", nil)
 	rec := httptest.NewRecorder()
 
@@ -91,21 +82,23 @@ func TestRegenerateSuggestions_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGetSuggestionJobStatus_Success(t *testing.T) {
-	h, dbConn, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
 
 	ctx := context.Background()
 
 	result := testdb.CreateChatbot(t, dbConn)
 	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
 
 	job, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx = context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.GetSuggestionJobStatus(rec, req)
+	h.GetSuggestionJobStatus(rec, req.WithContext(ctx))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -118,26 +111,30 @@ func TestGetSuggestionJobStatus_Success(t *testing.T) {
 }
 
 func TestGetSuggestionJobStatus_NotFound(t *testing.T) {
-	h, _, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
 
-	chatbotID := uuid.NewString()
+	// Create a chatbot but don't create any suggestion jobs
+	result := testdb.CreateChatbot(t, dbConn)
+	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.GetSuggestionJobStatus(rec, req)
+	h.GetSuggestionJobStatus(rec, req.WithContext(ctx))
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestGetSuggestionJobStatus_MethodNotAllowed(t *testing.T) {
-	h, _, teardown := setupTestHandler(t)
-	defer teardown()
+	h, _ := setupTestHandler(t)
 
-	result := testdb.CreateChatbot(t, nil)
-	chatbotID := result.Chatbot.ID
+	// Use a hardcoded UUID since we only test the method check (doesn't need real entity)
+	chatbotID := uuid.NewString()
 
+	// POST request should be rejected immediately
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
 	rec := httptest.NewRecorder()
 
@@ -147,13 +144,13 @@ func TestGetSuggestionJobStatus_MethodNotAllowed(t *testing.T) {
 }
 
 func TestGetSuggestionJobStatus_WithSuggestions(t *testing.T) {
-	h, dbConn, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
 
 	ctx := context.Background()
 
 	result := testdb.CreateChatbot(t, dbConn)
 	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
 
 	job, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
 	assert.NoError(t, err)
@@ -163,9 +160,11 @@ func TestGetSuggestionJobStatus_WithSuggestions(t *testing.T) {
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx = context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.GetSuggestionJobStatus(rec, req)
+	h.GetSuggestionJobStatus(rec, req.WithContext(ctx))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -179,13 +178,13 @@ func TestGetSuggestionJobStatus_WithSuggestions(t *testing.T) {
 }
 
 func TestGetSuggestionJobStatus_WithError(t *testing.T) {
-	h, dbConn, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
 
 	ctx := context.Background()
 
 	result := testdb.CreateChatbot(t, dbConn)
 	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
 
 	job, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
 	assert.NoError(t, err)
@@ -195,9 +194,11 @@ func TestGetSuggestionJobStatus_WithError(t *testing.T) {
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx = context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.GetSuggestionJobStatus(rec, req)
+	h.GetSuggestionJobStatus(rec, req.WithContext(ctx))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -211,40 +212,52 @@ func TestGetSuggestionJobStatus_WithError(t *testing.T) {
 }
 
 func TestRegenerateSuggestions_InvalidChatbotID(t *testing.T) {
-	h, _, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
+
+	// Need a valid user ID but an invalid chatbot ID
+	result := testdb.CreateChatbot(t, dbConn)
+	userID := result.User.ID
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/invalid-uuid/suggestions/regenerate", nil)
+	req.SetPathValue("id", "invalid-uuid")
+	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.RegenerateSuggestions(rec, req)
+	h.RegenerateSuggestions(rec, req.WithContext(ctx))
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 func TestGetSuggestionJobStatus_InvalidChatbotID(t *testing.T) {
-	h, _, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
+
+	// Need a valid user ID but an invalid chatbot ID
+	result := testdb.CreateChatbot(t, dbConn)
+	userID := result.User.ID
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/invalid-uuid/suggestions/status", nil)
+	req.SetPathValue("id", "invalid-uuid")
+	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.GetSuggestionJobStatus(rec, req)
+	h.GetSuggestionJobStatus(rec, req.WithContext(ctx))
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 func TestRegenerateSuggestions_ReturnsJSON(t *testing.T) {
-	h, dbConn, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
 
 	result := testdb.CreateChatbot(t, dbConn)
 	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+chatbotID+"/suggestions/regenerate", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.RegenerateSuggestions(rec, req)
+	h.RegenerateSuggestions(rec, req.WithContext(ctx))
 
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
@@ -257,21 +270,23 @@ func TestRegenerateSuggestions_ReturnsJSON(t *testing.T) {
 }
 
 func TestGetSuggestionJobStatus_ReturnsJSON(t *testing.T) {
-	h, dbConn, teardown := setupTestHandler(t)
-	defer teardown()
+	h, dbConn := setupTestHandler(t)
 
 	ctx := context.Background()
 
 	result := testdb.CreateChatbot(t, dbConn)
 	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
 
 	_, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx = context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rec := httptest.NewRecorder()
 
-	h.GetSuggestionJobStatus(rec, req)
+	h.GetSuggestionJobStatus(rec, req.WithContext(ctx))
 
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
@@ -283,4 +298,34 @@ func TestGetSuggestionJobStatus_ReturnsJSON(t *testing.T) {
 	assert.True(t, ok, "response should contain job_id")
 	_, ok = response["status"]
 	assert.True(t, ok, "response should contain status")
+}
+
+func TestRegenerateSuggestions_Unauthorized(t *testing.T) {
+	h, _ := setupTestHandler(t)
+
+	chatbotID := uuid.NewString()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/chatbots/"+chatbotID+"/suggestions/regenerate", nil)
+	req.SetPathValue("id", chatbotID)
+	rec := httptest.NewRecorder()
+
+	// No user ID in context - should get 401
+	h.RegenerateSuggestions(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
+func TestGetSuggestionJobStatus_Unauthorized(t *testing.T) {
+	h, _ := setupTestHandler(t)
+
+	chatbotID := uuid.NewString()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
+	req.SetPathValue("id", chatbotID)
+	rec := httptest.NewRecorder()
+
+	// No user ID in context - should get 401
+	h.GetSuggestionJobStatus(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }

@@ -247,7 +247,6 @@ func TestWorkerPool_ConcurrentSubmissions(t *testing.T) {
 
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
-			defer wg.Done()
 			for j := 0; j < jobsPerGoroutine; j++ {
 				success := pool.Submit(func(ctx context.Context) {
 					time.Sleep(5 * time.Millisecond)
@@ -257,6 +256,8 @@ func TestWorkerPool_ConcurrentSubmissions(t *testing.T) {
 					mu.Lock()
 					acceptedCount++
 					mu.Unlock()
+				} else {
+					wg.Done()
 				}
 			}
 		}()
@@ -269,23 +270,22 @@ func TestWorkerPool_ConcurrentSubmissions(t *testing.T) {
 func TestWorkerPool_JobCancellation(t *testing.T) {
 	log := logger.New("DEBUG")
 	pool := NewWorkerPool(log, 2)
-	defer pool.Shutdown(1 * time.Second)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-
-	poolCtx, cancel := context.WithCancel(context.Background())
 
 	pool.Submit(func(ctx context.Context) {
 		defer wg.Done()
 		select {
 		case <-ctx.Done():
+			// Success: cancelled
 		case <-time.After(2 * time.Second):
+			// Failure: did not cancel
 		}
-		_ = poolCtx
 	})
 
-	cancel()
+	// Shutdown calls pool.cancel() which should cancel the job's context
+	pool.Shutdown(1 * time.Second)
 
 	done := make(chan struct{})
 	go func() {
@@ -295,7 +295,8 @@ func TestWorkerPool_JobCancellation(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(1 * time.Second):
-		t.Fatal("Job cancellation did not complete")
+		// Success
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Job cancellation did not complete in time")
 	}
 }
