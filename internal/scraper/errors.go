@@ -1,6 +1,10 @@
 package scraper
 
-import "fmt"
+import (
+	"fmt"
+
+	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
+)
 
 // ScrapeError represents an error during scraping
 type ScrapeError struct {
@@ -16,6 +20,22 @@ func (e *ScrapeError) Error() string {
 	return fmt.Sprintf("Scraping failed: %v", e.Err)
 }
 
+// Unwrap returns the underlying error, wrapped with a sentinel error
+// based on the HTTP status code for type-safe error checking.
 func (e *ScrapeError) Unwrap() error {
-	return e.Err
+	if e.Err == nil {
+		return nil
+	}
+	// Wrap with sentinel error based on status code
+	switch e.StatusCode {
+	case 429: // Too Many Requests
+		return fmt.Errorf("%w: %w", pkgErrors.ErrRateLimit, e.Err)
+	case 404:
+		return fmt.Errorf("%w: %w", pkgErrors.ErrNotFound, e.Err)
+	case 500, 502, 503, 504:
+		return fmt.Errorf("%w: %w", pkgErrors.ErrNetwork, e.Err)
+	default:
+		return e.Err
+	}
 }
+

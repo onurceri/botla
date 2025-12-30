@@ -13,6 +13,7 @@ import (
 
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/config"
+	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 type OpenAIClient struct {
@@ -85,6 +86,21 @@ func (c *OpenAIClient) getHTTPClient() *http.Client {
 	return c.http
 }
 
+// wrapHTTPError wraps an HTTP status code with the appropriate sentinel error.
+// This enables type-safe error checking with errors.Is instead of string matching.
+func wrapHTTPError(statusCode int, message string) error {
+	switch statusCode {
+	case http.StatusTooManyRequests:
+		return fmt.Errorf("%s: %w", message, pkgErrors.ErrRateLimit)
+	case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return fmt.Errorf("%s: %w", message, pkgErrors.ErrNetwork)
+	case http.StatusNotFound:
+		return fmt.Errorf("%s: %w", message, pkgErrors.ErrNotFound)
+	default:
+		return errors.New(message)
+	}
+}
+
 func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	if c == nil {
 		return nil, fmt.Errorf("openai client is nil")
@@ -104,7 +120,7 @@ func (c *OpenAIClient) CreateEmbedding(ctx context.Context, text string) ([]floa
 		case err != nil:
 			lastErr = err
 		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
+			lastErr = wrapHTTPError(res.StatusCode, res.Status)
 			_ = res.Body.Close()
 		default:
 			var er embeddingResponse
@@ -160,7 +176,7 @@ func (c *OpenAIClient) CreateEmbeddingsBatch(ctx context.Context, texts []string
 		case err != nil:
 			lastErr = err
 		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
+			lastErr = wrapHTTPError(res.StatusCode, res.Status)
 			_ = res.Body.Close()
 		default:
 			var er embeddingResponse
@@ -248,7 +264,7 @@ func (c *OpenAIClient) CreateCompletion(ctx context.Context, params models.Compl
 		case err != nil:
 			lastErr = err
 		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
+			lastErr = wrapHTTPError(res.StatusCode, res.Status)
 			_ = res.Body.Close()
 		default:
 			var cr chatResponse
@@ -344,11 +360,13 @@ func (c *OpenAIClient) CreateCompletionWithTools(
 		case res.StatusCode != http.StatusOK:
 			body, _ := io.ReadAll(io.LimitReader(res.Body, 8192))
 			_ = res.Body.Close()
+			var errMsg string
 			if len(body) > 0 {
-				lastErr = fmt.Errorf("openai error: %s: %s", res.Status, string(body))
+				errMsg = fmt.Sprintf("openai error: %s: %s", res.Status, string(body))
 			} else {
-				lastErr = errors.New(res.Status)
+				errMsg = res.Status
 			}
+			lastErr = wrapHTTPError(res.StatusCode, errMsg)
 		default:
 			var cr ChatResponseWithTools
 			err := json.NewDecoder(res.Body).Decode(&cr)
