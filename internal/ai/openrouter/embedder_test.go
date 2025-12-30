@@ -18,14 +18,11 @@ func TestNewEmbedder(t *testing.T) {
 	if embedder == nil {
 		t.Fatal("expected embedder to be created")
 	}
-	if embedder.apiKey != "test-key" {
-		t.Errorf("expected apiKey to be 'test-key', got %s", embedder.apiKey)
+	if embedder.client == nil {
+		t.Error("expected client to be set")
 	}
-	if embedder.base != "https://openrouter.ai/api/v1" {
-		t.Errorf("expected base to be 'https://openrouter.ai/api/v1', got %s", embedder.base)
-	}
-	if embedder.http == nil {
-		t.Error("expected http client to be set")
+	if embedder.model != "text-embedding-3-small" {
+		t.Errorf("expected model to be 'text-embedding-3-small', got %s", embedder.model)
 	}
 }
 
@@ -38,8 +35,8 @@ func TestNewFromEnv_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if embedder.apiKey != "test-key" {
-		t.Errorf("expected apiKey to be 'test-key', got %s", embedder.apiKey)
+	if embedder.client == nil {
+		t.Error("expected client to be set")
 	}
 	if embedder.model != "text-embedding-3-large" {
 		t.Errorf("expected model to be 'text-embedding-3-large', got %s", embedder.model)
@@ -54,8 +51,8 @@ func TestNewFromEnv_FallbackToOpenAI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if embedder.apiKey != "fallback-key" {
-		t.Errorf("expected apiKey to be 'fallback-key', got %s", embedder.apiKey)
+	if embedder.client == nil {
+		t.Error("expected client to be set")
 	}
 }
 

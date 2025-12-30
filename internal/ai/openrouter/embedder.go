@@ -1,9 +1,7 @@
 package openrouter
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,20 +19,14 @@ func init() {
 	})
 }
 
-
 // Embedder implements ai.Embedder for OpenRouter
 type Embedder struct {
-	apiKey string
-	http   *http.Client
-	base   string
+	client *ai.BaseClient
 	model  string
 }
 
 // Verify interface compliance at compile time
 var _ ai.Embedder = (*Embedder)(nil)
-
-// globalHTTPClient can be set in tests to override all clients
-var globalHTTPClient *http.Client
 
 // NewEmbedder creates a new OpenRouter embedder
 func NewEmbedder(apiKey, baseURL string, model string, client *http.Client) *Embedder {
@@ -47,10 +39,14 @@ func NewEmbedder(apiKey, baseURL string, model string, client *http.Client) *Emb
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
+
+	headers := map[string]string{
+		"HTTP-Referer": "https://botla.app",
+		"X-Title":      "Botla",
+	}
+
 	return &Embedder{
-		apiKey: apiKey,
-		http:   client,
-		base:   baseURL,
+		client: ai.NewBaseClientWithHTTPClient(baseURL, apiKey, headers, client),
 		model:  model,
 	}
 }
@@ -59,7 +55,6 @@ func NewEmbedder(apiKey, baseURL string, model string, client *http.Client) *Emb
 func NewFromEnv() (*Embedder, error) {
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
-		// Fallback to OPENAI_API_KEY if OPENROUTER_API_KEY is missing
 		apiKey = os.Getenv("OPENAI_API_KEY")
 	}
 	if apiKey == "" {
@@ -77,26 +72,21 @@ func NewFromEnv() (*Embedder, error) {
 	}
 
 	timeout := 30 * time.Second
-	// Check if OPENROUTER_TIMEOUT_MS is set
 	if timeoutStr := os.Getenv("OPENROUTER_TIMEOUT_MS"); timeoutStr != "" {
 		if ms, err := strconv.Atoi(timeoutStr); err == nil && ms > 0 {
 			timeout = time.Duration(ms) * time.Millisecond
 		}
 	}
 
+	headers := map[string]string{
+		"HTTP-Referer": "https://botla.app",
+		"X-Title":      "Botla",
+	}
+
 	return &Embedder{
-		apiKey: apiKey,
-		http:   &http.Client{Timeout: timeout},
-		base:   baseURL,
+		client: ai.NewBaseClientWithHTTPClient(baseURL, apiKey, headers, &http.Client{Timeout: timeout}),
 		model:  model,
 	}, nil
-}
-
-func (e *Embedder) getHTTPClient() *http.Client {
-	if globalHTTPClient != nil {
-		return globalHTTPClient
-	}
-	return e.http
 }
 
 // Embed generates an embedding for a single text
@@ -106,44 +96,21 @@ func (e *Embedder) Embed(ctx context.Context, text string) ([]float32, error) {
 	}
 
 	body := embeddingRequest{Model: e.model, Input: text}
-	b, _ := json.Marshal(body)
+	var resp embeddingResponse
 
-	var lastErr error
-	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, e.base+"/embeddings", bytes.NewReader(b))
-		req.Header.Set("Authorization", "Bearer "+e.apiKey)
-		req.Header.Set("Content-Type", "application/json")
-		// OpenRouter specific headers
-		req.Header.Set("HTTP-Referer", "https://botla.app")
-		req.Header.Set("X-Title", "Botla")
-
-		res, err := e.getHTTPClient().Do(req)
-		switch {
-		case err != nil:
-			lastErr = err
-		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
-			_ = res.Body.Close()
-		default:
-			var er embeddingResponse
-			err := json.NewDecoder(res.Body).Decode(&er)
-			_ = res.Body.Close()
-			switch {
-			case err != nil:
-				lastErr = err
-			case len(er.Data) == 0:
-				lastErr = errors.New("no embedding returned")
-			default:
-				out := make([]float32, len(er.Data[0].Embedding))
-				for i, v := range er.Data[0].Embedding {
-					out[i] = float32(v)
-				}
-				return out, nil
-			}
-		}
-		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+	if err := e.client.Post(ctx, "/embeddings", body, &resp); err != nil {
+		return nil, err
 	}
-	return nil, lastErr
+
+	if len(resp.Data) == 0 {
+		return nil, errors.New("no embedding returned")
+	}
+
+	out := make([]float32, len(resp.Data[0].Embedding))
+	for i, v := range resp.Data[0].Embedding {
+		out[i] = float32(v)
+	}
+	return out, nil
 }
 
 // EmbedBatch generates embeddings for multiple texts
@@ -156,46 +123,24 @@ func (e *Embedder) EmbedBatch(ctx context.Context, texts []string) ([][]float32,
 	}
 
 	body := embeddingBatchRequest{Model: e.model, Input: texts}
-	b, _ := json.Marshal(body)
+	var resp embeddingResponse
 
-	var lastErr error
-	for attempt := 0; attempt < 4; attempt++ {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodPost, e.base+"/embeddings", bytes.NewReader(b))
-		req.Header.Set("Authorization", "Bearer "+e.apiKey)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("HTTP-Referer", "https://botla.app")
-		req.Header.Set("X-Title", "Botla")
-
-		res, err := e.getHTTPClient().Do(req)
-		switch {
-		case err != nil:
-			lastErr = err
-		case res.StatusCode != http.StatusOK:
-			lastErr = errors.New(res.Status)
-			_ = res.Body.Close()
-		default:
-			var er embeddingResponse
-			err := json.NewDecoder(res.Body).Decode(&er)
-			_ = res.Body.Close()
-			switch {
-			case err != nil:
-				lastErr = err
-			case len(er.Data) == 0:
-				lastErr = errors.New("no embedding returned")
-			default:
-				out := make([][]float32, len(er.Data))
-				for i := range er.Data {
-					out[i] = make([]float32, len(er.Data[i].Embedding))
-					for j, v := range er.Data[i].Embedding {
-						out[i][j] = float32(v)
-					}
-				}
-				return out, nil
-			}
-		}
-		time.Sleep(time.Duration(1<<attempt) * 200 * time.Millisecond)
+	if err := e.client.Post(ctx, "/embeddings", body, &resp); err != nil {
+		return nil, err
 	}
-	return nil, lastErr
+
+	if len(resp.Data) == 0 {
+		return nil, errors.New("no embedding returned")
+	}
+
+	out := make([][]float32, len(resp.Data))
+	for i := range resp.Data {
+		out[i] = make([]float32, len(resp.Data[i].Embedding))
+		for j, v := range resp.Data[i].Embedding {
+			out[i][j] = float32(v)
+		}
+	}
+	return out, nil
 }
 
 // Dimension returns the dimensionality of embeddings
