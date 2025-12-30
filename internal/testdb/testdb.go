@@ -347,6 +347,9 @@ func runMigrations(t *testing.T, schema string) {
 		}
 
 		outputStr := string(output)
+		if err != nil && i == 0 {
+			t.Logf("initial migration failed for schema %s: %s (error: %v)", schema, outputStr, err)
+		}
 
 		// Check if the error is due to a dirty database version
 		// This can happen if a previous migration was interrupted mid-way

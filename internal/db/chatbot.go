@@ -29,9 +29,12 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
 	}
 
 	// Serialize JSONB fields
-	var sqJSON, tcJSON, fmJSON, trJSON, hcJSON interface{}
+	var sqJSON, mqJSON, tcJSON, fmJSON, trJSON, hcJSON interface{}
 	if bot.SuggestedQuestions != nil {
 		sqJSON, _ = json.Marshal(bot.SuggestedQuestions)
+	}
+	if bot.ManualQuestions != nil {
+		mqJSON, _ = json.Marshal(bot.ManualQuestions)
 	}
 	if bot.ThresholdConfig != nil {
 		tcJSON, _ = json.Marshal(bot.ThresholdConfig)
@@ -55,19 +58,19 @@ func CreateChatbot(ctx context.Context, pool *sql.DB, bot *models.Chatbot) (stri
             bot_message_text_color, user_message_text_color,
             chat_font_family, chat_header_color, chat_header_text_color,
             chat_background_color, bubble_radius, input_background_color, input_text_color, send_button_color,
-            bot_icon, bot_display_name, suggested_questions, suggestions_enabled,
+            bot_icon, bot_display_name, suggested_questions, manual_questions, suggestions_enabled,
             include_paths, exclude_paths, selector_whitelist, discovery_mode,
             refresh_policy, refresh_frequency, next_refresh_at, last_refresh_at,
             confidence_threshold, threshold_config, fallback_messages, topic_restrictions,
             handoff_enabled, handoff_type, handoff_config
-        ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44) RETURNING id`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,(SELECT id FROM languages WHERE code=$7),$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45) RETURNING id`,
 		bot.UserID, bot.WorkspaceID, bot.OrganizationID, bot.Name, bot.Description, bot.CustomInstruction, normalizeLocale(bot.LanguageCode), bot.Model,
 		bot.Temperature, bot.MaxTokens, bot.ThemeColor, bot.WelcomeMessage,
 		bot.Position, bot.BotMessageColor, bot.UserMessageColor,
 		bot.BotMessageTextColor, bot.UserMessageTextColor,
 		bot.ChatFontFamily, bot.ChatHeaderColor, bot.ChatHeaderTextColor,
 		bot.ChatBackgroundColor, bot.BubbleRadius, bot.InputBackgroundColor, bot.InputTextColor, bot.SendButtonColor,
-		bot.BotIcon, bot.BotDisplayName, sqJSON, bot.SuggestionsEnabled,
+		bot.BotIcon, bot.BotDisplayName, sqJSON, mqJSON, bot.SuggestionsEnabled,
 		pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 		bot.RefreshPolicy, bot.RefreshFrequency, bot.NextRefreshAt, bot.LastRefreshAt,
 		bot.ConfidenceThreshold, tcJSON, fmJSON, trJSON,
