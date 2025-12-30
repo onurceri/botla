@@ -9,14 +9,16 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestPDFDeduplication_Integration(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := fmt.Sprintf("dedup-%d@example.com", time.Now().UnixNano())
 	token := authTokenDedup(t, te.Server.URL, email)
@@ -48,11 +50,11 @@ func TestPDFDeduplication_Integration(t *testing.T) {
 }
 
 func TestTextDeduplication_Integration(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := fmt.Sprintf("textdedup-%d@example.com", time.Now().UnixNano())
 	token := authTokenDedup(t, te.Server.URL, email)
@@ -74,11 +76,11 @@ func TestTextDeduplication_Integration(t *testing.T) {
 }
 
 func TestDeduplication_DifferentChatbots_Allowed(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := fmt.Sprintf("crossbot-%d@example.com", time.Now().UnixNano())
 	token := authTokenDedup(t, te.Server.URL, email)

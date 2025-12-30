@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/policy"
@@ -15,7 +16,7 @@ func TestPlanValidationStartupIntegration(t *testing.T) {
 	defer db.Close()
 
 	// Ensure we start with valid plans
-	restorePlans(db)
+	fixtures.RestorePlans(db)
 
 	// Update the 'free' plan to be invalid
 	// We use a negative value for max_chatbots which is invalid according to PlanConfig.Validate()
@@ -26,7 +27,7 @@ func TestPlanValidationStartupIntegration(t *testing.T) {
 	// In the real app, this is called right after DB initialization.
 	planSvc := services.NewPlanService(db, nil)
 	err = planSvc.ValidateAllPlans(context.Background())
-	
+
 	assert.Error(t, err, "Should fail when plans are invalid")
 	assert.Contains(t, err.Error(), "plan \"free\": max_chatbots must be >= 1")
 }
@@ -36,7 +37,7 @@ func TestPlanValidationStartupSuccess(t *testing.T) {
 	defer db.Close()
 
 	// Ensure we start with valid plans
-	restorePlans(db)
+	fixtures.RestorePlans(db)
 
 	// The default seeded plans should be valid
 	// In the real app, this ensures the server starts correctly with standard plans.

@@ -8,16 +8,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // SRC-006: Upload exceeding size limit
 func TestSources_SizeLimitExceeded(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Set max size to 1MB for free plan
 	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"max_size_mb": 1}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
@@ -64,11 +65,11 @@ func TestSources_SizeLimitExceeded(t *testing.T) {
 }
 
 func TestSources_PDFLimitPerBot(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"max_size_mb": 10, "max_files_per_bot": 1}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
 
@@ -122,11 +123,11 @@ func TestSources_PDFLimitPerBot(t *testing.T) {
 }
 
 func TestSources_StorageLimitExceeded(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"total_storage_mb": 10, "max_size_mb": 10}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
 

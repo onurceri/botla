@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create owner user and token
 	ownerToken := authToken(t, te.Server.URL, "owner@example.com")

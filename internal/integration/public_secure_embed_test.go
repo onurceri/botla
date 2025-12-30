@@ -8,15 +8,16 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create chatbot
 	token := authToken(t, te.Server.URL, "secure_owner@example.com")

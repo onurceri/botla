@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/auth"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 type refreshTokenPair struct {
@@ -21,11 +22,11 @@ type refreshRequest struct {
 }
 
 func TestAuth_Refresh_GeneratesNewAccessToken(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "refresh-success+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}

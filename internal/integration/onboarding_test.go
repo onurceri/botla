@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // authToken helper for onboarding tests
@@ -25,11 +27,11 @@ func authTokenOnboarding(t *testing.T, base string, email string) string {
 
 // TestOnboardingFlow tests the complete onboarding flow
 func TestOnboardingFlow(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// 1. Register a new user
 	email := fmt.Sprintf("onboarding-flow+%d@example.com", time.Now().UnixNano())
@@ -146,11 +148,11 @@ func TestOnboardingFlow(t *testing.T) {
 
 // TestOnboardingSkip tests skipping the onboarding
 func TestOnboardingSkip(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Register and login
 	email := fmt.Sprintf("onboarding-skip+%d@example.com", time.Now().UnixNano())
@@ -185,11 +187,11 @@ func TestOnboardingSkip(t *testing.T) {
 
 // TestOnboardingStatePersistedAcrossSessions tests that onboarding state persists
 func TestOnboardingStatePersistedAcrossSessions(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Register and login
 	email := fmt.Sprintf("onboarding-persist+%d@example.com", time.Now().UnixNano())

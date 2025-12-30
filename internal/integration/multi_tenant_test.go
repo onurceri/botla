@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // Multi-tenant isolation tests verify that users cannot access resources
@@ -15,10 +17,10 @@ import (
 // Multi-tenant auth helper - creates unique users per test to avoid collisions
 func mtAuthToken(t *testing.T, base string, email string) string {
 	t.Helper()
-	regBody := map[string]string{"email": email, "password": TestPassword, "full_name": "User"}
+	regBody := map[string]string{"email": email, "password": fixtures.TestPassword, "full_name": "User"}
 	b, _ := json.Marshal(regBody)
 	_, _ = http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
-	lb := map[string]string{"email": email, "password": TestPassword}
+	lb := map[string]string{"email": email, "password": fixtures.TestPassword}
 	lbj, _ := json.Marshal(lb)
 	res, err := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if err != nil {
@@ -132,11 +134,11 @@ func mtListChatbots(t *testing.T, baseURL, token string) []map[string]interface{
 }
 
 func TestMultiTenant_ChatbotIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_cb_userA@test.com")
@@ -196,11 +198,11 @@ func TestMultiTenant_ChatbotIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_SourceIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot and source
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_src_userA@test.com")
@@ -264,11 +266,11 @@ func TestMultiTenant_SourceIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_JobIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot and source (which creates a job)
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_job_userA@test.com")
@@ -310,11 +312,11 @@ func TestMultiTenant_JobIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_ListingIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates resources
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_list_userA@test.com")
@@ -363,11 +365,11 @@ func TestMultiTenant_ListingIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_SourceListingIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot and sources
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_srclist_userA@test.com")
@@ -412,11 +414,11 @@ func TestMultiTenant_SourceListingIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_AnalyticsIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_analytics_userA@test.com")
@@ -442,11 +444,11 @@ func TestMultiTenant_AnalyticsIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_ActionIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_action_userA@test.com")
@@ -494,11 +496,11 @@ func TestMultiTenant_ActionIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_HandoffIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_handoff_userA@test.com")
@@ -524,11 +526,11 @@ func TestMultiTenant_HandoffIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_ChatIsolation(t *testing.T) {
-	te, err := SetupTestEnvWithMocks()
+	te, err := fixtures.SetupTestEnvWithMocks()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_chat_userA@test.com")
@@ -560,11 +562,11 @@ func TestMultiTenant_ChatIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_SuggestionsIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_sugg_userA@test.com")
@@ -610,11 +612,11 @@ func TestMultiTenant_SuggestionsIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_PendingURLsIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// User A creates chatbot
 	tokenA := mtAuthToken(t, te.Server.URL, "mt_urls_userA@test.com")

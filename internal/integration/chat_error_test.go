@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/stretchr/testify/mock"
 )
@@ -32,11 +33,11 @@ func startOpenAIErrorStub() *httptest.Server {
 }
 
 func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Replace the real factory/client with a mock that always fails
 	mockLLM := &rag.MockFullClient{}
@@ -58,7 +59,7 @@ func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
 	}, nil)
 
 	// Actually, let's just create a custom mux for this test
-	mux, _ := NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 

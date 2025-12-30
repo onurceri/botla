@@ -7,15 +7,16 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 )
 
 func TestChatbot_Lifecycle(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	token := authToken(t, te.Server.URL, "lifecycle@example.com")
 
 	// Helper to create a chatbot
@@ -228,14 +229,14 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		// DEL-004 Cascade delete from Qdrant
 		// Check mock
 		found := false
-		te.VectorStore.mu.Lock()
+		te.VectorStore.Mu.Lock()
 		for _, id := range te.VectorStore.DeletedSourceIDs {
 			if id == sourceID {
 				found = true
 				break
 			}
 		}
-		te.VectorStore.mu.Unlock()
+		te.VectorStore.Mu.Unlock()
 		if !found {
 			t.Errorf("source ID %s not found in deleted vectors", sourceID)
 		}

@@ -6,16 +6,17 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestChatbot_DomainUpdates(t *testing.T) {
 	// Setup
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	token := authToken(t, te.Server.URL, "domain_test@example.com")
 
 	// Create Chatbot

@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestPublicPlans_GetAllPlans(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// No auth required for public endpoint
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans", nil)
@@ -26,7 +28,7 @@ func TestPublicPlans_GetAllPlans(t *testing.T) {
 	}
 
 	var plans []struct {
-		Code     string `json:"code"`
+		Code     string  `json:"code"`
 		Price    float64 `json:"price"`
 		Currency string  `json:"currency"`
 		Limits   struct {
@@ -59,11 +61,11 @@ func TestPublicPlans_GetAllPlans(t *testing.T) {
 }
 
 func TestPublicPlans_GetPlanByCode(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Test getting 'free' plan
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans/free", nil)
@@ -78,7 +80,7 @@ func TestPublicPlans_GetPlanByCode(t *testing.T) {
 	}
 
 	var plan struct {
-		Code     string `json:"code"`
+		Code     string  `json:"code"`
 		Price    float64 `json:"price"`
 		Currency string  `json:"currency"`
 		Limits   struct {
@@ -108,11 +110,11 @@ func TestPublicPlans_GetPlanByCode(t *testing.T) {
 }
 
 func TestPublicPlans_GetPlanByCode_NotFound(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans/nonexistent-plan", nil)
 	res, err := http.DefaultClient.Do(req)
@@ -127,11 +129,11 @@ func TestPublicPlans_GetPlanByCode_NotFound(t *testing.T) {
 }
 
 func TestPublicPlans_NoAuthRequired(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Verify /api/v1/plans doesn't require auth
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans", nil)

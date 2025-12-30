@@ -9,16 +9,17 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // TRK-002: Turkish special chars in chatbot name
 func TestTurkish_ChatbotName(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "turkish-name@example.com")
 
@@ -48,17 +49,17 @@ func TestTurkish_ChatbotName(t *testing.T) {
 
 // TRK-004: Turkish chars in system prompt
 func TestTurkish_SystemPrompt(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "turkish-prompt@example.com")
 
@@ -103,17 +104,17 @@ func TestTurkish_SystemPrompt(t *testing.T) {
 // TRK-001: Turkish special chars in user message
 func TestTurkish_UserMessage(t *testing.T) {
 	// Setup with mock OpenAI to verify prompt sent to LLM
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "turkish-msg@example.com")
 
@@ -156,11 +157,11 @@ func TestTurkish_UserMessage(t *testing.T) {
 
 // TRK-010: Error ERR_MONTHLY_TOKENS_EXCEEDED
 func TestTurkish_LocalizedError(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Update free plan to have very low token limit
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code=$1`, policy.PlanFree.String())
@@ -217,11 +218,11 @@ func TestTurkish_JSONEncoding(t *testing.T) {
 	// But sometimes SetEscapeHTML(true) is used.
 	// We want to ensure we get "Ş" not "\u015e".
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "json-enc@example.com")
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
@@ -29,11 +30,11 @@ func authToken(t *testing.T, base string, email string) string {
 }
 
 func TestChatbot_CRUD(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	token := authToken(t, te.Server.URL, "crud@example.com")
 
 	// create
@@ -113,11 +114,11 @@ func TestChatbot_CRUD(t *testing.T) {
 }
 
 func TestFreePlan_ModelRestriction_AllowsGpt4oMini(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "free-model-allowed@example.com"
 	token := authToken(t, te.Server.URL, email)
@@ -142,11 +143,11 @@ func TestFreePlan_ModelRestriction_AllowsGpt4oMini(t *testing.T) {
 }
 
 func TestFreePlan_ModelRestriction_BlocksDisallowedModels(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "free-model-block@example.com"
 	token := authToken(t, te.Server.URL, email)

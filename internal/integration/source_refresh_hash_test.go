@@ -8,22 +8,24 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // RFR-002: Refresh unchanged (hash match)
 func TestSourceRefresh_Unchanged_Skipped(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
 	t.Setenv("OPENAI_API_KEY", "test-key")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()

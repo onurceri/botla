@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func startLinkedHTMLStub() *httptest.Server {
@@ -32,17 +33,17 @@ func startLinkedHTMLStub() *httptest.Server {
 }
 
 func TestURLDiscovery_AutoMode(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()
@@ -126,17 +127,17 @@ func TestURLDiscovery_AutoMode(t *testing.T) {
 }
 
 func TestURLDiscovery_PendingMode(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()
@@ -285,7 +286,7 @@ func TestURLDiscovery_PendingMode(t *testing.T) {
 	}
 }
 
-func waitForProcessing(t *testing.T, te *TestEnv, token, sourceID string) {
+func waitForProcessing(t *testing.T, te *fixtures.TestEnv, token, sourceID string) {
 	statusPath := "/api/v1/sources/" + url.PathEscape(sourceID)
 	for i := 0; i < 200; i++ {
 		reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+statusPath, nil)

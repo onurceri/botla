@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestAnalytics_SeriesLength30(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	token := authToken(t, te.Server.URL, "series@example.com")
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/analytics", nil)
 	req.Header.Set("Authorization", "Bearer "+token)

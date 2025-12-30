@@ -6,20 +6,22 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // TestChat_EmptyState_GreetingResponse verifies that the bot responds to greetings
 // even when no RAG context/knowledge sources are available.
 func TestChat_EmptyState_GreetingResponse(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", "") // No Qdrant = no RAG context
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	token := authToken(t, te.Server.URL, "emptystate@example.com")
 
@@ -72,15 +74,15 @@ func TestChat_EmptyState_GreetingResponse(t *testing.T) {
 // TestChat_EmptyState_FactualRefusal verifies that the bot refuses to answer
 // factual questions when no RAG context is available.
 func TestChat_EmptyState_FactualRefusal(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", "") // No Qdrant = no RAG context
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	token := authToken(t, te.Server.URL, "factual@example.com")
 
@@ -146,15 +148,15 @@ func TestChat_EmptyState_FactualRefusal(t *testing.T) {
 // TestChat_EmptyState_IdentityQuestion verifies that the bot can answer
 // "Who are you?" questions even without RAG context.
 func TestChat_EmptyState_IdentityQuestion(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", "")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	token := authToken(t, te.Server.URL, "identity@example.com")
 

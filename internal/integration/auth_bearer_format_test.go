@@ -3,14 +3,16 @@ package integration
 import (
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestAuth_InvalidBearerFormat_Protected401(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Token abc.def")
@@ -22,11 +24,11 @@ func TestAuth_InvalidBearerFormat_Protected401(t *testing.T) {
 }
 
 func TestAuth_BearerWithoutToken_Protected401(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer")
@@ -38,11 +40,11 @@ func TestAuth_BearerWithoutToken_Protected401(t *testing.T) {
 }
 
 func TestAuth_BasicScheme_Protected401(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Basic abc123")

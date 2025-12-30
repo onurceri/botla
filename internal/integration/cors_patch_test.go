@@ -4,15 +4,17 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestCORS_PatchAllowed(t *testing.T) {
 	t.Setenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodOptions, te.Server.URL+"/api/v1/organizations/123/members/456", nil)
 	req.Header.Set("Origin", "http://localhost:5173")

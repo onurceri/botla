@@ -9,14 +9,16 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestAuth_Register_SQLInjectionEmail(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "'; DROP TABLE users;--"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "SQL Injection"}
@@ -50,11 +52,11 @@ func TestAuth_Register_SQLInjectionEmail(t *testing.T) {
 }
 
 func TestAuth_Register_XSSFullName(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "xss+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	fullName := "<script>alert('xss')</script>"

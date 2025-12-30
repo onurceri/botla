@@ -1,14 +1,32 @@
-package integration
+package fixtures
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/internal/rag"
 )
+
+// MockVectorStore for testing
+type MockVectorStore struct {
+	Mu               sync.Mutex
+	DeletedSourceIDs []string
+}
+
+func (m *MockVectorStore) DeleteBySourceID(ctx context.Context, sourceID string) error {
+	m.Mu.Lock()
+	defer m.Mu.Unlock()
+	m.DeletedSourceIDs = append(m.DeletedSourceIDs, sourceID)
+	return nil
+}
 
 // LLMMock is a configurable mock server for LLM providers (OpenAI compatible)
 type LLMMock struct {
@@ -168,4 +186,27 @@ func (m *LLMMock) SetEmbedResponse(handler func(req MockRequest) (map[string]any
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.EmbedResponse = handler
+}
+
+type MockToolsClient struct{}
+
+func (m *MockToolsClient) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
+	return &models.CompletionResult{Content: "mock response"}, nil
+}
+
+func (m *MockToolsClient) GetModelInfo() models.ModelInfo {
+	return models.ModelInfo{Name: "mock-model"}
+}
+
+func (m *MockToolsClient) CreateCompletionWithTools(ctx context.Context, messages []rag.ChatMessage, tools []rag.Tool, model string, temperature float32, maxTokens int) (*rag.ChatResponseWithTools, error) {
+	// Generate unique name to avoid DB unique constraint violations
+	content := fmt.Sprintf("mock_tool_%d", time.Now().UnixNano())
+	return &rag.ChatResponseWithTools{
+		Choices: []struct {
+			Message      rag.ChatMessage `json:"message"`
+			FinishReason string          `json:"finish_reason"`
+		}{{
+			Message: rag.ChatMessage{Content: &content},
+		}},
+	}, nil
 }

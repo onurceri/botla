@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
@@ -16,14 +17,14 @@ import (
 
 type MockToolsLLMClient struct{}
 
-// MockToolsLLMClient removed - using NewLLMMock instead
+// MockToolsLLMClient removed - using fixtures.NewLLMMock instead
 
 func TestAutomatedHandoff(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
 	// Configure Mock to return request_human_handoff tool call
-	oai.SetChatResponse(func(req MockRequest) (map[string]any, int) {
+	oai.SetChatResponse(func(req fixtures.MockRequest) (map[string]any, int) {
 		messages := req.Body["messages"].([]any)
 		lastMsg := messages[len(messages)-1].(map[string]any)
 
@@ -62,9 +63,9 @@ func TestAutomatedHandoff(t *testing.T) {
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	ctx := context.Background()
 	log := logger.New("DEBUG")

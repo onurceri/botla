@@ -7,14 +7,16 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestAuth_Register_WeakPassword(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "weak+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	// Attempt to register with a password shorter than 8 characters

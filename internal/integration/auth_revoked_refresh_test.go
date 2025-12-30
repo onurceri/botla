@@ -9,14 +9,16 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func TestAuth_RevokedRefreshToken_401(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	email := "revoke+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	reg := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}

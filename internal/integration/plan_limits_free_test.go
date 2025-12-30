@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
@@ -31,18 +32,18 @@ func startDynamicHTMLStub() *httptest.Server {
 }
 
 func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()
@@ -124,18 +125,18 @@ func TestFreePlan_URLLimit_PerChatbot(t *testing.T) {
 }
 
 func TestFreePlan_URLLimit_AllowsNewURLAfterDelete(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()
@@ -221,18 +222,18 @@ func TestFreePlan_URLLimit_AllowsNewURLAfterDelete(t *testing.T) {
 }
 
 func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startDynamicHTMLStub()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()
@@ -309,18 +310,18 @@ func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
 }
 
 func TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startLinkedHTMLStub()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()
@@ -408,11 +409,11 @@ func TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit(t *testing.T) {
 }
 
 func TestFreePlan_RefreshPolicyAuto_Forbidden(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{refresh}', '{"enabled": false, "max_monthly": 0}'::jsonb, true) WHERE code = '` + policy.PlanFree.String() + `'`)
 
@@ -452,11 +453,11 @@ func TestFreePlan_RefreshPolicyAuto_Forbidden(t *testing.T) {
 }
 
 func TestFreePlan_Branding_HideBrandingForbidden(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "branding_free@example.com")
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "branding_free@example.com")
@@ -509,11 +510,11 @@ func TestFreePlan_Branding_HideBrandingForbidden(t *testing.T) {
 }
 
 func TestFreePlan_SecureEmbed_Forbidden(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": false}'::jsonb, true) WHERE code = '` + policy.PlanFree.String() + `'`)
 
@@ -571,11 +572,11 @@ func TestFreePlan_SecureEmbed_Forbidden(t *testing.T) {
 }
 
 func TestFreePlan_Guardrails_Restrictions(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(
 		COALESCE(config, '{}'::jsonb),
@@ -654,18 +655,18 @@ func TestFreePlan_Guardrails_Restrictions(t *testing.T) {
 }
 
 func TestFreePlan_PDF_OCRDisabled_NoTextExtracted(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENAI_API_KEY", "sk-test")
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 

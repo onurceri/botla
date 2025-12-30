@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // TestServiceLevelConstraints covers SVC-001 to SVC-010
 func TestServiceLevelConstraints(t *testing.T) {
 	te, orgID, tokens, _ := setupRBACEnv(t)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Helper to get member ID by email
 	getMemberID := func(token, email string) string {
@@ -235,7 +237,7 @@ func TestServiceLevelConstraints(t *testing.T) {
 // TestWorkspaceScoping covers WSC-001 to WSC-004
 func TestWorkspaceScoping(t *testing.T) {
 	te, orgID, tokens, wsID := setupRBACEnv(t)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create another workspace
 	ws2ID := createWorkspace(t, te, tokens["admin"], orgID, "WS2")

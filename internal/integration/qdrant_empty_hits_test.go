@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func startQdrantEmptyHitsStub() *httptest.Server {
@@ -22,16 +24,16 @@ func startQdrantEmptyHitsStub() *httptest.Server {
 // TestChat_QdrantEmptyHits_Fallback verifies that chat works when Qdrant returns no results.
 // The LLM is called without RAG context and returns a response.
 func TestChat_QdrantEmptyHits_Fallback(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantEmptyHitsStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 

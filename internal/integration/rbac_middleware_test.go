@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 // Helper to create org and users with roles
-func setupRBACEnv(t *testing.T) (*TestEnv, string, map[string]string, string) {
-	te, err := SetupTestEnv()
+func setupRBACEnv(t *testing.T) (*fixtures.TestEnv, string, map[string]string, string) {
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -52,7 +54,7 @@ func setupRBACEnv(t *testing.T) (*TestEnv, string, map[string]string, string) {
 	return te, org.ID, tokens, wsID
 }
 
-func addMember(t *testing.T, te *TestEnv, token, orgID, email, role string) {
+func addMember(t *testing.T, te *fixtures.TestEnv, token, orgID, email, role string) {
 	body, _ := json.Marshal(map[string]string{"email": email, "role": role})
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations/"+orgID+"/members", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -64,7 +66,7 @@ func addMember(t *testing.T, te *TestEnv, token, orgID, email, role string) {
 	res.Body.Close()
 }
 
-func createWorkspace(t *testing.T, te *TestEnv, token, orgID, name string) string {
+func createWorkspace(t *testing.T, te *fixtures.TestEnv, token, orgID, name string) string {
 	slug := strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 	body, _ := json.Marshal(map[string]string{"name": name, "slug": slug})
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations/"+orgID+"/workspaces", bytes.NewReader(body))
@@ -84,7 +86,7 @@ func createWorkspace(t *testing.T, te *TestEnv, token, orgID, name string) strin
 
 func TestRBAC_Matrix(t *testing.T) {
 	te, orgID, tokens, wsID := setupRBACEnv(t)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Get a dummy member ID for member routes
 	// We need the ID of 'member@example.com'
@@ -185,7 +187,7 @@ func TestRBAC_Matrix(t *testing.T) {
 
 func TestRBAC_Extended(t *testing.T) {
 	te, orgID, tokens, _ := setupRBACEnv(t)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// RBAC-009: Missing Authorization header
 	t.Run("MissingAuthHeader", func(t *testing.T) {
@@ -344,7 +346,7 @@ func TestRBAC_Extended(t *testing.T) {
 
 func TestRBAC_DeleteOrg(t *testing.T) {
 	te, orgID, tokens, _ := setupRBACEnv(t)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Admin cannot delete org
 	reqDel, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID, nil)

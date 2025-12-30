@@ -13,13 +13,14 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/api/handlers"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/storage"
 )
 
 // Build a minimal mux that uses R2 storage to exercise upload paths without hitting external endpoints
-func buildR2Mux(te *TestEnv, bucket string) http.Handler {
+func buildR2Mux(te *fixtures.TestEnv, bucket string) http.Handler {
 	mux := http.NewServeMux()
 	ah := &handlers.AuthHandlers{DB: te.DB, Secret: te.Cfg.JWT_SECRET}
 	mux.HandleFunc("/api/v1/auth/register", ah.RegisterHandler)
@@ -48,11 +49,11 @@ func buildR2Mux(te *TestEnv, bucket string) http.Handler {
 }
 
 func TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	h := buildR2Mux(te, "")
 	srv := httptest.NewServer(h)

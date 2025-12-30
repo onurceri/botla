@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
@@ -28,7 +29,7 @@ func getUserIdFromToken(t *testing.T, pool *sql.DB, email string) string {
 // QTA-001: Chat when monthly tokens exceeded
 func TestQuota_ChatTokensExceeded(t *testing.T) {
 	// Setup with mock OpenAI to avoid real calls
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
@@ -36,11 +37,11 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	defer qd.Close()
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Update free plan to have very low token limit
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code=$1`, policy.PlanFree.String())
@@ -110,11 +111,11 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 
 // QTA-003: Refresh when monthly limit exceeded
 func TestQuota_RefreshExceeded(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Update free plan to have refresh enabled and low limit
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh,enabled}', 'true'::jsonb) WHERE code=$1`, policy.PlanFree.String())
@@ -170,11 +171,11 @@ func TestQuota_RefreshExceeded(t *testing.T) {
 
 // QTA-002: Ingestion when monthly limit exceeded
 func TestQuota_IngestionExceeded(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Update free plan to have low ingestion limit (count)
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_monthly_ingestions}', '1'::jsonb) WHERE code=$1`, policy.PlanFree.String())
@@ -233,7 +234,7 @@ func TestQuota_IngestionExceeded(t *testing.T) {
 // QTA-004: Race condition check for token quota (Double-Spend)
 func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 	// Setup mocks
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
@@ -241,11 +242,11 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 	defer qd.Close()
 	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// 1. Configure Plan with specific limit
 	// Limit: 1000 tokens

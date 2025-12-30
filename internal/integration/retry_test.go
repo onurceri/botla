@@ -5,18 +5,19 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestManualRetry_Integration(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Register user
 	email := "retry@example.com"
-	token := registerAndGetToken(t, te.Server.URL, email, TestPassword)
+	token := registerAndGetToken(t, te.Server.URL, email, fixtures.TestPassword)
 
 	// Create chatbot
 	chatbotID := createChatbot(t, te.Server.URL, token, "Retry Bot")
@@ -36,7 +37,7 @@ func TestManualRetry_Integration(t *testing.T) {
 	// Retry
 	req, _ := http.NewRequest("POST", te.Server.URL+"/api/v1/sources/"+sourceID+"/job/retry", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	
+
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
@@ -51,7 +52,7 @@ func TestManualRetry_Integration(t *testing.T) {
 	var retryCount int
 	err = te.DB.QueryRow("SELECT status, retry_count FROM training_jobs WHERE id = $1", jobID).Scan(&status, &retryCount)
 	require.NoError(t, err)
-	
+
 	// It's either pending or already being processed by the background worker
 	assert.True(t, status == "pending" || status == "running" || status == "completed")
 	assert.Equal(t, 0, retryCount)

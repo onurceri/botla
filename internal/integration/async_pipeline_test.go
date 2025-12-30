@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
 )
 
@@ -19,11 +20,11 @@ func TestAsyncPipeline_FullLifecycle(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	te, err := SetupTestEnvWithMocks()
+	te, err := fixtures.SetupTestEnvWithMocks()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "pipeline@test.com")
 	botID := createChatbot(t, te.Server.URL, token, "Pipeline Bot")
@@ -83,11 +84,11 @@ func TestAsyncPipeline_FailureAndRetry(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	te, err := SetupTestEnvWithMocks()
+	te, err := fixtures.SetupTestEnvWithMocks()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "retry@test.com")
 	botID := createChatbot(t, te.Server.URL, token, "Retry Bot")
@@ -155,11 +156,11 @@ func TestAsyncPipeline_Recovery(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	te, err := SetupTestEnvWithMocks()
+	te, err := fixtures.SetupTestEnvWithMocks()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create user first
 	token := authToken(t, te.Server.URL, "recovery@test.com")
@@ -215,11 +216,11 @@ func TestAsyncPipeline_ConcurrentJobs(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	te, err := SetupTestEnvWithMocks()
+	te, err := fixtures.SetupTestEnvWithMocks()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	token := authToken(t, te.Server.URL, "concurrent@test.com")
 	botID := createChatbot(t, te.Server.URL, token, "Concurrent Bot")
@@ -286,7 +287,7 @@ func getJobStatusMap(t *testing.T, baseURL, token, sourceID string) map[string]i
 }
 
 // Helper function to wait for all sources to complete
-func waitForAllSourcesCompletion(t *testing.T, te *TestEnv, sourceIDs []string, timeout time.Duration) {
+func waitForAllSourcesCompletion(t *testing.T, te *fixtures.TestEnv, sourceIDs []string, timeout time.Duration) {
 	t.Helper()
 
 	deadline := time.After(timeout)

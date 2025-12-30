@@ -8,14 +8,15 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAdminQueues(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create admin user
 	adminEmail := fmt.Sprintf("admin_%d@example.com", time.Now().UnixNano())
@@ -68,10 +69,10 @@ func TestAdminQueues(t *testing.T) {
 			if s.QueueName == "source_processing" {
 				found = true
 				// We expect at least 1 pending and 1 processing (from our seed)
-				// Note: previous tests might have left data if not fully isolated, but TeardownTestEnv drops schema?
-				// No, SetupTestEnv uses a transaction or clean DB.
+				// Note: previous tests might have left data if not fully isolated, but fixtures.TeardownTestEnv drops schema?
+				// No, fixtures.SetupTestEnv uses a transaction or clean DB.
 				// But admin_test.go runs against the same DB potentially if parallel?
-				// SetupTestEnv creates a NEW schema for each test usually or truncates.
+				// fixtures.SetupTestEnv creates a NEW schema for each test usually or truncates.
 				// Let's assume isolation.
 				assert.GreaterOrEqual(t, s.PendingCount, 1)
 				assert.GreaterOrEqual(t, s.ProcessingCount, 1)

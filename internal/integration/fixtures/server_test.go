@@ -1,4 +1,4 @@
-package integration
+package fixtures
 
 import (
 	"net/http"
@@ -15,6 +15,15 @@ import (
 func TestNewTestMux_CORSPreflightAndAuth(t *testing.T) {
 	_ = os.Setenv("CORS_ALLOWED_ORIGINS", "http://example.com")
 	_ = os.Setenv("JWT_SECRET", "test-secret")
+	// Set minimal DB env vars for config to load without error
+	_ = os.Setenv("DB_HOST", "localhost")
+	_ = os.Setenv("DB_PORT", "5432")
+	_ = os.Setenv("DB_NAME", "botla_test")
+	_ = os.Setenv("DB_USER", "botla")
+	_ = os.Setenv("DB_PASSWORD", "botla")
+	_ = os.Setenv("QDRANT_URL", "http://localhost:6333")
+	_ = os.Setenv("PORT", "8080")
+	_ = os.Setenv("OPENAI_API_KEY", "test-key")
 	cfg := config.LoadConfig()
 	db := testdb.OpenParallelTestDB(t)
 

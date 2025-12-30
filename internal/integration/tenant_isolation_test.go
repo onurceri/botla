@@ -6,15 +6,16 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMultiTenantIsolation(t *testing.T) {
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 
 	// Create User 1 and their chatbot
 	token1 := authToken(t, te.Server.URL, "user1@example.com")

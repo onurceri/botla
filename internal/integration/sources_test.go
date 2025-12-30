@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/onurceri/botla-co/internal/integration/fixtures"
 )
 
 func startQdrantStub() *httptest.Server {
@@ -72,16 +74,16 @@ func startQdrantStub() *httptest.Server {
 
 type QdrantTopKStub struct {
 	Server          *httptest.Server
-	mu              sync.Mutex
+	Mu              sync.Mutex
 	LastSearchLimit int
 	SearchCalls     int
 }
 
 func (s *QdrantTopKStub) recordSearchLimit(limit int) {
-	s.mu.Lock()
+	s.Mu.Lock()
 	s.LastSearchLimit = limit
 	s.SearchCalls++
-	s.mu.Unlock()
+	s.Mu.Unlock()
 }
 
 func startQdrantTopKStub() *QdrantTopKStub {
@@ -118,15 +120,15 @@ func startQdrantTopKStub() *QdrantTopKStub {
 }
 
 func TestSources_Text_Ingest_Status_Delete(t *testing.T) {
-	oai := NewLLMMock(t)
+	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	t.Setenv("OPENAI_API_BASE", oai.URL)
 	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := SetupTestEnv()
+	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
-	defer TeardownTestEnv(te)
+	defer fixtures.TeardownTestEnv(te)
 	defer oai.Close()
 	defer qd.Close()
 
