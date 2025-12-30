@@ -73,7 +73,9 @@ func (l *Loader) download(ctx context.Context, key string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("download %s: %w", key, err)
 	}
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 
 	data, err := io.ReadAll(reader)
 	if err != nil {

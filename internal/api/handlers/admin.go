@@ -28,7 +28,7 @@ func NewAdminHandlers(db *sql.DB, adminSvc *services.AdminService) *AdminHandler
 func (h *AdminHandlers) GetOverviewStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := db.GetPlatformOverviewStats(r.Context(), h.DB)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to fetch overview stats", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *AdminHandlers) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	users, total, err := db.AdminListUsers(r.Context(), h.DB, filter, limit, offset)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to list users", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -74,17 +74,17 @@ func (h *AdminHandlers) ListUsers(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing user ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	user, err := db.GetUserByID(r.Context(), h.DB, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			api.WriteError(w, http.StatusNotFound, "User not found", api.ErrCodeNotFound)
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 			return
 		}
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get user", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -95,19 +95,19 @@ func (h *AdminHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandlers) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing user ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	var updates map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		api.WriteError(w, http.StatusBadRequest, "Invalid request body", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	err := db.AdminUpdateUser(r.Context(), h.DB, id, updates)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to update user", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *AdminHandlers) ListOrganizations(w http.ResponseWriter, r *http.Request
 
 	orgs, total, err := db.AdminListOrganizations(r.Context(), h.DB, filter, limit, offset)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "Failed to list organizations", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -153,17 +153,17 @@ func (h *AdminHandlers) ListOrganizations(w http.ResponseWriter, r *http.Request
 func (h *AdminHandlers) GetOrganization(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		api.WriteError(w, http.StatusBadRequest, "Missing organization ID", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	org, err := db.GetOrganizationByID(r.Context(), h.DB, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			api.WriteError(w, http.StatusNotFound, "Organization not found", api.ErrCodeNotFound)
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
 			return
 		}
-		api.WriteError(w, http.StatusInternalServerError, "Failed to get organization", api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 

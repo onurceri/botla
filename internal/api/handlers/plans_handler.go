@@ -42,7 +42,7 @@ func NewPlansHandlers(planService *services.PlanService) *PlansHandlers {
 func (h *PlansHandlers) GetAllPlans(w http.ResponseWriter, r *http.Request) {
 	plans, err := h.planService.GetAllPlans(r.Context())
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "ERR_GET_PLANS", "Failed to retrieve plans")
+		api.WriteErrorCode(w, http.StatusInternalServerError, "Failed to retrieve plans")
 		return
 	}
 
@@ -59,17 +59,17 @@ func (h *PlansHandlers) GetAllPlans(w http.ResponseWriter, r *http.Request) {
 func (h *PlansHandlers) GetPlanByCode(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 	if code == "" {
-		api.WriteError(w, http.StatusBadRequest, "ERR_MISSING_CODE", "Plan code is required")
+		api.WriteErrorCode(w, http.StatusBadRequest, "Plan code is required")
 		return
 	}
 
 	plan, err := h.planService.GetPlanByCode(r.Context(), code)
 	if err != nil {
-		api.WriteError(w, http.StatusInternalServerError, "ERR_GET_PLAN", "Failed to retrieve plan")
+		api.WriteErrorCode(w, http.StatusInternalServerError, "Failed to retrieve plan")
 		return
 	}
 	if plan == nil {
-		api.WriteError(w, http.StatusNotFound, "ERR_PLAN_NOT_FOUND", "Plan not found")
+		api.WriteErrorCode(w, http.StatusNotFound, "Plan not found")
 		return
 	}
 

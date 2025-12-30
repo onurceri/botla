@@ -19,13 +19,11 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	chatbot, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 	userID, _ := middleware.UserIDFromContext(r.Context())
-	base := api.BaseLang(chatbot.LanguageCode)
-	cfg := api.ConfigFromBase(base)
 
 	// Get plan for quota checks
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
@@ -39,12 +37,12 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		URLs []string `json:"urls"`
 	}
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidRequestBody)
 		return
 	}
 
 	if len(req.URLs) == 0 {
-		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrNoURLsProvided, cfg)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrNoURLsProvided)
 		return
 	}
 
@@ -63,14 +61,14 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 	// Calculate how many URLs we can add
 	available := limit - currentCount
 	if available <= 0 {
-		api.WriteLocalizedError(w, http.StatusForbidden, api.ErrURLLimitReached, cfg)
+		api.WriteErrorCode(w, http.StatusForbidden, api.ErrURLLimitReached)
 		return
 	}
 
 	// Check monthly ingestion quota
 	monthlyAvailable := h.getAvailableIngestionCount(r, userID, plan)
 	if monthlyAvailable <= 0 {
-		api.WriteLocalizedError(w, http.StatusPaymentRequired, api.ErrMonthlyIngestionExceeded, cfg)
+		api.WriteErrorCode(w, http.StatusPaymentRequired, api.ErrMonthlyIngestionExceeded)
 		return
 	}
 

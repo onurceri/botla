@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -52,7 +51,7 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if !httputil.IsValidUUID(botID) {
-		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
@@ -74,11 +73,10 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	cfg := api.ConfigFromBase(api.BaseLang(bot.LanguageCode))
 
 	// Check if handoff is enabled
 	if !bot.HandoffEnabled {
-		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrHandoffNotEnabled, cfg)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrHandoffNotEnabled)
 		return
 	}
 
@@ -92,7 +90,7 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 			}
 			h.Log.Error("handoff_conversation_create_failed", map[string]any{"error": errText, "bot_id": botID})
 		}
-		api.WriteError(w, http.StatusInternalServerError, cfg.UserMessages.ErrorMessage, api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -101,13 +99,13 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	result, err := svc.RequestHandoff(r.Context(), bot, conv.ID, req.Message)
 	if err != nil {
 		if status, code, ok := api.MapHandoffError(err); ok {
-			api.WriteLocalizedError(w, status, code, cfg)
+			api.WriteErrorCode(w, status, code)
 			return
 		}
 		if h.Log != nil {
 			h.Log.Error("handoff_request_failed", map[string]any{"error": err.Error(), "bot_id": botID, "conversation_id": conv.ID})
 		}
-		api.WriteError(w, http.StatusInternalServerError, cfg.UserMessages.ErrorMessage, api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -134,11 +132,10 @@ func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Req
 
 // UpdateHandoffRequest handles PATCH /api/chatbots/:id/handoff-requests/:requestId
 func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Request) {
-	bot, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
-	cfg := api.ConfigFromBase(api.BaseLang(bot.LanguageCode))
 
 	// Extract IDs from path: /api/v1/chatbots/:id/handoff-requests/:requestId
 	parts := strings.Split(r.URL.Path, "/")
@@ -148,14 +145,14 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 	}
 	requestID := parts[6]
 	if !httputil.IsValidUUID(requestID) {
-		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
 	// Parse request
 	var req handoffStatusUpdate
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidRequestBody)
 		return
 	}
 
@@ -164,24 +161,17 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 	if err := svc.UpdateHandoffStatus(r.Context(), requestID, req.Status, req.AssignedTo); err != nil {
 		var invalid services.InvalidHandoffStatusError
 		if errors.As(err, &invalid) {
-			tmpl := cfg.UserMessages.Errors[api.ErrInvalidStatus]
-			msg := tmpl
-			if msg == "" {
-				msg = cfg.UserMessages.ErrorMessage
-			} else {
-				msg = fmt.Sprintf(msg, invalid.Status)
-			}
-			api.WriteError(w, http.StatusBadRequest, msg, api.ErrInvalidStatus)
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidStatus)
 			return
 		}
 		if status, code, ok := api.MapHandoffError(err); ok {
-			api.WriteLocalizedError(w, status, code, cfg)
+			api.WriteErrorCode(w, status, code)
 			return
 		}
 		if h.Log != nil {
 			h.Log.Error("handoff_update_status_failed", map[string]any{"error": err.Error(), "request_id": requestID})
 		}
-		api.WriteError(w, http.StatusInternalServerError, cfg.UserMessages.ErrorMessage, api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -211,7 +201,7 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 	botID := parts[5]
 	requestID := parts[7]
 	if !httputil.IsValidUUID(botID) {
-		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
@@ -250,11 +240,10 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 // GetHandoffRequestDetail handles GET /api/v1/chatbots/:id/handoff-requests/:requestId
 // Returns the handoff request with full conversation history
 func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http.Request) {
-	bot, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
-	cfg := api.ConfigFromBase(api.BaseLang(bot.LanguageCode))
 
 	// Extract IDs from path: /api/v1/chatbots/:id/handoff-requests/:requestId
 	parts := strings.Split(r.URL.Path, "/")
@@ -264,7 +253,7 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 	}
 	requestID := parts[6]
 	if !httputil.IsValidUUID(requestID) {
-		api.WriteError(w, http.StatusBadRequest, "Invalid ID format", api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
@@ -274,11 +263,11 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 		if h.Log != nil {
 			h.Log.Error("get_handoff_detail_failed", map[string]any{"error": err.Error(), "request_id": requestID})
 		}
-		api.WriteError(w, http.StatusInternalServerError, cfg.UserMessages.ErrorMessage, api.ErrCodeInternalError)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 	if detail == nil {
-		api.WriteLocalizedError(w, http.StatusNotFound, api.ErrHandoffNotFound, cfg)
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrHandoffNotFound)
 		return
 	}
 

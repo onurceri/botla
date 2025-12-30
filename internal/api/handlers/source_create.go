@@ -24,7 +24,6 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, b
 		return
 	}
 
-
 	// Check monthly ingestion quota
 	if err = h.checkIngestionQuota(r, userID, plan); err != nil {
 		http.Error(w, err.Error(), http.StatusPaymentRequired)
@@ -171,7 +170,7 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 	}
 
 	// NEW: SSRF validation
-	if err := ssrfValidator.ValidateURL(rawURL); err != nil {
+	if err = ssrfValidator.ValidateURL(rawURL); err != nil {
 		h.logWarn("ssrf_blocked", map[string]any{
 			"url":    rawURL,
 			"reason": err.Error(),

@@ -20,15 +20,13 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	base := api.BaseLang(chatbot.LanguageCode)
-	cfg := api.ConfigFromBase(base)
 
 	// Parse request body
 	var req struct {
 		SitemapURL string `json:"sitemap_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.WriteLocalizedError(w, http.StatusBadRequest, api.ErrInvalidRequestBody, cfg)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidRequestBody)
 		return
 	}
 
@@ -43,7 +41,7 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 	result, err := parser.ParseSitemap(r.Context(), req.SitemapURL)
 	if err != nil {
 		h.logError("sitemap_parse_error", map[string]any{"error": err.Error(), "url": req.SitemapURL})
-		api.WriteLocalizedErrorWithDetails(w, http.StatusBadRequest, api.ErrSitemapParseFailed, err.Error(), cfg)
+		api.WriteErrorCodeWithDetails(w, http.StatusBadRequest, api.ErrSitemapParseFailed, err.Error())
 		return
 	}
 

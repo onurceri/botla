@@ -33,10 +33,6 @@ func (h *ChatbotHandlers) ListOrCreate(w http.ResponseWriter, r *http.Request) {
 
 // listChatbots returns all chatbots for a user or workspace
 func (h *ChatbotHandlers) listChatbots(w http.ResponseWriter, r *http.Request, userID string) {
-	// Initialize language config for localized errors
-	langBase := api.LangFromRequest(r)
-	langCfg := api.ConfigFromBase(langBase)
-
 	var bots []models.Chatbot
 	var err error
 
@@ -46,11 +42,11 @@ func (h *ChatbotHandlers) listChatbots(w http.ResponseWriter, r *http.Request, u
 		var wsInfo *models.Workspace
 		wsInfo, err = h.WorkspaceService.CheckAccess(r.Context(), userID, wsID)
 		if err != nil {
-			api.WriteLocalizedError(w, http.StatusInternalServerError, "workspace_check_error", langCfg)
+			api.WriteErrorCode(w, http.StatusInternalServerError, "workspace_check_error")
 			return
 		}
 		if wsInfo == nil {
-			api.WriteLocalizedError(w, http.StatusForbidden, "not_workspace_member", langCfg)
+			api.WriteErrorCode(w, http.StatusForbidden, "not_workspace_member")
 			return
 		}
 
@@ -88,7 +84,7 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 	// Check plan limits
 	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
 	if err != nil {
-		api.WriteLocalizedError(w, http.StatusInternalServerError, "get_plan_error: "+err.Error(), langCfg)
+		api.WriteErrorCode(w, http.StatusInternalServerError, "get_plan_error: "+err.Error())
 		return
 	}
 
@@ -99,7 +95,7 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 			return
 		}
 		if count >= plan.Config.MaxChatbots {
-			api.WriteLocalizedError(w, http.StatusForbidden, api.ErrMaxChatbotsExceeded, langCfg)
+			api.WriteErrorCode(w, http.StatusForbidden, api.ErrMaxChatbotsExceeded)
 			return
 		}
 	}
@@ -111,11 +107,11 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 		var wsInfo *models.Workspace
 		wsInfo, err = h.WorkspaceService.CheckAccess(r.Context(), userID, ws)
 		if err != nil {
-			api.WriteLocalizedError(w, http.StatusInternalServerError, "workspace_check_error: "+err.Error(), langCfg)
+			api.WriteErrorCode(w, http.StatusInternalServerError, "workspace_check_error: "+err.Error())
 			return
 		}
 		if wsInfo == nil {
-			api.WriteLocalizedError(w, http.StatusForbidden, "not_workspace_member", langCfg)
+			api.WriteErrorCode(w, http.StatusForbidden, "not_workspace_member")
 			return
 		}
 
@@ -128,11 +124,11 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 		var memInfo *models.Membership
 		memInfo, err = h.OrgService.CheckMembership(r.Context(), userID, org)
 		if err != nil {
-			api.WriteLocalizedError(w, http.StatusInternalServerError, "membership_check_error: "+err.Error(), langCfg)
+			api.WriteErrorCode(w, http.StatusInternalServerError, "membership_check_error: "+err.Error())
 			return
 		}
 		if memInfo == nil {
-			api.WriteLocalizedError(w, http.StatusForbidden, "not_org_member", langCfg)
+			api.WriteErrorCode(w, http.StatusForbidden, "not_org_member")
 			return
 		}
 		orgID = &org
@@ -142,7 +138,7 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 
 	newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
 	if err != nil {
-		api.WriteLocalizedError(w, http.StatusInternalServerError, "create_bot_error: "+err.Error(), langCfg)
+		api.WriteErrorCode(w, http.StatusInternalServerError, "create_bot_error: "+err.Error())
 		return
 	}
 

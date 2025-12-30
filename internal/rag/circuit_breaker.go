@@ -3,6 +3,7 @@ package rag
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -89,7 +90,7 @@ func (c *CircuitBreakerClient) CreateCompletion(ctx context.Context, params mode
 		if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
 			return nil, ErrCircuitOpen
 		}
-		return nil, err
+		return nil, fmt.Errorf("circuit breaker execute: %w", err)
 	}
 
 	return result, nil
