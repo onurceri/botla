@@ -18,7 +18,7 @@ import (
 
 // TestSources_TextCreation tests text source creation end-to-end
 func TestSources_TextCreation(t *testing.T) {
-	dbx := testdb.OpenParallelTestDB(t)
+	dbx := testdb.OpenTestDB(t)
 
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
@@ -68,7 +68,7 @@ func TestSources_TextCreation(t *testing.T) {
 
 // TestSources_URLCreation tests URL source creation end-to-end
 func TestSources_URLCreation(t *testing.T) {
-	dbx := testdb.OpenParallelTestDB(t)
+	dbx := testdb.OpenTestDB(t)
 
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
@@ -115,7 +115,7 @@ func TestSources_URLCreation(t *testing.T) {
 
 // TestSources_EmptyText_BadRequest tests empty text rejection
 func TestSources_EmptyText_BadRequest(t *testing.T) {
-	dbx := testdb.OpenParallelTestDB(t)
+	dbx := testdb.OpenTestDB(t)
 
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
@@ -156,7 +156,7 @@ func TestSources_EmptyText_BadRequest(t *testing.T) {
 
 // TestSources_EmptyURL_BadRequest tests empty URL rejection
 func TestSources_EmptyURL_BadRequest(t *testing.T) {
-	dbx := testdb.OpenParallelTestDB(t)
+	dbx := testdb.OpenTestDB(t)
 
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID

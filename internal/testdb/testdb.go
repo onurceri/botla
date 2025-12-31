@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -120,8 +121,7 @@ func getTestDSN(schema string) string {
 
 	dsn := "postgres://" + user + ":" + password + "@" + host + ":" + port + "/" + dbName + "?sslmode=disable"
 	if schema != "" {
-		dsn += "&search_path=" + schema
-		dsn += "&options=" + url.QueryEscape("-c search_path="+schema)
+		dsn += "&options=-c%20search_path%3D" + url.QueryEscape(schema)
 	}
 	return dsn
 }
@@ -336,37 +336,70 @@ func runMigrations(t *testing.T, schema string) {
 	}
 	migrationsPath := filepath.Join(projectRoot, "db/migrations")
 
-	dbURL := getTestDSN(schema)
+	baseDSN := getTestDSN("")
 
-	for i := 0; i < 3; i++ {
-		//nolint:gosec // this is a test helper using dynamic path
-		cmd := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
-		output, err := cmd.CombinedOutput()
-		if err == nil {
-			return
+	baseDB, err := sql.Open("pgx", baseDSN)
+	if err != nil {
+		t.Fatalf("open db for migration: %v", err)
+	}
+	defer func() { _ = baseDB.Close() }()
+
+	if _, err = baseDB.Exec("SET search_path TO " + schema); err != nil {
+		t.Fatalf("set search_path: %v", err)
+	}
+
+	_, _ = baseDB.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+		version VARCHAR(255) PRIMARY KEY,
+		dirty BOOLEAN NOT NULL DEFAULT false
+	)`)
+
+	entries, err := os.ReadDir(migrationsPath)
+	if err != nil {
+		t.Fatalf("read migrations dir: %v", err)
+	}
+
+	var migrationFiles []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".up.sql") {
+			migrationFiles = append(migrationFiles, e.Name())
+		}
+	}
+	sort.Strings(migrationFiles)
+
+	for _, mf := range migrationFiles {
+		migrationNum := mf[:6]
+
+		var count int
+		err = baseDB.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migrationNum).Scan(&count)
+		if err != nil {
+			t.Fatalf("check migration version: %v", err)
+		}
+		if count > 0 {
+			continue
 		}
 
-		outputStr := string(output)
-		if err != nil && i == 0 {
-			t.Logf("initial migration failed for schema %s: %s (error: %v)", schema, outputStr, err)
+		//nolint:gosec // mf comes from os.ReadDir, not user input
+		migrationContent, err := os.ReadFile(filepath.Join(migrationsPath, mf))
+		if err != nil {
+			t.Fatalf("read migration %s: %v", mf, err)
 		}
 
-		// Check if the error is due to a dirty database version
-		// This can happen if a previous migration was interrupted mid-way
-		if dirtyVersion := extractDirtyVersion(outputStr); dirtyVersion > 0 {
-			t.Logf("detected dirty database version %d, forcing version to %d and retrying", dirtyVersion, dirtyVersion-1)
-			if forceErr := forceMigrationVersion(migrationsPath, dbURL, dirtyVersion-1); forceErr != nil {
-				t.Logf("warning: failed to force migration version: %v", forceErr)
+		_, err = baseDB.Exec(string(migrationContent))
+		if err != nil {
+			outputStr := fmt.Sprintf("migration %s failed: %v", mf, err)
+			if dirtyVersion := extractDirtyVersion(outputStr); dirtyVersion > 0 {
+				t.Logf("detected dirty database version %d, forcing version to %d", dirtyVersion, dirtyVersion-1)
+				if forceErr := forceMigrationVersion(migrationsPath, getTestDSN(schema), dirtyVersion-1); forceErr != nil {
+					t.Logf("warning: failed to force migration version: %v", forceErr)
+				} else {
+					_, _ = baseDB.Exec(string(migrationContent))
+				}
 			} else {
-				// Retry immediately after forcing version
-				continue
+				t.Fatalf("migration %s failed: %v", mf, err)
 			}
 		}
 
-		if i == 2 {
-			t.Fatalf("migration failed: %s (error: %v)", outputStr, err)
-		}
-		time.Sleep(200 * time.Millisecond)
+		_, _ = baseDB.Exec("INSERT INTO schema_migrations (version, dirty) VALUES ($1, false) ON CONFLICT (version) DO NOTHING", migrationNum)
 	}
 }
 
