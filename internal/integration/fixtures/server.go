@@ -206,7 +206,14 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
 
 	// RAG service and queue wrapper for admin chatbot/source handlers
-	ragSvc := services.NewRAGService(pool, actualVC, log)
+	var embedder rag.EmbeddingClient
+	if actualLLM != nil {
+		if e, ok := actualLLM.(rag.EmbeddingClient); ok {
+			embedder = e
+		}
+	}
+	ragSubsystem := rag.NewRAGSubsystem(embedder, actualVC, actualLLM)
+	ragSvc := services.NewRAGService(pool, ragSubsystem, log)
 	queueWrapper := &services.Queue{SourceQueue: q}
 	adminChatbotRepo := repository.NewPostgresAdminChatbotRepo(pool)
 	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)

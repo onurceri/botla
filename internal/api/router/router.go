@@ -82,7 +82,8 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	plansH := handlers.NewPlansHandlers(planSvc)
 
 	// RAG service for admin operations (vector deletion)
-	ragSvc := services.NewRAGService(pool, qdClient, log)
+	ragSubsystem := rag.NewRAGSubsystem(oaiClient, qdClient, oaiClient)
+	ragSvc := services.NewRAGService(pool, ragSubsystem, log)
 	// Queue wrapper for source processing
 	queueWrapper := &services.Queue{SourceQueue: q}
 	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
