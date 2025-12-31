@@ -43,15 +43,16 @@ func TestEnqueueSource_CreatesJob(t *testing.T) {
 		OpenAIClient: mockOAI,
 		VectorClient: mockVC,
 		Log:          log,
+		Processors: map[string]SourceProcessor{
+			"url": &URLProcessor{
+				DB:           tdb,
+				Log:          log,
+				Scraper:      &testMockScraper{},
+				OpenAIClient: mockOAI,
+				VectorClient: mockVC,
+			},
+		},
 	})
-	// Override URLProcessor with mock scraper
-	processor.urlProcessor = &URLProcessor{
-		DB:           tdb,
-		Log:          log,
-		Scraper:      &testMockScraper{},
-		OpenAIClient: mockOAI,
-		VectorClient: mockVC,
-	}
 
 	// Create queue manager
 	queueManager := NewQueueManager(1, log, processor)
@@ -119,33 +120,34 @@ func TestProcessJob_UpdatesSteps(t *testing.T) {
 
 	sc := &testMockScraper{}
 
-	// Create processor
+	// Create processor with mock implementations
 	processor := NewJobProcessor(JobProcessorConfig{
 		DB:           tdb,
 		OpenAIClient: mockOAI,
 		VectorClient: mockVC,
 		Log:          log,
+		Processors: map[string]SourceProcessor{
+			"url": &URLProcessor{
+				DB:           tdb,
+				Log:          log,
+				Scraper:      sc,
+				OpenAIClient: mockOAI,
+				VectorClient: mockVC,
+			},
+			"pdf": &PDFProcessor{
+				DB:           tdb,
+				Log:          log,
+				OpenAIClient: mockOAI,
+				VectorClient: mockVC,
+			},
+			"text": &TextProcessor{
+				DB:           tdb,
+				Log:          log,
+				OpenAIClient: mockOAI,
+				VectorClient: mockVC,
+			},
+		},
 	})
-	// Override processors with mock scraper
-	processor.urlProcessor = &URLProcessor{
-		DB:           tdb,
-		Log:          log,
-		Scraper:      sc,
-		OpenAIClient: mockOAI,
-		VectorClient: mockVC,
-	}
-	processor.pdfProcessor = &PDFProcessor{
-		DB:           tdb,
-		Log:          log,
-		OpenAIClient: mockOAI,
-		VectorClient: mockVC,
-	}
-	processor.textProcessor = &TextProcessor{
-		DB:           tdb,
-		Log:          log,
-		OpenAIClient: mockOAI,
-		VectorClient: mockVC,
-	}
 
 	// Create queue manager
 	queueManager := NewQueueManager(1, log, processor)
@@ -209,21 +211,22 @@ func TestProcessJob_FailedStepTracked(t *testing.T) {
 	mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Maybe()
 	mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
-	// Create processor
+	// Create processor with failing mock scraper
 	processor := NewJobProcessor(JobProcessorConfig{
 		DB:           tdb,
 		OpenAIClient: mockOAI,
 		VectorClient: mockVC,
 		Log:          log,
+		Processors: map[string]SourceProcessor{
+			"url": &URLProcessor{
+				DB:           tdb,
+				Log:          log,
+				Scraper:      &testMockScraper{shouldFail: true},
+				OpenAIClient: mockOAI,
+				VectorClient: mockVC,
+			},
+		},
 	})
-	// Override URLProcessor with failing mock scraper
-	processor.urlProcessor = &URLProcessor{
-		DB:           tdb,
-		Log:          log,
-		Scraper:      &testMockScraper{shouldFail: true},
-		OpenAIClient: mockOAI,
-		VectorClient: mockVC,
-	}
 
 	// Create queue manager
 	queueManager := NewQueueManager(1, log, processor)
@@ -281,21 +284,22 @@ func TestProcessJob_SkipsUnchangedContent(t *testing.T) {
 	mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 	mockVC.On("DeleteBySourceID", mock.Anything, mock.Anything).Return(nil).Maybe()
 
-	// Create processor
+	// Create processor with mock scraper
 	processor := NewJobProcessor(JobProcessorConfig{
 		DB:           tdb,
 		OpenAIClient: mockOAI,
 		VectorClient: mockVC,
 		Log:          log,
+		Processors: map[string]SourceProcessor{
+			"url": &URLProcessor{
+				DB:           tdb,
+				Log:          log,
+				Scraper:      sc,
+				OpenAIClient: mockOAI,
+				VectorClient: mockVC,
+			},
+		},
 	})
-	// Override URLProcessor with mock scraper
-	processor.urlProcessor = &URLProcessor{
-		DB:           tdb,
-		Log:          log,
-		Scraper:      sc,
-		OpenAIClient: mockOAI,
-		VectorClient: mockVC,
-	}
 
 	// Create queue manager
 	queueManager := NewQueueManager(1, log, processor)
@@ -685,12 +689,12 @@ func TestJobProcessor_CalculateBackoff(t *testing.T) {
 		retryCount int
 		expected   time.Duration
 	}{
-		{0, 2 * time.Second},   // base = 2s, no doublings
-		{1, 2 * time.Second},   // loop doesn't run for i=0
-		{2, 4 * time.Second},   // 2s * 2^1 = 4s
-		{3, 8 * time.Second},   // 2s * 2^2 = 8s
-		{4, 16 * time.Second},  // 2s * 2^3 = 16s
-		{5, 32 * time.Second},  // 2s * 2^4 = 32s
+		{0, 2 * time.Second},                 // base = 2s, no doublings
+		{1, 2 * time.Second},                 // loop doesn't run for i=0
+		{2, 4 * time.Second},                 // 2s * 2^1 = 4s
+		{3, 8 * time.Second},                 // 2s * 2^2 = 8s
+		{4, 16 * time.Second},                // 2s * 2^3 = 16s
+		{5, 32 * time.Second},                // 2s * 2^4 = 32s
 		{10, 17*time.Minute + 4*time.Second}, // 2s * 2^9 = 1024s = 17m4s
 	}
 
@@ -701,4 +705,3 @@ func TestJobProcessor_CalculateBackoff(t *testing.T) {
 		}
 	}
 }
-
