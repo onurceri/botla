@@ -13,7 +13,7 @@ func TestTokenLimitConstants(t *testing.T) {
 	if TokenLimitUltra <= TokenLimitPro {
 		t.Error("TokenLimitUltra should be greater than TokenLimitPro")
 	}
-	
+
 	// Verify expected values (these are reference values)
 	if TokenLimitFree != 100_000 {
 		t.Errorf("TokenLimitFree = %d, want 100_000", TokenLimitFree)
@@ -37,7 +37,7 @@ func TestMaxChatbotsConstants(t *testing.T) {
 	if MaxChatbotsUltra <= MaxChatbotsPro {
 		t.Error("MaxChatbotsUltra should be greater than MaxChatbotsPro")
 	}
-	
+
 	// Verify expected values (these are reference values)
 	if MaxChatbotsFree != 1 {
 		t.Errorf("MaxChatbotsFree = %d, want 1", MaxChatbotsFree)
@@ -49,4 +49,3 @@ func TestMaxChatbotsConstants(t *testing.T) {
 		t.Errorf("MaxChatbotsUltra = %d, want 100", MaxChatbotsUltra)
 	}
 }
-

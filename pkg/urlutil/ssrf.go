@@ -37,16 +37,16 @@ var BlockedHosts = []string{
 
 // BlockedIPRanges are CIDR ranges for private/internal networks
 var BlockedIPRanges = []string{
-	"10.0.0.0/8",      // Private Class A
-	"172.16.0.0/12",   // Private Class B
-	"192.168.0.0/16",  // Private Class C
-	"127.0.0.0/8",     // Loopback
-	"169.254.0.0/16",  // Link-local (includes cloud metadata)
-	"::1/128",         // IPv6 loopback
-	"fc00::/7",        // IPv6 private
-	"fe80::/10",       // IPv6 link-local
-	"100.64.0.0/10",   // Carrier-grade NAT
-	"0.0.0.0/8",       // Current network
+	"10.0.0.0/8",     // Private Class A
+	"172.16.0.0/12",  // Private Class B
+	"192.168.0.0/16", // Private Class C
+	"127.0.0.0/8",    // Loopback
+	"169.254.0.0/16", // Link-local (includes cloud metadata)
+	"::1/128",        // IPv6 loopback
+	"fc00::/7",       // IPv6 private
+	"fe80::/10",      // IPv6 link-local
+	"100.64.0.0/10",  // Carrier-grade NAT
+	"0.0.0.0/8",      // Current network
 }
 
 var parsedBlockedRanges []*net.IPNet

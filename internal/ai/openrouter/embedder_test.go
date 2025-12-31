@@ -14,7 +14,14 @@ func TestEmbedder_ImplementsInterface(t *testing.T) {
 }
 
 func TestNewEmbedder(t *testing.T) {
-	embedder := NewEmbedder("test-key", "https://openrouter.ai/api/v1", "text-embedding-3-small", nil)
+	embedder, err := NewEmbedder(Config{
+		APIKey:  "test-key",
+		BaseURL: "https://openrouter.ai/api/v1",
+		Model:   "text-embedding-3-small",
+	}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if embedder == nil {
 		t.Fatal("expected embedder to be created")
 	}
@@ -26,43 +33,20 @@ func TestNewEmbedder(t *testing.T) {
 	}
 }
 
-func TestNewFromEnv_Success(t *testing.T) {
-	t.Setenv("OPENROUTER_API_KEY", "test-key")
-	t.Setenv("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1")
-	t.Setenv("OPENROUTER_EMBEDDING_MODEL", "text-embedding-3-large")
-
-	embedder, err := NewFromEnv()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if embedder.client == nil {
-		t.Error("expected client to be set")
-	}
-	if embedder.model != "text-embedding-3-large" {
-		t.Errorf("expected model to be 'text-embedding-3-large', got %s", embedder.model)
-	}
-}
-
-func TestNewFromEnv_FallbackToOpenAI(t *testing.T) {
-	t.Setenv("OPENROUTER_API_KEY", "")
-	t.Setenv("OPENAI_API_KEY", "fallback-key")
-
-	embedder, err := NewFromEnv()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if embedder.client == nil {
-		t.Error("expected client to be set")
-	}
-}
-
-func TestNewFromEnv_MissingAPIKey(t *testing.T) {
-	t.Setenv("OPENROUTER_API_KEY", "")
-	t.Setenv("OPENAI_API_KEY", "")
-
-	_, err := NewFromEnv()
+func TestNewEmbedder_EmptyAPIKey(t *testing.T) {
+	_, err := NewEmbedder(Config{BaseURL: "https://openrouter.ai/api/v1"}, nil)
 	if err == nil {
-		t.Error("expected error when both API keys are empty")
+		t.Error("expected error when API key is empty")
+	}
+}
+
+func TestNewEmbedder_WithDefaults(t *testing.T) {
+	embedder, err := NewEmbedder(Config{APIKey: "test-key"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if embedder.model != "text-embedding-3-small" {
+		t.Errorf("expected default model 'text-embedding-3-small', got %s", embedder.model)
 	}
 }
 
@@ -96,7 +80,10 @@ func TestEmbed_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	embedder := NewEmbedder("test-key", server.URL, "text-embedding-3-small", server.Client())
+	embedder, err := NewEmbedder(Config{APIKey: "test-key", BaseURL: server.URL, Model: "text-embedding-3-small"}, server.Client())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	ctx := context.Background()
 
 	result, err := embedder.Embed(ctx, "test text")
@@ -137,7 +124,10 @@ func TestEmbedBatch_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	embedder := NewEmbedder("test-key", server.URL, "text-embedding-3-small", server.Client())
+	embedder, err := NewEmbedder(Config{APIKey: "test-key", BaseURL: server.URL, Model: "text-embedding-3-small"}, server.Client())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	ctx := context.Background()
 
 	results, err := embedder.EmbedBatch(ctx, []string{"text 1", "text 2"})
@@ -168,7 +158,10 @@ func TestDimension(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
-			embedder := NewEmbedder("test-key", "https://openrouter.ai/api/v1", tt.model, nil)
+			embedder, err := NewEmbedder(Config{APIKey: "test-key", BaseURL: "https://openrouter.ai/api/v1", Model: tt.model}, nil)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			dim := embedder.Dimension()
 			if dim != tt.expected {
 				t.Errorf("expected dimension %d, got %d", tt.expected, dim)

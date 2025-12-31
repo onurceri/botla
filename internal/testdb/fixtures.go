@@ -309,12 +309,12 @@ func mergeWorkspaceFixture(defaults, override WorkspaceFixture) WorkspaceFixture
 
 // ChatbotFixture configures a test chatbot's properties.
 type ChatbotFixture struct {
-	ID             string
-	Name           string
-	WorkspaceID    *string // If nil, a new workspace is created
-	OrganizationID *string
-	UserID         string // If empty, uses the owner from workspace hierarchy
-	Model          string
+	ID                 string
+	Name               string
+	WorkspaceID        *string // If nil, a new workspace is created
+	OrganizationID     *string
+	UserID             string // If empty, uses the owner from workspace hierarchy
+	Model              string
 	LanguageCode       string
 	WelcomeMessage     string
 	Temperature        float32
@@ -403,12 +403,12 @@ func CreateChatbot(t *testing.T, dbConn *sql.DB, fixture ...ChatbotFixture) *Cha
 		InputBackgroundColor: "#ededed",
 		InputTextColor:       "#000000",
 		SendButtonColor:      "#ebb800",
-		DiscoveryMode:       "auto",
-		RefreshPolicy:       "manual",
-		ConfidenceThreshold: 0.5,
-		HandoffType:         "email",
-		SuggestedQuestions:  f.SuggestedQuestions,
-		SuggestionsEnabled:  f.SuggestionsEnabled,
+		DiscoveryMode:        "auto",
+		RefreshPolicy:        "manual",
+		ConfidenceThreshold:  0.5,
+		HandoffType:          "email",
+		SuggestedQuestions:   f.SuggestedQuestions,
+		SuggestionsEnabled:   f.SuggestionsEnabled,
 	}
 
 	// Use the db package's CreateChatbot function

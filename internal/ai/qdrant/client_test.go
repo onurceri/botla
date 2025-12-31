@@ -15,7 +15,13 @@ func TestClient_ImplementsVectorStore(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	client := New("http://localhost:6333", "test-key", nil)
+	client, err := New(Config{
+		URL:    "http://localhost:6333",
+		APIKey: "test-key",
+	}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if client == nil {
 		t.Fatal("expected client to be created")
 	}
@@ -30,30 +36,43 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestNewFromEnv_MissingURL(t *testing.T) {
-	t.Setenv("QDRANT_URL", "")
-	t.Setenv("QDRANT_API_KEY", "test-key")
-
-	_, err := NewFromEnv()
+func TestNew_EmptyURL(t *testing.T) {
+	_, err := New(Config{APIKey: "test-key"}, nil)
 	if err == nil {
-		t.Error("expected error when QDRANT_URL is empty")
+		t.Error("expected error when URL is empty")
 	}
 }
 
-func TestNewFromEnv_Success(t *testing.T) {
-	t.Setenv("QDRANT_URL", "http://localhost:6333")
-	t.Setenv("QDRANT_API_KEY", "test-key")
-	t.Setenv("QDRANT_TIMEOUT_MS", "5000")
-
-	client, err := NewFromEnv()
+func TestNew_EmptyAPIKey(t *testing.T) {
+	client, err := New(Config{URL: "http://localhost:6333"}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if client.baseURL != "http://localhost:6333" {
-		t.Errorf("expected baseURL to be 'http://localhost:6333', got %s", client.baseURL)
+	if client.apiKey != "" {
+		t.Error("expected empty API key to be allowed")
 	}
-	if client.apiKey != "test-key" {
-		t.Errorf("expected apiKey to be 'test-key', got %s", client.apiKey)
+}
+
+func TestNew_DefaultTimeout(t *testing.T) {
+	client, err := New(Config{URL: "http://localhost:6333"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if client.http.Timeout != 15*time.Second {
+		t.Errorf("expected default timeout 15s, got %v", client.http.Timeout)
+	}
+}
+
+func TestNew_CustomTimeout(t *testing.T) {
+	client, err := New(Config{
+		URL:     "http://localhost:6333",
+		Timeout: 30 * time.Second,
+	}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if client.http.Timeout != 30*time.Second {
+		t.Errorf("expected custom timeout 30s, got %v", client.http.Timeout)
 	}
 }
 
@@ -69,7 +88,7 @@ func TestEnsureCollection_AlreadyExists(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-key", server.Client())
+	client, _ := New(Config{URL: server.URL}, server.Client())
 	ctx := context.Background()
 
 	err := client.EnsureCollection(ctx)
@@ -98,7 +117,7 @@ func TestEnsureCollection_Create(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-key", server.Client())
+	client, _ := New(Config{URL: server.URL}, server.Client())
 	ctx := context.Background()
 
 	err := client.EnsureCollection(ctx)
@@ -122,7 +141,7 @@ func TestUpsert(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-key", server.Client())
+	client, _ := New(Config{URL: server.URL}, server.Client())
 	ctx := context.Background()
 
 	payload := ai.VectorPayload{
@@ -168,7 +187,7 @@ func TestSearch(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-key", server.Client())
+	client, _ := New(Config{URL: server.URL}, server.Client())
 	ctx := context.Background()
 
 	filter := ai.SearchFilter{ChatbotID: "bot-123"}
@@ -197,7 +216,7 @@ func TestDelete(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-key", server.Client())
+	client, _ := New(Config{URL: server.URL}, server.Client())
 	ctx := context.Background()
 
 	filter := ai.DeleteFilter{SourceID: "src-456"}
@@ -238,7 +257,7 @@ func TestScroll(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New(server.URL, "test-key", server.Client())
+	client, _ := New(Config{URL: server.URL}, server.Client())
 	ctx := context.Background()
 
 	filter := ai.SearchFilter{SourceID: "src-456"}

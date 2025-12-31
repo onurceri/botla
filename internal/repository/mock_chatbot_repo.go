@@ -39,14 +39,14 @@ type MockChatbotRepo struct {
 
 	// Invocation tracking for test assertions
 	Calls struct {
-		GetByID                 []GetByIDCall
-		GetByUserID             []GetByUserIDCall
-		GetByWorkspace          []GetByWorkspaceCall
-		Create                  []CreateCall
-		Update                  []UpdateCall
-		SoftDelete              []SoftDeleteCall
-		CountByUserID           []CountByUserIDCall
-		CountByWorkspace        []CountByWorkspaceCall
+		GetByID                  []GetByIDCall
+		GetByUserID              []GetByUserIDCall
+		GetByWorkspace           []GetByWorkspaceCall
+		Create                   []CreateCall
+		Update                   []UpdateCall
+		SoftDelete               []SoftDeleteCall
+		CountByUserID            []CountByUserIDCall
+		CountByWorkspace         []CountByWorkspaceCall
 		UpdateSuggestedQuestions []UpdateSuggestedQuestionsCall
 	}
 }

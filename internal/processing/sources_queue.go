@@ -9,9 +9,9 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
 // MaxRetries is the maximum number of retry attempts for a failed job.

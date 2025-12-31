@@ -6,8 +6,8 @@ import (
 
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/logger"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 // RAGService provides operations related to RAG vector management

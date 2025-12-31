@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/internal/api/router"
@@ -118,8 +119,12 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		}
 	}
 	var actualVC = vc
-	if actualVC == nil {
-		if c, err := rag.NewQdrantClientFromEnv(); err == nil {
+	if actualVC == nil && cfg.QDRANT_URL != "" {
+		if c, err := rag.NewQdrantClient(&rag.QdrantConfig{
+			URL:     cfg.QDRANT_URL,
+			APIKey:  cfg.QDRANT_API_KEY,
+			Timeout: 15 * time.Second,
+		}); err == nil {
 			actualVC = c
 		}
 	}

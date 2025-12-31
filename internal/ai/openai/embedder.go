@@ -5,18 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/ai"
 )
 
-func init() {
-	// Register OpenAI embedder factory
-	ai.RegisterEmbedder(ai.ProviderOpenAI, func() (ai.Embedder, error) {
-		return NewFromEnv()
-	})
+// Config holds configuration for OpenAI embedder
+type Config struct {
+	APIKey  string        // Required
+	BaseURL string        // Optional, defaults to https://api.openai.com
+	Model   string        // Optional, defaults to text-embedding-3-small
+	Timeout time.Duration // Optional, defaults to 30s
 }
 
 // Embedder implements ai.Embedder for OpenAI
@@ -29,49 +28,26 @@ type Embedder struct {
 var _ ai.Embedder = (*Embedder)(nil)
 
 // NewEmbedder creates a new OpenAI embedder
-func NewEmbedder(apiKey, baseURL string, model string, client *http.Client) *Embedder {
-	if baseURL == "" {
-		baseURL = "https://api.openai.com"
+func NewEmbedder(config Config, client *http.Client) (*Embedder, error) {
+	if config.APIKey == "" {
+		return nil, errors.New("api key is required")
 	}
-	if model == "" {
-		model = "text-embedding-3-small"
+
+	if config.BaseURL == "" {
+		config.BaseURL = "https://api.openai.com"
+	}
+	if config.Model == "" {
+		config.Model = "text-embedding-3-small"
+	}
+	if config.Timeout == 0 {
+		config.Timeout = 30 * time.Second
 	}
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		client = &http.Client{Timeout: config.Timeout}
 	}
 	return &Embedder{
-		client: ai.NewBaseClientWithHTTPClient(baseURL, apiKey, nil, client),
-		model:  model,
-	}
-}
-
-// NewFromEnv creates an OpenAI embedder from environment variables
-func NewFromEnv() (*Embedder, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return nil, errors.New("OPENAI_API_KEY is empty")
-	}
-
-	baseURL := os.Getenv("OPENAI_API_BASE")
-	if baseURL == "" {
-		baseURL = "https://api.openai.com"
-	}
-
-	model := os.Getenv("OPENAI_EMBEDDING_MODEL")
-	if model == "" {
-		model = "text-embedding-3-small"
-	}
-
-	timeout := 30 * time.Second
-	if timeoutStr := os.Getenv("OPENAI_TIMEOUT_MS"); timeoutStr != "" {
-		if ms, err := strconv.Atoi(timeoutStr); err == nil && ms > 0 {
-			timeout = time.Duration(ms) * time.Millisecond
-		}
-	}
-
-	return &Embedder{
-		client: ai.NewBaseClientWithHTTPClient(baseURL, apiKey, nil, &http.Client{Timeout: timeout}),
-		model:  model,
+		client: ai.NewBaseClientWithHTTPClient(config.BaseURL, config.APIKey, nil, client),
+		model:  config.Model,
 	}, nil
 }
 
@@ -89,7 +65,7 @@ func (e *Embedder) Embed(ctx context.Context, text string) ([]float32, error) {
 	}
 
 	if len(resp.Data) == 0 {
-		return nil, errors.New("no embedding returned")
+		return nil, errors.New("no embedding data returned")
 	}
 
 	out := make([]float32, len(resp.Data[0].Embedding))
@@ -116,7 +92,7 @@ func (e *Embedder) EmbedBatch(ctx context.Context, texts []string) ([][]float32,
 	}
 
 	if len(resp.Data) == 0 {
-		return nil, errors.New("no embedding returned")
+		return nil, errors.New("no embedding data returned")
 	}
 
 	out := make([][]float32, len(resp.Data))

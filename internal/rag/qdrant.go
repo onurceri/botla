@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 )
 
@@ -21,25 +19,34 @@ type VectorClient interface {
 	ScrollChunks(ctx context.Context, sourceID string, limit int, offset interface{}) ([]SearchResult, *string, error)
 }
 
+// QdrantConfig holds configuration for Qdrant client
+type QdrantConfig struct {
+	URL     string        // Required
+	APIKey  string        // Optional
+	Timeout time.Duration // Optional, defaults to 15s
+}
+
 type QdrantClient struct {
 	baseURL string
 	apiKey  string
 	http    *http.Client
 }
 
-func NewQdrantClientFromEnv() (*QdrantClient, error) {
-	u := os.Getenv("QDRANT_URL")
-	if u == "" {
-		return nil, errors.New("QDRANT_URL is empty")
+func NewQdrantClient(cfg *QdrantConfig) (*QdrantClient, error) {
+	if cfg == nil || cfg.URL == "" {
+		return nil, errors.New("qdrant URL is required")
 	}
-	k := os.Getenv("QDRANT_API_KEY")
-	to := 15 * time.Second
-	if v := os.Getenv("QDRANT_TIMEOUT_MS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			to = time.Duration(n) * time.Millisecond
-		}
+
+	timeout := cfg.Timeout
+	if timeout == 0 {
+		timeout = 15 * time.Second
 	}
-	return &QdrantClient{baseURL: u, apiKey: k, http: &http.Client{Timeout: to}}, nil
+
+	return &QdrantClient{
+		baseURL: cfg.URL,
+		apiKey:  cfg.APIKey,
+		http:    &http.Client{Timeout: timeout},
+	}, nil
 }
 
 type EmbeddingPayload struct {

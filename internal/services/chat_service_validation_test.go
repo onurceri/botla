@@ -21,14 +21,14 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 
 	// Create a plan with strict token limit
 	// Note: We need to update the user's plan to something with limits.
-	// Since creating a new plan type in DB test setup is hard (migration dependent), 
-	// we will manually update the 'free' plan or similar in the test transaction/schema 
+	// Since creating a new plan type in DB test setup is hard (migration dependent),
+	// we will manually update the 'free' plan or similar in the test transaction/schema
 	// OR insert a custom plan if constraints allow.
-	
+
 	// Better: Update the plan config for the user's plan.
 	// The test schema migrations seed plans. Let's assume 'free' exists.
 	// We'll update 'free' plan to have specific MaxMonthlyTokens.
-	
+
 	_, err := dbConn.Exec(`
 		UPDATE plans 
 		SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100') 
@@ -45,20 +45,20 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 
 	// Create Chatbot
 	cbResult := testdb.CreateChatbot(t, dbConn, testdb.ChatbotFixture{
-		UserID: user.ID,
+		UserID:    user.ID,
 		MaxTokens: 50, // Requesting 50 tokens
 	})
 
 	// Manually insert usage to reach quota
 	// Quota is 100. Let's insert 100 usage.
 	// We need to insert into usage_ingestions or usage_chat (wait, where is chat usage tracked?)
-	// The user memory "Fix Token Quota Race Condition" said "adding a chat_tokens column to the usage_ingestions table" 
+	// The user memory "Fix Token Quota Race Condition" said "adding a chat_tokens column to the usage_ingestions table"
 	// OR "tracking monthly chat token usage per user".
 	// Actually logic uses `db.GetMonthlyTokenUsage` and `db.ReserveChatTokens`.
 	// `ReserveChatTokens` checks `usage_chat` or similar.
 	// Let's assume ReserveChatTokens works if usage is high.
 	// We can cheat by calling ReserveChatTokens manually to use up quota.
-	
+
 	err = db.ReserveChatTokens(context.Background(), dbConn, user.ID, 100, 100)
 	if err != nil {
 		t.Fatalf("failed to setup initial quota usage: %v", err)
@@ -70,8 +70,8 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 	svc := services.NewChatService(dbConn, rag.NewClientFactory(&config.Config{}), nil, nil, logger.New("ERROR"))
 
 	req := services.ChatRequestWithUser{
-		UserID: user.ID,
-		Chatbot: cbResult.Chatbot,
+		UserID:      user.ID,
+		Chatbot:     cbResult.Chatbot,
 		ChatRequest: models.ChatRequest{Message: "Hello", SessionID: "sess-1"},
 	}
 
@@ -98,24 +98,24 @@ func TestChatService_ProcessChatWithValidation_DelegationAndRefund(t *testing.T)
 
 	user := testdb.CreateUser(t, dbConn, testdb.UserFixture{PlanCode: policy.PlanFree.String()})
 	cbResult := testdb.CreateChatbot(t, dbConn, testdb.ChatbotFixture{
-		UserID: user.ID,
+		UserID:    user.ID,
 		MaxTokens: 100,
 	})
 
 	svc := services.NewChatService(dbConn, rag.NewClientFactory(&config.Config{}), nil, nil, logger.New("ERROR"))
 
 	req := services.ChatRequestWithUser{
-		UserID: user.ID,
-		Chatbot: cbResult.Chatbot,
+		UserID:      user.ID,
+		Chatbot:     cbResult.Chatbot,
 		ChatRequest: models.ChatRequest{Message: "Hello", SessionID: "sess-1"},
 	}
 
-	// This should fail inside ProcessChat (due to no keys/models), 
+	// This should fail inside ProcessChat (due to no keys/models),
 	// but it should PASS validation (quota 100 requested < 1000 limit).
 	// Because ProcessChat fails, it should refund the tokens.
-	
+
 	_, err = svc.ProcessChatWithValidation(context.Background(), req)
-	
+
 	// Error should NOT be TokenQuotaExceeded
 	if errors.Is(err, services.ErrTokenQuotaExceeded) {
 		t.Fatalf("got TokenQuotaExceeded unexpectedly")
@@ -138,7 +138,7 @@ func TestChatService_ProcessChatWithValidation_DelegationAndRefund(t *testing.T)
 	// Wait, `ReserveChatTokens` logic is complex.
 	// It likely inserts a row. Refund updates it?
 	// `AdjustChatTokens` updates the row.
-	
+
 	var totalTokens int
 	err = dbConn.QueryRow(`
 		SELECT COALESCE(SUM(chat_tokens), 0) 

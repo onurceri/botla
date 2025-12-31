@@ -86,7 +86,11 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	log.Info("plan_validation_success", nil)
 
 	// Initialize Qdrant
-	qdrantClient, err := rag.NewQdrantClientFromEnv()
+	qdrantClient, err := rag.NewQdrantClient(&rag.QdrantConfig{
+		URL:     cfg.QDRANT_URL,
+		APIKey:  cfg.QDRANT_API_KEY,
+		Timeout: 15 * time.Second,
+	})
 	if err != nil {
 		log.Error("qdrant_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init qdrant: %w", err)

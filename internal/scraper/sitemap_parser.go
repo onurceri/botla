@@ -297,11 +297,11 @@ func DiscoverSitemapURL(ctx context.Context, baseURL string) (string, error) {
 
 		// Per-request timeout
 		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		
+
 		testURL := fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, path)
 		found, err := probeSitemap(reqCtx, client, testURL)
 		cancel() // Always cancel to free resources
-		
+
 		if err != nil {
 			continue
 		}

@@ -9,14 +9,23 @@ Make dependencies explicit by removing `NewFromEnv` and `os.Getenv` usages insid
 - `internal/ai/qdrant`
 
 ## Checklist
-- [ ] Update `openai.NewEmbedder` to accept a Config struct (Key, BaseURL, Model).
-- [ ] Remove `openai.NewFromEnv`.
-- [ ] Update `openrouter.NewEmbedder` to accept a Config struct.
-- [ ] Remove `openrouter.NewFromEnv`.
-- [ ] Update `qdrant.NewStore` to accept Config.
-- [ ] Remove `qdrant.NewFromEnv`.
-- [ ] Update `cmd/server/main.go` and `factory.go` to load config from `config.Config` and pass it down.
-- [ ] Update integration tests to manually construct services instead of relying on Env.
+- [x] Update `openai.NewEmbedder` to accept a Config struct (Key, BaseURL, Model).
+- [x] Remove `openai.NewFromEnv`.
+- [x] Update `openrouter.NewEmbedder` to accept a Config struct.
+- [x] Remove `openrouter.NewFromEnv`.
+- [x] Update `qdrant.NewStore` to accept Config.
+- [x] Remove `qdrant.NewFromEnv`.
+- [x] Update `cmd/server/main.go` and `factory.go` to load config from `config.Config` and pass it down.
+- [x] Update integration tests to manually construct services instead of relying on Env.
+
+## Completion Status
+Completed on: 2025-12-31
+All NewFromEnv functions removed
+Factory pattern removed (unused code)
+Config structs added to each package
+Fail-fast validation implemented
+All tests passing
+All linters passing
 
 ## Edge Cases
 - Missing configuration values (should fail at call site, not deep in library).

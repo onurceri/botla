@@ -31,11 +31,11 @@ func TestSentinelErrors_AreDefined(t *testing.T) {
 func TestSentinelErrors_HaveDistinctMessages(t *testing.T) {
 	// Ensure no two sentinel errors have the same message
 	sentinels := map[string]error{
-		"ErrRateLimit":         ErrRateLimit,
-		"ErrTimeout":           ErrTimeout,
-		"ErrNetwork":           ErrNetwork,
-		"ErrNotFound":          ErrNotFound,
-		"ErrContextCancelled":  ErrContextCancelled,
+		"ErrRateLimit":        ErrRateLimit,
+		"ErrTimeout":          ErrTimeout,
+		"ErrNetwork":          ErrNetwork,
+		"ErrNotFound":         ErrNotFound,
+		"ErrContextCancelled": ErrContextCancelled,
 	}
 
 	messages := make(map[string]string)

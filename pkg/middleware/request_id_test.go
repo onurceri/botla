@@ -27,7 +27,7 @@ func TestRequestID_GeneratesNewID(t *testing.T) {
 	if respID == "" {
 		t.Error("expected request ID in response header")
 	}
-	
+
 	// Verify it looks like a UUID
 	if len(respID) != 36 {
 		t.Errorf("expected UUID format, got %s", respID)
@@ -36,7 +36,7 @@ func TestRequestID_GeneratesNewID(t *testing.T) {
 
 func TestRequestID_UsesExistingHeader(t *testing.T) {
 	existingID := "existing-request-id-12345"
-	
+
 	handler := RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqID := RequestIDFromContext(r.Context())
 		if reqID != existingID {

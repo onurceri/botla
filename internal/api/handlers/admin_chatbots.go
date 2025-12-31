@@ -155,4 +155,3 @@ func (h *AdminChatbotHandlers) ForceRefreshChatbot(w http.ResponseWriter, r *htt
 		"sources_queued": queuedCount,
 	})
 }
-

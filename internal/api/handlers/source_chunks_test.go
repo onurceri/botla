@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/onurceri/botla-co/internal/rag"
@@ -69,8 +70,7 @@ func TestGetSourceChunks_Success(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer qSrv.Close()
-	t.Setenv("QDRANT_URL", qSrv.URL)
-	qc, _ := rag.NewQdrantClientFromEnv()
+	qc, _ := rag.NewQdrantClient(&rag.QdrantConfig{URL: qSrv.URL, Timeout: 15 * time.Second})
 
 	// 3. Init Handler
 	sh := &SourcesHandlers{DB: db, QdrantClient: qc}

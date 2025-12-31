@@ -10,8 +10,8 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/middleware"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 // MeResponse represents the /me endpoint response

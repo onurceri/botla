@@ -391,7 +391,7 @@ func TestPDFProcessor_Unit(t *testing.T) {
 		// Since pdf.ExtractPDFText might fail without fitz, we just check the flow if it proceeds.
 		// If it fails with ParseFailed, that's also an acceptable result for this environment.
 		result := p.ProcessWithSteps(ctx, "test-job", source, bot, "en", plan, nil, func(step models.TrainingStep) {})
-		
+
 		// We don't assert specific success here because it depends on fitz installation,
 		// but we ensure it doesn't panic and uses the mocks.
 		assert.NotNil(t, result)

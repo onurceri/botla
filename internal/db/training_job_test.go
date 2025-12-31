@@ -12,10 +12,10 @@ import (
 
 func TestCreateTrainingJob(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
-	
+
 	// Create test source with full hierarchy
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, err := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	if err != nil {
 		t.Fatalf("CreateTrainingJob failed: %v", err)
@@ -44,7 +44,7 @@ func TestCreateTrainingJob(t *testing.T) {
 func TestGetTrainingJob(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, err := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	if err != nil {
 		t.Fatalf("CreateTrainingJob failed: %v", err)
@@ -78,7 +78,7 @@ func TestGetTrainingJob(t *testing.T) {
 func TestUpdateJobStatus(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, err := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	if err != nil {
 		t.Fatalf("CreateTrainingJob failed: %v", err)
@@ -125,7 +125,7 @@ func TestUpdateJobStatus(t *testing.T) {
 func TestFailJob(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, err := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	if err != nil {
 		t.Fatalf("CreateTrainingJob failed: %v", err)
@@ -165,7 +165,7 @@ func TestFailJob(t *testing.T) {
 func TestCompleteJob(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, err := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	if err != nil {
 		t.Fatalf("CreateTrainingJob failed: %v", err)
@@ -192,7 +192,7 @@ func TestCompleteJob(t *testing.T) {
 func TestCancelJob(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, err := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	if err != nil {
 		t.Fatalf("CreateTrainingJob failed: %v", err)
@@ -216,11 +216,11 @@ func TestCancelJob(t *testing.T) {
 func TestGetJobBySourceID(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	// Create multiple jobs for the same source
 	job1, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	_ = db.CompleteJob(context.Background(), dbConn, job1.ID)
-	
+
 	job2, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 
 	// Should return the most recent job (job2)
@@ -247,7 +247,7 @@ func TestGetJobBySourceID(t *testing.T) {
 
 func TestGetJobsByChatbotID(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
-	
+
 	// Create two sources for the same chatbot
 	sourceResult1 := testdb.CreateSource(t, dbConn)
 	sourceResult2 := testdb.CreateSource(t, dbConn, testdb.SourceFixture{
@@ -270,11 +270,11 @@ func TestGetJobsByChatbotID(t *testing.T) {
 func TestGetPendingJobs(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	// Create pending jobs
 	job1, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
 	job2, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
-	
+
 	// Make job1 running
 	step := models.StepFetchSource
 	_ = db.UpdateJobStatus(context.Background(), dbConn, job1.ID, models.JobStatusRunning, &step)
@@ -284,7 +284,7 @@ func TestGetPendingJobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPendingJobs failed: %v", err)
 	}
-	
+
 	// Verify at least our pending job (job2) is returned and running job (job1) is NOT
 	foundJob2 := false
 	foundJob1 := false
@@ -299,7 +299,7 @@ func TestGetPendingJobs(t *testing.T) {
 			foundJob1 = true
 		}
 	}
-	
+
 	if !foundJob2 {
 		t.Errorf("job2 (ID=%s) should be in pending list, got %d pending jobs", job2.ID, len(pending))
 	}
@@ -311,9 +311,9 @@ func TestGetPendingJobs(t *testing.T) {
 func TestGetRetryableJobs(t *testing.T) {
 	dbConn := testdb.OpenParallelTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
-	
+
 	// Fail the job
 	_ = db.FailJob(context.Background(), dbConn, job.ID, models.StepEmbedChunks, "ERROR", "test error")
 
@@ -322,7 +322,7 @@ func TestGetRetryableJobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRetryableJobs failed: %v", err)
 	}
-	
+
 	found := false
 	for _, j := range retryable {
 		if j.ID == job.ID {
@@ -337,9 +337,9 @@ func TestGetRetryableJobs(t *testing.T) {
 func TestIncrementRetryCount(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
-	
+
 	// Fail the job
 	_ = db.FailJob(context.Background(), dbConn, job.ID, models.StepEmbedChunks, "ERROR", "test error")
 
@@ -370,9 +370,9 @@ func TestIncrementRetryCount(t *testing.T) {
 func TestGetRunningJobs(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
-	
+
 	job, _ := db.CreateTrainingJob(context.Background(), dbConn, sourceResult.Source.ID, sourceResult.Chatbot.ID)
-	
+
 	// Make job running
 	step := models.StepParseContent
 	_ = db.UpdateJobStatus(context.Background(), dbConn, job.ID, models.JobStatusRunning, &step)
@@ -382,7 +382,7 @@ func TestGetRunningJobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRunningJobs failed: %v", err)
 	}
-	
+
 	found := false
 	for _, j := range running {
 		if j.ID == job.ID {

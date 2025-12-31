@@ -35,7 +35,7 @@ func (h *HealthHandlers) Health(w http.ResponseWriter, r *http.Request) {
 	} else {
 		dep["qdrant"] = "ok"
 	}
-	
+
 	queueStats := map[string]any{
 		"status":  "ok",
 		"workers": 0,

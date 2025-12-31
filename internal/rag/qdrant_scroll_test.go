@@ -36,7 +36,7 @@ func TestScrollChunks_Success(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("QDRANT_URL", srv.URL)
 
-	c, _ := NewQdrantClientFromEnv()
+	c, _ := NewQdrantClient(&QdrantConfig{URL: srv.URL})
 
 	// Assuming ScrollChunks signature: (ctx, sourceID, limit, offset) -> (points, nextOffset, error)
 	points, next, err := c.ScrollChunks(context.Background(), "src", 10, nil)

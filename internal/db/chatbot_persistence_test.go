@@ -84,4 +84,3 @@ func TestChatbot_Update_PreservesSuggestedQuestions(t *testing.T) {
 	assert.NotNil(t, postUpdate.ManualQuestions)
 	assert.Equal(t, manualQuestions, postUpdate.ManualQuestions, "ManualQuestions should be preserved")
 }
-

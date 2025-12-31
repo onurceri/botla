@@ -7,20 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/ai"
 )
 
-func init() {
-	// Register Qdrant factory
-	ai.RegisterVectorStore(ai.ProviderQdrant, func() (ai.VectorStore, error) {
-		return NewFromEnv()
-	})
+// Config holds configuration for Qdrant client
+type Config struct {
+	URL     string        // Required
+	APIKey  string        // Optional
+	Timeout time.Duration // Optional, defaults to 15s
 }
-
 
 // Client implements ai.VectorStore for Qdrant
 type Client struct {
@@ -32,35 +29,22 @@ type Client struct {
 // Verify interface compliance at compile time
 var _ ai.VectorStore = (*Client)(nil)
 
-// New creates a new Qdrant client with the given parameters
-func New(baseURL, apiKey string, client *http.Client) *Client {
-	if client == nil {
-		client = &http.Client{Timeout: 15 * time.Second}
+// New creates a new Qdrant client with the given configuration
+func New(config Config, client *http.Client) (*Client, error) {
+	if config.URL == "" {
+		return nil, errors.New("url is required")
 	}
-	return &Client{
-		baseURL: baseURL,
-		apiKey:  apiKey,
-		http:    client,
-	}
-}
 
-// NewFromEnv creates a Qdrant client from environment variables
-func NewFromEnv() (*Client, error) {
-	u := os.Getenv("QDRANT_URL")
-	if u == "" {
-		return nil, errors.New("QDRANT_URL is empty")
+	if config.Timeout == 0 {
+		config.Timeout = 15 * time.Second
 	}
-	k := os.Getenv("QDRANT_API_KEY")
-	to := 15 * time.Second
-	if v := os.Getenv("QDRANT_TIMEOUT_MS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			to = time.Duration(n) * time.Millisecond
-		}
+	if client == nil {
+		client = &http.Client{Timeout: config.Timeout}
 	}
 	return &Client{
-		baseURL: u,
-		apiKey:  k,
-		http:    &http.Client{Timeout: to},
+		baseURL: config.URL,
+		apiKey:  config.APIKey,
+		http:    client,
 	}, nil
 }
 

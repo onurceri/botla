@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/logger"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-co/pkg/logger"
 )
 
 type WorkspaceService struct {

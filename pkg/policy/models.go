@@ -13,7 +13,7 @@ const (
 	ModelGPT4o     Model = "gpt-4o"
 	ModelGPT4oMini Model = "gpt-4o-mini"
 	ModelGPT5      Model = "gpt-5"
-	
+
 	// Embedding models (via OpenAI directly)
 	ModelEmbeddingSmall Model = "text-embedding-3-small"
 )

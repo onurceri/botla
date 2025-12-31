@@ -57,21 +57,21 @@ func (s TrainingStep) IsValid() bool {
 
 // TrainingJob represents a training job for processing data sources
 type TrainingJob struct {
-	ID              string           `json:"id"`
-	SourceID        string           `json:"source_id"`
-	ChatbotID       string           `json:"chatbot_id"`
-	Status          JobStatus        `json:"status"`
-	CurrentStep     *TrainingStep    `json:"current_step,omitempty"`
-	ProgressPercent int              `json:"progress_percent"`
-	ErrorCode       *string          `json:"error_code,omitempty"`
-	ErrorMessage    *string          `json:"error_message,omitempty"`
-	FailedStep      *TrainingStep    `json:"failed_step,omitempty"`
-	RetryCount      int              `json:"retry_count"`
-	CreatedAt       time.Time        `json:"created_at"`
-	StartedAt       *time.Time       `json:"started_at,omitempty"`
-	CompletedAt     *time.Time       `json:"completed_at,omitempty"`
-	UpdatedAt       time.Time        `json:"updated_at"`
-	Metadata        json.RawMessage  `json:"metadata,omitempty"`
+	ID              string          `json:"id"`
+	SourceID        string          `json:"source_id"`
+	ChatbotID       string          `json:"chatbot_id"`
+	Status          JobStatus       `json:"status"`
+	CurrentStep     *TrainingStep   `json:"current_step,omitempty"`
+	ProgressPercent int             `json:"progress_percent"`
+	ErrorCode       *string         `json:"error_code,omitempty"`
+	ErrorMessage    *string         `json:"error_message,omitempty"`
+	FailedStep      *TrainingStep   `json:"failed_step,omitempty"`
+	RetryCount      int             `json:"retry_count"`
+	CreatedAt       time.Time       `json:"created_at"`
+	StartedAt       *time.Time      `json:"started_at,omitempty"`
+	CompletedAt     *time.Time      `json:"completed_at,omitempty"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+	Metadata        json.RawMessage `json:"metadata,omitempty"`
 }
 
 // StepProgress maps training steps to their progress percentages
