@@ -3,12 +3,14 @@ module github.com/onurceri/botla-co
 go 1.25
 
 require (
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/aws/aws-sdk-go-v2 v1.40.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.92.1
 	github.com/gen2brain/go-fitz v1.20.2
+	github.com/getkin/kin-openapi v0.133.0
 	github.com/go-rod/rod v0.116.2
 	github.com/gocolly/colly v1.2.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -19,6 +21,7 @@ require (
 	github.com/neurosnap/sentences v1.1.2
 	github.com/otiai10/gosseract/v2 v2.4.1
 	github.com/redis/go-redis/v9 v9.17.1
+	github.com/sony/gobreaker/v2 v2.3.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.45.0
 	golang.org/x/net v0.47.0
@@ -47,7 +50,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/getkin/kin-openapi v0.133.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
@@ -58,7 +60,8 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
-	github.com/kr/text v0.2.0 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
@@ -67,7 +70,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
-	github.com/sony/gobreaker/v2 v2.3.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/temoto/robotstxt v1.1.2 // indirect
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
