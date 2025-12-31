@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/lib/pq"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
@@ -35,49 +36,88 @@ type ChatbotFilter struct {
 
 // AdminListChatbots returns a paginated list of all chatbots with their metadata
 func AdminListChatbots(ctx context.Context, pool *sql.DB, filter ChatbotFilter, limit, offset int) ([]AdminChatbot, int, error) {
-	// Count query
-	countQuery := `
-		SELECT COUNT(*)
-		FROM chatbots c
-		WHERE c.deleted_at IS NULL
-			AND ($1::text IS NULL OR c.name ILIKE '%' || $1 || '%')
-			AND ($2::text IS NULL OR c.organization_id = $2::uuid)
-			AND ($3::text IS NULL OR c.user_id = $3::uuid)
-	`
+	// Validate pagination parameters
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Configure Squirrel for PostgreSQL (use $1, $2... placeholders)
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	// Note: limit and offset are validated to be non-negative above, so uint64 conversion is safe
+
+	// Build COUNT query
+	countQuery := psql.Select("COUNT(*)").From("chatbots c").Where(sq.Eq{"c.deleted_at": nil})
+
+	// Apply optional filters
+	if filter.Name != nil {
+		namePattern := "%" + *filter.Name + "%"
+		countQuery = countQuery.Where("c.name ILIKE ?", namePattern)
+	}
+	if filter.OrganizationID != nil {
+		countQuery = countQuery.Where(sq.Eq{"c.organization_id": *filter.OrganizationID})
+	}
+	if filter.OwnerID != nil {
+		countQuery = countQuery.Where(sq.Eq{"c.user_id": *filter.OwnerID})
+	}
+
+	countSQL, countArgs, err := countQuery.ToSql()
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "build count query")
+	}
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "build count query")
+	}
 
 	var total int
-	err := pool.QueryRowContext(ctx, countQuery, filter.Name, filter.OrganizationID, filter.OwnerID).Scan(&total)
+	err = pool.QueryRowContext(ctx, countSQL, countArgs...).Scan(&total)
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "count admin chatbots")
 	}
 
-	// Data query - simplified to avoid LATERAL issues
-	dataQuery := `
-		SELECT
-			c.id,
-			c.name,
-			c.user_id,
-			c.workspace_id,
-			c.organization_id,
-			o.name,
-			u.email,
-			(SELECT COUNT(*) FROM data_sources ds WHERE ds.chatbot_id = c.id AND ds.deleted_at IS NULL),
-			(SELECT COUNT(*) FROM messages m JOIN conversations conv ON m.conversation_id = conv.id WHERE conv.chatbot_id = c.id),
-			COALESCE(c.custom_branding::text, '{}'),
-			c.created_at,
-			c.updated_at
-		FROM chatbots c
-		LEFT JOIN organizations o ON c.organization_id = o.id
-		JOIN users u ON c.user_id = u.id
-		WHERE c.deleted_at IS NULL
-			AND ($1::text IS NULL OR c.name ILIKE '%' || $1 || '%')
-			AND ($2::text IS NULL OR c.organization_id = $2::uuid)
-			AND ($3::text IS NULL OR c.user_id = $3::uuid)
-		ORDER BY c.created_at DESC
-		LIMIT $4 OFFSET $5
-	`
+	// Build DATA query with subqueries
+	dataQuery := psql.Select(
+		"c.id",
+		"c.name",
+		"c.user_id",
+		"c.workspace_id",
+		"c.organization_id",
+		"o.name as organization_name",
+		"u.email as owner_email",
+		"(SELECT COUNT(*) FROM data_sources ds WHERE ds.chatbot_id = c.id AND ds.deleted_at IS NULL)",
+		"(SELECT COUNT(*) FROM messages m JOIN conversations conv ON m.conversation_id = conv.id WHERE conv.chatbot_id = c.id)",
+		"COALESCE(c.custom_branding::text, '{}')",
+		"c.created_at",
+		"c.updated_at",
+	).From("chatbots c").
+		LeftJoin("organizations o ON c.organization_id = o.id").
+		Join("users u ON c.user_id = u.id").
+		Where(sq.Eq{"c.deleted_at": nil})
 
-	rows, err := pool.QueryContext(ctx, dataQuery, filter.Name, filter.OrganizationID, filter.OwnerID, limit, offset)
+	// Apply same filters as count query
+	if filter.Name != nil {
+		namePattern := "%" + *filter.Name + "%"
+		dataQuery = dataQuery.Where("c.name ILIKE ?", namePattern)
+	}
+	if filter.OrganizationID != nil {
+		dataQuery = dataQuery.Where(sq.Eq{"c.organization_id": *filter.OrganizationID})
+	}
+	if filter.OwnerID != nil {
+		dataQuery = dataQuery.Where(sq.Eq{"c.user_id": *filter.OwnerID})
+	}
+
+	// Sorting and pagination
+	dataQuery = dataQuery.OrderBy("c.created_at DESC").Limit(uint64(int64(limit))).Offset(uint64(int64(offset))) // #nosec G115 -- limit/offset validated to be non-negative above
+
+	dataSQL, dataArgs, err := dataQuery.ToSql()
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "build data query")
+	}
+
+	rows, err := pool.QueryContext(ctx, dataSQL, dataArgs...)
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query admin chatbots")
 	}
