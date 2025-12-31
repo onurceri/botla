@@ -38,4 +38,3 @@ func (e *ScrapeError) Unwrap() error {
 		return e.Err
 	}
 }
-

@@ -32,7 +32,7 @@ func TestAdminUpdateUser(t *testing.T) {
 	// Even though the current implementation is "safe" via whitelist, we want to ensure any future implementation is also safe
 	// and that invalid keys are simply ignored.
 	updates = map[string]any{
-		"full_name":                       "Updated Name 2",
+		"full_name":                         "Updated Name 2",
 		"invalid_col; DROP TABLE users; --": "some value",
 	}
 	err = db.AdminUpdateUser(ctx, conn, uid, updates)

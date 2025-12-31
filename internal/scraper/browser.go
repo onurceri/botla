@@ -3,13 +3,13 @@ package scraper
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
-	"fmt"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"

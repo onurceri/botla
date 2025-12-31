@@ -17,10 +17,10 @@ import (
 
 // Test UUIDs - using valid UUID format
 const (
-	testChatbotID    = "00000000-0000-0000-0000-000000000001"
-	testUserID       = "00000000-0000-0000-0000-000000000002"
-	testActionID     = "00000000-0000-0000-0000-000000000003"
-	otherChatbotID   = "00000000-0000-0000-0000-999999999999"
+	testChatbotID  = "00000000-0000-0000-0000-000000000001"
+	testUserID     = "00000000-0000-0000-0000-000000000002"
+	testActionID   = "00000000-0000-0000-0000-000000000003"
+	otherChatbotID = "00000000-0000-0000-0000-999999999999"
 )
 
 // mockToolsLLMClient implements rag.ToolsLLMClient for testing

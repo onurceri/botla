@@ -89,13 +89,13 @@ func (m *LLMMetrics) GetAllMetrics() map[string]ProviderMetrics {
 	defer m.mu.RUnlock()
 
 	result := make(map[string]ProviderMetrics)
-	
+
 	// Collect all unique providers
 	providers := make(map[string]struct{})
 	for p := range m.totalCalls {
 		providers[p] = struct{}{}
 	}
-	
+
 	for provider := range providers {
 		total := m.totalCalls[provider]
 		failures := m.failures[provider]

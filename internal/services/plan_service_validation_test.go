@@ -299,7 +299,7 @@ func TestPlanService_ValidateAllPlans_UnmarshalError(t *testing.T) {
 	ctx := context.Background()
 
 	// "[]" is valid JSON but cannot be unmarshaled into PlanConfig struct (which is an object)
-	invalidJsonForStruct := []byte(`[]`) 
+	invalidJsonForStruct := []byte(`[]`)
 
 	planID := "88888888-8888-8888-8888-888888888888"
 	_, err := db.ExecContext(ctx, `

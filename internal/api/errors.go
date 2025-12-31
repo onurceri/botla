@@ -109,4 +109,3 @@ func MapHandoffError(err error) (int, string, bool) {
 	}
 	return http.StatusInternalServerError, ErrCodeInternalError, false
 }
-

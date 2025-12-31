@@ -70,7 +70,7 @@ func TestEmbeddingService_Generate_RetryAndWarn(t *testing.T) {
 		OPENAI_API_BASE: oai.URL,
 	}
 	emb, _ := NewOpenAIClient(cfg)
-	vc, _ := NewQdrantClientFromEnv()
+	vc, _ := NewQdrantClient(&QdrantConfig{URL: qdr.URL})
 	svc := NewEmbeddingService(emb, vc, nil)
 	if err := svc.Generate(context.Background(), chunks, "cb"); err != nil {
 		t.Fatalf("gen err: %v", err)
@@ -106,7 +106,7 @@ func TestEmbeddingService_GenerateForSource_UpsertError(t *testing.T) {
 		OPENAI_API_BASE: oai.URL,
 	}
 	emb, _ := NewOpenAIClient(cfg)
-	vc, _ := NewQdrantClientFromEnv()
+	vc, _ := NewQdrantClient(&QdrantConfig{URL: qdr.URL})
 	svc := NewEmbeddingService(emb, vc, nil)
 	if err := svc.GenerateForSource(context.Background(), chunks, "cb", "src", "file"); err == nil {
 		t.Fatalf("expected error")
@@ -177,7 +177,7 @@ func TestEmbeddingService_Generate_Batching(t *testing.T) {
 		OPENAI_API_BASE: oaiSrv.URL,
 	}
 	emb, _ := NewOpenAIClient(cfg)
-	vc, _ := NewQdrantClientFromEnv()
+	vc, _ := NewQdrantClient(&QdrantConfig{URL: qdrSrv.URL})
 
 	// We need to speed up the ticker or wait.
 	// The code uses time.NewTicker(time.Second / 58) which is ~17ms.

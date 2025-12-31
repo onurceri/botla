@@ -22,4 +22,3 @@ const (
 // Note: Plan-specific limits (AllowedModels, RAG settings, etc.) are configured
 // in the database and should be retrieved via the Plan.Config field.
 // Do not hardcode plan limits in application code.
-

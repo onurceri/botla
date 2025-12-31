@@ -14,7 +14,7 @@ func TestPlan_IsValid(t *testing.T) {
 		{"invalid empty", Plan(""), false},
 		{"invalid unknown", Plan("enterprise"), false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.plan.IsValid(); got != tt.valid {
@@ -34,7 +34,7 @@ func TestPlan_String(t *testing.T) {
 		{"pro plan", PlanPro, "pro"},
 		{"ultra plan", PlanUltra, "ultra"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.plan.String(); got != tt.want {
@@ -46,24 +46,24 @@ func TestPlan_String(t *testing.T) {
 
 func TestAllPlans(t *testing.T) {
 	plans := AllPlans()
-	
+
 	if len(plans) != 3 {
 		t.Errorf("AllPlans() returned %d plans, want 3", len(plans))
 	}
-	
+
 	// Verify all expected plans are present
 	expected := map[Plan]bool{
 		PlanFree:  false,
 		PlanPro:   false,
 		PlanUltra: false,
 	}
-	
+
 	for _, p := range plans {
 		if _, ok := expected[p]; ok {
 			expected[p] = true
 		}
 	}
-	
+
 	for plan, found := range expected {
 		if !found {
 			t.Errorf("AllPlans() missing plan: %s", plan)

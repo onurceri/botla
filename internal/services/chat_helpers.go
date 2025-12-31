@@ -37,13 +37,9 @@ func (s *ChatService) getEmbedder() rag.EmbeddingClient {
 	return nil
 }
 
-// getQdrantClient returns the Qdrant client, creating one if needed.
+// getQdrantClient returns the Qdrant client.
 func (s *ChatService) getQdrantClient() rag.VectorClient {
-	if s.QC != nil {
-		return s.QC
-	}
-	client, _ := rag.NewQdrantClientFromEnv()
-	return client
+	return s.QC
 }
 
 // getToolsClient returns a tools-capable LLM client and the model name to use.

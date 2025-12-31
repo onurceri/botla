@@ -11,4 +11,3 @@ var DefaultModelName = policy.DefaultChatModel().String()
 // This is a system constant, not user-configurable.
 // Uses the policy package to ensure consistency across the codebase.
 var ModelEmbeddingSmall = policy.DefaultEmbeddingModel().String()
-

@@ -356,7 +356,7 @@ func TestGetEmptyStateMessage(t *testing.T) {
 	t.Run("falls back to NoInfoFound if EmptyStateMessage is empty", func(t *testing.T) {
 		// Create a modified lang config with empty EmptyStateMessage
 		cc := &chatContext{
-			Bot:        &models.Chatbot{},
+			Bot: &models.Chatbot{},
 			LangConfig: langconfig.LanguageConfig{
 				UserMessages: langconfig.UserMessages{
 					NoInfoFound:       "Fallback message",

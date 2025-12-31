@@ -11,12 +11,12 @@ import (
 // QueueManager handles the job queue lifecycle and worker management.
 // It is responsible for enqueueing jobs, managing workers, and graceful shutdown.
 type QueueManager struct {
-	ch       chan string
-	stopCh   chan struct{}
-	wg       sync.WaitGroup
-	workers  int
-	log      *logger.Logger
-	handler  JobHandler
+	ch      chan string
+	stopCh  chan struct{}
+	wg      sync.WaitGroup
+	workers int
+	log     *logger.Logger
+	handler JobHandler
 }
 
 // JobHandler is the interface for processing jobs from the queue.

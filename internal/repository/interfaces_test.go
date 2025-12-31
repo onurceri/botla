@@ -13,15 +13,15 @@ import (
 // MockChatbotRepository is a test double for ChatbotRepository.
 // It can be configured with custom behaviors for each method.
 type MockChatbotRepository struct {
-	GetByIDFunc                   func(ctx context.Context, id string) (*models.Chatbot, error)
-	GetByUserIDFunc               func(ctx context.Context, userID string) ([]models.Chatbot, error)
-	GetByWorkspaceFunc            func(ctx context.Context, workspaceID string) ([]models.Chatbot, error)
-	CreateFunc                    func(ctx context.Context, bot *models.Chatbot) (string, error)
-	UpdateFunc                    func(ctx context.Context, bot *models.Chatbot) error
-	SoftDeleteFunc                func(ctx context.Context, id, userID string) ([]string, error)
-	CountByUserIDFunc             func(ctx context.Context, userID string) (int, error)
-	CountByWorkspaceFunc          func(ctx context.Context, workspaceID string) (int, error)
-	UpdateSuggestedQuestionsFunc  func(ctx context.Context, id string, suggestions []string) error
+	GetByIDFunc                  func(ctx context.Context, id string) (*models.Chatbot, error)
+	GetByUserIDFunc              func(ctx context.Context, userID string) ([]models.Chatbot, error)
+	GetByWorkspaceFunc           func(ctx context.Context, workspaceID string) ([]models.Chatbot, error)
+	CreateFunc                   func(ctx context.Context, bot *models.Chatbot) (string, error)
+	UpdateFunc                   func(ctx context.Context, bot *models.Chatbot) error
+	SoftDeleteFunc               func(ctx context.Context, id, userID string) ([]string, error)
+	CountByUserIDFunc            func(ctx context.Context, userID string) (int, error)
+	CountByWorkspaceFunc         func(ctx context.Context, workspaceID string) (int, error)
+	UpdateSuggestedQuestionsFunc func(ctx context.Context, id string, suggestions []string) error
 
 	// Invocation tracking
 	GetByIDCalls                  []string
@@ -136,7 +136,7 @@ type MockActionRepository struct {
 	UpdateCalls        []*models.ChatbotAction
 	DeleteCalls        []string
 	GetLogsCalls       []struct {
-		ChatbotID    string
+		ChatbotID     string
 		Limit, Offset int
 	}
 	CreateLogCalls []*models.ActionExecutionLog
@@ -202,7 +202,7 @@ func (m *MockActionRepository) Delete(ctx context.Context, id string) error {
 
 func (m *MockActionRepository) GetLogs(ctx context.Context, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
 	m.GetLogsCalls = append(m.GetLogsCalls, struct {
-		ChatbotID    string
+		ChatbotID     string
 		Limit, Offset int
 	}{chatbotID, limit, offset})
 	if m.GetLogsFunc != nil {
@@ -221,28 +221,28 @@ func (m *MockActionRepository) CreateLog(ctx context.Context, log *models.Action
 
 // MockSourceRepository is a test double for SourceRepository.
 type MockSourceRepository struct {
-	GetByIDFunc     func(ctx context.Context, id string) (*models.DataSource, error)
-	GetByChatbotFunc func(ctx context.Context, chatbotID string) ([]models.DataSource, error)
+	GetByIDFunc       func(ctx context.Context, id string) (*models.DataSource, error)
+	GetByChatbotFunc  func(ctx context.Context, chatbotID string) ([]models.DataSource, error)
 	GetURLSourcesFunc func(ctx context.Context, chatbotID string) ([]models.DataSource, error)
-	CreateFunc      func(ctx context.Context, source *models.DataSource) (string, error)
-	SoftDeleteFunc  func(ctx context.Context, id string) error
-	DeleteFunc      func(ctx context.Context, id string) error
-	ExistsFunc      func(ctx context.Context, chatbotID, url string) (bool, error)
-	ExistsByHashFunc func(ctx context.Context, chatbotID, hash string) (bool, error)
-	GetByHashFunc   func(ctx context.Context, chatbotID, hash string) (*models.DataSource, error)
-	CountByTypeFunc func(ctx context.Context, chatbotID, sourceType string) (int, error)
+	CreateFunc        func(ctx context.Context, source *models.DataSource) (string, error)
+	SoftDeleteFunc    func(ctx context.Context, id string) error
+	DeleteFunc        func(ctx context.Context, id string) error
+	ExistsFunc        func(ctx context.Context, chatbotID, url string) (bool, error)
+	ExistsByHashFunc  func(ctx context.Context, chatbotID, hash string) (bool, error)
+	GetByHashFunc     func(ctx context.Context, chatbotID, hash string) (*models.DataSource, error)
+	CountByTypeFunc   func(ctx context.Context, chatbotID, sourceType string) (int, error)
 
 	// Invocation tracking
-	GetByIDCalls      []string
-	GetByChatbotCalls []string
+	GetByIDCalls       []string
+	GetByChatbotCalls  []string
 	GetURLSourcesCalls []string
-	CreateCalls       []*models.DataSource
-	SoftDeleteCalls   []string
-	DeleteCalls       []string
-	ExistsCalls       []struct{ ChatbotID, URL string }
-	ExistsByHashCalls []struct{ ChatbotID, Hash string }
-	GetByHashCalls    []struct{ ChatbotID, Hash string }
-	CountByTypeCalls  []struct{ ChatbotID, SourceType string }
+	CreateCalls        []*models.DataSource
+	SoftDeleteCalls    []string
+	DeleteCalls        []string
+	ExistsCalls        []struct{ ChatbotID, URL string }
+	ExistsByHashCalls  []struct{ ChatbotID, Hash string }
+	GetByHashCalls     []struct{ ChatbotID, Hash string }
+	CountByTypeCalls   []struct{ ChatbotID, SourceType string }
 }
 
 var _ repository.SourceRepository = (*MockSourceRepository)(nil)
@@ -338,11 +338,11 @@ func TestChatbotRepository_InterfaceCompliance(t *testing.T) {
 
 func TestChatbotRepository_GetByID(t *testing.T) {
 	tests := []struct {
-		name     string
-		setupFn  func(m *MockChatbotRepository)
-		id       string
-		want     *models.Chatbot
-		wantErr  bool
+		name    string
+		setupFn func(m *MockChatbotRepository)
+		id      string
+		want    *models.Chatbot
+		wantErr bool
 	}{
 		{
 			name: "found",

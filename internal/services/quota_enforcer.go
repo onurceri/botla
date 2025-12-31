@@ -20,8 +20,8 @@ func NewQuotaEnforcer(db *sql.DB) *QuotaEnforcer {
 
 // ReservationResult holds the result of a token reservation.
 type ReservationResult struct {
-	Reserved      bool
-	EstimatedTokens int
+	Reserved         bool
+	EstimatedTokens  int
 	MaxMonthlyTokens int
 }
 

@@ -17,7 +17,7 @@ import (
 func TestGetJobStatus_NoJob_ReturnsSourceStatus(t *testing.T) {
 	// This is a unit test that verifies the handler returns source status when no job exists
 	// Full integration tests are in internal/integration/training_job_test.go
-	
+
 	// Test getProgressFromSourceStatus helper function
 	tests := []struct {
 		status   string
@@ -29,7 +29,7 @@ func TestGetJobStatus_NoJob_ReturnsSourceStatus(t *testing.T) {
 		{"failed", 0},
 		{"unknown", 0},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.status, func(t *testing.T) {
 			result := getProgressFromSourceStatus(tt.status)
@@ -51,7 +51,7 @@ func TestMapSourceStatusToJobStatus(t *testing.T) {
 		{"failed", models.JobStatusFailed},
 		{"unknown", models.JobStatusPending},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.sourceStatus, func(t *testing.T) {
 			result := mapSourceStatusToJobStatus(tt.sourceStatus)
@@ -68,7 +68,7 @@ func TestJobStatusResponse_JSONEncoding(t *testing.T) {
 	failedStep := models.StepFetchSource
 	errCode := "fetch_failed"
 	errMsg := "Could not fetch"
-	
+
 	resp := JobStatusResponse{
 		JobID:           "job-123",
 		SourceID:        "src-456",
@@ -81,17 +81,17 @@ func TestJobStatusResponse_JSONEncoding(t *testing.T) {
 		StartedAt:       &now,
 		CompletedAt:     nil,
 	}
-	
+
 	data, err := json.Marshal(resp)
 	if err != nil {
 		t.Fatalf("failed to marshal response: %v", err)
 	}
-	
+
 	var decoded map[string]interface{}
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
-	
+
 	if decoded["job_id"] != "job-123" {
 		t.Errorf("expected job_id=job-123, got %v", decoded["job_id"])
 	}
@@ -115,27 +115,27 @@ func TestJobStatusResponse_NoJob_OmitsOptionalFields(t *testing.T) {
 		Status:          models.JobStatusPending,
 		ProgressPercent: 0,
 	}
-	
+
 	data, err := json.Marshal(resp)
 	if err != nil {
 		t.Fatalf("failed to marshal response: %v", err)
 	}
-	
+
 	var decoded map[string]interface{}
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
-	
+
 	// job_id should be omitted when empty
 	if _, exists := decoded["job_id"]; exists {
 		t.Error("expected job_id to be omitted when empty")
 	}
-	
+
 	// current_step should be omitted when nil
 	if _, exists := decoded["current_step"]; exists {
 		t.Error("expected current_step to be omitted")
 	}
-	
+
 	// error fields should be omitted when nil
 	if _, exists := decoded["error_code"]; exists {
 		t.Error("expected error_code to be omitted")
@@ -154,14 +154,14 @@ func withTestUserContext(r *http.Request, userID string) *http.Request {
 // TestGetJobStatus_MissingSourceID verifies 404 is returned when source ID is missing
 func TestGetJobStatus_MissingSourceID(t *testing.T) {
 	handler := &TrainingJobHandlers{}
-	
+
 	req := httptest.NewRequest("GET", "/api/v1/sources//job", nil)
 	req.SetPathValue("id", "")
 	req = withTestUserContext(req, "user-123")
-	
+
 	rec := httptest.NewRecorder()
 	handler.GetJobStatus(rec, req)
-	
+
 	if rec.Code != http.StatusUnauthorized && rec.Code != http.StatusNotFound {
 		t.Logf("got status %d (expected 401 or 404 due to auth flow)", rec.Code)
 	}
@@ -170,14 +170,14 @@ func TestGetJobStatus_MissingSourceID(t *testing.T) {
 // TestGetJobStatus_InvalidUUID verifies 400 is returned for invalid UUID format
 func TestGetJobStatus_InvalidUUID(t *testing.T) {
 	handler := &TrainingJobHandlers{}
-	
+
 	req := httptest.NewRequest("GET", "/api/v1/sources/not-a-uuid/job", nil)
 	req.SetPathValue("id", "not-a-uuid")
 	req = withTestUserContext(req, "user-123")
-	
+
 	rec := httptest.NewRecorder()
 	handler.GetJobStatus(rec, req)
-	
+
 	// Without DB, will return 400 or 500 - either is acceptable here
 	if rec.Code == http.StatusOK {
 		t.Error("expected non-200 status for invalid UUID")
@@ -188,41 +188,41 @@ func TestGetJobStatus_InvalidUUID(t *testing.T) {
 // This is used by integration tests in internal/integration/training_job_test.go
 func HelperValidateJobStatusEndpoint(t *testing.T, dbConn *sql.DB, sourceID, userID string, expectJobID bool) *JobStatusResponse {
 	t.Helper()
-	
+
 	// Create handler with real DB
 	handler := &TrainingJobHandlers{DB: dbConn}
-	
+
 	req := httptest.NewRequest("GET", "/api/v1/sources/"+sourceID+"/job", nil)
 	req.SetPathValue("id", sourceID)
 	req = withTestUserContext(req, userID)
-	
+
 	rec := httptest.NewRecorder()
 	handler.GetJobStatus(rec, req)
-	
+
 	if rec.Code != http.StatusOK {
 		return nil
 	}
-	
+
 	var resp JobStatusResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	
+
 	if resp.SourceID != sourceID {
 		t.Errorf("expected source_id=%s, got %s", sourceID, resp.SourceID)
 	}
-	
+
 	if expectJobID && resp.JobID == "" {
 		t.Error("expected job_id to be set")
 	}
-	
+
 	return &resp
 }
 
 // TestLogError verifies the logError helper doesn't panic with nil logger
 func TestLogError_NilLogger(t *testing.T) {
 	handler := &TrainingJobHandlers{Log: nil}
-	
+
 	// Should not panic
 	handler.logError("test_event", map[string]any{"key": "value"})
 }
@@ -234,7 +234,7 @@ func TestTrainingJobDB_GetJobBySourceID(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping database test in short mode")
 	}
-	
+
 	// This test would require a real database connection
 	// Integration tests in internal/integration/training_job_test.go cover this
 	t.Log("Full database integration testing is done in internal/integration/training_job_test.go")

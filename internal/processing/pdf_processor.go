@@ -151,7 +151,6 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	return ProcessResult{ChunkCount: len(rc)}
 }
 
-
 // persistIngestionMetadata extracts and saves metadata for the source
 func (p *PDFProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource, maxQuestions int) {
 	meta, err := rag.ExtractIngestionMetadata(ctx, p.OpenAIClient, content, langCode, maxQuestions)

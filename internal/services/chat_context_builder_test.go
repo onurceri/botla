@@ -13,11 +13,11 @@ func TestChatContextBuilder_Build(t *testing.T) {
 	builder := NewChatContextBuilder(guardrails)
 
 	bot := &models.Chatbot{
-		ID:             "bot123",
-		Name:           "Test Bot",
-		LanguageCode:   "en-US",
-		Model:          "gpt-4",
-		MaxTokens:      1000,
+		ID:           "bot123",
+		Name:         "Test Bot",
+		LanguageCode: "en-US",
+		Model:        "gpt-4",
+		MaxTokens:    1000,
 		ThresholdConfig: &models.ThresholdConfig{
 			HighThreshold:   0.7,
 			MediumThreshold: 0.4,
@@ -36,7 +36,7 @@ func TestChatContextBuilder_Build(t *testing.T) {
 
 	planGuardrails := &models.GuardrailsConfig{
 		CanCustomizeThresholds: true,
-		CanUseSmartFallback:   true,
+		CanUseSmartFallback:    true,
 	}
 
 	ctx := context.Background()
@@ -152,7 +152,7 @@ func TestChatContextBuilder_Build_PlanEnforcedThresholds(t *testing.T) {
 
 	planGuardrails := &models.GuardrailsConfig{
 		CanCustomizeThresholds: true,
-		CanUseSmartFallback:   true,
+		CanUseSmartFallback:    true,
 	}
 
 	cc := builder.Build(context.Background(), models.ChatRequest{}, bot, models.RAGConfig{}, planGuardrails)
