@@ -68,9 +68,6 @@ func AdminListChatbots(ctx context.Context, pool *sql.DB, filter ChatbotFilter, 
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "build count query")
 	}
-	if err != nil {
-		return nil, 0, pkgerrors.Wrapf(err, "build count query")
-	}
 
 	var total int
 	err = pool.QueryRowContext(ctx, countSQL, countArgs...).Scan(&total)
