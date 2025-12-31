@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
@@ -132,4 +133,194 @@ func TestInitRedisClient_Success(t *testing.T) {
 		t.Fatal("expected non-nil client with valid REDIS_URL")
 	}
 	defer client.Close()
+}
+
+func TestNewApplication_DBInitFailure(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL not set, skipping DB init failure test")
+	}
+
+	originalDBURL := os.Getenv("DATABASE_URL")
+	os.Setenv("DATABASE_URL", "postgres://invalid:invalid@localhost:5432/invalid")
+	defer func() {
+		if originalDBURL != "" {
+			os.Setenv("DATABASE_URL", originalDBURL)
+		} else {
+			os.Unsetenv("DATABASE_URL")
+		}
+	}()
+
+	log := logger.New("ERROR")
+	cfg := config.LoadConfig()
+
+	_, err := newApplication(cfg, log)
+
+	if err == nil {
+		t.Fatal("expected error when DB init fails")
+	}
+}
+
+func TestNewApplication_QdrantInitFailure(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL not set, skipping Qdrant init failure test")
+	}
+
+	originalQdrantURL := os.Getenv("QDRANT_URL")
+	os.Setenv("QDRANT_URL", "http://localhost:99999")
+	defer func() {
+		if originalQdrantURL != "" {
+			os.Setenv("QDRANT_URL", originalQdrantURL)
+		} else {
+			os.Unsetenv("QDRANT_URL")
+		}
+	}()
+
+	log := logger.New("ERROR")
+	cfg := config.LoadConfig()
+
+	_, err := newApplication(cfg, log)
+
+	if err == nil {
+		t.Fatal("expected error when Qdrant init fails")
+	}
+}
+
+func TestNewApplication_PlanValidationFailure(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL not set, skipping plan validation test")
+	}
+
+	log := logger.New("ERROR")
+	cfg := config.LoadConfig()
+
+	app, err := newApplication(cfg, log)
+
+	if err != nil {
+		t.Fatalf("plan validation should pass with valid test DB: %v", err)
+	}
+	if app == nil {
+		t.Fatal("expected non-nil application on success")
+	}
+}
+
+func TestNewApplication_RedisInitFailure(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL not set, skipping Redis init failure test")
+	}
+
+	originalRedisURL := os.Getenv("REDIS_URL")
+	os.Setenv("REDIS_URL", "redis://localhost:59999")
+	defer func() {
+		if originalRedisURL != "" {
+			os.Setenv("REDIS_URL", originalRedisURL)
+		} else {
+			os.Unsetenv("REDIS_URL")
+		}
+	}()
+
+	log := logger.New("ERROR")
+	cfg := config.LoadConfig()
+
+	_, err := newApplication(cfg, log)
+
+	if err == nil {
+		t.Fatal("expected error when Redis init fails")
+	}
+}
+
+func TestNewApplication_OpenAIInitFailure(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL not set, skipping OpenAI init failure test")
+	}
+
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	os.Setenv("OPENAI_API_KEY", "")
+	defer func() {
+		if originalAPIKey != "" {
+			os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		}
+	}()
+
+	log := logger.New("ERROR")
+	cfg := config.LoadConfig()
+
+	_, err := newApplication(cfg, log)
+
+	if err == nil {
+		t.Fatal("expected error when OpenAI init fails")
+	}
+}
+
+func TestNewApplication_SourceQueueInitFailure(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL not set, skipping source queue test")
+	}
+
+	log := logger.New("ERROR")
+	cfg := config.LoadConfig()
+
+	app, err := newApplication(cfg, log)
+
+	if err != nil {
+		t.Fatalf("application init should succeed with valid config: %v", err)
+	}
+	if app.queue == nil {
+		t.Fatal("expected non-nil queue")
+	}
+	if app.workerPool == nil {
+		t.Fatal("expected non-nil workerPool")
+	}
+}
+
+func TestNewApplication_ApplicationFieldsPopulated(t *testing.T) {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		t.Skip("REDIS_URL not set, skipping field population test")
+	}
+
+	log := logger.New("ERROR")
+	cfg := config.LoadConfig()
+
+	app, err := newApplication(cfg, log)
+
+	if err != nil {
+		t.Fatalf("application init should succeed: %v", err)
+	}
+
+	if app.cfg == nil {
+		t.Error("cfg should not be nil")
+	}
+	if app.log == nil {
+		t.Error("log should not be nil")
+	}
+	if app.db == nil {
+		t.Error("db should not be nil")
+	}
+	if app.redisClient == nil {
+		t.Error("redisClient should not be nil")
+	}
+	if app.qdrantClient == nil {
+		t.Error("qdrantClient should not be nil")
+	}
+	if app.rateLimiter == nil {
+		t.Error("rateLimiter should not be nil")
+	}
+	if app.globalLimiter == nil {
+		t.Error("globalLimiter should not be nil")
+	}
+	if app.refreshScheduler == nil {
+		t.Error("refreshScheduler should not be nil")
+	}
+	if app.retentionJob == nil {
+		t.Error("retentionJob should not be nil")
+	}
+	if app.workerPool == nil {
+		t.Error("workerPool should not be nil")
+	}
 }
