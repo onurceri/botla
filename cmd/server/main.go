@@ -67,14 +67,35 @@ type application struct {
 	workerPool       *workers.WorkerPool
 }
 
-func newApplication(cfg *config.Config, log *logger.Logger) (*application, error) {
+type infraDeps struct {
+	db      *sql.DB
+	qdrant  *rag.QdrantClient
+	storage storage.StorageService
+}
+
+type rateLimitDeps struct {
+	redisClient   *redis.Client
+	globalLimiter ratelimit.Limiter
+	rateLimiter   *middleware.RateLimiter
+}
+
+type processingDeps struct {
+	queue      *processing.SourceQueue
+	workerPool *workers.WorkerPool
+}
+
+type schedulerDeps struct {
+	refreshScheduler *services.RefreshScheduler
+	retentionJob     *services.RetentionJob
+}
+
+func initInfrastructure(cfg *config.Config, log *logger.Logger) (*infraDeps, error) {
 	pool, err := db.New(cfg)
 	if err != nil {
 		log.Error("db_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init db: %w", err)
 	}
 
-	// Fail-fast validation of plan configurations
 	planSvc := services.NewPlanService(pool, nil)
 	if vErr := planSvc.ValidateAllPlans(context.Background()); vErr != nil {
 		log.Error("plan_validation_failed", map[string]any{
@@ -85,7 +106,6 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 	}
 	log.Info("plan_validation_success", nil)
 
-	// Initialize Qdrant
 	qdrantClient, err := rag.NewQdrantClient(&rag.QdrantConfig{
 		URL:     cfg.QDRANT_URL,
 		APIKey:  cfg.QDRANT_API_KEY,
@@ -96,14 +116,12 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		return nil, fmt.Errorf("init qdrant: %w", err)
 	}
 
-	// Ensure embeddings collection exists
 	err = ensureQdrantCollection(qdrantClient, log)
 	if err != nil {
 		return nil, fmt.Errorf("ensure qdrant collection: %w", err)
 	}
 	log.Info("qdrant_collection_ready", nil)
 
-	// Initialize storage service
 	var storageService storage.StorageService
 	if cfg.R2_ACCOUNT_ID != "" {
 		storageService, err = storage.NewR2Storage(cfg.R2_ACCOUNT_ID, cfg.R2_ACCESS_KEY_ID, cfg.R2_SECRET_ACCESS_KEY, cfg.R2_BUCKET_NAME)
@@ -112,7 +130,6 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		}
 	}
 
-	// Initialize tokenizer with R2 training data
 	if storageService != nil {
 		if tokErr := tokenizer.Init(context.Background(), storageService); tokErr != nil {
 			log.Warn("tokenizer_init_fallback", map[string]any{"error": tokErr.Error()})
@@ -121,21 +138,14 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		}
 	}
 
-	// Initialize OpenAI client
-	oaiClient, err := rag.NewOpenAIClient(cfg)
-	if err != nil {
-		log.Error("openai_init_failed", map[string]any{"error": err.Error()})
-		return nil, fmt.Errorf("init openai: %w", err)
-	}
+	return &infraDeps{
+		db:      pool,
+		qdrant:  qdrantClient,
+		storage: storageService,
+	}, nil
+}
 
-	// Start source processing queue
-	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, cfg.WORKER_COUNT)
-	if err != nil {
-		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
-		return nil, fmt.Errorf("init source queue: %w", err)
-	}
-
-	// Initialize Redis client for rate limiting (mandatory)
+func initRateLimiting(log *logger.Logger, pool *sql.DB) (*rateLimitDeps, error) {
 	redisClient, err := initRedisClient(log)
 	if err != nil {
 		log.Error("redis_required", map[string]any{
@@ -145,34 +155,77 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		return nil, fmt.Errorf("init redis: %w", err)
 	}
 
-	// Initialize rate limiter (Redis-based, mandatory)
 	rlConfig := ratelimit.NewConfigFromEnv()
 	globalLimiter := ratelimit.NewRedisLimiter(redisClient, rlConfig.Global)
 	log.Info("rate_limiter_initialized", map[string]any{"backend": "redis", "mode": "plan-based"})
 	rl := middleware.NewRateLimiter(globalLimiter, redisClient, rlConfig)
 
-	// Start refresh scheduler
-	refreshScheduler := services.NewRefreshScheduler(pool, q, log)
+	return &rateLimitDeps{
+		redisClient:   redisClient,
+		globalLimiter: globalLimiter,
+		rateLimiter:   rl,
+	}, nil
+}
 
-	// Initialize retention job
-	retentionJob := services.NewRetentionJob(pool, log, storageService)
+func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storageService storage.StorageService, qdrantClient *rag.QdrantClient) (*processingDeps, error) {
+	oaiClient, err := rag.NewOpenAIClient(cfg)
+	if err != nil {
+		log.Error("openai_init_failed", map[string]any{"error": err.Error()})
+		return nil, fmt.Errorf("init openai: %w", err)
+	}
 
-	// Initialize worker pool
+	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, cfg.WORKER_COUNT)
+	if err != nil {
+		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
+		return nil, fmt.Errorf("init source queue: %w", err)
+	}
+
 	workerPool := workers.NewWorkerPool(log, cfg.ANALYTICS_WORKER_COUNT)
+
+	return &processingDeps{
+		queue:      q,
+		workerPool: workerPool,
+	}, nil
+}
+
+func initSchedulers(pool *sql.DB, log *logger.Logger, queue *processing.SourceQueue, storageService storage.StorageService) *schedulerDeps {
+	return &schedulerDeps{
+		refreshScheduler: services.NewRefreshScheduler(pool, queue, log),
+		retentionJob:     services.NewRetentionJob(pool, log, storageService),
+	}
+}
+
+func newApplication(cfg *config.Config, log *logger.Logger) (*application, error) {
+	infra, err := initInfrastructure(cfg, log)
+	if err != nil {
+		return nil, err
+	}
+
+	rl, err := initRateLimiting(log, infra.db)
+	if err != nil {
+		return nil, err
+	}
+
+	proc, err := initProcessing(cfg, log, infra.db, infra.storage, infra.qdrant)
+	if err != nil {
+		return nil, err
+	}
+
+	sched := initSchedulers(infra.db, log, proc.queue, infra.storage)
 
 	return &application{
 		cfg:              cfg,
 		log:              log,
-		db:               pool,
-		redisClient:      redisClient,
-		qdrantClient:     qdrantClient,
-		storageService:   storageService,
-		queue:            q,
-		refreshScheduler: refreshScheduler,
-		retentionJob:     retentionJob,
-		rateLimiter:      rl,
-		globalLimiter:    globalLimiter,
-		workerPool:       workerPool,
+		db:               infra.db,
+		qdrantClient:     infra.qdrant,
+		storageService:   infra.storage,
+		redisClient:      rl.redisClient,
+		globalLimiter:    rl.globalLimiter,
+		rateLimiter:      rl.rateLimiter,
+		queue:            proc.queue,
+		workerPool:       proc.workerPool,
+		refreshScheduler: sched.refreshScheduler,
+		retentionJob:     sched.retentionJob,
 	}, nil
 }
 
