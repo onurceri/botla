@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 )
 
@@ -59,49 +59,50 @@ func InsertAuditLog(ctx context.Context, pool *sql.DB, entry AuditLogEntry) erro
 }
 
 func ListAuditLogs(ctx context.Context, pool *sql.DB, filter AuditFilter, limit, offset int) ([]AuditLogEntry, int, error) {
-	query := `
-		SELECT id, admin_user_id, action, target_type, target_id, details, ip_address, user_agent, created_at, COUNT(*) OVER() as total_count
-		FROM admin_audit_logs
-		WHERE 1=1
-	`
-	args := []any{}
-	argIdx := 1
+	if limit <= 0 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	query := psql.Select(
+		"id", "admin_user_id", "action", "target_type", "target_id",
+		"details", "ip_address", "user_agent", "created_at",
+		"COUNT(*) OVER() as total_count",
+	).From("admin_audit_logs")
 
 	if filter.AdminUserID != nil {
-		query += fmt.Sprintf(" AND admin_user_id = $%d", argIdx)
-		args = append(args, *filter.AdminUserID)
-		argIdx++
+		query = query.Where(sq.Eq{"admin_user_id": *filter.AdminUserID})
 	}
 	if filter.Action != nil {
-		query += fmt.Sprintf(" AND action = $%d", argIdx)
-		args = append(args, *filter.Action)
-		argIdx++
+		query = query.Where(sq.Eq{"action": *filter.Action})
 	}
 	if filter.TargetType != nil {
-		query += fmt.Sprintf(" AND target_type = $%d", argIdx)
-		args = append(args, *filter.TargetType)
-		argIdx++
+		query = query.Where(sq.Eq{"target_type": *filter.TargetType})
 	}
 	if filter.TargetID != nil {
-		query += fmt.Sprintf(" AND target_id = $%d", argIdx)
-		args = append(args, *filter.TargetID)
-		argIdx++
+		query = query.Where(sq.Eq{"target_id": *filter.TargetID})
 	}
 	if filter.StartDate != nil {
-		query += fmt.Sprintf(" AND created_at >= $%d", argIdx)
-		args = append(args, *filter.StartDate)
-		argIdx++
+		query = query.Where(sq.GtOrEq{"created_at": *filter.StartDate})
 	}
 	if filter.EndDate != nil {
-		query += fmt.Sprintf(" AND created_at <= $%d", argIdx)
-		args = append(args, *filter.EndDate)
-		argIdx++
+		query = query.Where(sq.LtOrEq{"created_at": *filter.EndDate})
 	}
 
-	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
-	args = append(args, limit, offset)
+	query = query.OrderBy("created_at DESC").
+		Limit(uint64(limit)).
+		Offset(uint64(offset)) // #nosec G115 -- limit/offset validated to be non-negative above
 
-	rows, err := pool.QueryContext(ctx, query, args...)
+	sqlQuery, args, err := query.ToSql()
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "build audit logs query")
+	}
+
+	rows, err := pool.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query audit logs")
 	}
