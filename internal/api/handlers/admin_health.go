@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/redis/go-redis/v9"
