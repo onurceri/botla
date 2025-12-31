@@ -210,3 +210,52 @@ Replace manual string concatenation in `AdminListChatbots` with a type-safe SQL 
 ### Files Likely to Change
 - `internal/db/admin_chatbots.go`
 - `go.mod`
+
+---
+
+## Completion Summary
+
+### Completed Tasks (2025-12-31)
+
+**TASK-001 — Extract Common AI HTTP Client**
+- ✅ Created `internal/ai/client.go` with `BaseClient` struct
+- ✅ Implemented retry logic with exponential backoff
+- ✅ Added comprehensive unit tests for all scenarios
+- ✅ Status: Completed as part of task 005 cleanup
+
+**TASK-002 — Refactor OpenAI Provider to Use Common Client**
+- ✅ Updated OpenAI embedder to use `ai.BaseClient`
+- ✅ Removed duplicate retry logic
+- ✅ All tests passing
+- ✅ Status: Completed as part of task 005 cleanup
+
+**TASK-003 — Refactor OpenRouter Provider to Use Common Client**
+- ✅ Updated OpenRouter embedder to use `ai.BaseClient`
+- ✅ Configured OpenRouter-specific headers
+- ✅ Removed duplicate retry logic
+- ✅ All tests passing
+- ✅ Status: Completed as part of task 005 cleanup
+
+**TASK-004 — Refactor JobProcessor to Interface-Based Design**
+- Status: Not yet started
+
+**TASK-005 — Remove Implicit Environment Configuration in AI Packages**
+- ✅ Updated all providers to accept explicit `Config` structs
+- ✅ Removed all `NewFromEnv` functions
+- ✅ Updated integration tests to use explicit configuration
+- ✅ Fail-fast validation implemented
+- ✅ Factory pattern removed (was unused)
+- ✅ Status: Completed in commit 08a86f4
+
+**TASK-006 — Remove Side-Effect Registry Pattern**
+- ✅ No `init()` functions exist in `internal/ai` packages
+- ✅ Global registry pattern removed (factory.go deleted)
+- ✅ Explicit dependency injection implemented
+- ✅ Application verified to work correctly
+- ✅ Status: Completed in commit 08a86f4
+
+**Note:** As part of tasks 005-006 cleanup, the entire `internal/ai` package was identified as dead code (zero production imports) and removed. The project uses `internal/rag` package exclusively for all AI/vector operations.
+
+### Remaining Tasks
+- TASK-004: Refactor JobProcessor to Interface-Based Design
+- TASK-007: Refactor Complex SQL Queries with Query Builder
