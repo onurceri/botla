@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -19,14 +18,12 @@ import (
 // JobProcessor handles the actual processing of training jobs.
 // It orchestrates URL, PDF, and Text processors with retry and resume support.
 type JobProcessor struct {
-	db            *sql.DB
-	storage       storage.StorageService
-	openaiClient  rag.LLMClient
-	vectorClient  rag.VectorClient
-	log           *logger.Logger
-	urlProcessor  *URLProcessor
-	pdfProcessor  *PDFProcessor
-	textProcessor *TextProcessor
+	db           *sql.DB
+	storage      storage.StorageService
+	openaiClient rag.LLMClient
+	vectorClient rag.VectorClient
+	log          *logger.Logger
+	processors   map[string]SourceProcessor
 
 	// Callback for re-enqueueing jobs with delay (for retries)
 	enqueueWithDelay func(jobID string, delay time.Duration)
@@ -39,20 +36,27 @@ type JobProcessorConfig struct {
 	OpenAIClient     rag.LLMClient
 	VectorClient     rag.VectorClient
 	Log              *logger.Logger
+	Processors       map[string]SourceProcessor
 	EnqueueWithDelay func(jobID string, delay time.Duration)
 }
 
 // NewJobProcessor creates a new JobProcessor with the given configuration.
 func NewJobProcessor(cfg JobProcessorConfig) *JobProcessor {
+	processors := cfg.Processors
+	if processors == nil {
+		processors = map[string]SourceProcessor{
+			"url":  NewURLProcessor(cfg.DB, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, nil),
+			"pdf":  NewPDFProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
+			"text": NewTextProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
+		}
+	}
 	return &JobProcessor{
 		db:               cfg.DB,
 		storage:          cfg.Storage,
 		openaiClient:     cfg.OpenAIClient,
 		vectorClient:     cfg.VectorClient,
 		log:              cfg.Log,
-		urlProcessor:     NewURLProcessor(cfg.DB, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, nil),
-		pdfProcessor:     NewPDFProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
-		textProcessor:    NewTextProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
+		processors:       processors,
 		enqueueWithDelay: cfg.EnqueueWithDelay,
 	}
 }
@@ -196,21 +200,22 @@ func (p *JobProcessor) processWithResume(ctx context.Context, jobID string, sour
 		_ = db.UpdateJobStatus(ctx, p.db, jobID, models.JobStatusRunning, &step)
 	}
 
-	switch source.SourceType {
-	case "url":
-		return p.urlProcessor.ProcessWithSteps(ctx, jobID, source, bot, langCode, plan, lastStep, func(s models.TrainingStep) {
-			onStep(s)
-		})
-	case "pdf":
-		return p.pdfProcessor.ProcessWithSteps(ctx, jobID, source, bot, langCode, plan, lastStep, onStep)
-	case "text":
-		return p.textProcessor.ProcessWithSteps(ctx, jobID, source, bot, langCode, plan, lastStep, onStep)
-	default:
+	processor, ok := p.processors[source.SourceType]
+	if !ok {
 		return ProcessResult{
-			Error:      fmt.Errorf("unknown source type: %s", source.SourceType),
+			Error:      &ProcessingError{Msg: ErrCodeUnknownSourceType},
 			FailedStep: models.StepFetchSource,
 		}
 	}
+
+	if processor == nil {
+		return ProcessResult{
+			Error:      &ProcessingError{Msg: ErrCodeUnknownSourceType},
+			FailedStep: models.StepFetchSource,
+		}
+	}
+
+	return processor.ProcessWithSteps(ctx, jobID, source, bot, langCode, plan, lastStep, onStep)
 }
 
 // loadSourceAndLang loads source, chatbot, and plan data.

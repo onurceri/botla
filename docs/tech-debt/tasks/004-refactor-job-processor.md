@@ -8,15 +8,15 @@ Decouple `JobProcessor` from specific processor implementations by introducing a
 - `internal/processing` implementations (`url`, `pdf`, `text`).
 
 ## Checklist
-- [ ] Define `SourceProcessor` interface in `internal/processing/interfaces.go`.
-    - `ProcessWithSteps(ctx, ...)`
-- [ ] Make `URLProcessor`, `PDFProcessor`, `TextProcessor` implement this interface.
-- [ ] Refactor `JobProcessor` struct:
+- [x] Define `SourceProcessor` interface in `internal/processing/interfaces.go`.
+    - `ProcessWithSteps(...)`
+- [x] Make `URLProcessor`, `PDFProcessor`, `TextProcessor` implement this interface.
+- [x] Refactor `JobProcessor` struct:
     - Replace individual fields (`urlProcessor`) with `processors map[string]SourceProcessor`.
-- [ ] Update `NewJobProcessor` to accept the map or register processors.
-- [ ] Update `processWithResume` to lookup processor by `source.SourceType`.
-- [ ] Remove the hardcoded `switch` statement.
-- [ ] Fix any broken tests in `internal/processing`.
+- [x] Update `NewJobProcessor` to accept the map or register processors.
+- [x] Update `processWithResume` to lookup processor by `source.SourceType`.
+- [x] Remove the hardcoded `switch` statement.
+- [x] Fix any broken tests in `internal/processing`.
 
 ## Edge Cases
 - Unknown source type handling (should return specific error).

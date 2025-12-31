@@ -21,9 +21,10 @@ const (
 	ErrCodeStorageRequired = "ERR_STORAGE_REQUIRED"
 
 	// Common processing errors
-	ErrCodeChunkingFailed  = "ERR_CHUNKING_FAILED"
-	ErrCodeEmbeddingFailed = "ERR_EMBEDDING_FAILED"
-	ErrCodeLLMNotSupported = "ERR_LLM_NOT_SUPPORTED"
+	ErrCodeUnknownSourceType = "ERR_UNKNOWN_SOURCE_TYPE"
+	ErrCodeChunkingFailed    = "ERR_CHUNKING_FAILED"
+	ErrCodeEmbeddingFailed   = "ERR_EMBEDDING_FAILED"
+	ErrCodeLLMNotSupported   = "ERR_LLM_NOT_SUPPORTED"
 )
 
 // ProcessingError represents a processing error with a structured error code
