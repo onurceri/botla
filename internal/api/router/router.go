@@ -62,7 +62,8 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	tjh := &handlers.TrainingJobHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q}
 	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	acth := &handlers.ActionHandlers{ActionRepo: actionRepo, ChatbotRepo: chatbotRepo, ToolNameGenerator: toolNameGenerator, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	actionService := services.NewActionService(actionRepo, toolNameGenerator)
+	acth := &handlers.ActionHandlers{ActionService: actionService, ChatbotRepo: chatbotRepo, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}

@@ -3,23 +3,20 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/onurceri/botla-co/internal/api"
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/repository"
 	"github.com/onurceri/botla-co/internal/services"
 )
 
 type ActionHandlers struct {
-	ActionRepo        repository.ActionRepository
-	ChatbotRepo       repository.ChatbotRepository
-	ToolNameGenerator *rag.ToolNameGenerator
-	WorkspaceService  *services.WorkspaceService
-	OrgService        *services.OrganizationService
+	ActionService    services.ActionService
+	ChatbotRepo      repository.ChatbotRepository
+	WorkspaceService *services.WorkspaceService
+	OrgService       *services.OrganizationService
 }
 
 type createActionRequest struct {
@@ -42,13 +39,10 @@ func (h *ActionHandlers) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actions, err := h.ActionRepo.List(r.Context(), botID)
+	actions, err := h.ActionService.ListActions(r.Context(), botID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	if actions == nil {
-		actions = []*models.ChatbotAction{}
 	}
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{"actions": actions})
@@ -66,43 +60,21 @@ func (h *ActionHandlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.ActionType == "" {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrNameAndActionTypeRequired)
-		return
-	}
-
-	// Generate tool_name using LLM
-	toolName, err := h.ToolNameGenerator.Generate(r.Context(), req.Name, req.Description)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to generate tool name: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	var config *json.RawMessage
-	if len(req.Config) > 0 {
-		config = &req.Config
-	}
-	var params *json.RawMessage
-	if len(req.Parameters) > 0 {
-		params = &req.Parameters
-	}
-	var desc *string
-	if req.Description != "" {
-		desc = &req.Description
-	}
-
-	action := &models.ChatbotAction{
-		ChatbotID:   botID,
+	input := services.CreateActionInput{
 		Name:        req.Name,
-		Description: desc,
-		ActionType:  models.ActionType(req.ActionType),
-		Config:      config,
-		Parameters:  params,
-		ToolName:    &toolName,
+		Description: req.Description,
+		ActionType:  req.ActionType,
+		Config:      req.Config,
+		Parameters:  req.Parameters,
 		Enabled:     req.Enabled,
 	}
 
-	if err := h.ActionRepo.Create(r.Context(), action); err != nil {
+	action, err := h.ActionService.CreateAction(r.Context(), botID, input)
+	if err != nil {
+		if errors.Is(err, services.ErrActionNameRequired) || errors.Is(err, services.ErrActionTypeRequired) {
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrNameAndActionTypeRequired)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -117,7 +89,7 @@ func (h *ActionHandlers) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actionID := r.PathValue("actionId")
-	action, err := h.ActionRepo.GetByID(r.Context(), actionID)
+	action, err := h.ActionService.GetAction(r.Context(), actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -137,12 +109,13 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actionID := r.PathValue("actionId")
-	action, err := h.ActionRepo.GetByID(r.Context(), actionID)
+
+	existingAction, err := h.ActionService.GetAction(r.Context(), actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if action == nil || action.ChatbotID != botID {
+	if existingAction == nil || existingAction.ChatbotID != botID {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -153,51 +126,31 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if name or description changed - OR if tool_name is currently empty (migration case)
-	nameChanged := req.Name != "" && req.Name != action.Name
-	descChanged := req.Description != "" && (action.Description == nil || req.Description != *action.Description)
-	toolNameMissing := action.ToolName == nil || *action.ToolName == ""
-
-	if nameChanged || descChanged || toolNameMissing {
-		newName := action.Name
-		if req.Name != "" {
-			newName = req.Name
-		}
-		newDesc := ""
-		if req.Description != "" {
-			newDesc = req.Description
-		} else if action.Description != nil {
-			newDesc = *action.Description
-		}
-
-		var toolName string
-		toolName, err = h.ToolNameGenerator.Generate(r.Context(), newName, newDesc)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to generate tool name: %v", err), http.StatusInternalServerError)
-			return
-		}
-		action.ToolName = &toolName
-	}
-
+	input := services.UpdateActionInput{}
 	if req.Name != "" {
-		action.Name = req.Name
+		input.Name = &req.Name
 	}
 	if req.Description != "" {
-		action.Description = &req.Description
+		input.Description = &req.Description
 	}
 	if req.ActionType != "" {
-		action.ActionType = models.ActionType(req.ActionType)
+		input.ActionType = &req.ActionType
 	}
 	if len(req.Config) > 0 {
-		action.Config = &req.Config
+		input.Config = req.Config
 	}
 	if len(req.Parameters) > 0 {
-		action.Parameters = &req.Parameters
+		input.Parameters = req.Parameters
 	}
-	action.Enabled = req.Enabled
+	input.Enabled = &req.Enabled
 
-	if err = h.ActionRepo.Update(r.Context(), action); err != nil {
-		if errors.Is(err, repository.ErrVersionConflict) {
+	updatedAction, err := h.ActionService.UpdateAction(r.Context(), actionID, input)
+	if err != nil {
+		if errors.Is(err, services.ErrActionNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, services.ErrVersionConflict) {
 			http.Error(w, "Action was modified by another request, please refresh and try again", http.StatusConflict)
 			return
 		}
@@ -205,7 +158,7 @@ func (h *ActionHandlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	api.WriteJSON(w, http.StatusOK, action)
+	api.WriteJSON(w, http.StatusOK, updatedAction)
 }
 
 func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request) {
@@ -215,7 +168,7 @@ func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actionID := r.PathValue("actionId")
-	action, err := h.ActionRepo.GetByID(r.Context(), actionID)
+	action, err := h.ActionService.GetAction(r.Context(), actionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -225,7 +178,7 @@ func (h *ActionHandlers) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.ActionRepo.Delete(r.Context(), actionID); err != nil {
+	if err = h.ActionService.DeleteAction(r.Context(), actionID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -257,14 +210,10 @@ func (h *ActionHandlers) GetLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	offset := (page - 1) * limit
-	logs, err := h.ActionRepo.GetLogs(r.Context(), botID, limit, offset)
+	logs, err := h.ActionService.GetActionLogs(r.Context(), botID, limit, offset)
 	if err != nil {
 		http.Error(w, "Failed to fetch logs", http.StatusInternalServerError)
 		return
-	}
-
-	if logs == nil {
-		logs = []*models.ActionExecutionLog{}
 	}
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{

@@ -50,12 +50,12 @@ Introduce a proper **Service Layer** following clean architecture principles:
 
 ## Task Index
 
-| Task | Description | Complexity | Dependencies |
-|------|-------------|------------|--------------|
-| [001](./001-define-action-service-interface.md) | Define ActionService Interface | Low | None |
-| [002](./002-implement-action-service.md) | Implement ActionService | Medium | 001 |
-| [003](./003-refactor-action-handlers.md) | Refactor Action Handlers to Use ActionService | Medium | 002 |
-| [004](./004-add-action-service-tests.md) | Add Comprehensive ActionService Tests | Medium | 002 |
+| Task | Description | Complexity | Dependencies | Status |
+|------|-------------|------------|--------------|--------|
+| [001](./001-define-action-service-interface.md) | Define ActionService Interface | Low | None | ✅ Done |
+| [002](./002-implement-action-service.md) | Implement ActionService | Medium | 001 | ✅ Done |
+| [003](./003-refactor-action-handlers.md) | Refactor Action Handlers to Use ActionService | Medium | 002 | ✅ Done |
+| [004](./004-add-action-service-tests.md) | Add Comprehensive ActionService Tests | Medium | 002 | ✅ Done |
 
 ## Execution Order
 

@@ -212,20 +212,20 @@ func (s *ActionServiceImpl) GetActionLogs(ctx context.Context, chatbotID string,
 
 ## Checklist
 
-- [ ] Create `internal/services/action_service_impl.go`
-- [ ] Define sentinel errors (`ErrActionNameRequired`, `ErrActionTypeRequired`, `ErrActionNotFound`)
-- [ ] Implement `NewActionService` constructor
-- [ ] Implement `CreateAction` with ToolName generation
-- [ ] Implement `UpdateAction` with conditional ToolName regeneration
-- [ ] Implement `GetAction`
-- [ ] Implement `ListActions` (ensure empty slice, not nil)
-- [ ] Implement `DeleteAction`
-- [ ] Implement `GetActionLogs` (ensure empty slice, not nil)
-- [ ] Create mock `ToolNameGenerator` for testing
-- [ ] Write unit tests for all methods
-- [ ] Run `go build ./...` to verify compilation
-- [ ] Run `make test-all` to verify all tests pass
-- [ ] Run `make lint` to check for issues
+- [x] Create `internal/services/action_service_impl.go`
+- [x] Define sentinel errors (`ErrActionNameRequired`, `ErrActionTypeRequired`, `ErrActionNotFound`)
+- [x] Implement `NewActionService` constructor
+- [x] Implement `CreateAction` with ToolName generation
+- [x] Implement `UpdateAction` with conditional ToolName regeneration
+- [x] Implement `GetAction`
+- [x] Implement `ListActions` (ensure empty slice, not nil)
+- [x] Implement `DeleteAction`
+- [x] Implement `GetActionLogs` (ensure empty slice, not nil)
+- [x] Create mock `ToolNameGenerator` for testing
+- [x] Write unit tests for all methods
+- [x] Run `go build ./...` to verify compilation
+- [x] Run `make test-all` to verify all tests pass
+- [x] Run `make lint` to check for issues
 
 ## Test Cases
 
