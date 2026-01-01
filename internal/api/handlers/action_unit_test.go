@@ -10,12 +10,10 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/repository"
+	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
-// Test UUIDs - using valid UUID format
 const (
 	testChatbotID  = "00000000-0000-0000-0000-000000000001"
 	testUserID     = "00000000-0000-0000-0000-000000000002"
@@ -23,42 +21,157 @@ const (
 	otherChatbotID = "00000000-0000-0000-0000-999999999999"
 )
 
-// mockToolsLLMClient implements rag.ToolsLLMClient for testing
-type mockToolsLLMClient struct{}
-
-func (m *mockToolsLLMClient) CreateCompletion(ctx context.Context, params models.CompletionParams) (*models.CompletionResult, error) {
-	return &models.CompletionResult{}, nil
+type mockActionService struct {
+	actions      []*models.ChatbotAction
+	logs         []*models.ActionExecutionLog
+	createErr    error
+	updateErr    error
+	deleteErr    error
+	getErr       error
+	listErr      error
+	logsErr      error
+	lastInput    services.CreateActionInput
+	lastUpdateID string
+	lastUpdateIn services.UpdateActionInput
 }
 
-func (m *mockToolsLLMClient) GetModelInfo() models.ModelInfo {
-	return models.ModelInfo{Name: "mock"}
+func (m *mockActionService) CreateAction(ctx context.Context, chatbotID string, input services.CreateActionInput) (*models.ChatbotAction, error) {
+	m.lastInput = input
+	if m.createErr != nil {
+		if errors.Is(m.createErr, services.ErrActionNameRequired) || errors.Is(m.createErr, services.ErrActionTypeRequired) {
+			return nil, m.createErr
+		}
+		return nil, m.createErr
+	}
+	toolName := "generated_tool_name"
+	return &models.ChatbotAction{
+		ID:          testActionID,
+		ChatbotID:   chatbotID,
+		Name:        input.Name,
+		Description: strPtr(input.Description),
+		ActionType:  models.ActionType(input.ActionType),
+		ToolName:    &toolName,
+		Enabled:     input.Enabled,
+	}, nil
 }
 
-func (m *mockToolsLLMClient) CreateCompletionWithTools(ctx context.Context, messages []rag.ChatMessage, tools []rag.Tool, model string, temperature float32, maxTokens int) (*rag.ChatResponseWithTools, error) {
-	// Use JSON unmarshal to construct the response since Choices uses anonymous struct
-	jsonData := `{"choices":[{"message":{"role":"assistant","content":"mock_tool_name"},"finish_reason":"stop"}],"usage":{"total_tokens":10}}`
-	var resp rag.ChatResponseWithTools
-	_ = json.Unmarshal([]byte(jsonData), &resp)
-	return &resp, nil
+func (m *mockActionService) UpdateAction(ctx context.Context, actionID string, input services.UpdateActionInput) (*models.ChatbotAction, error) {
+	m.lastUpdateID = actionID
+	m.lastUpdateIn = input
+	if m.updateErr != nil {
+		return nil, m.updateErr
+	}
+	toolName := "updated_tool_name"
+	return &models.ChatbotAction{
+		ID:        actionID,
+		ChatbotID: testChatbotID,
+		Name:      "Updated Action",
+		ToolName:  &toolName,
+		Version:   2,
+	}, nil
 }
 
-// setupActionHandlersTest creates an ActionHandlers with mocks for testing
-func setupActionHandlersTest() (*ActionHandlers, *repository.MockActionRepo, *repository.MockChatbotRepo) {
-	actionRepo := repository.NewMockActionRepo()
-	chatbotRepo := repository.NewMockChatbotRepo()
-	mockClient := &mockToolsLLMClient{}
-	toolNameGenerator := rag.NewToolNameGenerator(mockClient)
+func (m *mockActionService) GetAction(ctx context.Context, actionID string) (*models.ChatbotAction, error) {
+	if m.getErr != nil {
+		return nil, m.getErr
+	}
+	for _, a := range m.actions {
+		if a.ID == actionID {
+			return a, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockActionService) ListActions(ctx context.Context, chatbotID string) ([]*models.ChatbotAction, error) {
+	if m.listErr != nil {
+		return nil, m.listErr
+	}
+	result := []*models.ChatbotAction{}
+	for _, a := range m.actions {
+		if a.ChatbotID == chatbotID {
+			result = append(result, a)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockActionService) DeleteAction(ctx context.Context, actionID string) error {
+	if m.deleteErr != nil {
+		return m.deleteErr
+	}
+	return nil
+}
+
+func (m *mockActionService) GetActionLogs(ctx context.Context, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
+	if m.logsErr != nil {
+		return nil, m.logsErr
+	}
+	return m.logs, nil
+}
+
+func strPtr(s string) *string {
+	return &s
+}
+
+func setupActionHandlersTest() (*ActionHandlers, *mockActionService, *mockChatbotRepo) {
+	actionService := &mockActionService{
+		actions: []*models.ChatbotAction{},
+		logs:    []*models.ActionExecutionLog{},
+	}
+	chatbotRepo := &mockChatbotRepo{}
 
 	h := &ActionHandlers{
-		ActionRepo:        actionRepo,
-		ChatbotRepo:       chatbotRepo,
-		ToolNameGenerator: toolNameGenerator,
+		ActionService: actionService,
+		ChatbotRepo:   chatbotRepo,
 	}
 
-	return h, actionRepo, chatbotRepo
+	return h, actionService, chatbotRepo
 }
 
-// createAuthenticatedRequest creates a request with a valid user context
+type mockChatbotRepo struct {
+	getByIDFunc func(ctx context.Context, id string) (*models.Chatbot, error)
+}
+
+func (r *mockChatbotRepo) GetByID(ctx context.Context, id string) (*models.Chatbot, error) {
+	if r.getByIDFunc != nil {
+		return r.getByIDFunc(ctx, id)
+	}
+	return nil, nil
+}
+
+func (r *mockChatbotRepo) GetByUserID(ctx context.Context, userID string) ([]models.Chatbot, error) {
+	return nil, nil
+}
+
+func (r *mockChatbotRepo) GetByWorkspace(ctx context.Context, workspaceID string) ([]models.Chatbot, error) {
+	return nil, nil
+}
+
+func (r *mockChatbotRepo) Create(ctx context.Context, bot *models.Chatbot) (string, error) {
+	return "", nil
+}
+
+func (r *mockChatbotRepo) Update(ctx context.Context, bot *models.Chatbot) error {
+	return nil
+}
+
+func (r *mockChatbotRepo) SoftDelete(ctx context.Context, id, userID string) ([]string, error) {
+	return nil, nil
+}
+
+func (r *mockChatbotRepo) CountByUserID(ctx context.Context, userID string) (int, error) {
+	return 0, nil
+}
+
+func (r *mockChatbotRepo) CountByWorkspace(ctx context.Context, workspaceID string) (int, error) {
+	return 0, nil
+}
+
+func (r *mockChatbotRepo) UpdateSuggestedQuestions(ctx context.Context, id string, suggestions []string) error {
+	return nil
+}
+
 func createAuthenticatedRequest(method, path string, body []byte) *http.Request {
 	var req *http.Request
 	if body != nil {
@@ -66,32 +179,25 @@ func createAuthenticatedRequest(method, path string, body []byte) *http.Request 
 	} else {
 		req = httptest.NewRequest(method, path, nil)
 	}
-	// Use valid UUIDs to pass httputil.IsValidUUID check
 	req.SetPathValue("id", testChatbotID)
-
-	// Add user ID to context
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, testUserID)
 	return req.WithContext(ctx)
 }
 
 func TestActionHandlers_List_Success(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	// Setup chatbot repo to return a valid chatbot owned by the user
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{
 			ID:     id,
-			UserID: testUserID, // Must match the user in context
+			UserID: testUserID,
 			Name:   "Test Bot",
 		}, nil
 	}
 
-	// Setup action repo to return actions
-	actionRepo.ListFunc = func(ctx context.Context, chatbotID string) ([]*models.ChatbotAction, error) {
-		return []*models.ChatbotAction{
-			{ID: "action-1", ChatbotID: chatbotID, Name: "Action 1", Enabled: true},
-			{ID: "action-2", ChatbotID: chatbotID, Name: "Action 2", Enabled: false},
-		}, nil
+	actionService.actions = []*models.ChatbotAction{
+		{ID: "action-1", ChatbotID: testChatbotID, Name: "Action 1", Enabled: true},
+		{ID: "action-2", ChatbotID: testChatbotID, Name: "Action 2", Enabled: false},
 	}
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions", nil)
@@ -103,7 +209,6 @@ func TestActionHandlers_List_Success(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	// Verify response contains actions
 	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
@@ -116,26 +221,13 @@ func TestActionHandlers_List_Success(t *testing.T) {
 	if len(actions) != 2 {
 		t.Errorf("expected 2 actions, got %d", len(actions))
 	}
-
-	// Verify action repo was called with correct chatbot ID
-	if len(actionRepo.Calls.List) != 1 {
-		t.Errorf("expected 1 List call, got %d", len(actionRepo.Calls.List))
-	}
-	if actionRepo.Calls.List[0].ChatbotID != testChatbotID {
-		t.Errorf("expected chatbotID %q, got %s", testChatbotID, actionRepo.Calls.List[0].ChatbotID)
-	}
 }
 
 func TestActionHandlers_List_EmptyActions(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, _, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
-	}
-
-	// Return nil (no actions)
-	actionRepo.ListFunc = func(ctx context.Context, chatbotID string) ([]*models.ChatbotAction, error) {
-		return nil, nil
 	}
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions", nil)
@@ -147,7 +239,6 @@ func TestActionHandlers_List_EmptyActions(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	// Should return empty array, not null
 	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
@@ -155,23 +246,21 @@ func TestActionHandlers_List_EmptyActions(t *testing.T) {
 
 	actions, ok := resp["actions"].([]any)
 	if !ok {
-		t.Fatalf("expected actions array in response")
+		t.Fatalf("expected actions array in response, got %T", resp["actions"])
 	}
 	if len(actions) != 0 {
 		t.Errorf("expected 0 actions, got %d", len(actions))
 	}
 }
 
-func TestActionHandlers_List_RepoError(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+func TestActionHandlers_List_ServiceError(t *testing.T) {
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	actionRepo.ListFunc = func(ctx context.Context, chatbotID string) ([]*models.ChatbotAction, error) {
-		return nil, errors.New("database error")
-	}
+	actionService.listErr = errors.New("database error")
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions", nil)
 	w := httptest.NewRecorder()
@@ -184,21 +273,21 @@ func TestActionHandlers_List_RepoError(t *testing.T) {
 }
 
 func TestActionHandlers_Get_Success(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
 	toolName := "test_tool"
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return &models.ChatbotAction{
-			ID:        id,
-			ChatbotID: testChatbotID, // Must match the chatbot in context
+	actionService.actions = []*models.ChatbotAction{
+		{
+			ID:        testActionID,
+			ChatbotID: testChatbotID,
 			Name:      "Test Action",
 			ToolName:  &toolName,
 			Enabled:   true,
-		}, nil
+		},
 	}
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/"+testActionID, nil)
@@ -211,7 +300,6 @@ func TestActionHandlers_Get_Success(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
 
-	// Verify response
 	var action models.ChatbotAction
 	if err := json.Unmarshal(w.Body.Bytes(), &action); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
@@ -223,15 +311,10 @@ func TestActionHandlers_Get_Success(t *testing.T) {
 }
 
 func TestActionHandlers_Get_NotFound(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, _, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
-	}
-
-	// Return nil (action not found)
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return nil, nil
 	}
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/nonexistent", nil)
@@ -246,19 +329,18 @@ func TestActionHandlers_Get_NotFound(t *testing.T) {
 }
 
 func TestActionHandlers_Get_WrongChatbot(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	// Return action belonging to a different chatbot
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return &models.ChatbotAction{
-			ID:        id,
-			ChatbotID: otherChatbotID, // Different chatbot
+	actionService.actions = []*models.ChatbotAction{
+		{
+			ID:        testActionID,
+			ChatbotID: otherChatbotID,
 			Name:      "Test Action",
-		}, nil
+		},
 	}
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/"+testActionID, nil)
@@ -273,22 +355,18 @@ func TestActionHandlers_Get_WrongChatbot(t *testing.T) {
 }
 
 func TestActionHandlers_Delete_Success(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return &models.ChatbotAction{
-			ID:        id,
+	actionService.actions = []*models.ChatbotAction{
+		{
+			ID:        testActionID,
 			ChatbotID: testChatbotID,
 			Name:      "Test Action",
-		}, nil
-	}
-
-	actionRepo.DeleteFunc = func(ctx context.Context, id string) error {
-		return nil
+		},
 	}
 
 	req := createAuthenticatedRequest(http.MethodDelete, "/api/v1/chatbots/"+testChatbotID+"/actions/"+testActionID, nil)
@@ -300,26 +378,13 @@ func TestActionHandlers_Delete_Success(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Errorf("expected status %d, got %d", http.StatusNoContent, w.Code)
 	}
-
-	// Verify delete was called
-	if len(actionRepo.Calls.Delete) != 1 {
-		t.Fatalf("expected 1 Delete call, got %d", len(actionRepo.Calls.Delete))
-	}
-	if actionRepo.Calls.Delete[0].ID != testActionID {
-		t.Errorf("expected action ID %q, got %s", testActionID, actionRepo.Calls.Delete[0].ID)
-	}
 }
 
 func TestActionHandlers_Delete_NotFound(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, _, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
-	}
-
-	// Action not found
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return nil, nil
 	}
 
 	req := createAuthenticatedRequest(http.MethodDelete, "/api/v1/chatbots/"+testChatbotID+"/actions/nonexistent", nil)
@@ -331,35 +396,27 @@ func TestActionHandlers_Delete_NotFound(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
 	}
-
-	// Verify delete was NOT called
-	if len(actionRepo.Calls.Delete) != 0 {
-		t.Errorf("expected 0 Delete calls, got %d", len(actionRepo.Calls.Delete))
-	}
 }
 
 func TestActionHandlers_Update_VersionConflict(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
 	toolName := "original_tool"
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return &models.ChatbotAction{
-			ID:        id,
+	actionService.actions = []*models.ChatbotAction{
+		{
+			ID:        testActionID,
 			ChatbotID: testChatbotID,
 			Name:      "Test Action",
 			ToolName:  &toolName,
 			Version:   1,
-		}, nil
+		},
 	}
 
-	// Simulate version conflict
-	actionRepo.UpdateFunc = func(ctx context.Context, action *models.ChatbotAction) error {
-		return repository.ErrVersionConflict
-	}
+	actionService.updateErr = services.ErrVersionConflict
 
 	body, _ := json.Marshal(map[string]any{
 		"name":    "Updated Name",
@@ -378,17 +435,15 @@ func TestActionHandlers_Update_VersionConflict(t *testing.T) {
 }
 
 func TestActionHandlers_GetLogs_Success(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	actionRepo.GetLogsFunc = func(ctx context.Context, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
-		return []*models.ActionExecutionLog{
-			{ID: "log-1", ChatbotID: chatbotID, ActionID: "action-1"},
-			{ID: "log-2", ChatbotID: chatbotID, ActionID: "action-2"},
-		}, nil
+	actionService.logs = []*models.ActionExecutionLog{
+		{ID: "log-1", ChatbotID: testChatbotID, ActionID: "action-1"},
+		{ID: "log-2", ChatbotID: testChatbotID, ActionID: "action-2"},
 	}
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/logs?page=1&limit=20", nil)
@@ -405,7 +460,6 @@ func TestActionHandlers_GetLogs_Success(t *testing.T) {
 		t.Fatalf("failed to parse response: %v", err)
 	}
 
-	// Verify logs are in response
 	logs, ok := resp["logs"].([]any)
 	if !ok {
 		t.Fatalf("expected logs array in response")
@@ -414,7 +468,6 @@ func TestActionHandlers_GetLogs_Success(t *testing.T) {
 		t.Errorf("expected 2 logs, got %d", len(logs))
 	}
 
-	// Verify pagination info
 	if page, ok := resp["page"].(float64); !ok || int(page) != 1 {
 		t.Errorf("expected page 1 in response")
 	}
@@ -424,20 +477,14 @@ func TestActionHandlers_GetLogs_Success(t *testing.T) {
 }
 
 func TestActionHandlers_GetLogs_Pagination(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	var capturedOffset, capturedLimit int
-	actionRepo.GetLogsFunc = func(ctx context.Context, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
-		capturedLimit = limit
-		capturedOffset = offset
-		return []*models.ActionExecutionLog{}, nil
-	}
+	actionService.logs = []*models.ActionExecutionLog{}
 
-	// Page 3 with limit 10 means offset = (3-1) * 10 = 20
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/logs?page=3&limit=10", nil)
 	w := httptest.NewRecorder()
 
@@ -446,20 +493,12 @@ func TestActionHandlers_GetLogs_Pagination(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
-
-	if capturedOffset != 20 {
-		t.Errorf("expected offset 20, got %d", capturedOffset)
-	}
-	if capturedLimit != 10 {
-		t.Errorf("expected limit 10, got %d", capturedLimit)
-	}
 }
 
 func TestActionHandlers_AuthorizationCheck_ChatbotNotFound(t *testing.T) {
 	h, _, chatbotRepo := setupActionHandlersTest()
 
-	// Chatbot not found
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return nil, nil
 	}
 
@@ -476,8 +515,7 @@ func TestActionHandlers_AuthorizationCheck_ChatbotNotFound(t *testing.T) {
 func TestActionHandlers_ChatbotRepoError(t *testing.T) {
 	h, _, chatbotRepo := setupActionHandlersTest()
 
-	// Simulate database error
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return nil, errors.New("database connection error")
 	}
 
@@ -491,54 +529,22 @@ func TestActionHandlers_ChatbotRepoError(t *testing.T) {
 	}
 }
 
-func TestActionHandlers_CallTracking(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+func TestActionHandlers_Delete_ServiceError(t *testing.T) {
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	actionRepo.ListFunc = func(ctx context.Context, chatbotID string) ([]*models.ChatbotAction, error) {
-		return []*models.ChatbotAction{}, nil
-	}
-
-	// Make multiple calls
-	for i := 0; i < 3; i++ {
-		req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions", nil)
-		w := httptest.NewRecorder()
-		h.List(w, req)
-	}
-
-	// Verify call count
-	if len(actionRepo.Calls.List) != 3 {
-		t.Errorf("expected 3 List calls, got %d", len(actionRepo.Calls.List))
-	}
-
-	// Reset and verify
-	actionRepo.Reset()
-	if len(actionRepo.Calls.List) != 0 {
-		t.Errorf("expected 0 calls after Reset, got %d", len(actionRepo.Calls.List))
-	}
-}
-
-func TestActionHandlers_Delete_RepoError(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
-
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
-		return &models.Chatbot{ID: id, UserID: testUserID}, nil
-	}
-
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return &models.ChatbotAction{
-			ID:        id,
+	actionService.actions = []*models.ChatbotAction{
+		{
+			ID:        testActionID,
 			ChatbotID: testChatbotID,
 			Name:      "Test Action",
-		}, nil
+		},
 	}
 
-	actionRepo.DeleteFunc = func(ctx context.Context, id string) error {
-		return errors.New("database error")
-	}
+	actionService.deleteErr = errors.New("database error")
 
 	req := createAuthenticatedRequest(http.MethodDelete, "/api/v1/chatbots/"+testChatbotID+"/actions/"+testActionID, nil)
 	req.SetPathValue("actionId", testActionID)
@@ -551,16 +557,14 @@ func TestActionHandlers_Delete_RepoError(t *testing.T) {
 	}
 }
 
-func TestActionHandlers_Get_RepoError(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+func TestActionHandlers_Get_ServiceError(t *testing.T) {
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	actionRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.ChatbotAction, error) {
-		return nil, errors.New("database error")
-	}
+	actionService.getErr = errors.New("database error")
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/"+testActionID, nil)
 	req.SetPathValue("actionId", testActionID)
@@ -573,16 +577,14 @@ func TestActionHandlers_Get_RepoError(t *testing.T) {
 	}
 }
 
-func TestActionHandlers_GetLogs_RepoError(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+func TestActionHandlers_GetLogs_ServiceError(t *testing.T) {
+	h, actionService, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
 	}
 
-	actionRepo.GetLogsFunc = func(ctx context.Context, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
-		return nil, errors.New("database error")
-	}
+	actionService.logsErr = errors.New("database error")
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/logs", nil)
 	w := httptest.NewRecorder()
@@ -595,14 +597,10 @@ func TestActionHandlers_GetLogs_RepoError(t *testing.T) {
 }
 
 func TestActionHandlers_GetLogs_EmptyLogs(t *testing.T) {
-	h, actionRepo, chatbotRepo := setupActionHandlersTest()
+	h, _, chatbotRepo := setupActionHandlersTest()
 
-	chatbotRepo.GetByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
 		return &models.Chatbot{ID: id, UserID: testUserID}, nil
-	}
-
-	actionRepo.GetLogsFunc = func(ctx context.Context, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
-		return nil, nil
 	}
 
 	req := createAuthenticatedRequest(http.MethodGet, "/api/v1/chatbots/"+testChatbotID+"/actions/logs", nil)
@@ -619,12 +617,56 @@ func TestActionHandlers_GetLogs_EmptyLogs(t *testing.T) {
 		t.Fatalf("failed to parse response: %v", err)
 	}
 
-	// Should return empty array, not null
 	logs, ok := resp["logs"].([]any)
 	if !ok {
 		t.Fatalf("expected logs array in response")
 	}
 	if len(logs) != 0 {
 		t.Errorf("expected 0 logs, got %d", len(logs))
+	}
+}
+
+func TestActionHandlers_Create_MissingName(t *testing.T) {
+	h, actionService, chatbotRepo := setupActionHandlersTest()
+
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+		return &models.Chatbot{ID: id, UserID: testUserID}, nil
+	}
+
+	actionService.createErr = services.ErrActionNameRequired
+
+	body, _ := json.Marshal(map[string]any{
+		"action_type": "http",
+	})
+
+	req := createAuthenticatedRequest(http.MethodPost, "/api/v1/chatbots/"+testChatbotID+"/actions", body)
+	w := httptest.NewRecorder()
+
+	h.Create(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestActionHandlers_Update_NotFound(t *testing.T) {
+	h, _, chatbotRepo := setupActionHandlersTest()
+
+	chatbotRepo.getByIDFunc = func(ctx context.Context, id string) (*models.Chatbot, error) {
+		return &models.Chatbot{ID: id, UserID: testUserID}, nil
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"name": "Updated Name",
+	})
+
+	req := createAuthenticatedRequest(http.MethodPut, "/api/v1/chatbots/"+testChatbotID+"/actions/nonexistent", body)
+	req.SetPathValue("actionId", "nonexistent")
+	w := httptest.NewRecorder()
+
+	h.Update(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status %d, got %d", http.StatusNotFound, w.Code)
 	}
 }

@@ -152,7 +152,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	tng := rag.NewToolNameGenerator(mockClient)
 	actionRepo := repository.NewPostgresActionRepo(pool)
 	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
-	acth := &handlers.ActionHandlers{ActionRepo: actionRepo, ChatbotRepo: chatbotRepo, ToolNameGenerator: tng, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	actionService := services.NewActionService(actionRepo, tng)
+	acth := &handlers.ActionHandlers{ActionService: actionService, ChatbotRepo: chatbotRepo, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}

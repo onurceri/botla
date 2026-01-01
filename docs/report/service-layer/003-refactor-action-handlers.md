@@ -203,20 +203,20 @@ actionHandlers := &handlers.ActionHandlers{
 
 ## Checklist
 
-- [ ] Update `ActionHandlers` struct to use `ActionService`
-- [ ] Refactor `List` handler
-- [ ] Refactor `Create` handler
-- [ ] Refactor `Get` handler
-- [ ] Refactor `Update` handler
-- [ ] Refactor `Delete` handler
-- [ ] Refactor `GetLogs` handler
-- [ ] Update router initialization in `router.go`
-- [ ] Update test server initialization in `testserver.go`
-- [ ] Update unit tests in `action_unit_test.go`
-- [ ] Run `go build ./...` to verify compilation
-- [ ] Run `make test-all` to verify all tests pass
-- [ ] Run integration tests to ensure API behavior unchanged
-- [ ] Run `make lint` to check for issues
+- [x] Update `ActionHandlers` struct to use `ActionService`
+- [x] Refactor `List` handler
+- [x] Refactor `Create` handler
+- [x] Refactor `Get` handler
+- [x] Refactor `Update` handler
+- [x] Refactor `Delete` handler
+- [x] Refactor `GetLogs` handler
+- [x] Update router initialization in `router.go`
+- [x] Update test server initialization in `testserver.go`
+- [x] Update unit tests in `action_unit_test.go`
+- [x] Run `go build ./...` to verify compilation
+- [x] Run `make test-all` to verify all tests pass
+- [x] Run integration tests to ensure API behavior unchanged
+- [x] Run `make lint` to check for issues
 
 ## API Behavior Verification
 
