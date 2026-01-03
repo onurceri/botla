@@ -14,6 +14,7 @@ import (
 
 // SRC-006: Upload exceeding size limit
 func TestSources_SizeLimitExceeded(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -31,7 +32,7 @@ func TestSources_SizeLimitExceeded(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -55,7 +56,7 @@ func TestSources_SizeLimitExceeded(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 
 	// Expect 413 Payload Too Large
 	if resS.StatusCode != http.StatusRequestEntityTooLarge {
@@ -65,6 +66,7 @@ func TestSources_SizeLimitExceeded(t *testing.T) {
 }
 
 func TestSources_PDFLimitPerBot(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -82,7 +84,7 @@ func TestSources_PDFLimitPerBot(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -105,7 +107,7 @@ func TestSources_PDFLimitPerBot(t *testing.T) {
 	reqS1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", body1)
 	reqS1.Header.Set("Authorization", "Bearer "+token)
 	reqS1.Header.Set("Content-Type", ct1)
-	resS1, _ := http.DefaultClient.Do(reqS1)
+	resS1, _ := testHTTPClient().Do(reqS1)
 	if resS1.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resS1.StatusCode)
 	}
@@ -115,7 +117,7 @@ func TestSources_PDFLimitPerBot(t *testing.T) {
 	reqS2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", body2)
 	reqS2.Header.Set("Authorization", "Bearer "+token)
 	reqS2.Header.Set("Content-Type", ct2)
-	resS2, _ := http.DefaultClient.Do(reqS2)
+	resS2, _ := testHTTPClient().Do(reqS2)
 	if resS2.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", resS2.StatusCode)
 	}
@@ -123,6 +125,7 @@ func TestSources_PDFLimitPerBot(t *testing.T) {
 }
 
 func TestSources_StorageLimitExceeded(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -140,7 +143,7 @@ func TestSources_StorageLimitExceeded(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -163,7 +166,7 @@ func TestSources_StorageLimitExceeded(t *testing.T) {
 	reqS1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", body1)
 	reqS1.Header.Set("Authorization", "Bearer "+token)
 	reqS1.Header.Set("Content-Type", ct1)
-	resS1, _ := http.DefaultClient.Do(reqS1)
+	resS1, _ := testHTTPClient().Do(reqS1)
 	if resS1.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resS1.StatusCode)
 	}
@@ -173,7 +176,7 @@ func TestSources_StorageLimitExceeded(t *testing.T) {
 	reqS2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", body2)
 	reqS2.Header.Set("Authorization", "Bearer "+token)
 	reqS2.Header.Set("Content-Type", ct2)
-	resS2, _ := http.DefaultClient.Do(reqS2)
+	resS2, _ := testHTTPClient().Do(reqS2)
 	if resS2.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("expected 402, got %d", resS2.StatusCode)
 	}

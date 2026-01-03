@@ -12,6 +12,7 @@ import (
 )
 
 func TestPlanValidationStartupIntegration(t *testing.T) {
+t.Parallel()
 	db := testdb.OpenParallelTestDB(t)
 	defer db.Close()
 
@@ -29,10 +30,11 @@ func TestPlanValidationStartupIntegration(t *testing.T) {
 	err = planSvc.ValidateAllPlans(context.Background())
 
 	assert.Error(t, err, "Should fail when plans are invalid")
-	assert.Contains(t, err.Error(), "plan \"free\": max_chatbots must be >= 1")
+	assert.Contains(t, err.Error(), "plan \"free\": config.max_chatbots must be >= 1")
 }
 
 func TestPlanValidationStartupSuccess(t *testing.T) {
+t.Parallel()
 	db := testdb.OpenParallelTestDB(t)
 	defer db.Close()
 

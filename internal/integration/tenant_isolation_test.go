@@ -11,6 +11,7 @@ import (
 )
 
 func TestMultiTenantIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -24,7 +25,7 @@ func TestMultiTenantIsolation(t *testing.T) {
 	reqC1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj1))
 	reqC1.Header.Set("Authorization", "Bearer "+token1)
 	reqC1.Header.Set("Content-Type", "application/json")
-	resC1, _ := http.DefaultClient.Do(reqC1)
+	resC1, _ := testHTTPClient().Do(reqC1)
 	var bot1 chatbot
 	json.NewDecoder(resC1.Body).Decode(&bot1)
 	resC1.Body.Close()
@@ -35,10 +36,10 @@ func TestMultiTenantIsolation(t *testing.T) {
 	t.Run("User 2 cannot access User 1 chatbot", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot1.ID, nil)
 		req.Header.Set("Authorization", "Bearer "+token2)
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, res.StatusCode)
-		res.Body.Close()
+		drainBody(res)
 	})
 
 	t.Run("User 2 cannot update User 1 chatbot", func(t *testing.T) {
@@ -47,18 +48,18 @@ func TestMultiTenantIsolation(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot1.ID, bytes.NewReader(uj))
 		req.Header.Set("Authorization", "Bearer "+token2)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, res.StatusCode)
-		res.Body.Close()
+		drainBody(res)
 	})
 
 	t.Run("User 2 cannot delete User 1 chatbot", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/chatbots/"+bot1.ID, nil)
 		req.Header.Set("Authorization", "Bearer "+token2)
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, res.StatusCode)
-		res.Body.Close()
+		drainBody(res)
 	})
 }

@@ -6,11 +6,13 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestCORS_PatchAllowed(t *testing.T) {
-	t.Setenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.CORS_ALLOWED_ORIGINS = "http://localhost:5173"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -20,7 +22,7 @@ func TestCORS_PatchAllowed(t *testing.T) {
 	req.Header.Set("Origin", "http://localhost:5173")
 	req.Header.Set("Access-Control-Request-Method", "PATCH")
 
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d", res.StatusCode)
 	}

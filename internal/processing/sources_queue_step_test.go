@@ -406,14 +406,14 @@ type testMockScraper struct {
 	shouldFail bool
 }
 
-func (m *testMockScraper) FetchRawHTML(url string, config scraper.CollectorConfig) (string, error) {
+func (m *testMockScraper) FetchRawHTML(url string) (string, error) {
 	if m.shouldFail {
 		return "", &testScraperError{"fetch failed"}
 	}
 	return m.html, nil
 }
 
-func (m *testMockScraper) ScrapeURLWithFallback(task scraper.ScrapingTask, config scraper.CollectorConfig, dynamicEnabled bool, scrapeConfig *scraper.ScrapeConfig) (string, error) {
+func (m *testMockScraper) ScrapeURLWithFallback(task scraper.ScrapingTask, dynamicEnabled bool, scrapeConfig *scraper.ScrapeConfig) (string, error) {
 	if m.shouldFail {
 		return "", &testScraperError{"scrape failed"}
 	}

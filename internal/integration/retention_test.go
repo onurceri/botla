@@ -15,6 +15,7 @@ import (
 )
 
 func TestRetentionJob_Conversations(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -32,7 +33,7 @@ func TestRetentionJob_Conversations(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
+		res, _ := testHTTPClient().Do(req)
 		if res.StatusCode != http.StatusCreated {
 			t.Fatalf("expected 201, got %d", res.StatusCode)
 		}
@@ -40,7 +41,7 @@ func TestRetentionJob_Conversations(t *testing.T) {
 			ID string `json:"id"`
 		}
 		json.NewDecoder(res.Body).Decode(&created)
-		res.Body.Close()
+		drainBody(res)
 		return created.ID
 	}
 	chatbotID := createChatbot()
@@ -101,6 +102,7 @@ func TestRetentionJob_Conversations(t *testing.T) {
 }
 
 func TestRetentionJob_ExpiredExports(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -165,6 +167,7 @@ func TestRetentionJob_ExpiredExports(t *testing.T) {
 }
 
 func TestRetentionJob_AuditLogs(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)

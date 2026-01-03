@@ -7,17 +7,19 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestRateLimit_Chat_Sources(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "3")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 3
+		cfg.RateLimitUserWindowSeconds = 60
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -38,7 +40,7 @@ func TestRateLimit_Chat_Sources(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -50,7 +52,7 @@ func TestRateLimit_Chat_Sources(t *testing.T) {
 		reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 		reqCh.Header.Set("Authorization", "Bearer "+token)
 		reqCh.Header.Set("Content-Type", "application/json")
-		resCh, _ := http.DefaultClient.Do(reqCh)
+		resCh, _ := testHTTPClient().Do(reqCh)
 		if resCh.StatusCode != http.StatusOK {
 			t.Fatalf("expected 200, got %d", resCh.StatusCode)
 		}
@@ -60,7 +62,7 @@ func TestRateLimit_Chat_Sources(t *testing.T) {
 	reqCh4, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh4.Header.Set("Authorization", "Bearer "+token)
 	reqCh4.Header.Set("Content-Type", "application/json")
-	resCh4, _ := http.DefaultClient.Do(reqCh4)
+	resCh4, _ := testHTTPClient().Do(reqCh4)
 	if resCh4.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("expected 429, got %d", resCh4.StatusCode)
 	}

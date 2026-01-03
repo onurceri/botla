@@ -17,8 +17,8 @@ func TestPublicChatbotConfig_InvalidUUID_Returns400(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "Invalid ID format") {
-		t.Fatalf("expected body to contain %q, got %s", "Invalid ID format", rr.Body.String())
+	if !strings.Contains(rr.Body.String(), "ERR_INVALID_ID_FORMAT") {
+		t.Fatalf("expected body to contain %q, got %s", "ERR_INVALID_ID_FORMAT", rr.Body.String())
 	}
 }
 
@@ -32,8 +32,8 @@ func TestPublicChat_InvalidUUID_Returns400(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "Invalid ID format") {
-		t.Fatalf("expected body to contain %q, got %s", "Invalid ID format", rr.Body.String())
+	if !strings.Contains(rr.Body.String(), "ERR_INVALID_ID_FORMAT") {
+		t.Fatalf("expected body to contain %q, got %s", "ERR_INVALID_ID_FORMAT", rr.Body.String())
 	}
 }
 
@@ -47,7 +47,7 @@ func TestPublicSubmitFeedback_InvalidUUID_Returns400(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", rr.Code)
 	}
-	if !strings.Contains(rr.Body.String(), "Invalid ID format") {
-		t.Fatalf("expected body to contain %q, got %s", "Invalid ID format", rr.Body.String())
+	if !strings.Contains(rr.Body.String(), "ERR_INVALID_ID_FORMAT") {
+		t.Fatalf("expected body to contain %q, got %s", "ERR_INVALID_ID_FORMAT", rr.Body.String())
 	}
 }

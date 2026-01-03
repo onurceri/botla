@@ -105,8 +105,8 @@ func (s *ChatService) restrictedSmartFallback(ctx context.Context, cc *chatConte
 		Context:      "",
 		UserMessage:  cc.Request.Message,
 		Model:        modelName,
-		Temperature:  0.3,
-		MaxTokens:    120, // Increased from 80 to allow for friendlier greeting responses
+		Temperature:  cc.Bot.Temperature,
+		MaxTokens:    cc.Bot.MaxTokens,
 	}
 
 	res, err := client.CreateCompletion(ctx, params)

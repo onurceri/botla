@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func startQdrantSearchDelayStub(delay time.Duration) *httptest.Server {
@@ -26,19 +27,22 @@ func startQdrantSearchDelayStub(delay time.Duration) *httptest.Server {
 // TestChat_QdrantSearchTimeout_Fallback verifies that chat works when Qdrant search times out.
 // The LLM is called without RAG context and returns a response.
 func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantSearchDelayStub(200 * time.Millisecond)
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	t.Setenv("QDRANT_TIMEOUT_MS", "100")
-	te, err := fixtures.SetupTestEnv()
+	defer oai.Close()
+	defer qd.Close()
+
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.QDRANT_TIMEOUT_MS = 100
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
-	defer oai.Close()
-	defer qd.Close()
 
 	token := authToken(t, te.Server.URL, "qdtimeout@example.com")
 
@@ -49,7 +53,7 @@ func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -59,7 +63,7 @@ func TestChat_QdrantSearchTimeout_Fallback(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}

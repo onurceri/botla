@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -81,37 +79,6 @@ type DynamicConfig struct {
 	Allowed    []string
 }
 
-func DefaultDynamicConfig() DynamicConfig {
-	ps := 2
-	if v := os.Getenv("SCRAPER_BROWSER_POOL_SIZE"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			ps = n
-		}
-	}
-	idle := 60 * time.Second
-	if v := os.Getenv("SCRAPER_DYNAMIC_IDLE_SECS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			idle = time.Duration(n) * time.Second
-		}
-	}
-	nt := 10 * time.Second
-	if v := os.Getenv("SCRAPER_NAV_TIMEOUT_MS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			nt = time.Duration(n) * time.Millisecond
-		}
-	}
-	var domains []string
-	if v := os.Getenv("SCRAPER_ALLOWED_DOMAINS"); v != "" {
-		parts := strings.Split(v, ",")
-		for _, p := range parts {
-			t := strings.TrimSpace(p)
-			if t != "" {
-				domains = append(domains, t)
-			}
-		}
-	}
-	return DynamicConfig{PoolSize: ps, IdleTTL: idle, NavTimeout: nt, Allowed: domains}
-}
 
 func allowed(urlStr string, allowed []string) bool {
 	if len(allowed) == 0 {

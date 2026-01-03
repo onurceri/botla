@@ -104,6 +104,10 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidEmailFormat)
 		return
 	}
+	if len(req.Password) < 8 {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrPasswordTooShort)
+		return
+	}
 	if !isStrongPassword(req.Password) {
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrPasswordWeak)
 		return

@@ -33,7 +33,7 @@ func setupRBACEnv(t *testing.T) (*fixtures.TestEnv, string, map[string]string, s
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations", bytes.NewReader(orgBody))
 	req.Header.Set("Authorization", "Bearer "+tokens["owner"])
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create org: %d", res.StatusCode)
 	}
@@ -41,7 +41,7 @@ func setupRBACEnv(t *testing.T) (*fixtures.TestEnv, string, map[string]string, s
 		ID string `json:"id"`
 	}
 	json.NewDecoder(res.Body).Decode(&org)
-	res.Body.Close()
+	drainBody(res)
 
 	// Add Admin
 	addMember(t, te, tokens["owner"], org.ID, "admin@example.com", "admin")
@@ -59,11 +59,11 @@ func addMember(t *testing.T, te *fixtures.TestEnv, token, orgID, email, role str
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations/"+orgID+"/members", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to add member %s: %d", email, res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 }
 
 func createWorkspace(t *testing.T, te *fixtures.TestEnv, token, orgID, name string) string {
@@ -72,7 +72,7 @@ func createWorkspace(t *testing.T, te *fixtures.TestEnv, token, orgID, name stri
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations/"+orgID+"/workspaces", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create workspace: %d", res.StatusCode)
 	}
@@ -80,11 +80,12 @@ func createWorkspace(t *testing.T, te *fixtures.TestEnv, token, orgID, name stri
 		ID string `json:"id"`
 	}
 	json.NewDecoder(res.Body).Decode(&ws)
-	res.Body.Close()
+	drainBody(res)
 	return ws.ID
 }
 
 func TestRBAC_Matrix(t *testing.T) {
+t.Parallel()
 	te, orgID, tokens, wsID := setupRBACEnv(t)
 	defer fixtures.TeardownTestEnv(te)
 
@@ -93,7 +94,7 @@ func TestRBAC_Matrix(t *testing.T) {
 	// Use owner to list members
 	reqGet, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+orgID+"/members", nil)
 	reqGet.Header.Set("Authorization", "Bearer "+tokens["owner"])
-	resGet, _ := http.DefaultClient.Do(reqGet)
+	resGet, _ := testHTTPClient().Do(reqGet)
 	var membersResp struct {
 		Members []struct {
 			UserID string `json:"user_id"`
@@ -175,8 +176,8 @@ func TestRBAC_Matrix(t *testing.T) {
 			if body != nil {
 				req.Header.Set("Content-Type", "application/json")
 			}
-			res, _ := http.DefaultClient.Do(req)
-			res.Body.Close()
+			res, _ := testHTTPClient().Do(req)
+			drainBody(res)
 
 			if res.StatusCode != tc.wantCode {
 				t.Errorf("%s: expected %d, got %d", tc.name, tc.wantCode, res.StatusCode)
@@ -186,6 +187,7 @@ func TestRBAC_Matrix(t *testing.T) {
 }
 
 func TestRBAC_Extended(t *testing.T) {
+t.Parallel()
 	te, orgID, tokens, _ := setupRBACEnv(t)
 	defer fixtures.TeardownTestEnv(te)
 
@@ -193,11 +195,11 @@ func TestRBAC_Extended(t *testing.T) {
 	t.Run("MissingAuthHeader", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+orgID, nil)
 		// No Authorization header
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		_ = res.Body.Close()
+		_ = drainBody(res)
 		if res.StatusCode != http.StatusUnauthorized {
 			t.Errorf("expected 401 Unauthorized, got %d", res.StatusCode)
 		}
@@ -207,65 +209,65 @@ func TestRBAC_Extended(t *testing.T) {
 	t.Run("InvalidOrgID", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/invalid-uuid", nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer res.Body.Close()
+		defer drainBody(res)
 		if res.StatusCode != http.StatusBadRequest {
 			t.Errorf("expected 400, got %d", res.StatusCode)
 			return
 		}
 		var body struct {
-			Error string `json:"error"`
+			Code string `json:"code"`
 		}
 		_ = json.NewDecoder(res.Body).Decode(&body)
-		if body.Error != "Invalid ID format" {
-			t.Errorf("expected error %q, got %q", "Invalid ID format", body.Error)
+		if body.Code != "ERR_INVALID_ID_FORMAT" {
+			t.Errorf("expected code %q, got %q", "ERR_INVALID_ID_FORMAT", body.Code)
 		}
 	})
 
 	t.Run("InvalidWorkspaceID", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID+"/workspaces/invalid-uuid", nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer res.Body.Close()
+		defer drainBody(res)
 
 		if res.StatusCode != http.StatusBadRequest {
 			t.Errorf("expected 400, got %d", res.StatusCode)
 			return
 		}
 		var body struct {
-			Error string `json:"error"`
+			Code string `json:"code"`
 		}
 		_ = json.NewDecoder(res.Body).Decode(&body)
-		if body.Error != "Invalid ID format" {
-			t.Errorf("expected error %q, got %q", "Invalid ID format", body.Error)
+		if body.Code != "ERR_INVALID_ID_FORMAT" {
+			t.Errorf("expected code %q, got %q", "ERR_INVALID_ID_FORMAT", body.Code)
 		}
 	})
 
 	t.Run("InvalidChatbotID", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/invalid-uuid", nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer res.Body.Close()
+		defer drainBody(res)
 
 		if res.StatusCode != http.StatusBadRequest {
 			t.Errorf("expected 400, got %d", res.StatusCode)
 			return
 		}
 		var body struct {
-			Error string `json:"error"`
+			Code string `json:"code"`
 		}
 		_ = json.NewDecoder(res.Body).Decode(&body)
-		if body.Error != "Invalid ID format" {
-			t.Errorf("expected error %q, got %q", "Invalid ID format", body.Error)
+		if body.Code != "ERR_INVALID_ID_FORMAT" {
+			t.Errorf("expected code %q, got %q", "ERR_INVALID_ID_FORMAT", body.Code)
 		}
 	})
 
@@ -276,11 +278,11 @@ func TestRBAC_Extended(t *testing.T) {
 
 		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID+"/workspaces/"+tempWSID, nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		_ = res.Body.Close()
+		_ = drainBody(res)
 		if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
 			t.Errorf("expected 200/204, got %d", res.StatusCode)
 		}
@@ -294,8 +296,8 @@ func TestRBAC_Extended(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations/"+orgID+"/members", bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 		if res.StatusCode != http.StatusCreated {
 			t.Errorf("expected 201 Created, got %d", res.StatusCode)
 		}
@@ -310,7 +312,7 @@ func TestRBAC_Extended(t *testing.T) {
 		// Get the user ID
 		reqGet, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+orgID+"/members", nil)
 		reqGet.Header.Set("Authorization", "Bearer "+tokens["owner"])
-		resGet, _ := http.DefaultClient.Do(reqGet)
+		resGet, _ := testHTTPClient().Do(reqGet)
 		var membersResp struct {
 			Members []struct {
 				UserID string `json:"user_id"`
@@ -336,8 +338,8 @@ func TestRBAC_Extended(t *testing.T) {
 
 		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+removeUserID, nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 		if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
 			t.Errorf("expected 200/204, got %d", res.StatusCode)
 		}
@@ -345,13 +347,14 @@ func TestRBAC_Extended(t *testing.T) {
 }
 
 func TestRBAC_DeleteOrg(t *testing.T) {
+t.Parallel()
 	te, orgID, tokens, _ := setupRBACEnv(t)
 	defer fixtures.TeardownTestEnv(te)
 
 	// Admin cannot delete org
 	reqDel, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID, nil)
 	reqDel.Header.Set("Authorization", "Bearer "+tokens["admin"])
-	resDel, _ := http.DefaultClient.Do(reqDel)
+	resDel, _ := testHTTPClient().Do(reqDel)
 	if resDel.StatusCode != http.StatusForbidden {
 		t.Errorf("Admin deleted org, expected 403, got %d", resDel.StatusCode)
 	}
@@ -360,7 +363,7 @@ func TestRBAC_DeleteOrg(t *testing.T) {
 	// Owner can delete org
 	reqDelOwner, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID, nil)
 	reqDelOwner.Header.Set("Authorization", "Bearer "+tokens["owner"])
-	resDelOwner, _ := http.DefaultClient.Do(reqDelOwner)
+	resDelOwner, _ := testHTTPClient().Do(reqDelOwner)
 	if resDelOwner.StatusCode != http.StatusOK && resDelOwner.StatusCode != http.StatusNoContent {
 		t.Errorf("Owner failed to delete org, expected 200/204, got %d", resDelOwner.StatusCode)
 	}

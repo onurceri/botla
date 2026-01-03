@@ -16,6 +16,7 @@ import (
 // Full rate limit testing requires careful orchestration to avoid test interference
 // This test just verifies that the infrastructure is in place
 func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
+t.Parallel()
 	t.Skip("Plan-based rate limiting infrastructure verified through other tests. Skipping to avoid test interference.")
 
 	cfg := config.LoadConfig()
@@ -30,7 +31,7 @@ func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Rate Test"}
 	rb, _ := json.Marshal(regBody)
 	var resReg *http.Response
-	resReg, err = http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, err = testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if err != nil {
 		t.Fatalf("failed to register: %v", err)
 	}
@@ -47,11 +48,11 @@ func TestRateLimit_PlanBasedInfrastructure(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+tokensResp.Token)
 	var res *http.Response
-	res, err = http.DefaultClient.Do(req)
+	res, err = testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("failed to make request: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	// Verify rate limit headers are present
 	if res.Header.Get("X-RateLimit-Limit") == "" {

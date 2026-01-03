@@ -10,6 +10,7 @@ import (
 )
 
 func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -28,7 +29,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations", bytes.NewReader(orgBody))
 	req.Header.Set("Authorization", "Bearer "+ownerToken)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create org: %d", res.StatusCode)
 	}
@@ -36,7 +37,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 		ID string `json:"id"`
 	}
 	json.NewDecoder(res.Body).Decode(&org)
-	res.Body.Close()
+	drainBody(res)
 
 	// Add member to organization
 	// First we need the member's ID. We can get it from the token logic or just add by email since AddMember looks up by email.
@@ -46,7 +47,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	reqAdd, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/organizations/"+org.ID+"/members", bytes.NewReader(addBody))
 	reqAdd.Header.Set("Authorization", "Bearer "+ownerToken)
 	reqAdd.Header.Set("Content-Type", "application/json")
-	resAdd, _ := http.DefaultClient.Do(reqAdd)
+	resAdd, _ := testHTTPClient().Do(reqAdd)
 	if resAdd.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to add member: %d", resAdd.StatusCode)
 	}
@@ -55,7 +56,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	// Get member's ID
 	reqGet, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+org.ID+"/members", nil)
 	reqGet.Header.Set("Authorization", "Bearer "+ownerToken)
-	resGet, _ := http.DefaultClient.Do(reqGet)
+	resGet, _ := testHTTPClient().Do(reqGet)
 
 	// New response structure: { members: [...], caller_role: "..." }
 	var membersResp struct {
@@ -88,7 +89,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	reqUpdate, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+org.ID+"/members/"+memberUserID, bytes.NewReader(updateBody))
 	reqUpdate.Header.Set("Authorization", "Bearer "+memberToken)
 	reqUpdate.Header.Set("Content-Type", "application/json")
-	resUpdate, _ := http.DefaultClient.Do(reqUpdate)
+	resUpdate, _ := testHTTPClient().Do(reqUpdate)
 
 	if resUpdate.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden for member updating role, got %d", resUpdate.StatusCode)
@@ -99,7 +100,7 @@ func TestOrganization_UpdateMemberRole_Permissions(t *testing.T) {
 	reqUpdateOwner, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+org.ID+"/members/"+memberUserID, bytes.NewReader(updateBody))
 	reqUpdateOwner.Header.Set("Authorization", "Bearer "+ownerToken)
 	reqUpdateOwner.Header.Set("Content-Type", "application/json")
-	resUpdateOwner, _ := http.DefaultClient.Do(reqUpdateOwner)
+	resUpdateOwner, _ := testHTTPClient().Do(reqUpdateOwner)
 
 	if resUpdateOwner.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK for owner updating role, got %d", resUpdateOwner.StatusCode)

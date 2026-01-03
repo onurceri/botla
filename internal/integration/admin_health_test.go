@@ -13,6 +13,7 @@ import (
 )
 
 func TestAdminHealth(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
@@ -36,9 +37,9 @@ func TestAdminHealth(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/health/detailed", nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -75,9 +76,9 @@ func TestAdminHealth(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/health/detailed", nil)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	})

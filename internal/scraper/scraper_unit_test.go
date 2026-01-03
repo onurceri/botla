@@ -5,10 +5,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/onurceri/botla-co/pkg/urlutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestScrapeURL_Unit(t *testing.T) {
+	// Allow localhost for testing by overriding the package-level validator
+	ssrfValidator = urlutil.NewSSRFValidator(true)
+	defer func() { ssrfValidator = urlutil.NewSSRFValidator(false) }()
+
 	t.Run("Successful Static Scrape", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -17,7 +22,9 @@ func TestScrapeURL_Unit(t *testing.T) {
 		defer srv.Close()
 
 		task := ScrapingTask{URL: srv.URL}
-		content, err := ScrapeURLWithFallback(task, DefaultCollectorConfig(), false, nil)
+		ccfg := CollectorConfig{}
+		dcfg := DynamicConfig{}
+		content, err := ScrapeURLWithFallback(task, ccfg, dcfg, false, nil)
 
 		assert.NoError(t, err)
 		assert.Contains(t, content, "Hello World")
@@ -31,7 +38,9 @@ func TestScrapeURL_Unit(t *testing.T) {
 		defer srv.Close()
 
 		task := ScrapingTask{URL: srv.URL}
-		_, err := ScrapeURLWithFallback(task, DefaultCollectorConfig(), false, nil)
+		ccfg := CollectorConfig{}
+		dcfg := DynamicConfig{}
+		_, err := ScrapeURLWithFallback(task, ccfg, dcfg, false, nil)
 
 		assert.Error(t, err)
 	})

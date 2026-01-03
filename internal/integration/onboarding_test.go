@@ -15,18 +15,19 @@ import (
 func authTokenOnboarding(t *testing.T, base string, email string) string {
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
-	http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
-	res, _ := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	res, _ := testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	var tr tokenResp
 	json.NewDecoder(res.Body).Decode(&tr)
-	res.Body.Close()
+	drainBody(res)
 	return tr.Token
 }
 
 // TestOnboardingFlow tests the complete onboarding flow
 func TestOnboardingFlow(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -37,7 +38,7 @@ func TestOnboardingFlow(t *testing.T) {
 	email := fmt.Sprintf("onboarding-flow+%d@example.com", time.Now().UnixNano())
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Onboarding User"}
 	regBytes, _ := json.Marshal(regBody)
-	regRes, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
+	regRes, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -52,13 +53,13 @@ func TestOnboardingFlow(t *testing.T) {
 	// 3. Get initial onboarding state (should be step 0, not completed)
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/onboarding", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("get onboarding state failed: %d", res.StatusCode)
 	}
 	var state map[string]interface{}
 	json.NewDecoder(res.Body).Decode(&state)
-	res.Body.Close()
+	drainBody(res)
 
 	if state["completed"] != false {
 		t.Errorf("expected completed=false, got %v", state["completed"])
@@ -81,7 +82,7 @@ func TestOnboardingFlow(t *testing.T) {
 	reqUpdate, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/me/onboarding", bytes.NewReader(updateBytes))
 	reqUpdate.Header.Set("Authorization", "Bearer "+token)
 	reqUpdate.Header.Set("Content-Type", "application/json")
-	resUpdate, _ := http.DefaultClient.Do(reqUpdate)
+	resUpdate, _ := testHTTPClient().Do(reqUpdate)
 	if resUpdate.StatusCode != http.StatusOK {
 		t.Fatalf("update onboarding failed: %d", resUpdate.StatusCode)
 	}
@@ -90,7 +91,7 @@ func TestOnboardingFlow(t *testing.T) {
 	// 5. Verify state was updated
 	req2, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/onboarding", nil)
 	req2.Header.Set("Authorization", "Bearer "+token)
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	var state2 map[string]interface{}
 	json.NewDecoder(res2.Body).Decode(&state2)
 	res2.Body.Close()
@@ -109,7 +110,7 @@ func TestOnboardingFlow(t *testing.T) {
 	reqBot, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(botBytes))
 	reqBot.Header.Set("Authorization", "Bearer "+token)
 	reqBot.Header.Set("Content-Type", "application/json")
-	resBot, _ := http.DefaultClient.Do(reqBot)
+	resBot, _ := testHTTPClient().Do(reqBot)
 	if resBot.StatusCode != http.StatusCreated {
 		t.Fatalf("create bot failed: %d", resBot.StatusCode)
 	}
@@ -124,7 +125,7 @@ func TestOnboardingFlow(t *testing.T) {
 	reqComplete, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/onboarding/complete", bytes.NewReader(completeBytes))
 	reqComplete.Header.Set("Authorization", "Bearer "+token)
 	reqComplete.Header.Set("Content-Type", "application/json")
-	resComplete, _ := http.DefaultClient.Do(reqComplete)
+	resComplete, _ := testHTTPClient().Do(reqComplete)
 	if resComplete.StatusCode != http.StatusOK {
 		t.Fatalf("complete onboarding failed: %d", resComplete.StatusCode)
 	}
@@ -133,7 +134,7 @@ func TestOnboardingFlow(t *testing.T) {
 	// 8. Verify onboarding is completed
 	req3, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/onboarding", nil)
 	req3.Header.Set("Authorization", "Bearer "+token)
-	res3, _ := http.DefaultClient.Do(req3)
+	res3, _ := testHTTPClient().Do(req3)
 	var state3 map[string]interface{}
 	json.NewDecoder(res3.Body).Decode(&state3)
 	res3.Body.Close()
@@ -148,6 +149,7 @@ func TestOnboardingFlow(t *testing.T) {
 
 // TestOnboardingSkip tests skipping the onboarding
 func TestOnboardingSkip(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -158,7 +160,7 @@ func TestOnboardingSkip(t *testing.T) {
 	email := fmt.Sprintf("onboarding-skip+%d@example.com", time.Now().UnixNano())
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Skip User"}
 	regBytes, _ := json.Marshal(regBody)
-	regRes, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
+	regRes, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
 	regRes.Body.Close()
 
 	token := authTokenOnboarding(t, te.Server.URL, email)
@@ -166,7 +168,7 @@ func TestOnboardingSkip(t *testing.T) {
 	// Skip onboarding
 	reqSkip, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/onboarding/skip", nil)
 	reqSkip.Header.Set("Authorization", "Bearer "+token)
-	resSkip, _ := http.DefaultClient.Do(reqSkip)
+	resSkip, _ := testHTTPClient().Do(reqSkip)
 	if resSkip.StatusCode != http.StatusOK {
 		t.Fatalf("skip onboarding failed: %d", resSkip.StatusCode)
 	}
@@ -175,10 +177,10 @@ func TestOnboardingSkip(t *testing.T) {
 	// Verify skipped
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/onboarding", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	var state map[string]interface{}
 	json.NewDecoder(res.Body).Decode(&state)
-	res.Body.Close()
+	drainBody(res)
 
 	if state["skipped"] != true {
 		t.Errorf("expected skipped=true, got %v", state["skipped"])
@@ -187,6 +189,7 @@ func TestOnboardingSkip(t *testing.T) {
 
 // TestOnboardingStatePersistedAcrossSessions tests that onboarding state persists
 func TestOnboardingStatePersistedAcrossSessions(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -197,7 +200,7 @@ func TestOnboardingStatePersistedAcrossSessions(t *testing.T) {
 	email := fmt.Sprintf("onboarding-persist+%d@example.com", time.Now().UnixNano())
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Persist User"}
 	regBytes, _ := json.Marshal(regBody)
-	http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
+	testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(regBytes))
 
 	token1 := authTokenOnboarding(t, te.Server.URL, email)
 
@@ -215,7 +218,7 @@ func TestOnboardingStatePersistedAcrossSessions(t *testing.T) {
 	reqUpdate, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/me/onboarding", bytes.NewReader(updateBytes))
 	reqUpdate.Header.Set("Authorization", "Bearer "+token1)
 	reqUpdate.Header.Set("Content-Type", "application/json")
-	resUpdate, _ := http.DefaultClient.Do(reqUpdate)
+	resUpdate, _ := testHTTPClient().Do(reqUpdate)
 	resUpdate.Body.Close()
 
 	// Simulate new session - login again with new token
@@ -224,10 +227,10 @@ func TestOnboardingStatePersistedAcrossSessions(t *testing.T) {
 	// Verify data persists
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/onboarding", nil)
 	req.Header.Set("Authorization", "Bearer "+token2)
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	var state map[string]interface{}
 	json.NewDecoder(res.Body).Decode(&state)
-	res.Body.Close()
+	drainBody(res)
 
 	if state["step"] != float64(2) {
 		t.Errorf("expected step=2, got %v", state["step"])

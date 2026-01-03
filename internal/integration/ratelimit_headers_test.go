@@ -8,17 +8,19 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestRateLimit_Headers(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "2")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 2
+		cfg.RateLimitUserWindowSeconds = 60
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -40,7 +42,7 @@ func TestRateLimit_Headers(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -51,7 +53,7 @@ func TestRateLimit_Headers(t *testing.T) {
 	req1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req1.Header.Set("Authorization", "Bearer "+token)
 	req1.Header.Set("Content-Type", "application/json")
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res1.StatusCode)
 	}
@@ -67,7 +69,7 @@ func TestRateLimit_Headers(t *testing.T) {
 	req2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req2.Header.Set("Authorization", "Bearer "+token)
 	req2.Header.Set("Content-Type", "application/json")
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	if res2.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res2.StatusCode)
 	}
@@ -80,7 +82,7 @@ func TestRateLimit_Headers(t *testing.T) {
 	req3, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req3.Header.Set("Authorization", "Bearer "+token)
 	req3.Header.Set("Content-Type", "application/json")
-	res3, _ := http.DefaultClient.Do(req3)
+	res3, _ := testHTTPClient().Do(req3)
 	if res3.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("expected 429, got %d", res3.StatusCode)
 	}

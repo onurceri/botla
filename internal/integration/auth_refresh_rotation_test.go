@@ -21,6 +21,7 @@ type tokenPair struct {
 }
 
 func TestAuth_RefreshRotationAndLogout(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -31,7 +32,7 @@ func TestAuth_RefreshRotationAndLogout(t *testing.T) {
 	email := "rot+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, _ := json.Marshal(regBody)
-	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if resReg.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resReg.StatusCode)
 	}
@@ -45,7 +46,7 @@ func TestAuth_RefreshRotationAndLogout(t *testing.T) {
 	// refresh: use initial refresh to get new pair and revoke old
 	rr := refreshReq{RefreshToken: tp.RefreshToken}
 	rrj, _ := json.Marshal(rr)
-	resRef1, _ := http.Post(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
+	resRef1, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
 	if resRef1.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resRef1.StatusCode)
 	}
@@ -60,7 +61,7 @@ func TestAuth_RefreshRotationAndLogout(t *testing.T) {
 	}
 
 	// second refresh with old token should fail (revoked)
-	resRefOld, _ := http.Post(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
+	resRefOld, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
 	if resRefOld.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401 for revoked, got %d", resRefOld.StatusCode)
 	}
@@ -69,13 +70,13 @@ func TestAuth_RefreshRotationAndLogout(t *testing.T) {
 	// logout current refresh and then try refresh → should 401
 	lr := refreshReq{RefreshToken: tp2.RefreshToken}
 	lrj, _ := json.Marshal(lr)
-	resLogout, _ := http.Post(te.Server.URL+"/api/v1/auth/logout", "application/json", bytes.NewReader(lrj))
+	resLogout, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/logout", "application/json", bytes.NewReader(lrj))
 	if resLogout.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 on logout, got %d", resLogout.StatusCode)
 	}
 	resLogout.Body.Close()
 
-	resRef3, _ := http.Post(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(lrj))
+	resRef3, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(lrj))
 	if resRef3.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401 after logout, got %d", resRef3.StatusCode)
 	}

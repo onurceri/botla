@@ -11,8 +11,15 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
+
+type CapturedRequest struct {
+	Model       string  `json:"model"`
+	Temperature float32 `json:"temperature"`
+	MaxTokens   int     `json:"max_tokens"`
+}
 
 type TMStub struct {
 	Server   *httptest.Server
@@ -174,12 +181,12 @@ func TestTemperatureParameter(t *testing.T) {
 	qd := startQdrantStub()
 	defer qd.Close()
 
-	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
-	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-	t.Setenv("QDRANT_URL", qd.URL)
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = stub.Server.URL
+		cfg.OPENROUTER_API_BASE = stub.Server.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+		cfg.QDRANT_URL = qd.URL
+	}, false) // useMocks=false to connect to stub server
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -212,7 +219,7 @@ func TestTemperatureParameter(t *testing.T) {
 			reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 			reqC.Header.Set("Authorization", "Bearer "+token)
 			reqC.Header.Set("Content-Type", "application/json")
-			resC, _ := http.DefaultClient.Do(reqC)
+			resC, _ := testHTTPClient().Do(reqC)
 			if resC.StatusCode != http.StatusCreated {
 				t.Fatalf("create failed: %d", resC.StatusCode)
 			}
@@ -231,7 +238,7 @@ func TestTemperatureParameter(t *testing.T) {
 			reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 			reqCh.Header.Set("Authorization", "Bearer "+token)
 			reqCh.Header.Set("Content-Type", "application/json")
-			resCh, _ := http.DefaultClient.Do(reqCh)
+			resCh, _ := testHTTPClient().Do(reqCh)
 			if resCh.StatusCode != http.StatusOK {
 				t.Fatalf("chat failed: %d", resCh.StatusCode)
 			}
@@ -239,6 +246,10 @@ func TestTemperatureParameter(t *testing.T) {
 
 			// Verify Stub
 			stub.Mu.Lock()
+			if len(stub.Requests) == 0 {
+				stub.Mu.Unlock()
+				t.Fatal("no requests received by temperature stub")
+			}
 			lastReq := stub.Requests[len(stub.Requests)-1]
 			stub.Mu.Unlock()
 
@@ -256,12 +267,12 @@ func TestMaxTokensParameter(t *testing.T) {
 	qd := startQdrantStub()
 	defer qd.Close()
 
-	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
-	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-	t.Setenv("QDRANT_URL", qd.URL)
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = stub.Server.URL
+		cfg.OPENROUTER_API_BASE = stub.Server.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -292,7 +303,7 @@ func TestMaxTokensParameter(t *testing.T) {
 			reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 			reqC.Header.Set("Authorization", "Bearer "+token)
 			reqC.Header.Set("Content-Type", "application/json")
-			resC, _ := http.DefaultClient.Do(reqC)
+			resC, _ := testHTTPClient().Do(reqC)
 			if resC.StatusCode != http.StatusCreated {
 				t.Fatalf("create failed: %d", resC.StatusCode)
 			}
@@ -311,7 +322,7 @@ func TestMaxTokensParameter(t *testing.T) {
 			reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 			reqCh.Header.Set("Authorization", "Bearer "+token)
 			reqCh.Header.Set("Content-Type", "application/json")
-			resCh, _ := http.DefaultClient.Do(reqCh)
+			resCh, _ := testHTTPClient().Do(reqCh)
 			if resCh.StatusCode != http.StatusOK {
 				t.Fatalf("chat failed: %d", resCh.StatusCode)
 			}
@@ -319,6 +330,10 @@ func TestMaxTokensParameter(t *testing.T) {
 
 			// Verify Stub
 			stub.Mu.Lock()
+			if len(stub.Requests) == 0 {
+				stub.Mu.Unlock()
+				t.Fatal("no requests received by temperature stub")
+			}
 			lastReq := stub.Requests[len(stub.Requests)-1]
 			stub.Mu.Unlock()
 
@@ -336,22 +351,16 @@ func TestModelConfiguration(t *testing.T) {
 	qd := startQdrantStub()
 	defer qd.Close()
 
-	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
-	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-	t.Setenv("QDRANT_URL", qd.URL)
-
-	// Enable other providers pointing to stub
-	t.Setenv("ANTHROPIC_API_KEY", "test-anthropic")
-	t.Setenv("ANTHROPIC_API_BASE", stub.Server.URL)
-
-	t.Setenv("GOOGLE_AI_API_KEY", "test-google")
-	t.Setenv("GOOGLE_AI_API_BASE", stub.Server.URL)
-
-	t.Setenv("OPENROUTER_API_KEY", "test-openrouter")
-	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1") // Matches /v1/chat/completions
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = stub.Server.URL
+		cfg.ANTHROPIC_API_KEY = "test-anthropic"
+		cfg.ANTHROPIC_API_BASE = stub.Server.URL
+		cfg.GOOGLE_AI_API_KEY = "test-google"
+		cfg.GOOGLE_AI_API_BASE = stub.Server.URL
+		cfg.OPENROUTER_API_KEY = "test-openrouter"
+		cfg.OPENROUTER_API_BASE = stub.Server.URL + "/v1" // Matches /v1/chat/completions
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -390,7 +399,7 @@ func TestModelConfiguration(t *testing.T) {
 			reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 			reqC.Header.Set("Authorization", "Bearer "+token)
 			reqC.Header.Set("Content-Type", "application/json")
-			resC, _ := http.DefaultClient.Do(reqC)
+			resC, _ := testHTTPClient().Do(reqC)
 			if resC.StatusCode != http.StatusCreated {
 				t.Fatalf("create failed: %d", resC.StatusCode)
 			}
@@ -407,7 +416,7 @@ func TestModelConfiguration(t *testing.T) {
 			reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 			reqCh.Header.Set("Authorization", "Bearer "+token)
 			reqCh.Header.Set("Content-Type", "application/json")
-			resCh, _ := http.DefaultClient.Do(reqCh)
+			resCh, _ := testHTTPClient().Do(reqCh)
 			if resCh.StatusCode != http.StatusOK {
 				t.Fatalf("chat failed: %d", resCh.StatusCode)
 			}
@@ -445,12 +454,12 @@ func TestModelRestrictions(t *testing.T) {
 	qd := startQdrantStub()
 	defer qd.Close()
 
-	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
-	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-	t.Setenv("QDRANT_URL", qd.URL)
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = stub.Server.URL
+		cfg.OPENROUTER_API_BASE = stub.Server.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -472,7 +481,7 @@ func TestModelRestrictions(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated {
 		t.Fatalf("create failed: %d", resC.StatusCode)
 	}
@@ -493,7 +502,7 @@ func TestModelRestrictions(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("chat failed: %d", resCh.StatusCode)
 	}
@@ -501,6 +510,10 @@ func TestModelRestrictions(t *testing.T) {
 
 	// Verify Stub used gpt-4o-mini
 	stub.Mu.Lock()
+	if len(stub.Requests) == 0 {
+		stub.Mu.Unlock()
+		t.Fatal("no requests received by temperature stub")
+	}
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.Mu.Unlock()
 
@@ -516,11 +529,11 @@ func TestInvalidModel(t *testing.T) {
 	qd := startQdrantStub()
 	defer qd.Close()
 
-	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
-	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = stub.Server.URL
+		cfg.OPENROUTER_API_BASE = stub.Server.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -537,7 +550,7 @@ func TestInvalidModel(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated {
 		t.Fatalf("create failed: %d", resC.StatusCode)
 	}
@@ -554,7 +567,7 @@ func TestInvalidModel(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("chat failed: %d", resCh.StatusCode)
 	}
@@ -562,6 +575,10 @@ func TestInvalidModel(t *testing.T) {
 
 	// Verify Stub used invalid-model (OpenRouter pass-through)
 	stub.Mu.Lock()
+	if len(stub.Requests) == 0 {
+		stub.Mu.Unlock()
+		t.Fatal("no requests received by temperature stub")
+	}
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.Mu.Unlock()
 
@@ -577,11 +594,11 @@ func TestFreePlan_RAGTopK_UsesPlanLimit(t *testing.T) {
 	qd := startQdrantTopKStub()
 	defer qd.Server.Close()
 
-	t.Setenv("OPENAI_API_BASE", stub.Server.URL)
-	t.Setenv("OPENROUTER_API_BASE", stub.Server.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.Server.URL)
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = stub.Server.URL
+		cfg.OPENROUTER_API_BASE = stub.Server.URL + "/v1"
+		cfg.QDRANT_URL = qd.Server.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -595,7 +612,7 @@ func TestFreePlan_RAGTopK_UsesPlanLimit(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, err := http.DefaultClient.Do(reqC)
+	resC, err := testHTTPClient().Do(reqC)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -613,7 +630,7 @@ func TestFreePlan_RAGTopK_UsesPlanLimit(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, err := http.DefaultClient.Do(reqCh)
+	resCh, err := testHTTPClient().Do(reqCh)
 	if err != nil {
 		t.Fatalf("chat request failed: %v", err)
 	}

@@ -22,6 +22,7 @@ type refreshRequest struct {
 }
 
 func TestAuth_Refresh_GeneratesNewAccessToken(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -34,7 +35,7 @@ func TestAuth_Refresh_GeneratesNewAccessToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
 	}
-	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestAuth_Refresh_GeneratesNewAccessToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal refresh body failed: %v", err)
 	}
-	resRef, err := http.Post(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(reqJSON))
+	resRef, err := testHTTPPost(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(reqJSON))
 	if err != nil {
 		t.Fatalf("refresh request failed: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestAuth_Refresh_GeneratesNewAccessToken(t *testing.T) {
 
 	reqOld, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/protected", nil)
 	reqOld.Header.Set("Authorization", "Bearer "+regTokens.Token)
-	resOld, err := http.DefaultClient.Do(reqOld)
+	resOld, err := testHTTPClient().Do(reqOld)
 	if err != nil {
 		t.Fatalf("protected request with old access token failed: %v", err)
 	}

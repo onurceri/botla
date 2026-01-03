@@ -11,6 +11,7 @@ import (
 
 // TestServiceLevelConstraints covers SVC-001 to SVC-010
 func TestServiceLevelConstraints(t *testing.T) {
+	t.Parallel()
 	te, orgID, tokens, _ := setupRBACEnv(t)
 	defer fixtures.TeardownTestEnv(te)
 
@@ -18,11 +19,11 @@ func TestServiceLevelConstraints(t *testing.T) {
 	getMemberID := func(token, email string) string {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+orgID+"/members", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		if err != nil {
 			return ""
 		}
-		defer res.Body.Close()
+		defer drainBody(res)
 
 		var resp struct {
 			Members []struct {
@@ -51,8 +52,8 @@ func TestServiceLevelConstraints(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+adminID, bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 
 		if res.StatusCode != http.StatusForbidden && res.StatusCode != http.StatusBadRequest {
 			t.Errorf("expected 403/400 for self-promotion, got %d", res.StatusCode)
@@ -71,8 +72,8 @@ func TestServiceLevelConstraints(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+targetID, bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+tokens["admin"])
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 
 		if res.StatusCode != http.StatusForbidden {
 			t.Errorf("expected 403 for admin assigning owner, got %d", res.StatusCode)
@@ -87,8 +88,8 @@ func TestServiceLevelConstraints(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+ownerID, bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 
 		// Should fail because it's the last owner
 		if res.StatusCode != http.StatusBadRequest && res.StatusCode != http.StatusForbidden {
@@ -102,8 +103,8 @@ func TestServiceLevelConstraints(t *testing.T) {
 
 		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+ownerID, nil)
 		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 
 		if res.StatusCode != http.StatusBadRequest && res.StatusCode != http.StatusForbidden {
 			t.Errorf("expected 400/403 for removing last owner, got %d", res.StatusCode)
@@ -117,8 +118,8 @@ func TestServiceLevelConstraints(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+adminID, bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 		if res.StatusCode != http.StatusOK {
 			t.Fatalf("failed to promote admin to owner: %d", res.StatusCode)
 		}
@@ -131,7 +132,7 @@ func TestServiceLevelConstraints(t *testing.T) {
 		reqDemote, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+ownerID, bytes.NewReader(bodyDemote))
 		reqDemote.Header.Set("Authorization", "Bearer "+tokens["admin"]) // This user is now owner
 		reqDemote.Header.Set("Content-Type", "application/json")
-		resDemote, _ := http.DefaultClient.Do(reqDemote)
+		resDemote, _ := testHTTPClient().Do(reqDemote)
 		resDemote.Body.Close()
 
 		if resDemote.StatusCode != http.StatusOK {
@@ -146,8 +147,8 @@ func TestServiceLevelConstraints(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/organizations/"+orgID+"/members/"+targetID, bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+tokens["owner"])
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
-		res.Body.Close()
+		res, _ := testHTTPClient().Do(req)
+		drainBody(res)
 
 		if res.StatusCode != http.StatusBadRequest && res.StatusCode != http.StatusForbidden {
 			t.Errorf("expected 400 or 403 for invalid role, got %d", res.StatusCode)
@@ -162,12 +163,12 @@ func TestServiceLevelConstraints(t *testing.T) {
 		// 2. Get that org ID
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations", nil)
 		req.Header.Set("Authorization", "Bearer "+newUserToken)
-		res, _ := http.DefaultClient.Do(req)
+		res, _ := testHTTPClient().Do(req)
 		var orgs []struct {
 			ID string `json:"id"`
 		}
 		json.NewDecoder(res.Body).Decode(&orgs)
-		res.Body.Close()
+		drainBody(res)
 
 		if len(orgs) != 1 {
 			t.Fatalf("expected 1 default org for new user, got %d", len(orgs))
@@ -177,7 +178,7 @@ func TestServiceLevelConstraints(t *testing.T) {
 		// 3. Try to delete it
 		reqDel, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+defaultOrgID, nil)
 		reqDel.Header.Set("Authorization", "Bearer "+newUserToken)
-		resDel, _ := http.DefaultClient.Do(reqDel)
+		resDel, _ := testHTTPClient().Do(reqDel)
 		resDel.Body.Close()
 
 		// 4. Expect 400 Bad Request
@@ -194,12 +195,12 @@ func TestServiceLevelConstraints(t *testing.T) {
 		// 2. Get org ID
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations", nil)
 		req.Header.Set("Authorization", "Bearer "+newUserToken)
-		res, _ := http.DefaultClient.Do(req)
+		res, _ := testHTTPClient().Do(req)
 		var orgs []struct {
 			ID string `json:"id"`
 		}
 		json.NewDecoder(res.Body).Decode(&orgs)
-		res.Body.Close()
+		drainBody(res)
 
 		if len(orgs) == 0 {
 			t.Fatalf("new user has no orgs")
@@ -209,7 +210,7 @@ func TestServiceLevelConstraints(t *testing.T) {
 		// 3. Get workspaces
 		reqWS, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+defaultOrgID+"/workspaces", nil)
 		reqWS.Header.Set("Authorization", "Bearer "+newUserToken)
-		resWS, _ := http.DefaultClient.Do(reqWS)
+		resWS, _ := testHTTPClient().Do(reqWS)
 		var workspaces []struct {
 			ID string `json:"id"`
 		}
@@ -224,7 +225,7 @@ func TestServiceLevelConstraints(t *testing.T) {
 		// 4. Try to delete it
 		reqDel, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+defaultOrgID+"/workspaces/"+defaultWSID, nil)
 		reqDel.Header.Set("Authorization", "Bearer "+newUserToken)
-		resDel, _ := http.DefaultClient.Do(reqDel)
+		resDel, _ := testHTTPClient().Do(reqDel)
 		resDel.Body.Close()
 
 		// 5. Expect 400 Bad Request
@@ -236,6 +237,7 @@ func TestServiceLevelConstraints(t *testing.T) {
 
 // TestWorkspaceScoping covers WSC-001 to WSC-004
 func TestWorkspaceScoping(t *testing.T) {
+	t.Parallel()
 	te, orgID, tokens, wsID := setupRBACEnv(t)
 	defer fixtures.TeardownTestEnv(te)
 
@@ -256,11 +258,11 @@ func TestWorkspaceScoping(t *testing.T) {
 		req.Header.Set("X-Workspace-ID", wsID)
 		req.Header.Set("Content-Type", "application/json")
 
-		res, _ := http.DefaultClient.Do(req)
+		res, _ := testHTTPClient().Do(req)
 		if res.StatusCode != http.StatusCreated {
 			// t.Logf("Failed to create chatbot: %d", res.StatusCode)
 		}
-		res.Body.Close()
+		drainBody(res)
 	})
 
 	// WSC-002: List chatbots scoped by workspace
@@ -276,14 +278,14 @@ func TestWorkspaceScoping(t *testing.T) {
 		req2.Header.Set("Authorization", "Bearer "+tokens["admin"])
 		req2.Header.Set("X-Workspace-ID", ws2ID)
 		req2.Header.Set("Content-Type", "application/json")
-		res2, _ := http.DefaultClient.Do(req2)
+		res2, _ := testHTTPClient().Do(req2)
 		res2.Body.Close()
 
 		// List bots for WS1 (should only see WS1 Bot)
 		reqL1, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots", nil)
 		reqL1.Header.Set("Authorization", "Bearer "+tokens["admin"])
 		reqL1.Header.Set("X-Workspace-ID", wsID)
-		resL1, _ := http.DefaultClient.Do(reqL1)
+		resL1, _ := testHTTPClient().Do(reqL1)
 		if resL1.StatusCode != http.StatusOK {
 			t.Fatalf("list WS1 failed: %d", resL1.StatusCode)
 		}
@@ -313,7 +315,7 @@ func TestWorkspaceScoping(t *testing.T) {
 		reqL2, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots", nil)
 		reqL2.Header.Set("Authorization", "Bearer "+tokens["admin"])
 		reqL2.Header.Set("X-Workspace-ID", ws2ID)
-		resL2, _ := http.DefaultClient.Do(reqL2)
+		resL2, _ := testHTTPClient().Do(reqL2)
 		var bots2 []map[string]interface{}
 		json.NewDecoder(resL2.Body).Decode(&bots2)
 		resL2.Body.Close()
@@ -354,7 +356,7 @@ func TestWorkspaceScoping(t *testing.T) {
 		// Delete WS2
 		reqD, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/organizations/"+orgID+"/workspaces/"+ws2ID, nil)
 		reqD.Header.Set("Authorization", "Bearer "+tokens["admin"])
-		resD, _ := http.DefaultClient.Do(reqD)
+		resD, _ := testHTTPClient().Do(reqD)
 		if resD.StatusCode != http.StatusOK && resD.StatusCode != http.StatusNoContent {
 			t.Fatalf("delete workspace failed: %d", resD.StatusCode)
 		}
@@ -370,7 +372,7 @@ func TestWorkspaceScoping(t *testing.T) {
 		reqL, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots", nil)
 		reqL.Header.Set("Authorization", "Bearer "+tokens["admin"])
 		// No workspace header
-		resL, _ := http.DefaultClient.Do(reqL)
+		resL, _ := testHTTPClient().Do(reqL)
 		var bots []map[string]interface{}
 		json.NewDecoder(resL.Body).Decode(&bots)
 		resL.Body.Close()

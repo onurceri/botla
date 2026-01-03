@@ -72,7 +72,6 @@ func TestSourceQueue_StatusNilLog(t *testing.T) {
 func TestSourceQueue_EnqueueJob(t *testing.T) {
 	log := logger.New("INFO")
 	queue := NewQueueManager(1, log, nil)
-	queue.Start()
 	defer queue.Stop()
 
 	sq := &SourceQueue{
@@ -99,7 +98,6 @@ func TestSourceQueue_EnqueueJobNilQueue(t *testing.T) {
 func TestSourceQueue_StatusWithJobs(t *testing.T) {
 	log := logger.New("INFO")
 	queue := NewQueueManager(2, log, nil)
-	queue.Start()
 	defer queue.Stop()
 
 	queue.Enqueue("job-1")

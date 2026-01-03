@@ -86,17 +86,6 @@ func TestTextProcessor_Unit(t *testing.T) {
 }
 
 func TestURLProcessor_Unit(t *testing.T) {
-	t.Run("Creates with DefaultScraper when nil", func(t *testing.T) {
-		mockOAI := &rag.MockLLMClient{}
-		mockVC := &rag.MockVectorClient{}
-
-		p := NewURLProcessor(nil, mockOAI, mockVC, nil, nil)
-
-		assert.NotNil(t, p.Scraper)
-		assert.NotNil(t, p.OpenAIClient)
-		assert.NotNil(t, p.VectorClient)
-	})
-
 	t.Run("Uses injected mock scraper", func(t *testing.T) {
 		mockOAI := &rag.MockLLMClient{}
 		mockVC := &rag.MockVectorClient{}

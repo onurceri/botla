@@ -22,6 +22,37 @@ import { usePlans } from '@/hooks/queries/usePlans'
 
 // --- Components ---
 
+// --- Premium Visual Primitives ---
+
+const Noise = () => (
+  <div className="fixed inset-0 w-full h-full pointer-events-none opacity-[0.03] z-[100] mix-blend-overlay">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <filter id="noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+      </filter>
+      <rect width="100%" height="100%" filter="url(#noise)" />
+    </svg>
+  </div>
+)
+
+const MouseHighlight = () => {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => setMousePos({ x: e.clientX, y: e.clientY })
+    window.addEventListener('mousemove', handleMove)
+    return () => window.removeEventListener('mousemove', handleMove)
+  }, [])
+
+  return (
+    <div 
+      className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300"
+      style={{
+        background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(245, 158, 11, 0.06), transparent 80%)`
+      }}
+    />
+  )
+}
+
 const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   const [isOpen, setIsOpen] = useState(false)
   const navigate = useNavigate()
@@ -175,15 +206,39 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
   const [useVideo, setUseVideo] = useState(true)
 
   return (
-    <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-      {/* Background Orbs */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[20%] right-[-10%] w-[500px] h-[500px] bg-primary/5 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+    <section className="relative pt-32 pb-24 lg:pt-56 lg:pb-40 overflow-hidden">
+      {/* Refractive Intelligence Orb */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10 pointer-events-none sticky">
+        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/15 blur-[180px] rounded-full animate-pulse" />
+        <div className="absolute top-[10%] left-[40%] w-[400px] h-[400px] bg-orange-600/10 blur-[140px] rounded-full animate-bounce" style={{ animationDuration: '8s' }} />
+      </div>
+
+      {/* Floating Data Markers */}
+      <div className="absolute inset-0 -z-5 pointer-events-none overflow-hidden opacity-20">
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ 
+              opacity: [0, 1, 0], 
+              scale: [0.5, 1, 0.5],
+              y: [0, -100, 0],
+              x: [0, Math.sin(i) * 50, 0]
+            }}
+            transition={{ duration: 10 + i * 2, repeat: Infinity, delay: i * 1.5 }}
+            className="absolute rounded-full border border-primary/20 bg-primary/5 flex items-center justify-center p-2"
+            style={{ 
+              top: `${20 + i * 12}%`, 
+              left: `${15 + i * 14}%`,
+            }}
+          >
+            <div className="w-1 h-1 rounded-full bg-primary" />
+          </motion.div>
+        ))}
       </div>
 
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative">
-        <div className="flex flex-col items-center text-center max-w-4xl mx-auto mb-16 px-4">
+        <div className="flex flex-col items-center text-center max-w-5xl mx-auto mb-20 px-4">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -199,14 +254,19 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.8 }}
-            className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-foreground mb-8 leading-[1.05]"
+            transition={{ delay: 0.1, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="text-6xl sm:text-7xl lg:text-9xl font-bold tracking-tight text-foreground mb-10 leading-[0.95]"
           >
-            Verilerinizi <br />
-            <span className="bg-clip-text text-transparent bg-gradient-to-b from-primary to-orange-600">
-              Akıllı Asistanlara
+            Pasif Veriyi <br />
+            <span className="relative inline-block">
+              <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-b from-primary via-primary to-orange-700">
+                Aktif Akla
+              </span>
+              <svg className="absolute -bottom-2 left-0 w-full h-4 text-primary/20 -z-1" viewBox="0 0 400 20" fill="none">
+                <path d="M5 15C100 5 300 5 395 15" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+              </svg>
             </span>
             <br /> Dönüştürün.
           </motion.h1>
@@ -214,64 +274,54 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl leading-relaxed"
+            transition={{ delay: 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="text-xl sm:text-2xl text-muted-foreground/80 mb-14 max-w-3xl leading-relaxed font-medium"
           >
-            1 dakika içinde PDF dosyalarınızı birer uzmana dönüştürün. 
-            Web sitenizi taratın, dokümanlarınızı yükleyin ve 7/24 çalışan asistanınızı hemen yayınlayın.
+            Statik dokümanlarınızı saniyeler içinde yaşayan bir şirket hafızasına dönüştürün. 
+            Botla.app ile yapay zeka, sadece cevap vermez; işinizi sizinle birlikte yönetir.
           </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-            className="flex flex-col sm:flex-row gap-4 items-center"
+            transition={{ delay: 0.3, duration: 1 }}
+            className="flex flex-col sm:flex-row gap-6 items-center"
           >
             <Link to={authenticated ? "/dashboard" : "/register"}>
-              <Button size="lg" className="h-14 px-10 text-lg font-semibold rounded-full shadow-glow group transition-all hover:scale-[1.02]">
-                {authenticated ? "Dashboard'a Dön" : "Hemen Ücretsiz Başla"}
-                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+              <Button size="lg" className="h-16 px-12 text-xl font-bold rounded-2xl shadow-glow group hover:scale-105 transition-all">
+                {authenticated ? "Dashboard'a Dön" : "Ücretsiz Eğitime Başla"}
+                <ArrowRight className="ml-3 w-6 h-6 transition-transform group-hover:translate-x-2" />
               </Button>
             </Link>
-            <a href="#how-it-works">
+            <a href="#features">
               <Button
                 variant="outline"
                 size="lg"
-                className="h-14 px-10 text-lg font-semibold rounded-full border-border/40 hover:bg-muted/50 transition-all hover:scale-[1.02]"
+                className="h-16 px-12 text-xl font-bold rounded-2xl border-border/40 hover:bg-muted/50 transition-all"
               >
-                Nasıl Çalışır?
+                Yetenekleri Keşfet
               </Button>
             </a>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-12 flex items-center gap-8 text-sm text-muted-foreground border-t border-border/10 pt-8"
-          >
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-success" />
-              <span>Kredi Kartı Gerekmez</span>
-            </div>
-            <div className="flex items-center gap-2 border-l border-border/10 pl-8">
-              <CheckCircle2 className="w-5 h-5 text-success" />
-              <span>Saniyeler İçinde Kurulum</span>
-            </div>
           </motion.div>
         </div>
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 40 }}
+          initial={{ opacity: 0, scale: 0.98, y: 60 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-w-5xl mx-auto"
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="relative max-w-6xl mx-auto group"
         >
-          <div className="glass shadow-2xl rounded-[2.5rem] p-3 border border-white/30 backdrop-blur-2xl">
-            <div className="relative rounded-[2rem] overflow-hidden bg-card border border-border/40 aspect-video group">
+          {/* Edge Glow Effect */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-orange-500/10 to-primary/20 rounded-[3rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+          
+          <div className="glass shadow-[0_0_100px_rgba(245,158,11,0.1)] rounded-[3rem] p-4 border border-white/40 backdrop-blur-3xl relative overflow-hidden">
+            {/* Glossy Overlay */}
+            <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+            
+            <div className="relative rounded-[2.5rem] overflow-hidden bg-card border border-border/40 aspect-[16/10]">
               {useVideo ? (
                 <video
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.01]"
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-[1.02]"
                   autoPlay
                   muted
                   loop
@@ -285,12 +335,11 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
               ) : (
                 <img
                   src={heroSrc}
-                  alt="Dashboard Preview"
+                  alt="Executive Dashboard"
                   className="w-full h-full object-cover"
                   onError={() => setHeroSrc('/assets/landing-hero-final.png')}
                 />
               )}
-              <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background/40 via-transparent to-transparent opacity-60 pointer-events-none" />
             </div>
           </div>
         </motion.div>
@@ -874,7 +923,9 @@ export default function LandingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background font-sans selection:bg-primary/20 text-foreground">
+    <div className="relative isolate min-h-screen bg-background font-sans selection:bg-primary/20 text-foreground">
+      <Noise />
+      <MouseHighlight />
       <Navbar authenticated={authenticated} />
       <main>
         <Hero authenticated={authenticated} />

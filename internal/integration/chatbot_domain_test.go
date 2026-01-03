@@ -11,6 +11,7 @@ import (
 )
 
 func TestChatbot_DomainUpdates(t *testing.T) {
+t.Parallel()
 	// Setup
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
@@ -25,7 +26,7 @@ func TestChatbot_DomainUpdates(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("setup create failed: %d", res.StatusCode)
 	}
@@ -33,7 +34,7 @@ func TestChatbot_DomainUpdates(t *testing.T) {
 		ID string `json:"id"`
 	}
 	json.NewDecoder(res.Body).Decode(&created)
-	res.Body.Close()
+	drainBody(res)
 
 	// 1. Update Basic Info
 	basicInfo := map[string]any{
@@ -46,7 +47,7 @@ func TestChatbot_DomainUpdates(t *testing.T) {
 	req1, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+created.ID+"/basic-info", bytes.NewReader(bi))
 	req1.Header.Set("Authorization", "Bearer "+token)
 	req1.Header.Set("Content-Type", "application/json")
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusOK {
 		var buf bytes.Buffer
 		buf.ReadFrom(res1.Body)
@@ -64,7 +65,7 @@ func TestChatbot_DomainUpdates(t *testing.T) {
 	req2, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+created.ID+"/appearance", bytes.NewReader(ap))
 	req2.Header.Set("Authorization", "Bearer "+token)
 	req2.Header.Set("Content-Type", "application/json")
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	if res2.StatusCode != http.StatusOK {
 		t.Fatalf("update appearance failed: %d", res2.StatusCode)
 	}
@@ -78,7 +79,7 @@ func TestChatbot_DomainUpdates(t *testing.T) {
 	req3, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+created.ID+"/model", bytes.NewReader(ms))
 	req3.Header.Set("Authorization", "Bearer "+token)
 	req3.Header.Set("Content-Type", "application/json")
-	res3, _ := http.DefaultClient.Do(req3)
+	res3, _ := testHTTPClient().Do(req3)
 	if res3.StatusCode != http.StatusOK {
 		t.Fatalf("update model settings failed: %d", res3.StatusCode)
 	}
@@ -86,7 +87,7 @@ func TestChatbot_DomainUpdates(t *testing.T) {
 	// Verify all changes via GET
 	reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+created.ID, nil)
 	reqG.Header.Set("Authorization", "Bearer "+token)
-	resG, _ := http.DefaultClient.Do(reqG)
+	resG, _ := testHTTPClient().Do(reqG)
 	if resG.StatusCode != http.StatusOK {
 		t.Fatalf("get chatbot failed: %d", resG.StatusCode)
 	}

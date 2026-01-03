@@ -18,6 +18,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/pdf"
 	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
@@ -104,7 +105,7 @@ func waitForProcessingPro(t *testing.T, te *fixtures.TestEnv, token, sourceID st
 	for time.Now().Before(deadline) {
 		reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/sources/"+sourceID, nil)
 		reqG.Header.Set("Authorization", "Bearer "+token)
-		resG, _ := http.DefaultClient.Do(reqG)
+		resG, _ := testHTTPClient().Do(reqG)
 		if resG.StatusCode == http.StatusOK {
 			var st map[string]any
 			json.NewDecoder(resG.Body).Decode(&st)
@@ -123,15 +124,19 @@ func waitForProcessingPro(t *testing.T, te *fixtures.TestEnv, token, sourceID st
 	t.Fatalf("timeout waiting for source processing")
 }
 
-func setupStubs(t *testing.T) (*fixtures.LLMMock, *httptest.Server) {
+func setupStubs(t *testing.T) (*fixtures.LLMMock, *httptest.Server, fixtures.ConfigOverride) {
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qd.URL)
-	return oai, qd
+	override := func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.QDRANT_URL = qd.URL
+	}
+	return oai, qd, override
 }
 
 func TestProPlan_ModelSelection(t *testing.T) {
+	t.Parallel()
+
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -153,7 +158,7 @@ func TestProPlan_ModelSelection(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resC.Body)
 		resC.Body.Close()
@@ -169,7 +174,7 @@ func TestProPlan_ModelSelection(t *testing.T) {
 	reqU1, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB1))
 	reqU1.Header.Set("Authorization", "Bearer "+token)
 	reqU1.Header.Set("Content-Type", "application/json")
-	resU1, _ := http.DefaultClient.Do(reqU1)
+	resU1, _ := testHTTPClient().Do(reqU1)
 	if resU1.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 OK for gpt-4o, got %d", resU1.StatusCode)
 	}
@@ -181,7 +186,7 @@ func TestProPlan_ModelSelection(t *testing.T) {
 	reqU2, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB2))
 	reqU2.Header.Set("Authorization", "Bearer "+token)
 	reqU2.Header.Set("Content-Type", "application/json")
-	resU2, _ := http.DefaultClient.Do(reqU2)
+	resU2, _ := testHTTPClient().Do(reqU2)
 	if resU2.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected 403 Forbidden for claude-3-5-sonnet, got %d", resU2.StatusCode)
 	}
@@ -189,15 +194,17 @@ func TestProPlan_ModelSelection(t *testing.T) {
 }
 
 func TestProPlan_MonthlyTokenLimit(t *testing.T) {
+	t.Parallel()
+
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	defer oai.Close()
 	defer qd.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qd.URL)
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -212,13 +219,20 @@ func TestProPlan_MonthlyTokenLimit(t *testing.T) {
 		t.Fatalf("failed to update user plan: %v", err)
 	}
 
+	// Get user ID
+	var userID string
+	err = te.DB.QueryRow(`SELECT id FROM users WHERE email = $1`, "pro_token@example.com").Scan(&userID)
+	if err != nil {
+		t.Fatalf("failed to get user ID: %v", err)
+	}
+
 	// Create chatbot
-	create := map[string]any{"name": "Token Limit Bot", "model": "gpt-4o"}
+	create := map[string]any{"name": "Token Limit Bot", "model": "gpt-4o", "max_tokens": 512}
 	cbj, _ := json.Marshal(create)
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resC.Body)
 		resC.Body.Close()
@@ -228,38 +242,38 @@ func TestProPlan_MonthlyTokenLimit(t *testing.T) {
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
 
-	// 1. Simulate usage: 999,900 tokens (below 1M limit)
-	// We need to ensure we insert for the current month
-	// analytics_date should be today
-	_, err = te.DB.Exec(`INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations, total_tokens_used, handoff_count)
-		VALUES ($1, CURRENT_DATE, 100, 10, 999900, 0)`, bot.ID)
+	// 1. Simulate usage: 999,400 tokens (leaving room for estimated 512 tokens)
+	// We need to ensure we insert for the current month in usage_ingestions
+	monthStart := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.UTC)
+	_, err = te.DB.Exec(`INSERT INTO usage_ingestions (user_id, period_month, chat_tokens, sources_count, embedding_tokens, updated_at)
+		VALUES ($1, $2, 999400, 0, 0, NOW())`, userID, monthStart)
 	if err != nil {
-		t.Fatalf("failed to insert analytics: %v", err)
+		t.Fatalf("failed to insert usage: %v", err)
 	}
 
-	// 2. Send chat message (Expect 200)
+	// 2. Send chat message (Expect 200 - 999400 + 512 = 999912 < 1000000)
 	cr := map[string]any{"message": "hello", "session_id": "s1"}
 	crb, _ := json.Marshal(cr)
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 OK, got %d", resCh.StatusCode)
 	}
 	resCh.Body.Close()
 
-	// 3. Update usage to exceed 1M
-	_, err = te.DB.Exec(`UPDATE analytics SET total_tokens_used = 1000001 WHERE chatbot_id = $1 AND analytics_date = CURRENT_DATE`, bot.ID)
+	// 3. Update usage to 999,913 (will exceed when adding 512 more)
+	_, err = te.DB.Exec(`UPDATE usage_ingestions SET chat_tokens = 999913 WHERE user_id = $1 AND period_month = $2`, userID, monthStart)
 	if err != nil {
-		t.Fatalf("failed to update analytics: %v", err)
+		t.Fatalf("failed to update usage: %v", err)
 	}
 
 	// 4. Send chat message (Expect 429 or 402)
 	reqCh2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh2.Header.Set("Authorization", "Bearer "+token)
 	reqCh2.Header.Set("Content-Type", "application/json")
-	resCh2, _ := http.DefaultClient.Do(reqCh2)
+	resCh2, _ := testHTTPClient().Do(reqCh2)
 	// Note: Implementation might return 402 Payment Required or 429 Too Many Requests
 	if resCh2.StatusCode != http.StatusTooManyRequests && resCh2.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("expected 429 or 402, got %d", resCh2.StatusCode)
@@ -268,6 +282,8 @@ func TestProPlan_MonthlyTokenLimit(t *testing.T) {
 }
 
 func TestProPlan_PDFLimits(t *testing.T) {
+	t.Parallel()
+
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -289,7 +305,7 @@ func TestProPlan_PDFLimits(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resC.Body)
 		resC.Body.Close()
@@ -304,14 +320,14 @@ func TestProPlan_PDFLimits(t *testing.T) {
 		var b bytes.Buffer
 		mw := multipart.NewWriter(&b)
 		mw.WriteField("source_type", "pdf")
-		part, _ := mw.CreateFormFile("file", "test.pdf")
-		part.Write([]byte("%PDF-1.4\n...dummy content...")) // Minimal content
+		part, _ := mw.CreateFormFile("file", fmt.Sprintf("test_%d.pdf", i))
+		part.Write([]byte(fmt.Sprintf("%%PDF-1.4\n...dummy content %d...", i))) // Unique content
 		mw.Close()
 
 		reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 		reqS.Header.Set("Authorization", "Bearer "+token)
 		reqS.Header.Set("Content-Type", mw.FormDataContentType())
-		resS, _ := http.DefaultClient.Do(reqS)
+		resS, _ := testHTTPClient().Do(reqS)
 		if resS.StatusCode != http.StatusCreated {
 			t.Fatalf("failed to upload PDF %d: %d", i+1, resS.StatusCode)
 		}
@@ -324,13 +340,13 @@ func TestProPlan_PDFLimits(t *testing.T) {
 		mw := multipart.NewWriter(&b)
 		mw.WriteField("source_type", "pdf")
 		part, _ := mw.CreateFormFile("file", "overflow.pdf")
-		part.Write([]byte("%PDF-1.4\n..."))
+		part.Write([]byte("%PDF-1.4\n...unique overflow content..."))
 		mw.Close()
 
 		reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 		reqS.Header.Set("Authorization", "Bearer "+token)
 		reqS.Header.Set("Content-Type", mw.FormDataContentType())
-		resS, _ := http.DefaultClient.Do(reqS)
+		resS, _ := testHTTPClient().Do(reqS)
 		if resS.StatusCode != http.StatusForbidden {
 			t.Fatalf("expected 403 for 21st PDF, got %d", resS.StatusCode)
 		}
@@ -345,7 +361,7 @@ func TestProPlan_PDFLimits(t *testing.T) {
 		reqC2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj2))
 		reqC2.Header.Set("Authorization", "Bearer "+token)
 		reqC2.Header.Set("Content-Type", "application/json")
-		resC2, _ := http.DefaultClient.Do(reqC2)
+		resC2, _ := testHTTPClient().Do(reqC2)
 		if resC2.StatusCode != http.StatusCreated && resC2.StatusCode != http.StatusOK {
 			t.Fatalf("chatbot 2 create failed: %d", resC2.StatusCode)
 		}
@@ -376,7 +392,7 @@ func TestProPlan_PDFLimits(t *testing.T) {
 		reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot2.ID+"/sources", pr)
 		reqS.Header.Set("Authorization", "Bearer "+token)
 		reqS.Header.Set("Content-Type", mw.FormDataContentType())
-		resS, _ := http.DefaultClient.Do(reqS)
+		resS, _ := testHTTPClient().Do(reqS)
 		if resS.StatusCode != http.StatusRequestEntityTooLarge {
 			t.Fatalf("expected 413 for large PDF, got %d", resS.StatusCode)
 		}
@@ -385,6 +401,8 @@ func TestProPlan_PDFLimits(t *testing.T) {
 }
 
 func TestProPlan_PDF_OCREnabledFlag(t *testing.T) {
+	t.Parallel()
+
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -404,6 +422,8 @@ func TestProPlan_PDF_OCREnabledFlag(t *testing.T) {
 }
 
 func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
+	t.Parallel()
+
 	_, err := pdf.ExtractPDFText("nonexistent.pdf", "en", true)
 	if err != nil && strings.Contains(err.Error(), "pdf support not enabled") {
 		t.Skip("pdf support not enabled; build with -tags fitz to run this test")
@@ -416,11 +436,11 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 	}
 	_ = ocrText
 
-	oai, qd := setupStubs(t)
+	oai, qd, override := setupStubs(t)
 	defer oai.Close()
 	defer qd.Close()
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfig(override)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -440,7 +460,7 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
 	}
@@ -460,7 +480,7 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body.String()))
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusCreated {
 		t.Fatalf("expected pdf source 201, got %d", resS.StatusCode)
 	}
@@ -484,6 +504,8 @@ func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
 }
 
 func TestProPlan_URLLimits(t *testing.T) {
+	t.Parallel()
+
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -505,7 +527,7 @@ func TestProPlan_URLLimits(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
 	}
@@ -525,7 +547,7 @@ func TestProPlan_URLLimits(t *testing.T) {
 		reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 		reqS.Header.Set("Authorization", "Bearer "+token)
 		reqS.Header.Set("Content-Type", mw.FormDataContentType())
-		resS, _ := http.DefaultClient.Do(reqS)
+		resS, _ := testHTTPClient().Do(reqS)
 		if resS.StatusCode != http.StatusCreated {
 			t.Fatalf("failed to add URL %d: %d", i+1, resS.StatusCode)
 		}
@@ -543,7 +565,7 @@ func TestProPlan_URLLimits(t *testing.T) {
 		reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 		reqS.Header.Set("Authorization", "Bearer "+token)
 		reqS.Header.Set("Content-Type", mw.FormDataContentType())
-		resS, _ := http.DefaultClient.Do(reqS)
+		resS, _ := testHTTPClient().Do(reqS)
 		if resS.StatusCode != http.StatusForbidden {
 			t.Fatalf("expected 403 for 11th URL, got %d", resS.StatusCode)
 		}
@@ -552,22 +574,24 @@ func TestProPlan_URLLimits(t *testing.T) {
 }
 
 func TestProPlan_DynamicScraping(t *testing.T) {
-	oai, qd := setupStubs(t)
+	oai, qd, override := setupStubs(t)
 	defer oai.Close()
 	defer qd.Close()
 
 	page := startProDynamicHTMLStub()
 	defer page.Close()
 
-	t.Setenv("SCRAPER_ALLOWED_DOMAINS", "127.0.0.1,localhost")
-
-	cfg := scraper.DefaultDynamicConfig()
-	cfg.NavTimeout = 3 * time.Second
+	cfg := scraper.DynamicConfig{
+		PoolSize:   1,
+		IdleTTL:    30 * time.Second,
+		NavTimeout: 3 * time.Second,
+		Allowed:    []string{"127.0.0.1", "localhost"},
+	}
 	if _, dynErr := scraper.ScrapeDynamicURL(page.URL, cfg); dynErr != nil {
 		t.Skip("dynamic scraping not available: " + dynErr.Error())
 	}
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfig(override)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -588,7 +612,7 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
 	}
@@ -606,7 +630,7 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201 Created, got %d", resS.StatusCode)
 	}
@@ -636,18 +660,23 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 }
 
 func TestProPlan_DiscoveryMode(t *testing.T) {
-	oai, qd := setupStubs(t)
+	t.Parallel()
+
+	oai, qd, override := setupStubs(t)
 	defer oai.Close()
 	defer qd.Close()
 
 	page := startProLinkedHTMLStub()
 	defer page.Close()
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfig(override)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
+
+	// Allow localhost URLs for testing
+	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(true)
 
 	updateProPlanConfig(t, te)
 
@@ -664,7 +693,7 @@ func TestProPlan_DiscoveryMode(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
 	}
@@ -682,7 +711,7 @@ func TestProPlan_DiscoveryMode(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201 Created, got %d", resS.StatusCode)
 	}
@@ -722,18 +751,23 @@ func TestProPlan_DiscoveryMode(t *testing.T) {
 }
 
 func TestProPlan_Refresh(t *testing.T) {
-	oai, qd := setupStubs(t)
+	t.Parallel()
+
+	oai, qd, override := setupStubs(t)
 	defer oai.Close()
 	defer qd.Close()
 
 	page := startProDynamicHTMLStub()
 	defer page.Close()
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfig(override)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
+
+	// Allow localhost URLs for testing
+	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(true)
 
 	updateProPlanConfig(t, te)
 
@@ -750,7 +784,7 @@ func TestProPlan_Refresh(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
 	}
@@ -768,7 +802,7 @@ func TestProPlan_Refresh(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201 Created, got %d", resS.StatusCode)
 	}
@@ -783,7 +817,7 @@ func TestProPlan_Refresh(t *testing.T) {
 	// 1. Manually refresh (Expect 202 Accepted)
 	reqR, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/sources/"+sourceID+"/refresh", nil)
 	reqR.Header.Set("Authorization", "Bearer "+token)
-	resR, _ := http.DefaultClient.Do(reqR)
+	resR, _ := testHTTPClient().Do(reqR)
 	if resR.StatusCode != http.StatusAccepted {
 		t.Errorf("expected refresh 202, got %d", resR.StatusCode)
 	}
@@ -795,7 +829,7 @@ func TestProPlan_Refresh(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Errorf("expected auto refresh update 200, got %d", resU.StatusCode)
 	}
@@ -803,6 +837,8 @@ func TestProPlan_Refresh(t *testing.T) {
 }
 
 func TestProPlan_Branding(t *testing.T) {
+	t.Parallel()
+
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -822,7 +858,7 @@ func TestProPlan_Branding(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -833,7 +869,7 @@ func TestProPlan_Branding(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK for hide_branding, got %d", resU.StatusCode)
 	}
@@ -845,7 +881,7 @@ func TestProPlan_Branding(t *testing.T) {
 	reqU2, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub2))
 	reqU2.Header.Set("Authorization", "Bearer "+token)
 	reqU2.Header.Set("Content-Type", "application/json")
-	resU2, _ := http.DefaultClient.Do(reqU2)
+	resU2, _ := testHTTPClient().Do(reqU2)
 	if resU2.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden for custom_branding, got %d", resU2.StatusCode)
 	}
@@ -853,6 +889,8 @@ func TestProPlan_Branding(t *testing.T) {
 }
 
 func TestProPlan_Security(t *testing.T) {
+	t.Parallel()
+
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -872,7 +910,7 @@ func TestProPlan_Security(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -887,7 +925,7 @@ func TestProPlan_Security(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK for secure embed, got %d", resU.StatusCode)
 	}
@@ -895,6 +933,8 @@ func TestProPlan_Security(t *testing.T) {
 }
 
 func TestProPlan_Guardrails(t *testing.T) {
+	t.Parallel()
+
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -914,7 +954,7 @@ func TestProPlan_Guardrails(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -933,7 +973,7 @@ func TestProPlan_Guardrails(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK for guardrails, got %d", resU.StatusCode)
 	}

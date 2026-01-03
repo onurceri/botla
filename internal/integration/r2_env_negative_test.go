@@ -49,6 +49,7 @@ func buildR2Mux(te *fixtures.TestEnv, bucket string) http.Handler {
 }
 
 func TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -68,7 +69,7 @@ func TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs(t *testing.T) {
 	email := "r2env+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	reg := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, _ := json.Marshal(reg)
-	resReg, _ := http.Post(srv.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, _ := testHTTPPost(srv.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if resReg.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resReg.StatusCode)
 	}
@@ -82,7 +83,7 @@ func TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+tr.Token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resC.StatusCode)
 	}
@@ -99,7 +100,7 @@ func TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/chatbots/"+bot.ID+"/sources", bytes.NewReader(body.Bytes()))
 	reqS.Header.Set("Authorization", "Bearer "+tr.Token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", resS.StatusCode)
 	}

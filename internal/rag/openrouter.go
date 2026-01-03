@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -49,8 +48,6 @@ func NewOpenRouterClient(cfg *config.Config, opts ...OpenRouterClientOption) (*O
 	base := ""
 	if cfg != nil && cfg.OPENROUTER_API_BASE != "" {
 		base = cfg.OPENROUTER_API_BASE
-	} else {
-		base = os.Getenv("OPENROUTER_API_BASE")
 	}
 	if base == "" {
 		base = "https://openrouter.ai/api/v1"

@@ -5,11 +5,11 @@ package scraper
 type Scraper interface {
 	// ScrapeURLWithFallback tries static scraping first, then falls back to dynamic if enabled.
 	// If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
-	ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error)
+	ScrapeURLWithFallback(task ScrapingTask, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error)
 
-	// FetchRawHTML fetches raw HTML content from a URL for link extraction purposes.
+	// FetchRawHTML fetches raw HTML content from a URL for link discovery purposes.
 	// This is separate from ScrapeURLWithFallback which extracts visible text.
-	FetchRawHTML(url string, cfg CollectorConfig) (string, error)
+	FetchRawHTML(url string) (string, error)
 
 	// ExtractLinks finds all links in the HTML content that belong to the same domain as baseURL.
 	// It returns a list of absolute URLs, optionally filtered by the provided PathFilter.

@@ -14,6 +14,7 @@ import (
 )
 
 func TestUpdateAction_OptimisticLocking(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -27,7 +28,7 @@ func TestUpdateAction_OptimisticLocking(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -54,7 +55,7 @@ func TestUpdateAction_OptimisticLocking(t *testing.T) {
 	reqA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
 	reqA.Header.Set("Authorization", "Bearer "+token)
 	reqA.Header.Set("Content-Type", "application/json")
-	resA, _ := http.DefaultClient.Do(reqA)
+	resA, _ := testHTTPClient().Do(reqA)
 	if resA.StatusCode != http.StatusCreated && resA.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resA.Body)
 		t.Fatalf("create action failed: %d body: %s", resA.StatusCode, string(body))
@@ -78,7 +79,7 @@ func TestUpdateAction_OptimisticLocking(t *testing.T) {
 	reqU1, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions/"+action.ID, bytes.NewReader(u1))
 	reqU1.Header.Set("Authorization", "Bearer "+token)
 	reqU1.Header.Set("Content-Type", "application/json")
-	resU1, _ := http.DefaultClient.Do(reqU1)
+	resU1, _ := testHTTPClient().Do(reqU1)
 	if resU1.StatusCode != http.StatusOK {
 		t.Fatalf("update 1 failed: %d", resU1.StatusCode)
 	}
@@ -92,6 +93,7 @@ func TestUpdateAction_OptimisticLocking(t *testing.T) {
 }
 
 func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -106,7 +108,7 @@ func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -133,7 +135,7 @@ func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
 	reqA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
 	reqA.Header.Set("Authorization", "Bearer "+token)
 	reqA.Header.Set("Content-Type", "application/json")
-	resA, _ := http.DefaultClient.Do(reqA)
+	resA, _ := testHTTPClient().Do(reqA)
 
 	if resA.StatusCode != http.StatusCreated && resA.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resA.Body)
@@ -176,6 +178,7 @@ func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
 }
 
 func TestGetOrCreateConversation_Concurrency(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -190,7 +193,7 @@ func TestGetOrCreateConversation_Concurrency(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}

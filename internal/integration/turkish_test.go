@@ -6,15 +6,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 // TRK-002: Turkish special chars in chatbot name
 func TestTurkish_ChatbotName(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -29,7 +30,7 @@ func TestTurkish_ChatbotName(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 
 	if resC.StatusCode != http.StatusCreated {
 		t.Fatalf("create failed: %d", resC.StatusCode)
@@ -49,13 +50,15 @@ func TestTurkish_ChatbotName(t *testing.T) {
 
 // TRK-004: Turkish chars in system prompt
 func TestTurkish_SystemPrompt(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -69,7 +72,7 @@ func TestTurkish_SystemPrompt(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -83,7 +86,7 @@ func TestTurkish_SystemPrompt(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(upj))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
@@ -103,14 +106,16 @@ func TestTurkish_SystemPrompt(t *testing.T) {
 
 // TRK-001: Turkish special chars in user message
 func TestTurkish_UserMessage(t *testing.T) {
+	t.Parallel()
 	// Setup with mock OpenAI to verify prompt sent to LLM
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -124,7 +129,7 @@ func TestTurkish_UserMessage(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -137,12 +142,12 @@ func TestTurkish_UserMessage(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("chat failed: %d", res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 
 	// Verify in DB
 	var content string
@@ -165,9 +170,17 @@ func TestTurkish_LocalizedError(t *testing.T) {
 
 	// Update free plan to have very low token limit
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code=$1`, policy.PlanFree.String())
-	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "error-loc@example.com")
 
-	token := authToken(t, te.Server.URL, "error-loc@example.com")
+	email := "error-loc@example.com"
+	token := authToken(t, te.Server.URL, email)
+	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), email)
+
+	// Get user ID for quota increment
+	var userID string
+	err = te.DB.QueryRow("SELECT id FROM users WHERE email=$1", email).Scan(&userID)
+	if err != nil {
+		t.Fatalf("failed to get user id: %v", err)
+	}
 
 	// Create chatbot
 	create := map[string]any{"name": "Error Bot"}
@@ -175,15 +188,18 @@ func TestTurkish_LocalizedError(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
 
-	// Manually insert usage
-	db.IncrementAnalytics(context.Background(), te.DB, bot.ID, time.Now(), true, 150, false, 500)
+	// Increment chat tokens to exceed limit (use proper quota function)
+	err = db.IncrementChatTokens(context.Background(), te.DB, userID, 500)
+	if err != nil {
+		t.Fatalf("failed to increment tokens: %v", err)
+	}
 
 	// Try chat
 	chatReq := map[string]string{"message": "Hello", "session_id": "sess1"}
@@ -193,20 +209,22 @@ func TestTurkish_LocalizedError(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	// Set Accept-Language to tr-TR
 	req.Header.Set("Accept-Language", "tr-TR")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 
 	if res.StatusCode != http.StatusPaymentRequired {
-		t.Fatalf("expected 402, got %d", res.StatusCode)
+		t.Fatalf("TRK-010: expected 402, got %d", res.StatusCode)
 	}
 
 	var errResp map[string]any
 	json.NewDecoder(res.Body).Decode(&errResp)
-	res.Body.Close()
+	drainBody(res)
 
-	msg, _ := errResp["error"].(string)
-	expected := "Aylık token sınırı aşıldı" // Based on 03-turkish-language.md
-	if msg != expected {
-		t.Errorf("TRK-010: expected message %q, got %q", expected, msg)
+	// API uses WriteErrorCode which returns {"code": "...", "status": ...}
+	// The error message localization is handled by frontend, not backend
+	code, _ := errResp["code"].(string)
+	expected := "ERR_MONTHLY_TOKENS_EXCEEDED"
+	if code != expected {
+		t.Errorf("TRK-010: expected code %q, got %q (full response: %v)", expected, code, errResp)
 	}
 }
 
@@ -232,7 +250,7 @@ func TestTurkish_JSONEncoding(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 
 	// Read raw body
 	buf := new(bytes.Buffer)

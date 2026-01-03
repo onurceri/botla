@@ -10,6 +10,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/scraper"
 	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
@@ -36,6 +37,7 @@ type JobProcessorConfig struct {
 	OpenAIClient     rag.LLMClient
 	VectorClient     rag.VectorClient
 	Log              *logger.Logger
+	Scraper          scraper.Scraper
 	Processors       map[string]SourceProcessor
 	EnqueueWithDelay func(jobID string, delay time.Duration)
 }
@@ -45,7 +47,7 @@ func NewJobProcessor(cfg JobProcessorConfig) *JobProcessor {
 	processors := cfg.Processors
 	if processors == nil {
 		processors = map[string]SourceProcessor{
-			"url":  NewURLProcessor(cfg.DB, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, nil),
+			"url":  NewURLProcessor(cfg.DB, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Scraper),
 			"pdf":  NewPDFProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
 			"text": NewTextProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
 		}

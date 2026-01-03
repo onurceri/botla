@@ -4,9 +4,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/urlutil"
 )
 
 func TestScrapeURLVisibleText(t *testing.T) {
+	// Allow localhost for testing by overriding the package-level validator
+	ssrfValidator = urlutil.NewSSRFValidator(true)
+	defer func() { ssrfValidator = urlutil.NewSSRFValidator(false) }()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

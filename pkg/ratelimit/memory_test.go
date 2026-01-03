@@ -72,14 +72,17 @@ func TestMemoryLimiter_SlidingWindow(t *testing.T) {
 		t.Fatal("3rd request should be denied")
 	}
 
-	// Wait for window to pass
-	time.Sleep(600 * time.Millisecond)
-
-	// Now requests should be allowed again
-	result, _ = limiter.Allow(ctx, key)
-	if !result.Allowed {
-		t.Fatal("request after window should be allowed")
+	// Poll for window to pass instead of fixed sleep
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		result, _ = limiter.Allow(ctx, key)
+		if result.Allowed {
+			// Window passed, request allowed
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
+	t.Fatal("request should have been allowed after window passed")
 }
 
 func TestMemoryLimiter_MultipleKeys(t *testing.T) {

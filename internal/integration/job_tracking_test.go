@@ -10,6 +10,7 @@ import (
 )
 
 func TestJobTracking_FullFlow(t *testing.T) {
+t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -35,7 +36,7 @@ func TestJobTracking_FullFlow(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&src); err != nil {
 		t.Fatalf("failed to decode source response: %v", err)
 	}
-	resp.Body.Close()
+	drainBody(resp)
 	sourceID := src.ID
 
 	// Poll for job status
@@ -58,7 +59,7 @@ LOOP:
 			req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/sources/"+sourceID+"/job", nil)
 			req.Header.Set("Authorization", "Bearer "+token)
 
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := testHTTPClient().Do(req)
 			if err != nil {
 				continue
 			}
@@ -66,13 +67,13 @@ LOOP:
 			if resp.StatusCode == http.StatusNotFound {
 				// Job might not be created instantly if using async queue, though EnqueueSource creates it before returning
 				// But maybe the API endpoint queries it?
-				resp.Body.Close()
+				drainBody(resp)
 				continue
 			}
 
 			if resp.StatusCode != http.StatusOK {
 				// retry
-				resp.Body.Close()
+				drainBody(resp)
 				attempts++
 				if attempts > 50 {
 					t.Fatalf("failed to get job status, status code: %d", resp.StatusCode)
@@ -82,10 +83,10 @@ LOOP:
 
 			var job map[string]interface{}
 			if err := json.NewDecoder(resp.Body).Decode(&job); err != nil {
-				resp.Body.Close()
+				drainBody(resp)
 				continue
 			}
-			resp.Body.Close()
+			drainBody(resp)
 
 			if status, ok := job["status"].(string); ok {
 				lastStatus = status

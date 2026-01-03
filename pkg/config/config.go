@@ -39,6 +39,15 @@ type Config struct {
 	R2_SECRET_ACCESS_KEY   string
 	R2_BUCKET_NAME         string
 	DEFAULT_CHATBOT_MODEL  string
+	ANTHROPIC_API_KEY      string
+	ANTHROPIC_API_BASE     string
+	GOOGLE_AI_API_KEY      string
+	GOOGLE_AI_API_BASE     string
+	QDRANT_TIMEOUT_MS      int
+	SCRAPER_ALLOWED_DOMAINS string
+	SCRAPER_BROWSER_POOL_SIZE int
+	SCRAPER_DYNAMIC_IDLE_SECS int
+	SCRAPER_NAV_TIMEOUT_MS int
 
 	// RAG Configuration
 	RAG_TOPK               int
@@ -52,6 +61,17 @@ type Config struct {
 
 	// Cookie Configuration
 	CookieSecure bool
+
+	// Rate Limit Configuration
+	RateLimitGlobalRequestsPerMinute int
+	RateLimitGlobalWindowSeconds     int
+	RateLimitUserRequestsPerMinute   int
+	RateLimitUserWindowSeconds       int
+	RateLimitEndpointChat            int
+	RateLimitEndpointSources         int
+	RateLimitAuthLogin               int
+	RateLimitAuthRegister            int
+	RateLimitAuthRefresh             int
 }
 
 var fatalf = func(msg string) {
@@ -151,11 +171,31 @@ func LoadConfig() *Config {
 		R2_SECRET_ACCESS_KEY:   os.Getenv("R2_SECRET_ACCESS_KEY"),
 		R2_BUCKET_NAME:         os.Getenv("R2_BUCKET_NAME"),
 		DEFAULT_CHATBOT_MODEL:  DefaultChatbotModel(),
+		ANTHROPIC_API_KEY:      os.Getenv("ANTHROPIC_API_KEY"),
+		ANTHROPIC_API_BASE:     os.Getenv("ANTHROPIC_API_BASE"),
+		GOOGLE_AI_API_KEY:      os.Getenv("GOOGLE_AI_API_KEY"),
+		GOOGLE_AI_API_BASE:     os.Getenv("GOOGLE_AI_API_BASE"),
+		QDRANT_TIMEOUT_MS:      parseIntEnv("QDRANT_TIMEOUT_MS", 30000),
+		SCRAPER_ALLOWED_DOMAINS: os.Getenv("SCRAPER_ALLOWED_DOMAINS"),
+		SCRAPER_BROWSER_POOL_SIZE: parseIntEnv("SCRAPER_BROWSER_POOL_SIZE", 2),
+		SCRAPER_DYNAMIC_IDLE_SECS: parseIntEnv("SCRAPER_DYNAMIC_IDLE_SECS", 60),
+		SCRAPER_NAV_TIMEOUT_MS:    parseIntEnv("SCRAPER_NAV_TIMEOUT_MS", 10000),
 		RAG_TOPK:               parseIntEnv("RAG_TOPK", 5),
 		RAG_MAX_CONTEXT_TOKENS: parseIntEnv("RAG_MAX_CONTEXT_TOKENS", 2000),
 		CHAT_TIMEOUT_MS:        parseIntEnv("CHAT_TIMEOUT_MS", 60000),
 		GO_ENV:                 os.Getenv("GO_ENV"),
 		CookieSecure:           os.Getenv("GO_ENV") == "production",
+
+		// Rate Limit Configuration
+		RateLimitGlobalRequestsPerMinute: parseIntEnv("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE", 0),
+		RateLimitGlobalWindowSeconds:     parseIntEnv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS", 0),
+		RateLimitUserRequestsPerMinute:   parseIntEnv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", 0),
+		RateLimitUserWindowSeconds:       parseIntEnv("RATE_LIMIT_USER_WINDOW_SECONDS", 0),
+		RateLimitEndpointChat:            parseIntEnv("RATE_LIMIT_ENDPOINT_CHAT", 0),
+		RateLimitEndpointSources:         parseIntEnv("RATE_LIMIT_ENDPOINT_SOURCES", 0),
+		RateLimitAuthLogin:               parseIntEnv("RATE_LIMIT_AUTH_LOGIN", 0),
+		RateLimitAuthRegister:            parseIntEnv("RATE_LIMIT_AUTH_REGISTER", 0),
+		RateLimitAuthRefresh:             parseIntEnv("RATE_LIMIT_AUTH_REFRESH", 0),
 	}
 }
 

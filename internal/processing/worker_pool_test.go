@@ -16,7 +16,7 @@ func TestWorkerPool_MultipleWorkers(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 
 	// Start with 5 workers
-	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC, 5)
+	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC, nil, 5)
 	if err != nil {
 		t.Fatalf("StartSourceQueue failed: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestWorkerPool_MaxWorkerLimit(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 
 	// Request 20 workers, should be capped at 16
-	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC, 20)
+	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC, nil, 20)
 	if err != nil {
 		t.Fatalf("StartSourceQueue failed: %v", err)
 	}

@@ -11,6 +11,7 @@ import (
 )
 
 func TestManualRetry_Integration(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
@@ -38,7 +39,7 @@ func TestManualRetry_Integration(t *testing.T) {
 	req, _ := http.NewRequest("POST", te.Server.URL+"/api/v1/sources/"+sourceID+"/job/retry", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := testHTTPClient().Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
@@ -59,6 +60,7 @@ func TestManualRetry_Integration(t *testing.T) {
 }
 
 func TestAutomaticRetry_Integration(t *testing.T) {
+t.Parallel()
 	// This test is harder because it relies on the background worker
 	// Automatic retry logic is thoroughly tested in unit tests.
 }

@@ -8,6 +8,7 @@ import (
 )
 
 func TestRequestID_Integration(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -15,11 +16,11 @@ func TestRequestID_Integration(t *testing.T) {
 	defer fixtures.TeardownTestEnv(te)
 
 	// Test 1: Response includes generated request ID
-	resp, err := http.Get(te.Server.URL + "/health")
+	resp, err := testHTTPGet(te.Server.URL + "/health")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	reqID := resp.Header.Get("X-Request-ID")
 	if reqID == "" {

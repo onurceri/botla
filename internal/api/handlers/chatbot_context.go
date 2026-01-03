@@ -32,7 +32,7 @@ func getChatbotContext(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, w
 		return nil, "", false
 	}
 	if !httputil.IsValidUUID(botID) {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return nil, "", false
 	}
 
@@ -83,7 +83,7 @@ func getChatbotContextWithRepo(w http.ResponseWriter, r *http.Request, repo repo
 		return nil, "", false
 	}
 	if !httputil.IsValidUUID(botID) {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return nil, "", false
 	}
 
@@ -129,7 +129,7 @@ func getSourceContext(w http.ResponseWriter, r *http.Request, dbConn *sql.DB, ws
 		return nil, nil, "", false
 	}
 	if !httputil.IsValidUUID(sourceID) {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return nil, nil, "", false
 	}
 

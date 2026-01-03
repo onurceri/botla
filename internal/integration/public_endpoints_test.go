@@ -10,6 +10,7 @@ import (
 )
 
 func TestPublicEndpoints_BasicFlow(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -22,13 +23,13 @@ func TestPublicEndpoints_BasicFlow(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
 
 	reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID, nil)
-	resG, _ := http.DefaultClient.Do(reqG)
+	resG, _ := testHTTPClient().Do(reqG)
 	if resG.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resG.StatusCode)
 	}
@@ -38,7 +39,7 @@ func TestPublicEndpoints_BasicFlow(t *testing.T) {
 	crb, _ := json.Marshal(cr)
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}

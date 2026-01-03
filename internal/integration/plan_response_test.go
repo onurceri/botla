@@ -9,6 +9,7 @@ import (
 )
 
 func TestGetPlan_ReturnsSplitConfig(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -22,11 +23,11 @@ func TestGetPlan_ReturnsSplitConfig(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/plan", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	var body struct {
 		Code   string `json:"code"`

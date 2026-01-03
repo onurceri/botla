@@ -11,8 +11,8 @@ type MockCall struct {
 // MockScraper is a configurable mock implementation of the Scraper interface for testing.
 type MockScraper struct {
 	// Function overrides for custom behavior per test
-	ScrapeURLWithFallbackFunc func(task ScrapingTask, cfg CollectorConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error)
-	FetchRawHTMLFunc          func(url string, cfg CollectorConfig) (string, error)
+	ScrapeURLWithFallbackFunc func(task ScrapingTask, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error)
+	FetchRawHTMLFunc          func(url string) (string, error)
 	ExtractLinksFunc          func(htmlContent, baseURL string, filter *PathFilter) ([]string, error)
 
 	// Responses maps URLs to predefined content responses
@@ -45,14 +45,14 @@ func NewMockScraper() *MockScraper {
 // ScrapeURLWithFallback implements Scraper.ScrapeURLWithFallback.
 // It first checks for a custom function, then for configured error, then for configured response.
 // If none are found, it returns default mock content.
-func (m *MockScraper) ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
+func (m *MockScraper) ScrapeURLWithFallback(task ScrapingTask, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
 	m.Calls = append(m.Calls, MockCall{
 		Method: "ScrapeURLWithFallback",
-		Args:   []interface{}{task, cfg, allowDynamic, scrapeConfig},
+		Args:   []interface{}{task, allowDynamic, scrapeConfig},
 	})
 
 	if m.ScrapeURLWithFallbackFunc != nil {
-		return m.ScrapeURLWithFallbackFunc(task, cfg, allowDynamic, scrapeConfig)
+		return m.ScrapeURLWithFallbackFunc(task, allowDynamic, scrapeConfig)
 	}
 
 	if err, ok := m.Errors[task.URL]; ok {
@@ -67,14 +67,14 @@ func (m *MockScraper) ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConf
 }
 
 // FetchRawHTML implements Scraper.FetchRawHTML.
-func (m *MockScraper) FetchRawHTML(url string, cfg CollectorConfig) (string, error) {
+func (m *MockScraper) FetchRawHTML(url string) (string, error) {
 	m.Calls = append(m.Calls, MockCall{
 		Method: "FetchRawHTML",
-		Args:   []interface{}{url, cfg},
+		Args:   []interface{}{url},
 	})
 
 	if m.FetchRawHTMLFunc != nil {
-		return m.FetchRawHTMLFunc(url, cfg)
+		return m.FetchRawHTMLFunc(url)
 	}
 
 	if err, ok := m.Errors[url]; ok {

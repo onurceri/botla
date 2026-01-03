@@ -10,6 +10,7 @@ import (
 
 // R2-006: Storage used MB tracking
 func TestStorageUsageTracking(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)

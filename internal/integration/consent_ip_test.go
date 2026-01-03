@@ -14,6 +14,7 @@ import (
 )
 
 func TestConsentIPExtraction(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
@@ -33,9 +34,9 @@ func TestConsentIPExtraction(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+userToken)
 		req.Header.Set("X-Forwarded-For", "1.2.3.4, 5.6.7.8")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var ip string
@@ -54,9 +55,9 @@ func TestConsentIPExtraction(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+userToken)
 		req.Header.Set("X-Real-IP", "9.10.11.12")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var ip string
@@ -77,9 +78,9 @@ func TestConsentIPExtraction(t *testing.T) {
 		// but the test server's RemoteAddr will be localhost:PORT.
 		// If it works without error, it means net.SplitHostPort worked.
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var ip string
@@ -98,9 +99,9 @@ func TestConsentIPExtraction(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+userToken)
 		req.Header.Set("X-Forwarded-For", "not-an-ip")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})

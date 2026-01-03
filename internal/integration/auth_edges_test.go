@@ -12,6 +12,7 @@ import (
 )
 
 func TestAuth_InvalidAccessToken_Me401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -20,14 +21,15 @@ func TestAuth_InvalidAccessToken_Me401(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer invalid-token")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 }
 
 func TestAuth_TamperedAccessToken_Me401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -36,14 +38,15 @@ func TestAuth_TamperedAccessToken_Me401(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer header.payload.signaturex")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 }
 
 func TestAuth_MissingAuthorizationHeader_Me401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -51,14 +54,15 @@ func TestAuth_MissingAuthorizationHeader_Me401(t *testing.T) {
 	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 }
 
 func TestAuth_ValidAccessToken_Me200(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -71,7 +75,7 @@ func TestAuth_ValidAccessToken_Me200(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
 	}
-	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -94,7 +98,7 @@ func TestAuth_ValidAccessToken_Me200(t *testing.T) {
 		t.Fatalf("create request failed: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+tokens.Token)
-	resMe, err := http.DefaultClient.Do(req)
+	resMe, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("me request failed: %v", err)
 	}

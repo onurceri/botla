@@ -14,6 +14,7 @@ import (
 )
 
 func TestActionLogs_API(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -27,7 +28,7 @@ func TestActionLogs_API(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated {
 		t.Fatalf("create bot: %d", resC.StatusCode)
 	}
@@ -51,7 +52,7 @@ func TestActionLogs_API(t *testing.T) {
 	reqA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions", bytes.NewReader(ca))
 	reqA.Header.Set("Authorization", "Bearer "+token)
 	reqA.Header.Set("Content-Type", "application/json")
-	resA, _ := http.DefaultClient.Do(reqA)
+	resA, _ := testHTTPClient().Do(reqA)
 	if resA.StatusCode != http.StatusCreated {
 		t.Fatalf("create action: %d", resA.StatusCode)
 	}
@@ -79,7 +80,7 @@ func TestActionLogs_API(t *testing.T) {
 	// GET /api/v1/chatbots/{id}/actions/logs
 	reqL, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions/logs", nil)
 	reqL.Header.Set("Authorization", "Bearer "+token)
-	resL, _ := http.DefaultClient.Do(reqL)
+	resL, _ := testHTTPClient().Do(reqL)
 	if resL.StatusCode != http.StatusOK {
 		t.Fatalf("get logs: expected 200, got %d", resL.StatusCode)
 	}
@@ -119,7 +120,7 @@ func TestActionLogs_API(t *testing.T) {
 	// Request page 1 with limit 10
 	reqP, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/actions/logs?page=1&limit=10", nil)
 	reqP.Header.Set("Authorization", "Bearer "+token)
-	resP, _ := http.DefaultClient.Do(reqP)
+	resP, _ := testHTTPClient().Do(reqP)
 	if resP.StatusCode != http.StatusOK {
 		t.Fatalf("get page 1: %d", resP.StatusCode)
 	}

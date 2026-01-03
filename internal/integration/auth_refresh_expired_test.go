@@ -13,6 +13,7 @@ import (
 )
 
 func TestAuth_RefreshWithExpiredToken(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -23,7 +24,7 @@ func TestAuth_RefreshWithExpiredToken(t *testing.T) {
 	// Register to get a user ID
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Ref Exp User"}
 	b, _ := json.Marshal(regBody)
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestAuth_RefreshWithExpiredToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get user id: %v", err)
 	}
-	res.Body.Close()
+	drainBody(res)
 
 	// Generate an expired refresh token
 	expiredRefresh, err := auth.GenerateToken(te.Cfg.JWT_SECRET, userID, false, "refresh", -1*time.Hour)
@@ -47,7 +48,7 @@ func TestAuth_RefreshWithExpiredToken(t *testing.T) {
 	// Try to refresh with it
 	rr := map[string]string{"refresh_token": expiredRefresh}
 	rrj, _ := json.Marshal(rr)
-	resRef, err := http.Post(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
+	resRef, err := testHTTPPost(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
 	if err != nil {
 		t.Fatalf("refresh request failed: %v", err)
 	}

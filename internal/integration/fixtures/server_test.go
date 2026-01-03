@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/testdb"
@@ -31,13 +32,22 @@ func TestNewTestMux_CORSPreflightAndAuth(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 	mockLLM := &rag.MockFullClient{}
 
-	h, _ := NewTestMux(cfg, db, nil, mockLLM, mockVC)
+	h, q, rl, wp, _, _ := NewTestMux(cfg, db, nil, mockLLM, mockVC)
+	if q != nil {
+		defer q.Stop()
+	}
+	if rl != nil {
+		defer rl.Close()
+	}
+	if wp != nil {
+		defer wp.Shutdown(1 * time.Second)
+	}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodOptions, srv.URL+"/api/v1/chatbots/abc/chat", nil)
 	req.Header.Set("Origin", "http://example.com")
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("preflight request failed: %v", err)
 	}
@@ -49,7 +59,7 @@ func TestNewTestMux_CORSPreflightAndAuth(t *testing.T) {
 	}
 
 	req2, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/chatbots/abc", nil)
-	res2, err := http.DefaultClient.Do(req2)
+	res2, err := testHTTPClient().Do(req2)
 	if err != nil {
 		t.Fatalf("protected request failed: %v", err)
 	}

@@ -16,6 +16,7 @@ import (
 )
 
 func TestAdminFlow(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
@@ -39,9 +40,9 @@ func TestAdminFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/stats/overview", nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -60,9 +61,9 @@ func TestAdminFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/users", nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -93,9 +94,9 @@ func TestAdminFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/users/"+userID, nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -110,9 +111,9 @@ func TestAdminFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/organizations", nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -134,20 +135,20 @@ func TestAdminFlow(t *testing.T) {
 	t.Run("Get Specific Organization", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/organizations", nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
-		resp, _ := http.DefaultClient.Do(req)
+		resp, _ := testHTTPClient().Do(req)
 		var result struct {
 			Organizations []models.Organization `json:"organizations"`
 		}
 		json.NewDecoder(resp.Body).Decode(&result)
-		resp.Body.Close()
+		drainBody(resp)
 		require.NotEmpty(t, result.Organizations)
 		orgID := result.Organizations[0].ID
 
 		req, _ = http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/organizations/"+orgID, nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var org models.Organization
@@ -168,9 +169,9 @@ func TestAdminFlow(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, te.Server.URL+endpoint, nil)
 			req.Header.Set("Authorization", "Bearer "+userToken)
 
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := testHTTPClient().Do(req)
 			require.NoError(t, err)
-			resp.Body.Close()
+			drainBody(resp)
 
 			// Should be Forbidden (403) or Unauthorized (401) depending on implementation
 			// RequirePlatformAdmin usually returns 403 for authenticated non-admins
@@ -182,9 +183,9 @@ func TestAdminFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/stats/overview", nil)
 		// No auth header
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		resp.Body.Close()
+		drainBody(resp)
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
@@ -197,9 +198,9 @@ func registerUser(t *testing.T, db *sql.DB, baseURL, email, password string) str
 		"full_name": "Test User",
 	}
 	b, _ := json.Marshal(body)
-	resp, err := http.Post(baseURL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	resp, err := testHTTPPost(baseURL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusCreated {
 		var errResp map[string]any
@@ -219,9 +220,9 @@ func loginUser(t *testing.T, baseURL, email, password string) string {
 		"password": password,
 	}
 	b, _ := json.Marshal(body)
-	resp, err := http.Post(baseURL+"/api/v1/auth/login", "application/json", bytes.NewReader(b))
+	resp, err := testHTTPPost(baseURL+"/api/v1/auth/login", "application/json", bytes.NewReader(b))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("Failed to login user: %d", resp.StatusCode)

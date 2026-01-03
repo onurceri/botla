@@ -17,8 +17,10 @@ func TestScrapeDynamicURL(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	cfg := DefaultDynamicConfig()
-	cfg.NavTimeout = 3 * time.Second
+	cfg := DynamicConfig{
+		Allowed:    []string{"127.0.0.1", "localhost"},
+		NavTimeout: 3 * time.Second,
+	}
 
 	// Try launch; skip if no browser available
 	_, err := NewBrowserPool(1, 5*time.Second)

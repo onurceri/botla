@@ -9,6 +9,7 @@ import (
 )
 
 func TestAnalytics_SeriesLength30(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -17,13 +18,13 @@ func TestAnalytics_SeriesLength30(t *testing.T) {
 	token := authToken(t, te.Server.URL, "series@example.com")
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/analytics", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
 	var data []map[string]any
 	json.NewDecoder(res.Body).Decode(&data)
-	res.Body.Close()
+	drainBody(res)
 	if len(data) != 30 {
 		t.Fatalf("expected 30 points, got %d", len(data))
 	}

@@ -19,17 +19,23 @@ type chatbot struct {
 func authToken(t *testing.T, base string, email string) string {
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
-	http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	regRes, _ := testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	drainBody(regRes)
+
 	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
-	res, _ := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	res, _ := testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	if res == nil {
+		t.Fatalf("login response is nil")
+	}
 	var tr tokenResp
 	json.NewDecoder(res.Body).Decode(&tr)
-	res.Body.Close()
+	drainBody(res)
 	return tr.Token
 }
 
 func TestChatbot_CRUD(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -43,13 +49,14 @@ func TestChatbot_CRUD(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
+		drainBody(res)
 		t.Fatalf("expected 201, got %d", res.StatusCode)
 	}
 	var created chatbot
 	json.NewDecoder(res.Body).Decode(&created)
-	res.Body.Close()
+	drainBody(res)
 	if created.ID == "" || created.Name != "My Bot" {
 		t.Fatalf("invalid create response")
 	}
@@ -57,13 +64,14 @@ func TestChatbot_CRUD(t *testing.T) {
 	// list
 	req2, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots", nil)
 	req2.Header.Set("Authorization", "Bearer "+token)
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	if res2.StatusCode != http.StatusOK {
+		drainBody(res2)
 		t.Fatalf("expected 200, got %d", res2.StatusCode)
 	}
 	var items []chatbot
 	json.NewDecoder(res2.Body).Decode(&items)
-	res2.Body.Close()
+	drainBody(res2)
 	if len(items) == 0 {
 		t.Fatalf("expected at least 1 item")
 	}
@@ -71,11 +79,12 @@ func TestChatbot_CRUD(t *testing.T) {
 	// get by id
 	req3, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+created.ID, nil)
 	req3.Header.Set("Authorization", "Bearer "+token)
-	res3, _ := http.DefaultClient.Do(req3)
+	res3, _ := testHTTPClient().Do(req3)
 	if res3.StatusCode != http.StatusOK {
+		drainBody(res3)
 		t.Fatalf("expected 200, got %d", res3.StatusCode)
 	}
-	res3.Body.Close()
+	drainBody(res3)
 
 	// update
 	upd := map[string]any{"name": "Renamed Bot"}
@@ -83,13 +92,14 @@ func TestChatbot_CRUD(t *testing.T) {
 	req4, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+created.ID, bytes.NewReader(ub))
 	req4.Header.Set("Authorization", "Bearer "+token)
 	req4.Header.Set("Content-Type", "application/json")
-	res4, _ := http.DefaultClient.Do(req4)
+	res4, _ := testHTTPClient().Do(req4)
 	if res4.StatusCode != http.StatusOK {
+		drainBody(res4)
 		t.Fatalf("expected 200, got %d", res4.StatusCode)
 	}
 	var updated chatbot
 	json.NewDecoder(res4.Body).Decode(&updated)
-	res4.Body.Close()
+	drainBody(res4)
 	if updated.Name != "Renamed Bot" {
 		t.Fatalf("name not updated")
 	}
@@ -97,23 +107,26 @@ func TestChatbot_CRUD(t *testing.T) {
 	// delete
 	req5, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/chatbots/"+created.ID, nil)
 	req5.Header.Set("Authorization", "Bearer "+token)
-	res5, _ := http.DefaultClient.Do(req5)
+	res5, _ := testHTTPClient().Do(req5)
 	if res5.StatusCode != http.StatusNoContent {
+		drainBody(res5)
 		t.Fatalf("expected 204, got %d", res5.StatusCode)
 	}
-	res5.Body.Close()
+	drainBody(res5)
 
 	// get after delete
 	req6, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+created.ID, nil)
 	req6.Header.Set("Authorization", "Bearer "+token)
-	res6, _ := http.DefaultClient.Do(req6)
+	res6, _ := testHTTPClient().Do(req6)
 	if res6.StatusCode != http.StatusNotFound {
+		drainBody(res6)
 		t.Fatalf("expected 404, got %d", res6.StatusCode)
 	}
-	res6.Body.Close()
+	drainBody(res6)
 }
 
 func TestFreePlan_ModelRestriction_AllowsGpt4oMini(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -130,19 +143,21 @@ func TestFreePlan_ModelRestriction_AllowsGpt4oMini(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
+		drainBody(res)
 		t.Fatalf("expected 201, got %d", res.StatusCode)
 	}
 	var created chatbot
 	json.NewDecoder(res.Body).Decode(&created)
-	res.Body.Close()
+	drainBody(res)
 	if created.ID == "" {
 		t.Fatalf("expected non-empty chatbot id")
 	}
 }
 
 func TestFreePlan_ModelRestriction_BlocksDisallowedModels(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -159,13 +174,14 @@ func TestFreePlan_ModelRestriction_BlocksDisallowedModels(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusCreated {
+		drainBody(res)
 		t.Fatalf("expected 201, got %d", res.StatusCode)
 	}
 	var created chatbot
 	json.NewDecoder(res.Body).Decode(&created)
-	res.Body.Close()
+	drainBody(res)
 	if created.ID == "" {
 		t.Fatalf("expected non-empty chatbot id")
 	}
@@ -176,10 +192,11 @@ func TestFreePlan_ModelRestriction_BlocksDisallowedModels(t *testing.T) {
 		reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+created.ID, bytes.NewReader(ub))
 		reqU.Header.Set("Authorization", "Bearer "+token)
 		reqU.Header.Set("Content-Type", "application/json")
-		resU, _ := http.DefaultClient.Do(reqU)
+		resU, _ := testHTTPClient().Do(reqU)
 		if resU.StatusCode != http.StatusForbidden {
+			drainBody(resU)
 			t.Fatalf("expected 403 for model %s, got %d", model, resU.StatusCode)
 		}
-		resU.Body.Close()
+		drainBody(resU)
 	}
 }

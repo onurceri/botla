@@ -16,6 +16,7 @@ type tokenRespSideEffect struct {
 }
 
 func TestAuth_RegistrationCreatesDefaultOrgAndWorkspace(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -25,7 +26,7 @@ func TestAuth_RegistrationCreatesDefaultOrgAndWorkspace(t *testing.T) {
 	email := "sideeffect+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "Side Effect User"}
 	b, _ := json.Marshal(regBody)
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -38,12 +39,12 @@ func TestAuth_RegistrationCreatesDefaultOrgAndWorkspace(t *testing.T) {
 	if err := json.NewDecoder(res.Body).Decode(&tr); err != nil {
 		t.Fatalf("failed to decode token: %v", err)
 	}
-	res.Body.Close()
+	drainBody(res)
 
 	// Check Organizations
 	reqOrg, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations", nil)
 	reqOrg.Header.Set("Authorization", "Bearer "+tr.Token)
-	resOrg, _ := http.DefaultClient.Do(reqOrg)
+	resOrg, _ := testHTTPClient().Do(reqOrg)
 	if resOrg.StatusCode != http.StatusOK {
 		t.Fatalf("failed to list orgs: %d", resOrg.StatusCode)
 	}
@@ -74,7 +75,7 @@ func TestAuth_RegistrationCreatesDefaultOrgAndWorkspace(t *testing.T) {
 	// Check Workspaces for the default org
 	reqWS, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/organizations/"+defaultOrg.ID+"/workspaces", nil)
 	reqWS.Header.Set("Authorization", "Bearer "+tr.Token)
-	resWS, _ := http.DefaultClient.Do(reqWS)
+	resWS, _ := testHTTPClient().Do(reqWS)
 	if resWS.StatusCode != http.StatusOK {
 		t.Fatalf("failed to list workspaces: %d", resWS.StatusCode)
 	}

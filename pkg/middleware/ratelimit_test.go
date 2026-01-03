@@ -30,6 +30,7 @@ func TestRateLimitMiddleware_EndpointOverride(t *testing.T) {
 
 	// Create memory-based global limiter
 	globalLimiter := ratelimit.NewMemoryLimiter(config.Global)
+	defer globalLimiter.Close()
 	rl := NewRateLimiter(globalLimiter, nil, config)
 
 	// Test handler just returns 200
@@ -89,6 +90,7 @@ func TestRateLimitMiddleware_DifferentIPsNotAffected(t *testing.T) {
 	}
 
 	globalLimiter := ratelimit.NewMemoryLimiter(config.Global)
+	defer globalLimiter.Close()
 	rl := NewRateLimiter(globalLimiter, nil, config)
 
 	handler := RateLimitMiddleware(rl)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -147,6 +149,7 @@ func TestRateLimitMiddleware_NoEndpointOverride(t *testing.T) {
 	}
 
 	globalLimiter := ratelimit.NewMemoryLimiter(config.Global)
+	defer globalLimiter.Close()
 	rl := NewRateLimiter(globalLimiter, nil, config)
 
 	handler := RateLimitMiddleware(rl)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -181,6 +184,7 @@ func TestRateLimitMiddleware_AuthEndpointsStrictLimits(t *testing.T) {
 	config := ratelimit.DefaultConfig()
 
 	globalLimiter := ratelimit.NewMemoryLimiter(config.Global)
+	defer globalLimiter.Close()
 	rl := NewRateLimiter(globalLimiter, nil, config)
 
 	handler := RateLimitMiddleware(rl)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

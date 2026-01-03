@@ -12,6 +12,7 @@ import (
 )
 
 func TestMe_ReturnsUserProfile(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -21,11 +22,11 @@ func TestMe_ReturnsUserProfile(t *testing.T) {
 	token := authToken(t, te.Server.URL, "me@example.com")
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	var body struct {
 		ID    string `json:"id"`
@@ -44,6 +45,7 @@ func TestMe_ReturnsUserProfile(t *testing.T) {
 }
 
 func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -61,7 +63,7 @@ func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
 		t.Fatalf("marshal failed: %v", err)
 	}
 
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -73,7 +75,7 @@ func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
 	if err = json.NewDecoder(res.Body).Decode(&tr); err != nil {
 		t.Fatalf("decode register response failed: %v", err)
 	}
-	res.Body.Close()
+	drainBody(res)
 	if tr.Token == "" {
 		t.Fatalf("token empty")
 	}
@@ -85,7 +87,7 @@ func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
 	}
 	req.Header.Set("Authorization", "Bearer "+tr.Token)
 
-	resMe, err := http.DefaultClient.Do(req)
+	resMe, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("failed to call /me/plan: %v", err)
 	}
@@ -107,6 +109,7 @@ func TestFreePlan_DefaultAssignment_RegisterThenMe(t *testing.T) {
 }
 
 func TestMe_ProfileBasicInfo(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -120,14 +123,14 @@ func TestMe_ProfileBasicInfo(t *testing.T) {
 		t.Fatalf("failed to create request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("failed to call /me: %v", err)
 	}
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	var body struct {
 		ID        string  `json:"id"`
@@ -154,6 +157,7 @@ func TestMe_ProfileBasicInfo(t *testing.T) {
 }
 
 func TestMe_ProfileIncludesOrganizations(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -167,14 +171,14 @@ func TestMe_ProfileIncludesOrganizations(t *testing.T) {
 		t.Fatalf("failed to create request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("failed to call /me: %v", err)
 	}
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	var body struct {
 		Organizations []struct {
@@ -208,6 +212,7 @@ func TestMe_ProfileIncludesOrganizations(t *testing.T) {
 }
 
 func TestMe_CrossUserProfileIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -225,7 +230,7 @@ func TestMe_CrossUserProfileIsolation(t *testing.T) {
 		t.Fatalf("failed to create request A: %v", err)
 	}
 	reqA.Header.Set("Authorization", "Bearer "+tokenA)
-	resA, err := http.DefaultClient.Do(reqA)
+	resA, err := testHTTPClient().Do(reqA)
 	if err != nil {
 		t.Fatalf("failed to call /me for user A: %v", err)
 	}
@@ -247,7 +252,7 @@ func TestMe_CrossUserProfileIsolation(t *testing.T) {
 		t.Fatalf("failed to create request B: %v", err)
 	}
 	reqB.Header.Set("Authorization", "Bearer "+tokenB)
-	resB, err := http.DefaultClient.Do(reqB)
+	resB, err := testHTTPClient().Do(reqB)
 	if err != nil {
 		t.Fatalf("failed to call /me for user B: %v", err)
 	}
@@ -279,6 +284,7 @@ func TestMe_CrossUserProfileIsolation(t *testing.T) {
 }
 
 func TestMe_DBErrorReturns500(t *testing.T) {
+t.Parallel()
 	te, setupErr := fixtures.SetupTestEnv()
 	if setupErr != nil {
 		t.Fatalf("setup failed: %v", setupErr)
@@ -296,11 +302,11 @@ func TestMe_DBErrorReturns500(t *testing.T) {
 		t.Fatalf("failed to create request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("failed to call /me: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401 when db is closed, got %d", res.StatusCode)

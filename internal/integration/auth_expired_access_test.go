@@ -13,6 +13,7 @@ import (
 )
 
 func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -23,7 +24,7 @@ func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 	email := "exp+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, _ := json.Marshal(regBody)
-	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if resReg.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resReg.StatusCode)
 	}
@@ -32,7 +33,7 @@ func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 	// login to get valid token and confirm user id
 	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
-	resLog, _ := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	resLog, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if resLog.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resLog.StatusCode)
 	}
@@ -43,7 +44,7 @@ func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 	// protected ping with valid token
 	reqPing, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	reqPing.Header.Set("Authorization", "Bearer "+tr.Token)
-	resPing, _ := http.DefaultClient.Do(reqPing)
+	resPing, _ := testHTTPClient().Do(reqPing)
 	if resPing.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resPing.StatusCode)
 	}
@@ -52,7 +53,7 @@ func TestAuth_ExpiredAccessToken_Me401(t *testing.T) {
 	expired, _ := auth.GenerateToken(te.Cfg.JWT_SECRET, "expired-user", false, "access", -time.Minute)
 	reqExp, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	reqExp.Header.Set("Authorization", "Bearer "+expired)
-	resExp, _ := http.DefaultClient.Do(reqExp)
+	resExp, _ := testHTTPClient().Do(reqExp)
 	if resExp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resExp.StatusCode)
 	}

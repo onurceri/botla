@@ -9,16 +9,18 @@ import (
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestAnalytics_FullCoverage(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
 	qd := fixtures.StartQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -43,7 +45,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -66,7 +68,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update bot failed: %d", resU.StatusCode)
 	}
@@ -79,7 +81,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("chat failed: %d", resCh.StatusCode)
 	}
@@ -102,7 +104,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	reqF, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/messages/"+msgID+"/feedback", bytes.NewReader(fbj))
 	reqF.Header.Set("Authorization", "Bearer "+token)
 	reqF.Header.Set("Content-Type", "application/json")
-	resF, _ := http.DefaultClient.Do(reqF)
+	resF, _ := testHTTPClient().Do(reqF)
 	if resF.StatusCode != http.StatusOK {
 		t.Fatalf("feedback failed: %d", resF.StatusCode)
 	}
@@ -116,27 +118,35 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	hr, _ := json.Marshal(handoffReq)
 	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
-	resH, _ := http.DefaultClient.Do(reqH)
+	resH, _ := testHTTPClient().Do(reqH)
 	if resH.StatusCode != http.StatusOK {
 		t.Fatalf("handoff request failed: %d", resH.StatusCode)
 	}
 	resH.Body.Close()
 
-	// Wait for async analytics updates (especially handoff)
-	time.Sleep(500 * time.Millisecond)
-
-	// Verify DB directly
+	// Wait for async analytics updates (especially handoff) with retry
 	var dbTotalM, dbTotalC, dbTotalTokens, dbThumbsUp, dbHandoff int
-	err = te.DB.QueryRow(`
-		SELECT total_messages, total_conversations, total_tokens_used, thumbs_up_count, handoff_count 
-		FROM analytics 
-		WHERE chatbot_id=$1 AND analytics_date=$2`,
-		bot.ID, time.Now().Format("2006-01-02")).Scan(&dbTotalM, &dbTotalC, &dbTotalTokens, &dbThumbsUp, &dbHandoff)
+	foundDB := false
+	for i := 0; i < 10; i++ {
+		err = te.DB.QueryRow(`
+			SELECT total_messages, total_conversations, total_tokens_used, thumbs_up_count, handoff_count 
+			FROM analytics 
+			WHERE chatbot_id=$1 AND analytics_date=$2`,
+			bot.ID, time.Now().Format("2006-01-02")).Scan(&dbTotalM, &dbTotalC, &dbTotalTokens, &dbThumbsUp, &dbHandoff)
 
-	if err != nil {
-		t.Fatalf("DB Query failed: %v", err)
+		if err == nil && dbHandoff >= 1 && dbThumbsUp >= 1 {
+			foundDB = true
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
-	t.Logf("DB State: Msg=%d, Conv=%d, Tok=%d, Up=%d, Handoff=%d", dbTotalM, dbTotalC, dbTotalTokens, dbThumbsUp, dbHandoff)
+
+	if !foundDB {
+		t.Logf("DB State: Msg=%d, Conv=%d, Tok=%d, Up=%d, Handoff=%d", dbTotalM, dbTotalC, dbTotalTokens, dbThumbsUp, dbHandoff)
+		if err != nil {
+			t.Fatalf("DB Query failed or timed out: %v", err)
+		}
+	}
 
 	// Check Chatbot state
 	var cUserID string
@@ -150,7 +160,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	// 6. Verify Analytics Data via API
 	reqA, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/analytics", nil)
 	reqA.Header.Set("Authorization", "Bearer "+token)
-	resA, err := http.DefaultClient.Do(reqA)
+	resA, err := testHTTPClient().Do(reqA)
 	if err != nil {
 		t.Fatalf("Get analytics failed: %v", err)
 	}
@@ -221,7 +231,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	// 7. Verify Chatbot Specific Analytics (GET /api/v1/chatbots/:id/analytics/trends)
 	reqCA, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/analytics/trends", nil)
 	reqCA.Header.Set("Authorization", "Bearer "+token)
-	resCA, errCA := http.DefaultClient.Do(reqCA)
+	resCA, errCA := testHTTPClient().Do(reqCA)
 	if errCA != nil {
 		t.Fatalf("Get chatbot analytics failed: %v", errCA)
 	}
@@ -264,7 +274,7 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	// 8. Verify Chatbot Analytics Overview (GET /api/v1/chatbots/:id/analytics/overview)
 	reqOverview, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/analytics/overview", nil)
 	reqOverview.Header.Set("Authorization", "Bearer "+token)
-	resOverview, errOverview := http.DefaultClient.Do(reqOverview)
+	resOverview, errOverview := testHTTPClient().Do(reqOverview)
 	if errOverview != nil {
 		t.Fatalf("Get chatbot overview failed: %v", errOverview)
 	}

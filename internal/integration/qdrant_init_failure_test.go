@@ -11,29 +11,40 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func startQdrantInitFailStub() *httptest.Server {
 	h := http.NewServeMux()
-	h.HandleFunc("/collections/embeddings", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusInternalServerError) })
-	h.HandleFunc("/collections/embeddings/points", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPut {
-			w.Header().Set("Content-Type", "application/json")
+
+	// Handle all collections with dynamic names
+	h.HandleFunc("/collections/", func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+
+		// Collection creation/info - return 500 to simulate init failure
+		if !strings.Contains(path, "/points") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// Points upsert - this should work
+		if strings.HasSuffix(path, "/points") && r.Method == http.MethodPut {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 			return
 		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	})
-	h.HandleFunc("/collections/embeddings/points/search", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			w.Header().Set("Content-Type", "application/json")
+
+		// Points search - return empty results
+		if strings.HasSuffix(path, "/points/search") && r.Method == http.MethodPost {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]any{"status": "ok", "result": []any{}})
 			return
 		}
+
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
+
 	h.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	return httptest.NewServer(h)
 }
@@ -41,9 +52,10 @@ func startQdrantInitFailStub() *httptest.Server {
 func TestStartup_QdrantCollectionInitFailure_StillWorks(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantInitFailStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -57,7 +69,7 @@ func TestStartup_QdrantCollectionInitFailure_StillWorks(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -70,7 +82,7 @@ func TestStartup_QdrantCollectionInitFailure_StillWorks(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(b.String()))
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resS.StatusCode)
 	}
@@ -87,7 +99,7 @@ func TestStartup_QdrantCollectionInitFailure_StillWorks(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+statusPath, nil)
 		reqG.Header.Set("Authorization", "Bearer "+token)
-		resG, _ := http.DefaultClient.Do(reqG)
+		resG, _ := testHTTPClient().Do(reqG)
 		if resG.StatusCode != http.StatusOK {
 			resG.Body.Close()
 			continue

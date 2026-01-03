@@ -205,3 +205,36 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// Close cleans up all rate limiters and their background goroutines
+// This is critical for preventing memory leaks in tests
+func (rl *RateLimiter) Close() error {
+	// Close global limiter
+	if rl.globalLimiter != nil {
+		if err := rl.globalLimiter.Close(); err != nil {
+			return err
+		}
+	}
+
+	// Close all plan limiters
+	rl.planLimitersMu.Lock()
+	for _, limiter := range rl.planLimiters {
+		if err := limiter.Close(); err != nil {
+			rl.planLimitersMu.Unlock()
+			return err
+		}
+	}
+	rl.planLimitersMu.Unlock()
+
+	// Close all endpoint limiters
+	rl.endpointLimiterMu.Lock()
+	for _, limiter := range rl.endpointLimiters {
+		if err := limiter.Close(); err != nil {
+			rl.endpointLimiterMu.Unlock()
+			return err
+		}
+	}
+	rl.endpointLimiterMu.Unlock()
+
+	return nil
+}
