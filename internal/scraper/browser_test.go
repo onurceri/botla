@@ -8,8 +8,8 @@ import (
 )
 
 func TestScrapeDynamicURL(t *testing.T) {
+	t.Parallel()
 	// Ensure domain whitelist allows localhost
-	t.Setenv("SCRAPER_ALLOWED_DOMAINS", "127.0.0.1,localhost")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -18,17 +18,19 @@ func TestScrapeDynamicURL(t *testing.T) {
 	defer srv.Close()
 
 	cfg := DynamicConfig{
+		PoolSize:   1,
+		IdleTTL:    5 * time.Second,
 		Allowed:    []string{"127.0.0.1", "localhost"},
-		NavTimeout: 3 * time.Second,
+		NavTimeout: 5 * time.Second,
 	}
 
-	// Try launch; skip if no browser available
-	_, err := NewBrowserPool(1, 5*time.Second)
+	scraper, err := NewBrowserScraper(cfg)
 	if err != nil {
 		t.Skip("rod launch failed, skipping dynamic test")
 	}
+	defer scraper.Close()
 
-	out, err := ScrapeDynamicURL(srv.URL, cfg)
+	out, err := scraper.ScrapeDynamicURL(srv.URL)
 	if err != nil {
 		t.Skip("dynamic scrape timed out, skipping in CI")
 	}

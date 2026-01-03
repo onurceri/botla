@@ -14,6 +14,7 @@ import (
 	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 )
 
 // JobProcessor handles the actual processing of training jobs.
@@ -28,6 +29,7 @@ type JobProcessor struct {
 
 	// Callback for re-enqueueing jobs with delay (for retries)
 	enqueueWithDelay func(jobID string, delay time.Duration)
+	loader           *tokenizer.Loader
 }
 
 // JobProcessorConfig contains the configuration for creating a JobProcessor.
@@ -38,6 +40,7 @@ type JobProcessorConfig struct {
 	VectorClient     rag.VectorClient
 	Log              *logger.Logger
 	Scraper          scraper.Scraper
+	Loader           *tokenizer.Loader
 	Processors       map[string]SourceProcessor
 	EnqueueWithDelay func(jobID string, delay time.Duration)
 }
@@ -47,9 +50,9 @@ func NewJobProcessor(cfg JobProcessorConfig) *JobProcessor {
 	processors := cfg.Processors
 	if processors == nil {
 		processors = map[string]SourceProcessor{
-			"url":  NewURLProcessor(cfg.DB, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Scraper),
-			"pdf":  NewPDFProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
-			"text": NewTextProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log),
+			"url":  NewURLProcessor(cfg.DB, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Scraper, cfg.Loader),
+			"pdf":  NewPDFProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
+			"text": NewTextProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
 		}
 	}
 	return &JobProcessor{
@@ -60,6 +63,7 @@ func NewJobProcessor(cfg JobProcessorConfig) *JobProcessor {
 		log:              cfg.Log,
 		processors:       processors,
 		enqueueWithDelay: cfg.EnqueueWithDelay,
+		loader:           cfg.Loader,
 	}
 }
 

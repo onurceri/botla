@@ -12,7 +12,7 @@ func TestURLProcessor_NewURLProcessor(t *testing.T) {
 
 	t.Run("creates processor with injected scraper", func(t *testing.T) {
 		ms := scraper.NewMockScraper()
-		p := NewURLProcessor(nil, nil, nil, nil, ms)
+		p := NewURLProcessor(nil, nil, nil, nil, ms, nil)
 		if p == nil {
 			t.Error("expected non-nil processor")
 		}
@@ -24,7 +24,7 @@ func TestURLProcessor_NewURLProcessor(t *testing.T) {
 	t.Run("creates processor with custom logger", func(t *testing.T) {
 		log := logger.New("test")
 		ms := scraper.NewMockScraper()
-		p := NewURLProcessor(nil, nil, nil, log, ms)
+		p := NewURLProcessor(nil, nil, nil, log, ms, nil)
 		if p == nil {
 			t.Error("expected non-nil processor")
 		}

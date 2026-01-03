@@ -14,7 +14,7 @@ import (
 
 // TestCreateEmbedding_RateLimitError tests that HTTP 429 returns ErrRateLimit
 func TestCreateEmbedding_RateLimitError(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte(`{"error":{"message":"Rate limit exceeded"}}`))
@@ -49,7 +49,7 @@ func TestCreateEmbedding_RateLimitError(t *testing.T) {
 
 // TestCreateEmbedding_NetworkError tests that network errors are wrapped
 func TestCreateEmbedding_NetworkError(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	// Server on invalid address triggers network error
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -70,7 +70,7 @@ func TestCreateEmbedding_NetworkError(t *testing.T) {
 
 // TestCreateEmbedding_InternalServerError_WrapsNetwork tests 500 errors
 func TestCreateEmbedding_InternalServerError_WrapsNetwork(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":{"message":"Internal error"}}`))
@@ -99,7 +99,7 @@ func TestCreateEmbedding_InternalServerError_WrapsNetwork(t *testing.T) {
 
 // TestCreateCompletion_RateLimitError tests that HTTP 429 returns ErrRateLimit on completion
 func TestCreateCompletion_RateLimitError(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte(`{"error":{"message":"Rate limit exceeded"}}`))
@@ -134,7 +134,7 @@ func TestCreateCompletion_RateLimitError(t *testing.T) {
 
 // TestCreateCompletion_InternalServerError_WrapsNetwork tests 500 errors on completion
 func TestCreateCompletion_InternalServerError_WrapsNetwork(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":{"message":"Internal error"}}`))
@@ -169,7 +169,7 @@ func TestCreateCompletion_InternalServerError_WrapsNetwork(t *testing.T) {
 
 // TestCreateEmbedding_ContextCancelled_WrappedError verifies context cancellation wraps correctly
 func TestCreateEmbedding_ContextCancelled_WrappedError(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -197,7 +197,7 @@ func TestCreateEmbedding_ContextCancelled_WrappedError(t *testing.T) {
 
 // TestCreateEmbeddingsBatch_RateLimitError tests batched embedding rate limits
 func TestCreateEmbeddingsBatch_RateLimitError(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte(`{"error":{"message":"Rate limit exceeded"}}`))

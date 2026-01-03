@@ -19,13 +19,11 @@ import (
 )
 
 func TestChat_NoInfoFound(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	oai := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Error(w, "fail", http.StatusInternalServerError) }))
 	defer oai.Close()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
 	qd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Error(w, "fail", http.StatusInternalServerError) }))
 	defer qd.Close()
-	t.Setenv("QDRANT_URL", qd.URL)
 	dbx := testdb.OpenTestDB(t)
 	var uid string
 	var freePlanID string

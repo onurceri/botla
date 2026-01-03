@@ -23,7 +23,7 @@ func TestTextProcessor_Unit(t *testing.T) {
 	mockOAI := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
 
-	p := NewTextProcessor(db, mockStorage, mockOAI, mockVC, nil)
+	p := NewTextProcessor(db, mockStorage, mockOAI, mockVC, nil, nil)
 
 	t.Run("Process Successful", func(t *testing.T) {
 		filePath := "test.txt"
@@ -91,7 +91,7 @@ func TestURLProcessor_Unit(t *testing.T) {
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
 
-		p := NewURLProcessor(nil, mockOAI, mockVC, nil, mockScraper)
+		p := NewURLProcessor(nil, mockOAI, mockVC, nil, mockScraper, nil)
 
 		assert.Equal(t, mockScraper, p.Scraper)
 	})
@@ -115,7 +115,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		_, _ = db.Exec(`INSERT INTO chatbots (id, user_id, name, discovery_mode) VALUES ('bot-2', 'u2', 'Bot2', 'disabled') ON CONFLICT DO NOTHING`)
 		_, _ = db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, source_url) VALUES ('src-2', 'bot-2', 'url', $1) ON CONFLICT DO NOTHING`, testURL)
 
-		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper, nil)
 
 		source := &models.DataSource{
 			ID:         "src-2",
@@ -148,7 +148,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		_, _ = db.Exec(`INSERT INTO chatbots (id, user_id, name, discovery_mode) VALUES ('bot-3', 'u3', 'Bot3', 'disabled') ON CONFLICT DO NOTHING`)
 		_, _ = db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, source_url) VALUES ('src-3', 'bot-3', 'url', $1) ON CONFLICT DO NOTHING`, testURL)
 
-		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper, nil)
 
 		source := &models.DataSource{
 			ID:         "src-3",
@@ -181,7 +181,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		_, _ = db.Exec(`INSERT INTO chatbots (id, user_id, name, discovery_mode) VALUES ('bot-3d', 'u3d', 'Bot3d', 'disabled') ON CONFLICT DO NOTHING`)
 		_, _ = db.Exec(`INSERT INTO data_sources (id, chatbot_id, source_type, source_url) VALUES ('src-3d', 'bot-3d', 'url', $1) ON CONFLICT DO NOTHING`, testURL)
 
-		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper, nil)
 
 		source := &models.DataSource{
 			ID:         "src-3d",
@@ -222,7 +222,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1, 0.2}}, nil).Once()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
-		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper, nil)
 
 		source := &models.DataSource{
 			ID:         "src-4",
@@ -272,7 +272,7 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Maybe()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
-		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper, nil)
 
 		source := &models.DataSource{
 			ID:           "src-5",
@@ -323,7 +323,7 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Maybe()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
-		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper)
+		p := NewURLProcessor(db, mockOAI, mockVC, nil, mockScraper, nil)
 
 		source := &models.DataSource{
 			ID:           "src-6",
@@ -354,7 +354,7 @@ func TestPDFProcessor_Unit(t *testing.T) {
 	mockOAI := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
 
-	p := NewPDFProcessor(db, mockStorage, mockOAI, mockVC, nil)
+	p := NewPDFProcessor(db, mockStorage, mockOAI, mockVC, nil, nil)
 
 	t.Run("Process Successful", func(t *testing.T) {
 		filePath := "test.pdf"

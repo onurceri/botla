@@ -48,22 +48,13 @@ func newQdrantServerUpsert(firstFail *bool) *httptest.Server {
 }
 
 func TestEmbeddingService_Generate_RetryAndWarn(t *testing.T) {
+	t.Parallel()
 	of := true
 	qf := true
 	oai := newOpenAIServerBatch(&of)
 	defer oai.Close()
 	qdr := newQdrantServerUpsert(&qf)
 	defer qdr.Close()
-	t.Setenv("OPENAI_API_KEY", "k")
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qdr.URL)
-	t.Setenv("DB_HOST", "localhost")
-	t.Setenv("DB_PORT", "5432")
-	t.Setenv("DB_NAME", "test")
-	t.Setenv("DB_USER", "test")
-	t.Setenv("DB_PASSWORD", "test")
-	t.Setenv("JWT_SECRET", "secret")
-	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -78,6 +69,7 @@ func TestEmbeddingService_Generate_RetryAndWarn(t *testing.T) {
 }
 
 func TestEmbeddingService_GenerateForSource_UpsertError(t *testing.T) {
+	t.Parallel()
 	of := false
 	oai := newOpenAIServerBatch(&of)
 	defer oai.Close()
@@ -90,16 +82,6 @@ func TestEmbeddingService_GenerateForSource_UpsertError(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer qdr.Close()
-	t.Setenv("OPENAI_API_KEY", "k")
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qdr.URL)
-	t.Setenv("DB_HOST", "localhost")
-	t.Setenv("DB_PORT", "5432")
-	t.Setenv("DB_NAME", "test")
-	t.Setenv("DB_USER", "test")
-	t.Setenv("DB_PASSWORD", "test")
-	t.Setenv("JWT_SECRET", "secret")
-	t.Setenv("PORT", "8080")
 	chunks := []models.Chunk{{Text: "hello", TokenCount: 2}}
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -128,6 +110,7 @@ func TestEmbeddingService_Generate_Empty(t *testing.T) {
 
 // EMB-003: Generate embeddings for 26 chunks (batching)
 func TestEmbeddingService_Generate_Batching(t *testing.T) {
+	t.Parallel()
 	// Mock OpenAI to count requests
 	reqCount := 0
 	oaiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -150,22 +133,12 @@ func TestEmbeddingService_Generate_Batching(t *testing.T) {
 		})
 	}))
 	defer oaiSrv.Close()
-	t.Setenv("OPENAI_API_BASE", oaiSrv.URL)
-	t.Setenv("OPENAI_API_KEY", "dummy")
 
 	// Mock Qdrant to accept upserts
 	qdrSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer qdrSrv.Close()
-	t.Setenv("QDRANT_URL", qdrSrv.URL)
-	t.Setenv("DB_HOST", "localhost")
-	t.Setenv("DB_PORT", "5432")
-	t.Setenv("DB_NAME", "test")
-	t.Setenv("DB_USER", "test")
-	t.Setenv("DB_PASSWORD", "test")
-	t.Setenv("JWT_SECRET", "secret")
-	t.Setenv("PORT", "8080")
 
 	chunks := make([]models.Chunk, 26)
 	for i := 0; i < 26; i++ {

@@ -11,6 +11,7 @@ import (
 
 // RAG-003: Search with invalid chatbot ID
 func TestSearchContext_InvalidChatbotID(t *testing.T) {
+	t.Parallel()
 	// Mock Qdrant to verify filter
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/collections/embeddings/points/search" {
@@ -65,7 +66,6 @@ func TestSearchContext_InvalidChatbotID(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("QDRANT_URL", srv.URL)
 
 	// We pass "invalid-bot-id" and expect the mock to see it (verified inside mock)
 	// and return empty.
@@ -104,7 +104,7 @@ func TestSearchContext_TurkishScoring(t *testing.T) {
 func TestChunkText_Paragraphs(t *testing.T) {
 	text := "Para 1.\n\nPara 2.\n\nPara 3."
 	// Target tokens small enough to force split, but large enough to hold one paragraph
-	chunks, err := ChunkText(text, 5, "en") // 5 tokens ~ 20 chars. "Para 1." is 7 chars.
+	chunks, err := ChunkText(nil, text, 5, "en") // 5 tokens ~ 20 chars. "Para 1." is 7 chars.
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestChunkText_Paragraphs(t *testing.T) {
 	// Let's try to verify it DOES split at \n\n if size requires it
 	longPara := strings.Repeat("a", 100)
 	text2 := longPara + "\n\n" + longPara
-	chunks2, _ := ChunkText(text2, 30, "en") // 30 tokens ~ 120 chars. Each para is 100 chars.
+	chunks2, _ := ChunkText(nil, text2, 30, "en") // 30 tokens ~ 120 chars. Each para is 100 chars.
 	// Should split.
 	if len(chunks2) < 2 {
 		t.Errorf("expected split for paragraphs exceeding limit")
@@ -134,7 +134,7 @@ func TestChunkText_Sentences(t *testing.T) {
 	text := s1 + " " + s2
 	// Chunk size small enough to split them
 	// s1 is ~21 chars -> ~5 tokens.
-	chunks, _ := ChunkText(text, 4, "en")
+	chunks, _ := ChunkText(nil, text, 4, "en")
 
 	if len(chunks) < 2 {
 		t.Errorf("expected split")
@@ -150,7 +150,7 @@ func TestChunkText_Sentences(t *testing.T) {
 // CHK-006: Chunk with English abbreviations
 func TestChunkText_EnglishAbbreviations(t *testing.T) {
 	text := "Mr. Smith went to Washington. Mrs. Jones stayed home."
-	chunks, _ := ChunkText(text, 10, "en") // Small enough to force check, large enough to hold one sentence
+	chunks, _ := ChunkText(nil, text, 10, "en") // Small enough to force check, large enough to hold one sentence
 
 	// Should NOT split at Mr.
 	for _, c := range chunks {
@@ -163,7 +163,7 @@ func TestChunkText_EnglishAbbreviations(t *testing.T) {
 // CHK-008: Very long sentence
 func TestChunkText_LongSentence(t *testing.T) {
 	longWord := strings.Repeat("a", 100)
-	chunks, _ := ChunkText(longWord, 5, "en") // Target 5 tokens ~ 20 chars
+	chunks, _ := ChunkText(nil, longWord, 5, "en") // Target 5 tokens ~ 20 chars
 
 	// Should still produce chunks, effectively splitting the word/sentence if it has to
 	if len(chunks) == 0 {

@@ -9,6 +9,7 @@ import (
 )
 
 func TestScrollChunks_Success(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/collections/embeddings/points/scroll" {
 			w.Header().Set("Content-Type", "application/json")
@@ -34,7 +35,6 @@ func TestScrollChunks_Success(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("QDRANT_URL", srv.URL)
 
 	c, _ := NewQdrantClient(&QdrantConfig{URL: srv.URL})
 

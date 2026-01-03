@@ -12,6 +12,7 @@ import (
 	"github.com/onurceri/botla-co/internal/text"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 )
 
 // TextProcessor handles text source processing
@@ -22,10 +23,11 @@ type TextProcessor struct {
 	VectorClient     rag.VectorClient
 	Log              *logger.Logger
 	EmbeddingService *rag.EmbeddingService
+	Loader           *tokenizer.Loader
 }
 
 // NewTextProcessor creates a new TextProcessor
-func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger) *TextProcessor {
+func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, loader *tokenizer.Loader) *TextProcessor {
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
@@ -38,6 +40,7 @@ func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, 
 		VectorClient:     vc,
 		Log:              log,
 		EmbeddingService: embSvc,
+		Loader:           loader,
 	}
 }
 
@@ -94,7 +97,7 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *m
 	}
 
 	// Chunk and embed
-	rc, rerr := rag.ChunkText(content, 512, langCode)
+	rc, rerr := rag.ChunkText(p.Loader, content, 512, langCode)
 	if rerr != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}

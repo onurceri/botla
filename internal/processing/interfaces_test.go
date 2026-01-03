@@ -16,15 +16,15 @@ func TestSourceProcessorInterface_Implementation(t *testing.T) {
 	mockStorage := &storage.MockStorageService{}
 
 	t.Run("URLProcessor implements SourceProcessor", func(t *testing.T) {
-		var _ SourceProcessor = NewURLProcessor(tdb, mockOAI, mockVC, nil, nil)
+		var _ SourceProcessor = NewURLProcessor(tdb, mockOAI, mockVC, nil, nil, nil)
 	})
 
 	t.Run("PDFProcessor implements SourceProcessor", func(t *testing.T) {
-		var _ SourceProcessor = NewPDFProcessor(tdb, mockStorage, mockOAI, mockVC, nil)
+		var _ SourceProcessor = NewPDFProcessor(tdb, mockStorage, mockOAI, mockVC, nil, nil)
 	})
 
 	t.Run("TextProcessor implements SourceProcessor", func(t *testing.T) {
-		var _ SourceProcessor = NewTextProcessor(tdb, mockStorage, mockOAI, mockVC, nil)
+		var _ SourceProcessor = NewTextProcessor(tdb, mockStorage, mockOAI, mockVC, nil, nil)
 	})
 }
 
@@ -35,9 +35,9 @@ func TestProcessorMap_Registry(t *testing.T) {
 	mockVC := &rag.MockVectorClient{}
 	mockStorage := &storage.MockStorageService{}
 
-	urlProc := NewURLProcessor(tdb, mockOAI, mockVC, nil, nil)
-	pdfProc := NewPDFProcessor(tdb, mockStorage, mockOAI, mockVC, nil)
-	textProc := NewTextProcessor(tdb, mockStorage, mockOAI, mockVC, nil)
+	urlProc := NewURLProcessor(tdb, mockOAI, mockVC, nil, nil, nil)
+	pdfProc := NewPDFProcessor(tdb, mockStorage, mockOAI, mockVC, nil, nil)
+	textProc := NewTextProcessor(tdb, mockStorage, mockOAI, mockVC, nil, nil)
 
 	processors := map[string]SourceProcessor{
 		"url":  urlProc,

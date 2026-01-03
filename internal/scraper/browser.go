@@ -23,34 +23,73 @@ type BrowserPool struct {
 	sem      chan struct{}
 	idleTTL  time.Duration
 	lastUse  time.Time
+	stop     chan struct{}
+	wg       sync.WaitGroup
 }
 
 func NewBrowserPool(size int, idleTTL time.Duration) (*BrowserPool, error) {
 	if size <= 0 {
 		size = 2
 	}
-	bp := &BrowserPool{sem: make(chan struct{}, size), idleTTL: idleTTL}
+	bp := &BrowserPool{
+		sem:     make(chan struct{}, size),
+		idleTTL: idleTTL,
+		stop:    make(chan struct{}),
+		lastUse: time.Now(),
+	}
 	for i := 0; i < size; i++ {
 		u := launcher.New().Headless(true).MustLaunch()
 		b := rod.New().ControlURL(u).MustConnect()
 		bp.browsers = append(bp.browsers, b)
 	}
-	bp.lastUse = time.Now()
+	bp.wg.Add(1)
 	go bp.reaper()
 	return bp, nil
 }
 
 func (bp *BrowserPool) reaper() {
+	defer bp.wg.Done()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(time.Second)
-		if time.Since(bp.lastUse) > bp.idleTTL {
-			for _, b := range bp.browsers {
-				_ = b.Close()
-			}
-			bp.browsers = nil
+		select {
+		case <-bp.stop:
 			return
+		case <-ticker.C:
+			bp.mu.Lock()
+			lastUse := bp.lastUse
+			idleTTL := bp.idleTTL
+			bp.mu.Unlock()
+
+			if time.Since(lastUse) > idleTTL {
+				bp.mu.Lock()
+				browsers := bp.browsers
+				bp.browsers = nil
+				bp.mu.Unlock()
+
+				for _, b := range browsers {
+					_ = b.Close()
+				}
+				// We don't return here so it can be re-initialized in nextBrowser
+			}
 		}
 	}
+}
+
+func (bp *BrowserPool) Close() error {
+	close(bp.stop)
+	bp.wg.Wait()
+
+	bp.mu.Lock()
+	browsers := bp.browsers
+	bp.browsers = nil
+	bp.mu.Unlock()
+
+	for _, b := range browsers {
+		_ = b.Close()
+	}
+	return nil
 }
 
 func (bp *BrowserPool) acquire() { bp.sem <- struct{}{} }
@@ -79,6 +118,26 @@ type DynamicConfig struct {
 	Allowed    []string
 }
 
+// BrowserScraper handles dynamic web scraping using a browser pool.
+type BrowserScraper struct {
+	pool *BrowserPool
+	cfg  DynamicConfig
+}
+
+func NewBrowserScraper(cfg DynamicConfig) (*BrowserScraper, error) {
+	pool, err := NewBrowserPool(cfg.PoolSize, cfg.IdleTTL)
+	if err != nil {
+		return nil, err
+	}
+	return &BrowserScraper{
+		pool: pool,
+		cfg:  cfg,
+	}, nil
+}
+
+func (s *BrowserScraper) Close() error {
+	return s.pool.Close()
+}
 
 func allowed(urlStr string, allowed []string) bool {
 	if len(allowed) == 0 {
@@ -103,19 +162,16 @@ func allowed(urlStr string, allowed []string) bool {
 	return false
 }
 
-func ScrapeDynamicURL(urlStr string, cfg DynamicConfig) (string, error) {
-	if !allowed(urlStr, cfg.Allowed) {
+func (s *BrowserScraper) ScrapeDynamicURL(urlStr string) (string, error) {
+	if !allowed(urlStr, s.cfg.Allowed) {
 		return "", errors.New("domain_not_allowed")
 	}
-	bp, err := NewBrowserPool(cfg.PoolSize, cfg.IdleTTL)
-	if err != nil {
-		return "", fmt.Errorf("new browser pool: %w", err)
-	}
-	bp.acquire()
-	defer bp.release()
-	br := bp.nextBrowser()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.NavTimeout)
+	s.pool.acquire()
+	defer s.pool.release()
+	br := s.pool.nextBrowser()
+
+	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.NavTimeout)
 	defer cancel()
 	br = br.Context(ctx)
 	p, err := br.Page(proto.TargetCreateTarget{URL: urlStr})

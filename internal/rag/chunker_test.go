@@ -7,7 +7,7 @@ import (
 
 func TestChunkText_TurkishBasics(t *testing.T) {
 	text := "Dr. Ahmet bugün toplantıya katıldı. Önemli kararlar alındı.\n\nProf. Ayşe yarın sunum yapacak. Detaylar e-posta ile gönderildi, vb. bilgilendirmeler yapıldı."
-	chunks, err := ChunkText(text, 50, "tr")
+	chunks, err := ChunkText(nil, text, 50, "tr")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestChunkText_Abbreviations(t *testing.T) {
 	text := "Prof. Dr. Ahmet Bey geldi. Yanında Av. Mehmet de vardı. Bu bir test cümlesidir. Kısaltmalar vb. doğru çalışmalı."
 
 	// We use a small chunkSize to force potential splits if logic is wrong
-	chunks, err := ChunkText(text, 50, "tr")
+	chunks, err := ChunkText(nil, text, 50, "tr")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -105,11 +105,11 @@ func min(a, b int) int {
 }
 
 func TestChunkText_EmptyAndInvalidTarget(t *testing.T) {
-	ch, err := ChunkText("", 50, "tr")
+	ch, err := ChunkText(nil, "", 50, "tr")
 	if err != nil || ch != nil {
 		t.Fatalf("empty should yield nil, got %v", ch)
 	}
-	_, err = ChunkText("hello", 0, "tr")
+	_, err = ChunkText(nil, "hello", 0, "tr")
 	if err == nil {
 		t.Fatalf("expected error for invalid targetTokens")
 	}
@@ -131,7 +131,7 @@ func TestChunkText_TurkishSentenceEndings(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Use a very small token limit to force splitting if sentences are detected
-			chunks, err := ChunkText(tc.input, 5, "tr")
+			chunks, err := ChunkText(nil, tc.input, 5, "tr")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -145,7 +145,7 @@ func TestChunkText_TurkishSentenceEndings(t *testing.T) {
 func TestChunkText_MixedLanguage(t *testing.T) {
 	// TRK-025
 	text := "This is an English sentence. Bu bir Türkçe cümle. Another English one."
-	chunks, err := ChunkText(text, 5, "tr")
+	chunks, err := ChunkText(nil, text, 5, "tr")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestChunkText_TurkishCharacters(t *testing.T) {
 	// TRK-001
 	specialChars := "şŞğĞıİöÖüÜçÇ"
 	text := "Bu cümlede özel karakterler var: " + specialChars
-	chunks, err := ChunkText(text, 100, "tr")
+	chunks, err := ChunkText(nil, text, 100, "tr")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

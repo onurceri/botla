@@ -23,8 +23,7 @@ func TestScrapeURL_Unit(t *testing.T) {
 
 		task := ScrapingTask{URL: srv.URL}
 		ccfg := CollectorConfig{}
-		dcfg := DynamicConfig{}
-		content, err := ScrapeURLWithFallback(task, ccfg, dcfg, false, nil)
+		content, err := ScrapeURLWithFallback(task, ccfg, nil, false, nil)
 
 		assert.NoError(t, err)
 		assert.Contains(t, content, "Hello World")
@@ -39,8 +38,7 @@ func TestScrapeURL_Unit(t *testing.T) {
 
 		task := ScrapingTask{URL: srv.URL}
 		ccfg := CollectorConfig{}
-		dcfg := DynamicConfig{}
-		_, err := ScrapeURLWithFallback(task, ccfg, dcfg, false, nil)
+		_, err := ScrapeURLWithFallback(task, ccfg, nil, false, nil)
 
 		assert.Error(t, err)
 	})

@@ -23,6 +23,7 @@ func TestSearchContext_Empty(t *testing.T) {
 }
 
 func TestSearchContext_ThresholdAndMaxTokens(t *testing.T) {
+	t.Parallel()
 	// qdrant responds with two items, one below threshold
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/collections/embeddings/points/search" {
@@ -36,9 +37,6 @@ func TestSearchContext_ThresholdAndMaxTokens(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("QDRANT_URL", srv.URL)
-	t.Setenv("RAG_TOPK", "5")
-	t.Setenv("RAG_MAX_CONTEXT_TOKENS", "5")
 
 	// Use MediumThreshold 0.2 to filter out 0.1 score item
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.2, HighThreshold: 0.95}
@@ -69,6 +67,7 @@ func TestSearchContext_MissingQdrant(t *testing.T) {
 }
 
 func TestSearchContext_AllBelowThreshold(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/collections/embeddings/points/search" {
 			items := []SearchResult{
@@ -81,7 +80,6 @@ func TestSearchContext_AllBelowThreshold(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("QDRANT_URL", srv.URL)
 
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.2, HighThreshold: 0.8}
 	vc, _ := NewQdrantClient(&QdrantConfig{URL: srv.URL})
@@ -99,6 +97,7 @@ func TestSearchContext_AllBelowThreshold(t *testing.T) {
 
 // RAG-008: Score threshold at exactly 0.0 (permissive)
 func TestSearchContext_ThresholdZero(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/collections/embeddings/points/search" {
 			items := []SearchResult{
@@ -111,7 +110,6 @@ func TestSearchContext_ThresholdZero(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("QDRANT_URL", srv.URL)
 
 	// Threshold 0.0 should include the 0.0 score item
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.0, HighThreshold: 0.5}
@@ -130,6 +128,7 @@ func TestSearchContext_ThresholdZero(t *testing.T) {
 
 // RAG-009: Score threshold at 1.0 (restrictive)
 func TestSearchContext_ThresholdOne(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/collections/embeddings/points/search" {
 			items := []SearchResult{
@@ -141,7 +140,6 @@ func TestSearchContext_ThresholdOne(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("QDRANT_URL", srv.URL)
 
 	// Threshold 1.0 should exclude 0.99
 	cfg := &models.ThresholdConfig{MediumThreshold: 1.0, HighThreshold: 1.0}
@@ -165,6 +163,7 @@ func TestSearchContext_ThresholdOne(t *testing.T) {
 
 // RAG-010: Context aggregation separator
 func TestSearchContext_Separator(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/collections/embeddings/points/search" {
 			items := []SearchResult{
@@ -177,7 +176,6 @@ func TestSearchContext_Separator(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	t.Setenv("QDRANT_URL", srv.URL)
 
 	cfg := &models.ThresholdConfig{MediumThreshold: 0.5, HighThreshold: 0.8}
 	vc, _ := NewQdrantClient(&QdrantConfig{URL: srv.URL})

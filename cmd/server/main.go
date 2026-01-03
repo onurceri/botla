@@ -72,6 +72,7 @@ type infraDeps struct {
 	db      *sql.DB
 	qdrant  *rag.QdrantClient
 	storage storage.StorageService
+	loader  *tokenizer.Loader
 }
 
 type rateLimitDeps struct {
@@ -131,8 +132,10 @@ func initInfrastructure(cfg *config.Config, log *logger.Logger) (*infraDeps, err
 		}
 	}
 
+	var tokLoader *tokenizer.Loader
 	if storageService != nil {
-		if tokErr := tokenizer.Init(context.Background(), storageService); tokErr != nil {
+		tokLoader = tokenizer.NewLoader(storageService)
+		if tokErr := tokLoader.Preload(context.Background()); tokErr != nil {
 			log.Warn("tokenizer_init_fallback", map[string]any{"error": tokErr.Error()})
 		} else {
 			log.Info("tokenizer_loaded", nil)
@@ -143,6 +146,7 @@ func initInfrastructure(cfg *config.Config, log *logger.Logger) (*infraDeps, err
 		db:      pool,
 		qdrant:  qdrantClient,
 		storage: storageService,
+		loader:  tokLoader,
 	}, nil
 }
 
@@ -180,7 +184,7 @@ func initRateLimiting(cfg *config.Config, log *logger.Logger, pool *sql.DB) (*ra
 	}, nil
 }
 
-func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storageService storage.StorageService, qdrantClient *rag.QdrantClient) (*processingDeps, error) {
+func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storageService storage.StorageService, qdrantClient *rag.QdrantClient, tokLoader *tokenizer.Loader) (*processingDeps, error) {
 	oaiClient, err := rag.NewOpenAIClient(cfg)
 	if err != nil {
 		log.Error("openai_init_failed", map[string]any{"error": err.Error()})
@@ -198,9 +202,15 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 		NavTimeout: time.Duration(cfg.SCRAPER_NAV_TIMEOUT_MS) * time.Millisecond,
 		Allowed:    strings.Split(cfg.SCRAPER_ALLOWED_DOMAINS, ","),
 	}
-	scrp := scraper.NewDefaultScraper(scConfig, sdConfig)
+	bScraper, err := scraper.NewBrowserScraper(sdConfig)
+	if err != nil {
+		log.Error("browser_scraper_init_failed", map[string]any{"error": err.Error()})
+		return nil, fmt.Errorf("init browser scraper: %w", err)
+	}
 
-	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, scrp, cfg.WORKER_COUNT)
+	scrp := scraper.NewDefaultScraper(scConfig, bScraper)
+	
+	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, scrp, tokLoader, cfg.WORKER_COUNT)
 	if err != nil {
 		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init source queue: %w", err)
@@ -232,7 +242,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		return nil, err
 	}
 
-	proc, err := initProcessing(cfg, log, infra.db, infra.storage, infra.qdrant)
+	proc, err := initProcessing(cfg, log, infra.db, infra.storage, infra.qdrant, infra.loader)
 	if err != nil {
 		return nil, err
 	}

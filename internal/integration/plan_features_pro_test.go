@@ -587,7 +587,12 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 		NavTimeout: 3 * time.Second,
 		Allowed:    []string{"127.0.0.1", "localhost"},
 	}
-	if _, dynErr := scraper.ScrapeDynamicURL(page.URL, cfg); dynErr != nil {
+	bScraper, err := scraper.NewBrowserScraper(cfg)
+	if err != nil {
+		t.Skip("dynamic scraping not available: " + err.Error())
+	}
+	defer bScraper.Close()
+	if _, dynErr := bScraper.ScrapeDynamicURL(page.URL); dynErr != nil {
 		t.Skip("dynamic scraping not available: " + dynErr.Error())
 	}
 
