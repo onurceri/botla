@@ -542,7 +542,6 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
         },
         isFree ? { text: `1 PDF Dosyası (Max ${p.features.files.max_size_mb}MB)`, included: true } : null,
         { text: isUltra ? 'GPT-4o & GPT-5 Hazır' : (isPro ? 'GPT-4o & GPT-4o Mini' : 'GPT-4o Mini Modeli'), included: true },
-        isPro || isUltra ? { text: 'OCR (Görsel Tarama)', included: true } : null,
         isPro || isUltra ? { text: 'Dinamik Web Tarama', included: true } : { text: 'Dinamik Web Tarama', included: false },
         isUltra ? { text: 'İnsan Desteğine Aktarma', included: true } : null,
         isFree ? { text: 'botla.app İmzası', included: true } : { text: 'Branding Kaldırma', included: true },

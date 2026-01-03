@@ -39,7 +39,6 @@ interface ChatbotContextType extends ChatbotFormReturn {
       rag: { top_k: number; max_context_tokens: number }
     }
     files?: {
-      ocr_enabled: boolean
       max_size_mb: number
       max_text_length?: number
       max_files_per_bot: number

@@ -15,8 +15,6 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/pdf"
 	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
@@ -30,7 +28,6 @@ func updateProPlanConfig(t *testing.T, te *fixtures.TestEnv) {
     "max_pages_per_crawl": 10
   },
   "files": {
-    "ocr_enabled": true,
     "max_size_mb": 20,
     "max_files_per_bot": 20,
     "total_storage_mb": 500
@@ -397,109 +394,6 @@ func TestProPlan_PDFLimits(t *testing.T) {
 			t.Fatalf("expected 413 for large PDF, got %d", resS.StatusCode)
 		}
 		resS.Body.Close()
-	}
-}
-
-func TestProPlan_PDF_OCREnabledFlag(t *testing.T) {
-	t.Parallel()
-
-	te, err := fixtures.SetupTestEnv()
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer fixtures.TeardownTestEnv(te)
-
-	updateProPlanConfig(t, te)
-
-	var cfg models.PlanConfig
-	err = te.DB.QueryRow(`SELECT config FROM plans WHERE code = 'pro'`).Scan(&cfg)
-	if err != nil {
-		t.Fatalf("failed to load pro plan config: %v", err)
-	}
-	if !cfg.Files.OCREnabled {
-		t.Fatalf("expected pro plan OCR to be enabled")
-	}
-}
-
-func TestProPlan_PDF_OCREnabled_ProcessesImageOnlyPDF(t *testing.T) {
-	t.Parallel()
-
-	_, err := pdf.ExtractPDFText("nonexistent.pdf", "en", true)
-	if err != nil && strings.Contains(err.Error(), "pdf support not enabled") {
-		t.Skip("pdf support not enabled; build with -tags fitz to run this test")
-	}
-
-	// Check if OCR is supported by checking ExtractPDFWithOCRCompat error
-	ocrText, err := pdf.ExtractPDFWithOCRCompat("nonexistent.pdf", "en")
-	if err != nil && strings.Contains(err.Error(), "ocr unavailable") {
-		t.Skip("OCR not enabled; build with -tags ocr,fitz to run this test")
-	}
-	_ = ocrText
-
-	oai, qd, override := setupStubs(t)
-	defer oai.Close()
-	defer qd.Close()
-
-	te, err := fixtures.SetupTestEnvWithConfig(override)
-	if err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-	defer fixtures.TeardownTestEnv(te)
-
-	updateProPlanConfig(t, te)
-
-	email := "ocr_pro@example.com"
-	token := authToken(t, te.Server.URL, email)
-	_, err = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = 'pro') WHERE email = $1`, email)
-	if err != nil {
-		t.Fatalf("failed to update user plan: %v", err)
-	}
-
-	create := map[string]any{"name": "OCR Pro Bot"}
-	cbj, _ := json.Marshal(create)
-	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
-	reqC.Header.Set("Authorization", "Bearer "+token)
-	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := testHTTPClient().Do(reqC)
-	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
-		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
-	}
-	var bot chatbot
-	json.NewDecoder(resC.Body).Decode(&bot)
-	resC.Body.Close()
-
-	var body strings.Builder
-	mw := multipart.NewWriter(&body)
-	fw, _ := mw.CreateFormFile("file", "image-only.pdf")
-	// Minimal valid PDF structure
-	pdfContent := "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 20 >>\nstream\nBT /F1 12 Tf ET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000101 00000 n\n0000000190 00000 n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n260\n%%EOF"
-	fw.Write([]byte(pdfContent))
-	mw.WriteField("source_type", "pdf")
-	mw.Close()
-
-	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body.String()))
-	reqS.Header.Set("Authorization", "Bearer "+token)
-	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := testHTTPClient().Do(reqS)
-	if resS.StatusCode != http.StatusCreated {
-		t.Fatalf("expected pdf source 201, got %d", resS.StatusCode)
-	}
-	var sid map[string]string
-	json.NewDecoder(resS.Body).Decode(&sid)
-	resS.Body.Close()
-	sourceID := sid["id"]
-
-	waitForProcessingPro(t, te, token, sourceID)
-
-	src, err := db.GetSourceByID(context.Background(), te.DB, sourceID)
-	if err != nil {
-		t.Fatalf("failed to load source: %v", err)
-	}
-	if src == nil {
-		t.Fatalf("expected source to exist")
-	}
-	if src.ChunkCount == 0 {
-		t.Fatalf("expected non-zero chunks for OCR-enabled pro plan")
 	}
 }
 

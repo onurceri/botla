@@ -12,7 +12,6 @@ func TestPlanConfigValidate(t *testing.T) {
 			MaxPagesPerCrawl: 50,
 		},
 		Files: FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      10,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  500,
@@ -221,7 +220,6 @@ func TestScrapingConfigValidate(t *testing.T) {
 func TestFilesConfigValidate(t *testing.T) {
 	t.Run("valid config", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      10,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  500,
@@ -235,7 +233,6 @@ func TestFilesConfigValidate(t *testing.T) {
 
 	t.Run("max_size_mb zero", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      0,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  500,
@@ -250,7 +247,6 @@ func TestFilesConfigValidate(t *testing.T) {
 
 	t.Run("max_size_mb negative", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      -1,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  500,
@@ -265,7 +261,6 @@ func TestFilesConfigValidate(t *testing.T) {
 
 	t.Run("max_files_per_bot negative", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      10,
 			MaxFilesPerBot: -1,
 			MaxFilesTotal:  500,
@@ -280,7 +275,6 @@ func TestFilesConfigValidate(t *testing.T) {
 
 	t.Run("max_files_total negative", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      10,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  -1,
@@ -295,7 +289,6 @@ func TestFilesConfigValidate(t *testing.T) {
 
 	t.Run("total_storage_mb zero", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      10,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  500,
@@ -310,7 +303,6 @@ func TestFilesConfigValidate(t *testing.T) {
 
 	t.Run("total_storage_mb negative", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      10,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  500,
@@ -325,7 +317,6 @@ func TestFilesConfigValidate(t *testing.T) {
 
 	t.Run("max_text_length negative", func(t *testing.T) {
 		config := FilesConfig{
-			OCREnabled:     true,
 			MaxSizeMB:      10,
 			MaxFilesPerBot: 50,
 			MaxFilesTotal:  500,

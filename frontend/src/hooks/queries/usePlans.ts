@@ -17,7 +17,6 @@ export interface PublicPlanFeatures {
     max_pages_per_crawl: number
   }
   files: {
-    ocr_enabled: boolean
     max_size_mb: number
     max_files_per_bot: number
     max_files_total: number
