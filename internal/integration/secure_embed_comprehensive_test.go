@@ -14,6 +14,7 @@ import (
 
 // TestSecureEmbed_DomainOnlyRestriction tests that domain restriction works without token
 func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -34,7 +35,7 @@ func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -49,7 +50,7 @@ func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
 	}
@@ -62,7 +63,7 @@ func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
 	req1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("Origin", "https://allowed.com")
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 from allowed domain without token, got %d", res1.StatusCode)
 	}
@@ -72,7 +73,7 @@ func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
 	req2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req2.Header.Set("Content-Type", "application/json")
 	req2.Header.Set("Origin", "https://evil.com")
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	if res2.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 from disallowed domain, got %d", res2.StatusCode)
 	}
@@ -82,7 +83,7 @@ func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
 	req3, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req3.Header.Set("Content-Type", "application/json")
 	// No Origin header
-	res3, _ := http.DefaultClient.Do(req3)
+	res3, _ := testHTTPClient().Do(req3)
 	if res3.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 without Origin header, got %d", res3.StatusCode)
 	}
@@ -91,6 +92,7 @@ func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
 
 // TestSecureEmbed_TokenOnlyRestriction tests token validation without domain restriction
 func TestSecureEmbed_TokenOnlyRestriction(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -112,7 +114,7 @@ func TestSecureEmbed_TokenOnlyRestriction(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+userToken)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -127,7 +129,7 @@ func TestSecureEmbed_TokenOnlyRestriction(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB))
 	reqU.Header.Set("Authorization", "Bearer "+userToken)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
 	}
@@ -140,7 +142,7 @@ func TestSecureEmbed_TokenOnlyRestriction(t *testing.T) {
 	req1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("Origin", "https://any-site.com")
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 without token, got %d", res1.StatusCode)
 	}
@@ -152,7 +154,7 @@ func TestSecureEmbed_TokenOnlyRestriction(t *testing.T) {
 	req2.Header.Set("Content-Type", "application/json")
 	req2.Header.Set("Origin", "https://any-site.com")
 	req2.Header.Set("X-Embed-Token", validToken)
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	if res2.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 with valid token, got %d", res2.StatusCode)
 	}
@@ -161,6 +163,7 @@ func TestSecureEmbed_TokenOnlyRestriction(t *testing.T) {
 
 // TestSecureEmbed_ExpiredToken tests that expired tokens are rejected
 func TestSecureEmbed_ExpiredToken(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -182,7 +185,7 @@ func TestSecureEmbed_ExpiredToken(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+userToken)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -196,7 +199,7 @@ func TestSecureEmbed_ExpiredToken(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB))
 	reqU.Header.Set("Authorization", "Bearer "+userToken)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
 	}
@@ -211,7 +214,7 @@ func TestSecureEmbed_ExpiredToken(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("Origin", "https://some-site.com")
 	req1.Header.Set("X-Embed-Token", expiredToken)
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 with expired token, got %d", res1.StatusCode)
 	}
@@ -220,6 +223,7 @@ func TestSecureEmbed_ExpiredToken(t *testing.T) {
 
 // TestSecureEmbed_WrongChatbotIdInToken tests that tokens with wrong chatbot_id are rejected
 func TestSecureEmbed_WrongChatbotIdInToken(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -241,7 +245,7 @@ func TestSecureEmbed_WrongChatbotIdInToken(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+userToken)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -255,7 +259,7 @@ func TestSecureEmbed_WrongChatbotIdInToken(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB))
 	reqU.Header.Set("Authorization", "Bearer "+userToken)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
 	}
@@ -270,7 +274,7 @@ func TestSecureEmbed_WrongChatbotIdInToken(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("Origin", "https://some-site.com")
 	req1.Header.Set("X-Embed-Token", wrongIdToken)
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 with wrong chatbot_id in token, got %d", res1.StatusCode)
 	}
@@ -279,6 +283,7 @@ func TestSecureEmbed_WrongChatbotIdInToken(t *testing.T) {
 
 // TestSecureEmbed_WrongSecretSignature tests that tokens signed with wrong secret are rejected
 func TestSecureEmbed_WrongSecretSignature(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -301,7 +306,7 @@ func TestSecureEmbed_WrongSecretSignature(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+userToken)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -315,7 +320,7 @@ func TestSecureEmbed_WrongSecretSignature(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB))
 	reqU.Header.Set("Authorization", "Bearer "+userToken)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
 	}
@@ -330,7 +335,7 @@ func TestSecureEmbed_WrongSecretSignature(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("Origin", "https://some-site.com")
 	req1.Header.Set("X-Embed-Token", wrongSignatureToken)
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 with wrong secret signature, got %d", res1.StatusCode)
 	}
@@ -339,6 +344,7 @@ func TestSecureEmbed_WrongSecretSignature(t *testing.T) {
 
 // TestSecureEmbed_NoSecureEmbedEnabled tests that requests pass when secure embed is disabled
 func TestSecureEmbed_NoSecureEmbedEnabled(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -353,7 +359,7 @@ func TestSecureEmbed_NoSecureEmbedEnabled(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+userToken)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -365,7 +371,7 @@ func TestSecureEmbed_NoSecureEmbedEnabled(t *testing.T) {
 	req1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("Origin", "https://any-site.com")
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 when secure embed disabled, got %d", res1.StatusCode)
 	}
@@ -374,6 +380,7 @@ func TestSecureEmbed_NoSecureEmbedEnabled(t *testing.T) {
 
 // TestSecureEmbed_DomainAndTokenCombined tests both domain AND token restrictions together
 func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -395,7 +402,7 @@ func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+userToken)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -410,7 +417,7 @@ func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB))
 	reqU.Header.Set("Authorization", "Bearer "+userToken)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
 	}
@@ -425,7 +432,7 @@ func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("Origin", "https://trusted.com")
 	req1.Header.Set("X-Embed-Token", validToken)
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 with allowed domain and valid token, got %d", res1.StatusCode)
 	}
@@ -435,7 +442,7 @@ func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
 	req2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req2.Header.Set("Content-Type", "application/json")
 	req2.Header.Set("Origin", "https://trusted.com")
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	if res2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 with allowed domain but no token, got %d", res2.StatusCode)
 	}
@@ -446,7 +453,7 @@ func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
 	req3.Header.Set("Content-Type", "application/json")
 	req3.Header.Set("Origin", "https://evil.com")
 	req3.Header.Set("X-Embed-Token", validToken)
-	res3, _ := http.DefaultClient.Do(req3)
+	res3, _ := testHTTPClient().Do(req3)
 	if res3.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 with disallowed domain and valid token, got %d", res3.StatusCode)
 	}
@@ -456,7 +463,7 @@ func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
 	req4, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	req4.Header.Set("Content-Type", "application/json")
 	req4.Header.Set("Origin", "https://evil.com")
-	res4, _ := http.DefaultClient.Do(req4)
+	res4, _ := testHTTPClient().Do(req4)
 	if res4.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 with disallowed domain and no token, got %d", res4.StatusCode)
 	}

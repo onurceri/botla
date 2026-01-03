@@ -14,7 +14,12 @@ import (
 	"github.com/onurceri/botla-co/pkg/urlutil"
 )
 
-var ssrfValidator = urlutil.NewSSRFValidator()
+func (h *SourcesHandlers) validator() *urlutil.SSRFValidator {
+	if h.SSRFValidator != nil {
+		return h.SSRFValidator
+	}
+	return urlutil.NewSSRFValidator(false)
+}
 
 // createSource handles POST request to create a new source
 func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, userID string) {
@@ -170,7 +175,7 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 	}
 
 	// NEW: SSRF validation
-	if err = ssrfValidator.ValidateURL(rawURL); err != nil {
+	if err = h.validator().ValidateURL(rawURL); err != nil {
 		h.logWarn("ssrf_blocked", map[string]any{
 			"url":    rawURL,
 			"reason": err.Error(),

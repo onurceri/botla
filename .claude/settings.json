@@ -1,0 +1,26 @@
+/**
+ * AGENTS.md Auto-Update Hook
+ * 
+ * When you complete a task, mention "AGENTS.md" in your work summary.
+ * This hook will automatically prompt you to update relevant AGENTS.md files.
+ * 
+ * Usage: After completing work, say something like:
+ *   "Done. This affects internal/services/AGENTS.md"
+ *   "Complete. Update AGENTS.md for the new pattern."
+ *   "Finished. AGENTS.md should reflect this change."
+ */
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "AGENTS\\.md|update.*AGENTS|create.*AGENTS|AGENTS.md",
+        "hooks": [
+          {
+            "type": "user_message",
+            "message": "📝 **AGENTS.md Update Reminder**\n\nYou've mentioned AGENTS.md updates. Before moving on, please:\n\n1. **Review** affected directories for new patterns/conventions\n2. **Update** WHERE TO LOOK sections if new files added\n3. **Add** any new ANTI-PATTERNS discovered\n4. **Check** CONVENTIONS reflect current code\n\nQuick check:\n```bash\nfind . -name \"AGENTS.md\" -type f\n```\n\nWould you like me to help review/update any AGENTS.md files now?"
+          }
+        ]
+      }
+    ]
+  }
+}

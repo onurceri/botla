@@ -12,7 +12,6 @@ import (
 )
 
 func TestRecovery_Prod(t *testing.T) {
-	t.Setenv("GO_ENV", "production")
 	log := logger.New("ERROR")
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("oops")
@@ -20,7 +19,7 @@ func TestRecovery_Prod(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	middleware.RecoveryMiddleware(log)(h).ServeHTTP(rec, req)
+	middleware.RecoveryMiddleware(log, "production")(h).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", rec.Code)
@@ -40,7 +39,6 @@ func TestRecovery_Prod(t *testing.T) {
 }
 
 func TestRecovery_Dev(t *testing.T) {
-	t.Setenv("GO_ENV", "development")
 	log := logger.New("ERROR")
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("oops")
@@ -48,7 +46,7 @@ func TestRecovery_Dev(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	middleware.RecoveryMiddleware(log)(h).ServeHTTP(rec, req)
+	middleware.RecoveryMiddleware(log, "development")(h).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", rec.Code)

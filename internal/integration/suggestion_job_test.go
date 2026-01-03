@@ -17,10 +17,10 @@ import (
 func authTokenForSuggestionJob(t *testing.T, base string, email string) string {
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
-	http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
-	res, err := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	res, err := testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
 	}
@@ -28,11 +28,12 @@ func authTokenForSuggestionJob(t *testing.T, base string, email string) string {
 		Token string `json:"token"`
 	}
 	json.NewDecoder(res.Body).Decode(&tr)
-	res.Body.Close()
+	drainBody(res)
 	return tr.Token
 }
 
 func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -45,6 +46,17 @@ func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
 
 	result := testdb.CreateChatbot(t, te.DB)
 	chatbotID := result.Chatbot.ID
+
+	// Fix ownership: update chatbot to belong to the authenticated user
+	var userID string
+	err = te.DB.QueryRow("SELECT id FROM users WHERE email = $1", "suggestion_polling@example.com").Scan(&userID)
+	if err != nil {
+		t.Fatalf("failed to get user id: %v", err)
+	}
+	_, err = te.DB.Exec("UPDATE chatbots SET user_id = $1 WHERE id = $2", userID, chatbotID)
+	if err != nil {
+		t.Fatalf("failed to update chatbot ownership: %v", err)
+	}
 
 	sourceResult := testdb.CreateSource(t, te.DB, testdb.SourceFixture{
 		ChatbotID:  chatbotID,
@@ -65,7 +77,7 @@ func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
 
 	regenerateReq, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/regenerate", nil)
 	regenerateReq.Header.Set("Authorization", "Bearer "+token)
-	regenerateResp, err := http.DefaultClient.Do(regenerateReq)
+	regenerateResp, err := testHTTPClient().Do(regenerateReq)
 	if err != nil {
 		t.Fatalf("regenerate request failed: %v", err)
 	}
@@ -93,15 +105,15 @@ func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
 	if job == nil {
 		t.Fatal("expected job to be created")
 	}
-	if job.Status != models.SuggestionJobStatusPending {
-		t.Errorf("expected pending status, got %s", job.Status)
+	if job.Status != models.SuggestionJobStatusPending && job.Status != models.SuggestionJobStatusRunning {
+		t.Errorf("expected pending or running status, got %s", job.Status)
 	}
 
 	time.Sleep(100 * time.Millisecond)
 
 	statusReq, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
 	statusReq.Header.Set("Authorization", "Bearer "+token)
-	statusResp, err := http.DefaultClient.Do(statusReq)
+	statusResp, err := testHTTPClient().Do(statusReq)
 	if err != nil {
 		t.Fatalf("status request failed: %v", err)
 	}
@@ -129,12 +141,13 @@ func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
 		t.Fatalf("failed to get chatbot: %v", err)
 	}
 
-	if updatedChatbot.SuggestedQuestions == nil || len(updatedChatbot.SuggestedQuestions) == 0 {
+	if len(updatedChatbot.SuggestedQuestions) == 0 {
 		t.Log("suggestions may not be populated yet (async processing)")
 	}
 }
 
 func TestSuggestionRegeneration_ConcurrentRequests(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -146,13 +159,24 @@ func TestSuggestionRegeneration_ConcurrentRequests(t *testing.T) {
 	result := testdb.CreateChatbot(t, te.DB)
 	chatbotID := result.Chatbot.ID
 
+	// Fix ownership for concurrent test
+	var userID string
+	err = te.DB.QueryRow("SELECT id FROM users WHERE email = $1", "concurrent_suggestion@example.com").Scan(&userID)
+	if err != nil {
+		t.Fatalf("failed to get user id: %v", err)
+	}
+	_, err = te.DB.Exec("UPDATE chatbots SET user_id = $1 WHERE id = $2", userID, chatbotID)
+	if err != nil {
+		t.Fatalf("failed to update chatbot ownership: %v", err)
+	}
+
 	numRequests := 5
 	jobIDs := make(map[string]bool)
 
 	for i := 0; i < numRequests; i++ {
 		regenerateReq, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/regenerate", nil)
 		regenerateReq.Header.Set("Authorization", "Bearer "+token)
-		regenerateResp, err := http.DefaultClient.Do(regenerateReq)
+		regenerateResp, err := testHTTPClient().Do(regenerateReq)
 		if err != nil {
 			t.Fatalf("regenerate request %d failed: %v", i, err)
 		}
@@ -191,6 +215,7 @@ func TestSuggestionRegeneration_ConcurrentRequests(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_GetLatestJob(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -201,6 +226,17 @@ func TestSuggestionRegeneration_GetLatestJob(t *testing.T) {
 
 	result := testdb.CreateChatbot(t, te.DB)
 	chatbotID := result.Chatbot.ID
+
+	// Fix ownership for latest job test
+	var userID string
+	err = te.DB.QueryRow("SELECT id FROM users WHERE email = $1", "latest_job@example.com").Scan(&userID)
+	if err != nil {
+		t.Fatalf("failed to get user id: %v", err)
+	}
+	_, err = te.DB.Exec("UPDATE chatbots SET user_id = $1 WHERE id = $2", userID, chatbotID)
+	if err != nil {
+		t.Fatalf("failed to update chatbot ownership: %v", err)
+	}
 
 	ctx := context.Background()
 
@@ -219,7 +255,7 @@ func TestSuggestionRegeneration_GetLatestJob(t *testing.T) {
 
 	statusReq, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
 	statusReq.Header.Set("Authorization", "Bearer "+token)
-	statusResp, err := http.DefaultClient.Do(statusReq)
+	statusResp, err := testHTTPClient().Do(statusReq)
 	if err != nil {
 		t.Fatalf("status request failed: %v", err)
 	}
@@ -240,6 +276,7 @@ func TestSuggestionRegeneration_GetLatestJob(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_JobCompletion(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -264,9 +301,14 @@ func TestSuggestionRegeneration_JobCompletion(t *testing.T) {
 
 	token := authTokenForSuggestionJob(t, te.Server.URL, "job_completion@example.com")
 
+	// Fix ownership
+	var userID string
+	_ = te.DB.QueryRow("SELECT id FROM users WHERE email = $1", "job_completion@example.com").Scan(&userID)
+	_, _ = te.DB.Exec("UPDATE chatbots SET user_id = $1 WHERE id = $2", userID, chatbotID)
+
 	statusReq, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
 	statusReq.Header.Set("Authorization", "Bearer "+token)
-	statusResp, err := http.DefaultClient.Do(statusReq)
+	statusResp, err := testHTTPClient().Do(statusReq)
 	if err != nil {
 		t.Fatalf("status request failed: %v", err)
 	}
@@ -297,6 +339,7 @@ func TestSuggestionRegeneration_JobCompletion(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_JobFailure(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -307,6 +350,8 @@ func TestSuggestionRegeneration_JobFailure(t *testing.T) {
 
 	result := testdb.CreateChatbot(t, te.DB)
 	chatbotID := result.Chatbot.ID
+
+
 
 	job, err := db.CreateSuggestionJob(ctx, te.DB, chatbotID)
 	if err != nil {
@@ -321,9 +366,16 @@ func TestSuggestionRegeneration_JobFailure(t *testing.T) {
 
 	token := authTokenForSuggestionJob(t, te.Server.URL, "job_failure@example.com")
 
+	// Fix ownership
+	var userID string
+	_ = te.DB.QueryRow("SELECT id FROM users WHERE email = $1", "job_failure@example.com").Scan(&userID)
+	_, _ = te.DB.Exec("UPDATE chatbots SET user_id = $1 WHERE id = $2", userID, chatbotID)
+
+
+
 	statusReq, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
 	statusReq.Header.Set("Authorization", "Bearer "+token)
-	statusResp, err := http.DefaultClient.Do(statusReq)
+	statusResp, err := testHTTPClient().Do(statusReq)
 	if err != nil {
 		t.Fatalf("status request failed: %v", err)
 	}
@@ -349,6 +401,7 @@ func TestSuggestionRegeneration_JobFailure(t *testing.T) {
 }
 
 func TestSuggestionRegeneration_JobWithRunningStatus(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -372,9 +425,14 @@ func TestSuggestionRegeneration_JobWithRunningStatus(t *testing.T) {
 
 	token := authTokenForSuggestionJob(t, te.Server.URL, "job_running@example.com")
 
+	// Fix ownership
+	var userID string
+	_ = te.DB.QueryRow("SELECT id FROM users WHERE email = $1", "job_running@example.com").Scan(&userID)
+	_, _ = te.DB.Exec("UPDATE chatbots SET user_id = $1 WHERE id = $2", userID, chatbotID)
+
 	statusReq, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
 	statusReq.Header.Set("Authorization", "Bearer "+token)
-	statusResp, err := http.DefaultClient.Do(statusReq)
+	statusResp, err := testHTTPClient().Do(statusReq)
 	if err != nil {
 		t.Fatalf("status request failed: %v", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestScrapeDynamicURL_Fixture(t *testing.T) {
@@ -17,9 +18,10 @@ func TestScrapeDynamicURL_Fixture(t *testing.T) {
 	})
 	srv := httptest.NewServer(h)
 	defer srv.Close()
-	cfg := DefaultDynamicConfig()
-	cfg.Allowed = []string{"localhost"}
-	cfg.NavTimeout = 500 * 1e6 // 500ms
+	cfg := DynamicConfig{
+		Allowed:    []string{"localhost"},
+		NavTimeout: 500 * time.Millisecond,
+	}
 	out, err := ScrapeDynamicURL(srv.URL, cfg)
 	if err != nil {
 		t.Fatalf("dynamic scrape error: %v", err)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -11,6 +12,26 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
+
+// testHTTPClient returns an HTTP client configured for testing.
+// It disables keep-alives to prevent connection leaks in parallel tests.
+func testHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
+	}
+}
+
+// testHTTPPost performs an HTTP POST request using the test client.
+// This prevents connection leaks in parallel tests.
+func testHTTPPost(url, contentType string, body io.Reader) (*http.Response, error) {
+	resp, err := testHTTPClient().Post(url, contentType, body)
+	if err != nil {
+		return nil, fmt.Errorf("test HTTP POST: %w", err)
+	}
+	return resp, nil
+}
 
 func (e *TestEnv) CreateUser(email string) (*models.User, error) {
 	id := uuid.New().String()
@@ -156,20 +177,27 @@ func (e *TestEnv) AuthToken(email string) (string, error) {
 		"full_name": "Test User",
 	}
 	regJSON, _ := json.Marshal(regBody)
-	_, _ = http.Post(e.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewBuffer(regJSON))
+	regResp, err := testHTTPPost(e.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewBuffer(regJSON))
+	if err == nil {
+		_ = regResp.Body.Close()
+	}
 
 	loginBody := map[string]string{
 		"email":    email,
 		"password": TestPassword,
 	}
 	loginJSON, _ := json.Marshal(loginBody)
-	loginResp, err := http.Post(e.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(loginJSON))
+	loginResp, err := testHTTPPost(e.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(loginJSON))
 	if err != nil {
 		return "", fmt.Errorf("login failed: %w", err)
 	}
 	defer func() {
 		_ = loginResp.Body.Close()
 	}()
+
+	if loginResp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("login failed with status: %d", loginResp.StatusCode)
+	}
 
 	var tokenResp struct {
 		Token string `json:"token"`

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 // RFR-002: Refresh unchanged (hash match)
@@ -17,11 +18,12 @@ func TestSourceRefresh_Unchanged_Skipped(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	t.Setenv("OPENAI_API_KEY", "test-key")
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -29,6 +31,9 @@ func TestSourceRefresh_Unchanged_Skipped(t *testing.T) {
 	defer oai.Close()
 	defer qd.Close()
 	defer page.Close()
+
+	// Allow localhost URLs for SSRF validation in tests
+	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(true)
 
 	// Apply migration for refresh columns
 	_, _ = te.DB.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
@@ -44,7 +49,7 @@ func TestSourceRefresh_Unchanged_Skipped(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -58,7 +63,7 @@ func TestSourceRefresh_Unchanged_Skipped(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(b.String()))
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resS.StatusCode)
 	}
@@ -83,7 +88,7 @@ func TestSourceRefresh_Unchanged_Skipped(t *testing.T) {
 	refreshPath := "/api/v1/sources/" + url.PathEscape(sourceID) + "/refresh"
 	reqR, _ := http.NewRequest(http.MethodPost, te.Server.URL+refreshPath, nil)
 	reqR.Header.Set("Authorization", "Bearer "+token)
-	resR, _ := http.DefaultClient.Do(reqR)
+	resR, _ := testHTTPClient().Do(reqR)
 	if resR.StatusCode != http.StatusAccepted {
 		t.Fatalf("expected 202, got %d", resR.StatusCode)
 	}
@@ -108,7 +113,7 @@ func waitForStatus(t *testing.T, url, token, status string) {
 	for i := 0; i < 100; i++ {
 		reqG, _ := http.NewRequest(http.MethodGet, url, nil)
 		reqG.Header.Set("Authorization", "Bearer "+token)
-		resG, _ := http.DefaultClient.Do(reqG)
+		resG, _ := testHTTPClient().Do(reqG)
 		if resG.StatusCode != http.StatusOK {
 			resG.Body.Close()
 			time.Sleep(50 * time.Millisecond)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestChatbot_Lifecycle(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -25,11 +26,11 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := http.DefaultClient.Do(req)
+		res, err := testHTTPClient().Do(req)
 		if err != nil {
 			return nil, 0
 		}
-		defer res.Body.Close()
+		defer drainBody(res)
 
 		if res.StatusCode == http.StatusCreated {
 			var c models.Chatbot
@@ -115,13 +116,13 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+c.ID, bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
-		res, _ := http.DefaultClient.Do(req)
+		res, _ := testHTTPClient().Do(req)
 		if res.StatusCode != 200 {
 			t.Errorf("update failed: %d", res.StatusCode)
 		}
 		var updated models.Chatbot
 		json.NewDecoder(res.Body).Decode(&updated)
-		res.Body.Close()
+		drainBody(res)
 		if updated.ThemeColor != "#00ff00" {
 			t.Errorf("theme_color not updated")
 		}
@@ -133,10 +134,10 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		req, _ = http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+c.ID, bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
-		res, _ = http.DefaultClient.Do(req)
+		res, _ = testHTTPClient().Do(req)
 		var updated2 models.Chatbot
 		json.NewDecoder(res.Body).Decode(&updated2)
-		res.Body.Close()
+		drainBody(res)
 		if updated2.WelcomeMessage != turkishMsg {
 			t.Errorf("welcome_message mismatch: %s", updated2.WelcomeMessage)
 		}
@@ -148,10 +149,10 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		req, _ = http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+c.ID, bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
-		res, _ = http.DefaultClient.Do(req)
+		res, _ = testHTTPClient().Do(req)
 		var updated3 models.Chatbot
 		json.NewDecoder(res.Body).Decode(&updated3)
-		res.Body.Close()
+		drainBody(res)
 		if len(updated3.SuggestedQuestions) != 2 {
 			t.Errorf("suggested_questions length mismatch")
 		}
@@ -162,10 +163,10 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		req, _ = http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+c.ID, bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
-		res, _ = http.DefaultClient.Do(req)
+		res, _ = testHTTPClient().Do(req)
 		var updated4 models.Chatbot
 		json.NewDecoder(res.Body).Decode(&updated4)
-		res.Body.Close()
+		drainBody(res)
 		if updated4.ConfidenceThreshold != 0.85 {
 			t.Errorf("confidence_threshold mismatch")
 		}
@@ -192,7 +193,7 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		// DEL-001 Delete chatbot
 		req, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/chatbots/"+c.ID, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
-		res, _ := http.DefaultClient.Do(req)
+		res, _ := testHTTPClient().Do(req)
 		if res.StatusCode != 204 {
 			t.Errorf("delete failed: %d", res.StatusCode)
 		}
@@ -200,7 +201,7 @@ func TestChatbot_Lifecycle(t *testing.T) {
 		// DEL-005 Delete non-existent
 		req2, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/chatbots/"+c.ID, nil)
 		req2.Header.Set("Authorization", "Bearer "+token)
-		res2, _ := http.DefaultClient.Do(req2)
+		res2, _ := testHTTPClient().Do(req2)
 		if res2.StatusCode != 404 {
 			t.Errorf("expected 404 for non-existent, got %d", res2.StatusCode)
 		}

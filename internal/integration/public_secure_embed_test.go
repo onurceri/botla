@@ -13,6 +13,7 @@ import (
 )
 
 func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -36,7 +37,7 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -51,7 +52,7 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(updB))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update failed: %d", resU.StatusCode)
 	}
@@ -67,7 +68,7 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 	req1.Header.Set("Content-Type", "application/json")
 	// Set Origin to allowed domain
 	req1.Header.Set("Origin", "https://example.com")
-	res1, _ := http.DefaultClient.Do(req1)
+	res1, _ := testHTTPClient().Do(req1)
 	if res1.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 without token, got %d", res1.StatusCode)
 	}
@@ -78,7 +79,7 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 	req2.Header.Set("Content-Type", "application/json")
 	req2.Header.Set("Origin", "https://example.com")
 	req2.Header.Set("X-Embed-Token", "invalid")
-	res2, _ := http.DefaultClient.Do(req2)
+	res2, _ := testHTTPClient().Do(req2)
 	if res2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 with invalid token, got %d", res2.StatusCode)
 	}
@@ -90,7 +91,7 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 	req3.Header.Set("Content-Type", "application/json")
 	req3.Header.Set("Origin", "https://example.com")
 	req3.Header.Set("X-Embed-Token", validToken)
-	res3, _ := http.DefaultClient.Do(req3)
+	res3, _ := testHTTPClient().Do(req3)
 	if res3.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 with valid token, got %d", res3.StatusCode)
 	}
@@ -101,7 +102,7 @@ func TestPublic_SecureEmbed_Enforcement(t *testing.T) {
 	req4.Header.Set("Content-Type", "application/json")
 	req4.Header.Set("Origin", "https://evil.com")
 	req4.Header.Set("X-Embed-Token", validToken)
-	res4, _ := http.DefaultClient.Do(req4)
+	res4, _ := testHTTPClient().Do(req4)
 	if res4.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 with wrong origin, got %d", res4.StatusCode)
 	}

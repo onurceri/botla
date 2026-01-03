@@ -7,16 +7,19 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestChat_DefaultTurkishPrompt(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qd.URL)
-	t.Setenv("RAG_TOPK", "3")
-	t.Setenv("RAG_SCORE_THRESHOLD", "0.5")
-	te, err := fixtures.SetupTestEnv()
+
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.QDRANT_URL = qd.URL
+		cfg.RAG_TOPK = 3
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -43,7 +46,7 @@ func TestChat_DefaultTurkishPrompt(t *testing.T) {
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
 	reqC.Header.Set("X-Workspace-ID", wsID)
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated {
 		t.Fatalf("create bot failed: %d", resC.StatusCode)
 	}
@@ -58,7 +61,7 @@ func TestChat_DefaultTurkishPrompt(t *testing.T) {
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
 	reqCh.Header.Set("X-Workspace-ID", wsID)
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}

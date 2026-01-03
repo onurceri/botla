@@ -305,6 +305,12 @@ func dropSchema(t *testing.T, db *sql.DB, schema string) {
 	}
 	defer func() { _ = baseDB.Close() }()
 
+	// Terminate any active connections to this schema before dropping.
+	// WARNING: We previously killed all connections to current_database(), which
+	// broke parallel tests running in different schemas on the same DB.
+	// We rely on the test closing its own connection. 
+	// If DROP SCHEMA fails, we retry, which catches transient locks.
+
 	// Drop the schema with retries
 	for i := 0; i < 3; i++ {
 		if _, err := baseDB.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err != nil {
@@ -336,17 +342,14 @@ func runMigrations(t *testing.T, schema string) {
 	}
 	migrationsPath := filepath.Join(projectRoot, "db/migrations")
 
-	baseDSN := getTestDSN("")
-
+	baseDSN := getTestDSN(schema)
 	baseDB, err := sql.Open("pgx", baseDSN)
 	if err != nil {
 		t.Fatalf("open db for migration: %v", err)
 	}
 	defer func() { _ = baseDB.Close() }()
 
-	if _, err = baseDB.Exec("SET search_path TO " + schema); err != nil {
-		t.Fatalf("set search_path: %v", err)
-	}
+	// Explicit search_path setting is handled by DSN connection options
 
 	_, _ = baseDB.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
 		version VARCHAR(255) PRIMARY KEY,
@@ -372,7 +375,12 @@ func runMigrations(t *testing.T, schema string) {
 		var count int
 		err = baseDB.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migrationNum).Scan(&count)
 		if err != nil {
-			t.Fatalf("check migration version: %v", err)
+			// Retry once on connection errors during migration check
+			time.Sleep(100 * time.Millisecond)
+			err = baseDB.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migrationNum).Scan(&count)
+			if err != nil {
+				t.Fatalf("check migration version: %v", err)
+			}
 		}
 		if count > 0 {
 			continue

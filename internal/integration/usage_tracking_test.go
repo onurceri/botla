@@ -39,6 +39,7 @@ func insertChatbot(t *testing.T, pool *sql.DB, userID string, name string) (stri
 
 // USG-001 to USG-005: Monthly Token Usage Tracking
 func TestMonthlyTokenUsageTracking(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -115,6 +116,7 @@ func TestMonthlyTokenUsageTracking(t *testing.T) {
 
 // USG-006 to USG-008: Ingestion Usage Tracking
 func TestIngestionUsageTracking(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)

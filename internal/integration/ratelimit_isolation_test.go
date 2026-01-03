@@ -7,17 +7,19 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestRateLimit_PerUserIsolation(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "1")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 1
+		cfg.RateLimitUserWindowSeconds = 60
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -40,7 +42,7 @@ func TestRateLimit_PerUserIsolation(t *testing.T) {
 	reqCA, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbjA))
 	reqCA.Header.Set("Authorization", "Bearer "+tokenA)
 	reqCA.Header.Set("Content-Type", "application/json")
-	resCA, _ := http.DefaultClient.Do(reqCA)
+	resCA, _ := testHTTPClient().Do(reqCA)
 	var botA chatbot
 	json.NewDecoder(resCA.Body).Decode(&botA)
 	resCA.Body.Close()
@@ -51,7 +53,7 @@ func TestRateLimit_PerUserIsolation(t *testing.T) {
 	reqCB, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbjB))
 	reqCB.Header.Set("Authorization", "Bearer "+tokenB)
 	reqCB.Header.Set("Content-Type", "application/json")
-	resCB, _ := http.DefaultClient.Do(reqCB)
+	resCB, _ := testHTTPClient().Do(reqCB)
 	var botB chatbot
 	json.NewDecoder(resCB.Body).Decode(&botB)
 	resCB.Body.Close()
@@ -62,7 +64,7 @@ func TestRateLimit_PerUserIsolation(t *testing.T) {
 	reqA1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+botA.ID+"/chat", bytes.NewReader(crb))
 	reqA1.Header.Set("Authorization", "Bearer "+tokenA)
 	reqA1.Header.Set("Content-Type", "application/json")
-	resA1, _ := http.DefaultClient.Do(reqA1)
+	resA1, _ := testHTTPClient().Do(reqA1)
 	if resA1.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resA1.StatusCode)
 	}
@@ -72,7 +74,7 @@ func TestRateLimit_PerUserIsolation(t *testing.T) {
 	reqB1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+botB.ID+"/chat", bytes.NewReader(crb))
 	reqB1.Header.Set("Authorization", "Bearer "+tokenB)
 	reqB1.Header.Set("Content-Type", "application/json")
-	resB1, _ := http.DefaultClient.Do(reqB1)
+	resB1, _ := testHTTPClient().Do(reqB1)
 	if resB1.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resB1.StatusCode)
 	}
@@ -82,7 +84,7 @@ func TestRateLimit_PerUserIsolation(t *testing.T) {
 	reqB2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+botB.ID+"/chat", bytes.NewReader(crb))
 	reqB2.Header.Set("Authorization", "Bearer "+tokenB)
 	reqB2.Header.Set("Content-Type", "application/json")
-	resB2, _ := http.DefaultClient.Do(reqB2)
+	resB2, _ := testHTTPClient().Do(reqB2)
 	if resB2.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("expected 429, got %d", resB2.StatusCode)
 	}

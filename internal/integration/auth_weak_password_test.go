@@ -12,6 +12,7 @@ import (
 )
 
 func TestAuth_Register_WeakPassword(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -22,7 +23,7 @@ func TestAuth_Register_WeakPassword(t *testing.T) {
 	// Attempt to register with a password shorter than 8 characters
 	regBody := map[string]string{"email": email, "password": "short", "full_name": "Weak User"}
 	b, _ := json.Marshal(regBody)
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -35,7 +36,7 @@ func TestAuth_Register_WeakPassword(t *testing.T) {
 		Status int    `json:"status"`
 	}
 	_ = json.NewDecoder(res.Body).Decode(&errResp)
-	res.Body.Close()
+	drainBody(res)
 	if errResp.Code != "ERR_PASSWORD_TOO_SHORT" {
 		t.Errorf("expected 'ERR_PASSWORD_TOO_SHORT', got %v", errResp.Code)
 	}

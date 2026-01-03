@@ -9,6 +9,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/scraper"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
@@ -27,7 +28,7 @@ type SourceQueue struct {
 }
 
 // StartSourceQueue creates and starts a new source processing queue.
-func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, workerCount int) (*SourceQueue, error) {
+func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, sc scraper.Scraper, workerCount int) (*SourceQueue, error) {
 	log := logger.New("INFO")
 
 	// Create the orchestrator first (needed for circular dependency with processor)
@@ -43,6 +44,7 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 		OpenAIClient: oai,
 		VectorClient: vc,
 		Log:          log,
+		Scraper:      sc,
 		EnqueueWithDelay: func(jobID string, delay time.Duration) {
 			sq.queue.EnqueueWithDelay(jobID, delay)
 		},
@@ -54,11 +56,14 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 	queueManager := NewQueueManager(workerCount, log, processor)
 	sq.queue = queueManager
 
-	// Ensure collection exists at startup
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := vc.EnsureEmbeddingsCollection(ctx); err != nil {
-		return nil, pkgerrors.Wrapf(err, "ensure embeddings collection")
+	// Ensure collection exists at startup, but don't block startup if it fails
+	// The worker will retry operations if needed
+	if vc != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := vc.EnsureEmbeddingsCollection(ctx); err != nil {
+			log.Warn("ensure_embeddings_collection_failed", map[string]any{"error": err.Error()})
+		}
 	}
 
 	// Start workers

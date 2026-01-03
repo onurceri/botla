@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/onurceri/botla-co/internal/api/handlers"
 	"github.com/onurceri/botla-co/internal/api/router"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/repository"
+	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
@@ -18,14 +18,27 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/urlutil"
 )
 
-func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) (http.Handler, *processing.SourceQueue) {
+func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) (http.Handler, *processing.SourceQueue, *middleware.RateLimiter, *workers.WorkerPool, *handlers.SourcesHandlers, *scraper.MockScraper) {
 	mux := http.NewServeMux()
 	log := logger.New("INFO")
 
 	// Initialize rate limiter (in-memory for tests)
-	rlConfig := ratelimit.NewConfigFromEnv()
+	rlSettings := ratelimit.Settings{
+		GlobalRequestsPerMinute: cfg.RateLimitGlobalRequestsPerMinute,
+		GlobalWindowSeconds:     cfg.RateLimitGlobalWindowSeconds,
+		UserRequestsPerMinute:   cfg.RateLimitUserRequestsPerMinute,
+		UserWindowSeconds:       cfg.RateLimitUserWindowSeconds,
+		EndpointChat:            cfg.RateLimitEndpointChat,
+		EndpointSources:         cfg.RateLimitEndpointSources,
+		AuthLogin:               cfg.RateLimitAuthLogin,
+		AuthRegister:            cfg.RateLimitAuthRegister,
+		AuthRefresh:             cfg.RateLimitAuthRefresh,
+	}
+
+	rlConfig := ratelimit.NewConfig(rlSettings)
 	globalLimiter := ratelimit.NewMemoryLimiter(rlConfig.Global)
 	rl := middleware.NewRateLimiter(globalLimiter, nil, rlConfig) // nil Redis client for tests
 
@@ -119,28 +132,32 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		}
 	}
 	var actualVC = vc
-	if actualVC == nil && cfg.QDRANT_URL != "" {
-		if c, err := rag.NewQdrantClient(&rag.QdrantConfig{
-			URL:     cfg.QDRANT_URL,
-			APIKey:  cfg.QDRANT_API_KEY,
-			Timeout: 15 * time.Second,
-		}); err == nil {
-			actualVC = c
-		}
-	}
 
-	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC, 2)
+	// Create mock scraper for tests
+	ms := scraper.NewMockScraper()
+
+	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC, ms, 2)
 	if err != nil {
 		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
 	}
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: memStore, QdrantClient: actualVC, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	sh := &handlers.SourcesHandlers{
+		DB:               pool,
+		Queue:            q,
+		Storage:          memStore,
+		QdrantClient:     actualVC,
+		WorkspaceService: workspaceSvc,
+		OrgService:       orgSvc,
+		SSRFValidator:    urlutil.NewSSRFValidator(true),
+	}
 	tjh := &handlers.TrainingJobHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q}
 	factory := rag.NewClientFactory(cfg)
-	if llm != nil {
-		factory.RegisterClient("openai", llm)
-		factory.RegisterClient("openrouter", llm)
+	// Register the actual LLM client (either passed in or created from config)
+	if actualLLM != nil {
+		factory.RegisterClient("openai", actualLLM)
+		factory.RegisterClient("openrouter", actualLLM)
 	}
 	chatSvc := services.NewChatService(pool, factory, nil, actualVC, log)
+	chatSvc.SyncAnalytics = true
 	if llmEmbed, ok := actualLLM.(rag.EmbeddingClient); ok {
 		chatSvc.Embedder = llmEmbed
 	}
@@ -223,5 +240,5 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
-	return cors(middleware.RequestID(mux)), q
+	return cors(middleware.RequestID(mux)), q, rl, workerPool, sh, ms
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/onurceri/botla-co/internal/models"
@@ -39,9 +38,6 @@ func NewOpenAIClient(cfg *config.Config, opts ...OpenAIClientOption) (*OpenAICli
 		return nil, errors.New("OPENAI_API_KEY is empty")
 	}
 	base := cfg.OPENAI_API_BASE
-	if base == "" {
-		base = os.Getenv("OPENAI_API_BASE")
-	}
 	if base == "" {
 		base = "https://api.openai.com"
 	}

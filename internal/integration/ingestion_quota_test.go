@@ -9,23 +9,31 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
+	t.Parallel()
+
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	page := startHTMLStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	defer oai.Close()
+	defer qd.Close()
+	defer page.Close()
+
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
-	defer oai.Close()
-	defer qd.Close()
-	defer page.Close()
+
+	// Allow localhost URLs for testing
+	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(true)
 
 	// Set plan config with low ingestion quota and cooldown
 	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_build_object(
@@ -47,7 +55,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated && resC.StatusCode != http.StatusOK {
 		t.Fatalf("chatbot create failed: %d", resC.StatusCode)
 	}
@@ -64,7 +72,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	reqS1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body1.String()))
 	reqS1.Header.Set("Authorization", "Bearer "+token)
 	reqS1.Header.Set("Content-Type", mw1.FormDataContentType())
-	resS1, _ := http.DefaultClient.Do(reqS1)
+	resS1, _ := testHTTPClient().Do(reqS1)
 	if resS1.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resS1.StatusCode)
 	}
@@ -79,7 +87,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	reqDup, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(bodyDup.String()))
 	reqDup.Header.Set("Authorization", "Bearer "+token)
 	reqDup.Header.Set("Content-Type", mwD.FormDataContentType())
-	resDup, _ := http.DefaultClient.Do(reqDup)
+	resDup, _ := testHTTPClient().Do(reqDup)
 	if resDup.StatusCode != http.StatusConflict {
 		t.Fatalf("expected 409, got %d", resDup.StatusCode)
 	}
@@ -88,7 +96,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	// List sources and wait until the first is processed to ensure monthly counter increments
 	reqL, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", nil)
 	reqL.Header.Set("Authorization", "Bearer "+token)
-	resL, _ := http.DefaultClient.Do(reqL)
+	resL, _ := testHTTPClient().Do(reqL)
 	var items []map[string]any
 	json.NewDecoder(resL.Body).Decode(&items)
 	resL.Body.Close()
@@ -97,7 +105,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/sources/"+sid, nil)
 		reqG.Header.Set("Authorization", "Bearer "+token)
-		resG, _ := http.DefaultClient.Do(reqG)
+		resG, _ := testHTTPClient().Do(reqG)
 		if resG.StatusCode == http.StatusOK {
 			var st map[string]any
 			json.NewDecoder(resG.Body).Decode(&st)
@@ -114,7 +122,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 
 	reqDel, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/sources/"+sid, nil)
 	reqDel.Header.Set("Authorization", "Bearer "+token)
-	resDel, _ := http.DefaultClient.Do(reqDel)
+	resDel, _ := testHTTPClient().Do(reqDel)
 	if resDel.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d", resDel.StatusCode)
 	}
@@ -129,7 +137,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	reqS2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body2.String()))
 	reqS2.Header.Set("Authorization", "Bearer "+token)
 	reqS2.Header.Set("Content-Type", mw2.FormDataContentType())
-	resS2, _ := http.DefaultClient.Do(reqS2)
+	resS2, _ := testHTTPClient().Do(reqS2)
 	if resS2.StatusCode != http.StatusTooManyRequests && resS2.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("expected 429 or 402, got %d", resS2.StatusCode)
 	}
@@ -144,7 +152,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	reqS3, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(body3.String()))
 	reqS3.Header.Set("Authorization", "Bearer "+token)
 	reqS3.Header.Set("Content-Type", mw3.FormDataContentType())
-	resS3, _ := http.DefaultClient.Do(reqS3)
+	resS3, _ := testHTTPClient().Do(reqS3)
 	if resS3.StatusCode != http.StatusPaymentRequired {
 		t.Fatalf("expected 402, got %d", resS3.StatusCode)
 	}

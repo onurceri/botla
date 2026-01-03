@@ -40,11 +40,7 @@ type URLProcessor struct {
 }
 
 // NewURLProcessor creates a new URLProcessor.
-// If scraper is nil, a DefaultScraper is used.
 func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper) *URLProcessor {
-	if s == nil {
-		s = scraper.NewDefaultScraper()
-	}
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
@@ -104,7 +100,7 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	}
 
 	// Step 1: Fetch raw HTML for link discovery (always, regardless of text extraction)
-	rawHTML, htmlErr := p.Scraper.FetchRawHTML(*s.SourceURL, scraper.DefaultCollectorConfig())
+	rawHTML, htmlErr := p.Scraper.FetchRawHTML(*s.SourceURL)
 	switch {
 	case htmlErr != nil:
 		p.logWarn("url_processing_fetch_html_failed", map[string]any{
@@ -136,7 +132,6 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	// Step 2: Extract text content for embedding
 	content, err := p.Scraper.ScrapeURLWithFallback(
 		scraper.ScrapingTask{URL: *s.SourceURL},
-		scraper.DefaultCollectorConfig(),
 		plan.Config.Scraping.DynamicEnabled,
 		scrapeConfig,
 	)

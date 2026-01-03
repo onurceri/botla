@@ -10,16 +10,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/onurceri/botla-co/internal/api/handlers"
 	dbpkg "github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/policy"
 	"github.com/stretchr/testify/mock"
 )
@@ -29,18 +32,21 @@ import (
 const TestPassword = "Test@123"
 
 type TestEnv struct {
-	Cfg         *config.Config
-	DB          *sql.DB
-	Schema      string
-	Server      *httptest.Server
-	VectorStore *MockVectorStore
-	MockVC      *rag.MockVectorClient
-	MockLLM     *rag.MockFullClient
-	Queue       *processing.SourceQueue
+	Cfg             *config.Config
+	DB              *sql.DB
+	Schema          string
+	Server          *httptest.Server
+	VectorStore     *MockVectorStore
+	MockVC          *rag.MockVectorClient
+	MockLLM         *rag.MockFullClient
+	MockScraper     *scraper.MockScraper // For tests that need to configure scraper responses
+	RealVC          *rag.QdrantClient    // Added for cleanup
+	CollectionName  string               // Added for cleanup
+	Queue           *processing.SourceQueue
+	Limiter         *middleware.RateLimiter
+	WorkerPool      *workers.WorkerPool
+	SourcesHandlers *handlers.SourcesHandlers
 }
-
-// cleanupOnce ensures we only run cleanup once per test suite
-var cleanupOnce sync.Once
 
 // CleanupAllIntegrationSchemas removes all botla_it_* schemas from the test database.
 // This should be called at the start of a test run to ensure a clean state.
@@ -78,13 +84,8 @@ func CleanupAllIntegrationSchemas() error {
 	}
 
 	for _, schema := range schemas {
-		// Terminate connections first
-		_, _ = db.Exec(`
-			SELECT pg_terminate_backend(pid)
-			FROM pg_stat_activity
-			WHERE datname = current_database()
-			  AND pid <> pg_backend_pid()
-		`)
+		// Terminate connections first? NO. This kills parallel tests in other packages.
+		// We rely on tests closing connections.
 
 		if _, err := db.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %q CASCADE", schema)); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "warning: failed to drop schema %s: %v\n", schema, err)
@@ -97,53 +98,104 @@ func CleanupAllIntegrationSchemas() error {
 }
 
 func SetupTestEnv() (*TestEnv, error) {
-	return setupTestEnvCommon(false)
+	return SetupTestEnvWithConfigAndMocks(nil, true)
 }
 
 func SetupTestEnvWithMocks() (*TestEnv, error) {
-	return setupTestEnvCommon(true)
+	return SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_KEY = ""
+		cfg.QDRANT_URL = ""
+	}, true)
 }
 
-func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
-	// Run cleanup once at the start of the test suite to remove stale schemas
-	cleanupOnce.Do(func() {
-		_ = CleanupAllIntegrationSchemas()
-	})
+// ConfigOverride is a function that modifies the test config.
+// Use this to customize config values without t.Setenv() calls.
+type ConfigOverride func(*config.Config)
 
-	if os.Getenv("DB_HOST") == "" {
-		_ = os.Setenv("DB_HOST", "localhost")
+// SetupTestEnvWithConfig creates a test environment with optional config overrides.
+// This enables parallel test execution by avoiding t.Setenv() calls.
+//
+// Usage:
+//
+//	func TestExample(t *testing.T) {
+//		te, err := fixtures.SetupTestEnvWithConfig(func(cfg *config.Config) {
+//			cfg.OPENAI_API_BASE = oai.URL
+//			cfg.QDRANT_URL = qd.URL
+//		})
+//		if err != nil {
+//			t.Fatalf("setup failed: %v", err)
+//		}
+//		defer fixtures.TeardownTestEnv(te)
+//		// ... test code
+//	}
+func SetupTestEnvWithConfig(override ConfigOverride) (*TestEnv, error) {
+	return setupTestEnvCommon(true, override)
+}
+
+// SetupTestEnvWithConfigAndMocks creates a test environment with mocks and optional config overrides.
+func SetupTestEnvWithConfigAndMocks(override ConfigOverride, useMocks bool) (*TestEnv, error) {
+	return setupTestEnvCommon(useMocks, override)
+}
+
+// defaultTestConfig returns a Config struct with test values.
+// This avoids t.Setenv() calls, enabling parallel test execution.
+func defaultTestConfig() *config.Config {
+	return &config.Config{
+		DB_HOST:                "localhost",
+		DB_PORT:                "5432",
+		DB_NAME:                "botla_test",
+		DB_USER:                "botla",
+		DB_PASSWORD:            "botla",
+		DB_SCHEMA:              "public",
+		DB_SSLMODE:             "disable",
+		REDIS_URL:              "redis://localhost:6379",
+		QDRANT_URL:             "http://localhost:6333",
+		QDRANT_API_KEY:         "",
+		OPENAI_API_KEY:         "test-key",
+		OPENAI_API_BASE:        "https://api.openai.com",
+		OPENAI_TIMEOUT_MS:      30000,
+		OPENROUTER_API_KEY:     "test-key",
+		OPENROUTER_API_BASE:    "https://openrouter.ai/api/v1",
+		OPENROUTER_TIMEOUT_MS:  30000,
+		IYZICO_API_KEY:         "",
+		IYZICO_SECRET_KEY:      "",
+		JWT_SECRET:             "test-secret-for-testing-only",
+		PORT:                   "8080",
+		CORS_ALLOWED_ORIGINS:   "http://localhost:5173",
+		WORKER_COUNT:           4,
+		ANALYTICS_WORKER_COUNT: 10,
+		R2_ACCOUNT_ID:          "",
+		R2_ACCESS_KEY_ID:       "",
+		R2_SECRET_ACCESS_KEY:   "",
+		R2_BUCKET_NAME:         "",
+		DEFAULT_CHATBOT_MODEL:  "gpt-4o-mini",
+		RAG_TOPK:               5,
+		RAG_MAX_CONTEXT_TOKENS: 2000,
+		CHAT_TIMEOUT_MS:        60000,
+		GO_ENV:                 "test",
+		CookieSecure:           false,
 	}
-	if os.Getenv("DB_PORT") == "" {
-		_ = os.Setenv("DB_PORT", "5432")
+}
+
+func setupTestEnvCommon(useMocks bool, override ConfigOverride) (*TestEnv, error) {
+	// Build config without relying on environment variables
+	cfg := defaultTestConfig()
+
+	// Apply any overrides provided by the caller
+	if override != nil {
+		override(cfg)
 	}
 
-	// Always use test database for integration tests
-	_ = os.Setenv("DB_NAME", "botla_test")
-
-	if os.Getenv("DB_USER") == "" {
-		_ = os.Setenv("DB_USER", "botla")
-	}
-	if os.Getenv("DB_PASSWORD") == "" {
-		_ = os.Setenv("DB_PASSWORD", "botla")
-	}
-	if os.Getenv("QDRANT_URL") == "" {
-		_ = os.Setenv("QDRANT_URL", "http://localhost:6333")
-	}
-	if os.Getenv("JWT_SECRET") == "" {
-		_ = os.Setenv("JWT_SECRET", "test-secret")
-	}
-	if os.Getenv("PORT") == "" {
-		_ = os.Setenv("PORT", "8080")
-	}
-	if _, ok := os.LookupEnv("OPENAI_API_KEY"); !ok {
-		_ = os.Setenv("OPENAI_API_KEY", "test-key")
-	}
+	// Only set defaults from env if not overridden
+	// This allows tests to fully control config values
 
 	randBytes := make([]byte, 4)
 	if _, err := rand.Read(randBytes); err != nil {
 		return nil, fmt.Errorf("failed to generate schema suffix: %w", err)
 	}
-	schema := "botla_it_" + hex.EncodeToString(randBytes)
+	schemaSuffix := hex.EncodeToString(randBytes)
+	schema := "botla_it_" + schemaSuffix
+	collectionName := "embeddings_" + schemaSuffix
 
 	// Run migrations
 	// We use the migrate CLI tool to ensure the test database is in a clean state.
@@ -166,19 +218,20 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 	migrationsPath := filepath.Join(projectRoot, "db/migrations")
 
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s",
-		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"), schema)
+		cfg.DB_USER, cfg.DB_PASSWORD,
+		cfg.DB_HOST, cfg.DB_PORT,
+		cfg.DB_NAME, schema)
 
 	baseURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
+		cfg.DB_USER, cfg.DB_PASSWORD,
+		cfg.DB_HOST, cfg.DB_PORT,
+		cfg.DB_NAME,
 	)
 	baseDB, err := sql.Open("pgx", baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open base db: %w", err)
 	}
+	baseDB.SetMaxOpenConns(1)
 	if pingErr := baseDB.Ping(); pingErr != nil {
 		_ = baseDB.Close()
 		return nil, fmt.Errorf("failed to ping base db: %w", pingErr)
@@ -187,7 +240,10 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 		_ = baseDB.Close()
 		return nil, fmt.Errorf("failed to create schema %s: %w", schema, schemaCreateErr)
 	}
-	_ = baseDB.Close()
+	if closeErr := baseDB.Close(); closeErr != nil {
+		return nil, fmt.Errorf("failed to close base db: %w", closeErr)
+	}
+	time.Sleep(50 * time.Millisecond)
 
 	// Migrate Up
 	//nolint:gosec // this is a test helper using dynamic path
@@ -203,7 +259,7 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 	// We use TRUNCATE for speed.
 	// NOTE: We don't truncate 'plans' and 'languages' as they are seeded.
 
-	cfg := config.LoadConfig()
+	// Use the config we built earlier (with overrides applied)
 	cfg.DB_SCHEMA = schema
 	db, err := dbpkg.New(cfg)
 	if err != nil {
@@ -215,7 +271,7 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 
 	_, _ = db.Exec(`TRUNCATE TABLE chatbots, users, organizations, workspaces, data_sources, analytics, handoff_requests, messages, conversations CASCADE`)
 
-	db.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(10)
 
 	// Restore plans to a clean state from migration 000035
 	RestorePlans(db)
@@ -290,15 +346,60 @@ func setupTestEnvCommon(useMocks bool) (*TestEnv, error) {
 
 	var llm rag.LLMClient
 	var vc rag.VectorClient
+	var realVC *rag.QdrantClient
 
 	if useMocks {
+		// Always use mocks when useMocks=true, regardless of config values
 		llm = mockLLM
 		vc = mockVC
+	} else {
+		// useMocks=false: Try to create real clients, fall back to mocks if not configured
+		// This path is only for explicit real-service testing scenarios
+
+		// Vector client
+		if cfg.QDRANT_URL != "" {
+			var err error
+			realVC, err = rag.NewQdrantClient(&rag.QdrantConfig{
+				URL:            cfg.QDRANT_URL,
+				APIKey:         cfg.QDRANT_API_KEY,
+				Timeout:        15 * time.Second,
+				CollectionName: collectionName,
+			})
+			if err == nil {
+				vc = realVC
+			} else {
+				fmt.Printf("WARNING: failed to create qdrant client, using mock: %v\n", err)
+				vc = mockVC
+			}
+		} else {
+			// No QDRANT_URL configured, use mock
+			vc = mockVC
+		}
+
+		// LLM client - leave nil to let NewTestMux create real client
+		// when useMocks=false. Tests can point cfg.OPENAI_API_BASE to a
+		// mock HTTP server to intercept LLM calls.
+		// llm remains nil here, NewTestMux will create the real client
 	}
 
-	mux, q := NewTestMux(cfg, db, vs, llm, vc)
+	mux, q, rl, wp, sh, ms := NewTestMux(cfg, db, vs, llm, vc)
 	srv := httptest.NewServer(mux)
-	return &TestEnv{Cfg: cfg, DB: db, Schema: schema, Server: srv, VectorStore: vs, MockVC: mockVC, MockLLM: mockLLM, Queue: q}, nil
+	return &TestEnv{
+		Cfg:             cfg,
+		DB:              db,
+		Schema:          schema,
+		Server:          srv,
+		VectorStore:     vs,
+		MockVC:          mockVC,
+		MockLLM:         mockLLM,
+		MockScraper:     ms,
+		RealVC:          realVC,
+		CollectionName:  collectionName,
+		Queue:           q,
+		Limiter:         rl,
+		WorkerPool:      wp,
+		SourcesHandlers: sh,
+	}, nil
 }
 
 func StrPtr(s string) *string {
@@ -314,6 +415,12 @@ func TeardownTestEnv(te *TestEnv) {
 	}
 	if te.Queue != nil {
 		te.Queue.Stop()
+	}
+	if te.Limiter != nil {
+		_ = te.Limiter.Close()
+	}
+	if te.WorkerPool != nil {
+		te.WorkerPool.Shutdown(1 * time.Second)
 	}
 
 	schema := te.Schema
@@ -346,13 +453,9 @@ func dropIntegrationSchema(schema string) {
 	defer func() { _ = db.Close() }()
 
 	// Terminate all connections to this schema to allow drop
-	_, _ = db.Exec(`
-		SELECT pg_terminate_backend(pid)
-		FROM pg_stat_activity
-		WHERE datname = current_database()
-		  AND pid <> pg_backend_pid()
-		  AND state = 'idle'
-	`)
+	// WARNING: This kills all connections to the DB, which breaks parallel tests.
+	// We rely on TeardownTestEnv closing the test's DB connection first.
+	// If DROP SCHEMA fails due to locks, we will retry.
 
 	// Retry drop up to 3 times
 	for i := 0; i < 3; i++ {
@@ -387,7 +490,7 @@ func RestorePlans(db *sql.DB) {
     'chat', jsonb_build_object('default_model', $1::text, 'allowed_models', '["gpt-4o-mini"]'::jsonb, 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k', 3, 'max_context_tokens', 2000), 'max_suggested_questions', 3, 'max_manual_questions', 3, 'min_response_token_limit', 1, 'max_response_token_limit', 4096),
     'refresh', jsonb_build_object('enabled', false, 'max_monthly', 0),
     'security', jsonb_build_object('secure_embed_enabled', false),
-    'guardrails', jsonb_build_object('can_customize_thresholds', false, 'can_use_smart_fallback', false, 'can_use_escalate_fallback', false, 'can_manage_topics', false, 'can_customize_messages', false),
+    'guardrails', jsonb_build_object('can_customize_thresholds', false, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', false, 'can_manage_topics', false, 'can_customize_messages', false),
     'branding', jsonb_build_object('can_hide_branding', false, 'can_custom_branding', false),
     'rate_limits', jsonb_build_object('requests_per_minute', 100, 'window_seconds', 60, 'endpoints', jsonb_build_object('chat', jsonb_build_object('requests_per_minute', 30, 'window_seconds', 60), 'sources', jsonb_build_object('requests_per_minute', 10, 'window_seconds', 60))),
     'max_chatbots', 1, 'max_monthly_ingestions', 50, 'max_monthly_embedding_tokens', 250000, 'min_readd_cooldown_minutes', 60

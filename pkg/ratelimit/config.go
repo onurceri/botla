@@ -1,82 +1,80 @@
 package ratelimit
 
 import (
-	"os"
-	"strconv"
 	"time"
 )
 
-// NewConfigFromEnv creates a TieredConfig from environment variables
-func NewConfigFromEnv() *TieredConfig {
+// Settings contains raw rate limit settings usually loaded from environment variables
+type Settings struct {
+	GlobalRequestsPerMinute int
+	GlobalWindowSeconds     int
+	UserRequestsPerMinute   int
+	UserWindowSeconds       int
+	EndpointChat            int
+	EndpointSources         int
+	AuthLogin               int
+	AuthRegister            int
+	AuthRefresh             int
+}
+
+// NewConfig creates a TieredConfig from the provided settings
+func NewConfig(s Settings) *TieredConfig {
 	cfg := DefaultConfig()
 
 	// Global (IP-based) limits
-	if v := getEnvInt("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE", 0); v > 0 {
-		cfg.Global.RequestsPerWindow = v
+	if s.GlobalRequestsPerMinute > 0 {
+		cfg.Global.RequestsPerWindow = s.GlobalRequestsPerMinute
 	}
 
-	if v := getEnvInt("RATE_LIMIT_GLOBAL_WINDOW_SECONDS", 0); v > 0 {
-		cfg.Global.WindowSize = time.Duration(v) * time.Second
+	if s.GlobalWindowSeconds > 0 {
+		cfg.Global.WindowSize = time.Duration(s.GlobalWindowSeconds) * time.Second
 	}
 
 	// User (authenticated) limits
-	if v := getEnvInt("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", 0); v > 0 {
-		cfg.User.RequestsPerWindow = v
+	if s.UserRequestsPerMinute > 0 {
+		cfg.User.RequestsPerWindow = s.UserRequestsPerMinute
 	}
 
-	if v := getEnvInt("RATE_LIMIT_USER_WINDOW_SECONDS", 0); v > 0 {
-		cfg.User.WindowSize = time.Duration(v) * time.Second
+	if s.UserWindowSeconds > 0 {
+		cfg.User.WindowSize = time.Duration(s.UserWindowSeconds) * time.Second
 	}
 
 	// Endpoint-specific overrides
-	if v := getEnvInt("RATE_LIMIT_ENDPOINT_CHAT", 0); v > 0 {
+	if s.EndpointChat > 0 {
 		cfg.EndpointOverrides["/api/v1/chat"] = Config{
-			RequestsPerWindow: v,
+			RequestsPerWindow: s.EndpointChat,
 			WindowSize:        60 * time.Second,
 		}
 	}
 
-	if v := getEnvInt("RATE_LIMIT_ENDPOINT_SOURCES", 0); v > 0 {
+	if s.EndpointSources > 0 {
 		cfg.EndpointOverrides["/api/v1/sources"] = Config{
-			RequestsPerWindow: v,
+			RequestsPerWindow: s.EndpointSources,
 			WindowSize:        60 * time.Second,
 		}
 	}
 
 	// Auth endpoint overrides (strict limits for brute-force protection)
-	if v := getEnvInt("RATE_LIMIT_AUTH_LOGIN", 0); v > 0 {
+	if s.AuthLogin > 0 {
 		cfg.EndpointOverrides["/api/v1/auth/login"] = Config{
-			RequestsPerWindow: v,
+			RequestsPerWindow: s.AuthLogin,
 			WindowSize:        60 * time.Second,
 		}
 	}
 
-	if v := getEnvInt("RATE_LIMIT_AUTH_REGISTER", 0); v > 0 {
+	if s.AuthRegister > 0 {
 		cfg.EndpointOverrides["/api/v1/auth/register"] = Config{
-			RequestsPerWindow: v,
+			RequestsPerWindow: s.AuthRegister,
 			WindowSize:        60 * time.Second,
 		}
 	}
 
-	if v := getEnvInt("RATE_LIMIT_AUTH_REFRESH", 0); v > 0 {
+	if s.AuthRefresh > 0 {
 		cfg.EndpointOverrides["/api/v1/auth/refresh"] = Config{
-			RequestsPerWindow: v,
+			RequestsPerWindow: s.AuthRefresh,
 			WindowSize:        60 * time.Second,
 		}
 	}
 
 	return cfg
-}
-
-// getEnvInt retrieves an integer from environment variable, returns defaultVal if not found or invalid
-func getEnvInt(key string, defaultVal int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return defaultVal
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return defaultVal
-	}
-	return n
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 // Rate Limiting Tests
@@ -81,7 +82,7 @@ func rlCreateChatbot(t *testing.T, baseURL, token, name string) string {
 	if err != nil {
 		t.Fatalf("failed to create chatbot: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create chatbot, status: %d", resp.StatusCode)
@@ -105,14 +106,14 @@ func rlAuthToken(t *testing.T, base string, email string) string {
 	t.Helper()
 	regBody := map[string]string{"email": email, "password": fixtures.TestPassword, "full_name": "Rate Limit Test User"}
 	b, _ := json.Marshal(regBody)
-	_, _ = http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	_, _ = testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	lb := map[string]string{"email": email, "password": fixtures.TestPassword}
 	lbj, _ := json.Marshal(lb)
-	res, err := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	res, err := testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 	var tr tokenResp
 	if err := json.NewDecoder(res.Body).Decode(&tr); err != nil {
 		t.Fatalf("failed to decode login response: %v", err)
@@ -122,14 +123,15 @@ func rlAuthToken(t *testing.T, base string, email string) string {
 
 // TestRateLimit_ChatEndpoint verifies that the chat endpoint is rate limited
 func TestRateLimit_ChatEndpoint(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "3")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 3
+		cfg.RateLimitUserWindowSeconds = 60
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -158,10 +160,10 @@ func TestRateLimit_ChatEndpoint(t *testing.T) {
 			if ra == "" {
 				t.Error("missing Retry-After header on 429 response")
 			}
-			resp.Body.Close()
+			drainBody(resp)
 			break
 		}
-		resp.Body.Close()
+		drainBody(resp)
 	}
 
 	if !rateLimited {
@@ -171,9 +173,10 @@ func TestRateLimit_ChatEndpoint(t *testing.T) {
 
 // TestRateLimit_SourceCreation verifies that source creation is rate limited
 func TestRateLimit_SourceCreation(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "2")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 2
+		cfg.RateLimitUserWindowSeconds = 60
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -194,10 +197,10 @@ func TestRateLimit_SourceCreation(t *testing.T) {
 		resp := rlCreateTextSourceRaw(t, te.Server.URL, token, botID, fmt.Sprintf("Content %d - testing rate limits on source creation", i))
 		if resp.StatusCode == http.StatusTooManyRequests {
 			rateLimited = true
-			resp.Body.Close()
+			drainBody(resp)
 			break
 		}
-		resp.Body.Close()
+		drainBody(resp)
 	}
 
 	// Rate limiting should kick in
@@ -209,9 +212,10 @@ func TestRateLimit_SourceCreation(t *testing.T) {
 // TestRateLimit_Recovery verifies that rate limits recover after the window expires
 func TestRateLimit_Recovery(t *testing.T) {
 	// Use a short window for testing recovery
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "2")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "2") // 2 second window
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 2
+		cfg.RateLimitUserWindowSeconds = 2 // 2 second window
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -229,41 +233,48 @@ func TestRateLimit_Recovery(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
-		resp, respErr := http.DefaultClient.Do(req)
+		resp, respErr := testHTTPClient().Do(req)
 		if respErr != nil {
 			t.Fatalf("request failed: %v", respErr)
 		}
-		resp.Body.Close()
+		drainBody(resp)
 	}
 
-	// Wait for rate limit window to expire (plus buffer)
-	time.Sleep(3 * time.Second)
+	// Poll for rate limit recovery instead of fixed sleep
+	// This is faster when the window expires quickly and more reliable
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := testHTTPClient().Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		drainBody(resp)
 
-	// Should work again after recovery
-	req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
+		if resp.StatusCode != http.StatusTooManyRequests {
+			// Recovery happened!
+			return
+		}
+		// Small sleep between polls to avoid hammering
+		time.Sleep(100 * time.Millisecond)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusTooManyRequests {
-		t.Error("rate limit did not recover after window expiry")
-	}
+	t.Error("rate limit did not recover after window expiry (polled for 5s)")
 }
 
 // TestRateLimit_PerUserIsolationExtended verifies that one user's rate limit
 // doesn't affect another user
 func TestRateLimit_PerUserIsolationExtended(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "2")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 2
+		cfg.RateLimitUserWindowSeconds = 60
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -288,12 +299,12 @@ func TestRateLimit_PerUserIsolationExtended(t *testing.T) {
 	// Exhaust User A's limit with chat requests
 	for i := 0; i < 5; i++ {
 		resp := rlSendChatRaw(t, te.Server.URL, tokenA, botA, fmt.Sprintf("Message %d", i))
-		resp.Body.Close()
+		drainBody(resp)
 	}
 
 	// User B should NOT be affected - make a request
 	resp := rlSendChatRaw(t, te.Server.URL, tokenB, botB, "Hello from User B")
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode == http.StatusTooManyRequests {
 		t.Error("User B was rate limited due to User A's usage - isolation failure")
@@ -302,14 +313,15 @@ func TestRateLimit_PerUserIsolationExtended(t *testing.T) {
 
 // TestRateLimit_HeadersPresent verifies that rate limit headers are properly set
 func TestRateLimit_HeadersPresent(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "5")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 5
+		cfg.RateLimitUserWindowSeconds = 60
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -328,7 +340,7 @@ func TestRateLimit_HeadersPresent(t *testing.T) {
 
 	// Make a chat request and check headers
 	resp := rlSendChatRaw(t, te.Server.URL, token, botID, "Hello")
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	// Check for X-RateLimit-Limit header
 	limit := resp.Header.Get("X-RateLimit-Limit")
@@ -359,14 +371,15 @@ func TestRateLimit_HeadersPresent(t *testing.T) {
 
 // TestRateLimit_RetryAfterOnBlock verifies that Retry-After header is set when blocked
 func TestRateLimit_RetryAfterOnBlock(t *testing.T) {
-	t.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "1")
-	t.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "60")
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.RateLimitUserRequestsPerMinute = 1
+		cfg.RateLimitUserWindowSeconds = 60
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}

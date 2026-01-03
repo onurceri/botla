@@ -9,6 +9,7 @@ import (
 	"github.com/onurceri/botla-co/internal/models"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/policy"
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,7 @@ type MockToolsLLMClient struct{}
 // MockToolsLLMClient removed - using fixtures.NewLLMMock instead
 
 func TestAutomatedHandoff(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
@@ -59,11 +61,11 @@ func TestAutomatedHandoff(t *testing.T) {
 		}, 200
 	})
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
 

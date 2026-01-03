@@ -235,3 +235,45 @@ func TestDeleteBySourceID_Success(t *testing.T) {
 		t.Fatalf("delete err: %v", err)
 	}
 }
+
+func TestNewQdrantClient_CustomCollection(t *testing.T) {
+	cfg := &QdrantConfig{
+		URL:            "http://example.com",
+		CollectionName: "my_custom_collection",
+	}
+	c, err := NewQdrantClient(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if c.collectionName != "my_custom_collection" {
+		t.Errorf("expected collectionName my_custom_collection, got %s", c.collectionName)
+	}
+}
+
+func TestEnsureEmbeddingsCollection_CustomCollection(t *testing.T) {
+	created := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/collections/test_collection":
+			http.NotFound(w, r)
+		case r.Method == http.MethodPut && r.URL.Path == "/collections/test_collection":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			created = true
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	cfg := &QdrantConfig{
+		URL:            srv.URL,
+		CollectionName: "test_collection",
+	}
+	c, _ := NewQdrantClient(cfg)
+	if err := c.EnsureEmbeddingsCollection(context.Background()); err != nil {
+		t.Fatalf("ensure err: %v", err)
+	}
+	if !created {
+		t.Fatalf("custom collection not created")
+	}
+}

@@ -16,7 +16,7 @@ func TestMockScraper_Implementation(t *testing.T) {
 		mock := NewMockScraper()
 		task := ScrapingTask{URL: "https://example.com"}
 
-		content, err := mock.ScrapeURLWithFallback(task, CollectorConfig{}, false, nil)
+		content, err := mock.ScrapeURLWithFallback(task, false, nil)
 
 		assert.NoError(t, err)
 		assert.Contains(t, content, "Mock scraped content")
@@ -29,7 +29,7 @@ func TestMockScraper_Implementation(t *testing.T) {
 		mock.SetResponse("https://example.com", "Custom content")
 		task := ScrapingTask{URL: "https://example.com"}
 
-		content, err := mock.ScrapeURLWithFallback(task, CollectorConfig{}, false, nil)
+		content, err := mock.ScrapeURLWithFallback(task, false, nil)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "Custom content", content)
@@ -41,7 +41,7 @@ func TestMockScraper_Implementation(t *testing.T) {
 		mock.SetError("https://example.com", testErr)
 		task := ScrapingTask{URL: "https://example.com"}
 
-		_, err := mock.ScrapeURLWithFallback(task, CollectorConfig{}, false, nil)
+		_, err := mock.ScrapeURLWithFallback(task, false, nil)
 
 		assert.Error(t, err)
 		assert.Equal(t, testErr, err)
@@ -49,12 +49,12 @@ func TestMockScraper_Implementation(t *testing.T) {
 
 	t.Run("CustomFunction", func(t *testing.T) {
 		mock := NewMockScraper()
-		mock.ScrapeURLWithFallbackFunc = func(task ScrapingTask, cfg CollectorConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
+		mock.ScrapeURLWithFallbackFunc = func(task ScrapingTask, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
 			return "Func content for " + task.URL, nil
 		}
 		task := ScrapingTask{URL: "https://test.com"}
 
-		content, err := mock.ScrapeURLWithFallback(task, CollectorConfig{}, false, nil)
+		content, err := mock.ScrapeURLWithFallback(task, false, nil)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "Func content for https://test.com", content)
@@ -65,7 +65,7 @@ func TestMockScraper_FetchRawHTML(t *testing.T) {
 	t.Run("DefaultResponse", func(t *testing.T) {
 		mock := NewMockScraper()
 
-		html, err := mock.FetchRawHTML("https://example.com", CollectorConfig{})
+		html, err := mock.FetchRawHTML("https://example.com")
 
 		assert.NoError(t, err)
 		assert.Contains(t, html, "<html>")
@@ -76,7 +76,7 @@ func TestMockScraper_FetchRawHTML(t *testing.T) {
 		mock := NewMockScraper()
 		mock.SetHTMLResponse("https://example.com", "<html><body>Custom HTML</body></html>")
 
-		html, err := mock.FetchRawHTML("https://example.com", CollectorConfig{})
+		html, err := mock.FetchRawHTML("https://example.com")
 
 		assert.NoError(t, err)
 		assert.Equal(t, "<html><body>Custom HTML</body></html>", html)
@@ -113,7 +113,7 @@ func TestMockScraper_Reset(t *testing.T) {
 	mock.SetResponse("https://example.com", "content")
 	mock.SetError("https://error.com", errors.New("error"))
 	task := ScrapingTask{URL: "https://example.com"}
-	_, _ = mock.ScrapeURLWithFallback(task, CollectorConfig{}, false, nil)
+	_, _ = mock.ScrapeURLWithFallback(task, false, nil)
 
 	mock.Reset()
 
@@ -124,6 +124,6 @@ func TestMockScraper_Reset(t *testing.T) {
 
 func TestDefaultScraper_Implementation(t *testing.T) {
 	t.Run("Implements Scraper interface", func(t *testing.T) {
-		var _ Scraper = NewDefaultScraper()
+		var _ Scraper = NewDefaultScraper(CollectorConfig{}, DynamicConfig{})
 	})
 }

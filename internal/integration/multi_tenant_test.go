@@ -19,14 +19,14 @@ func mtAuthToken(t *testing.T, base string, email string) string {
 	t.Helper()
 	regBody := map[string]string{"email": email, "password": fixtures.TestPassword, "full_name": "User"}
 	b, _ := json.Marshal(regBody)
-	_, _ = http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	_, _ = testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	lb := map[string]string{"email": email, "password": fixtures.TestPassword}
 	lbj, _ := json.Marshal(lb)
-	res, err := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	res, err := testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 	var tr tokenResp
 	if err := json.NewDecoder(res.Body).Decode(&tr); err != nil {
 		t.Fatalf("failed to decode login response: %v", err)
@@ -50,7 +50,7 @@ func mtCreateChatbot(t *testing.T, baseURL, token, name string) string {
 	if err != nil {
 		t.Fatalf("failed to create chatbot: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create chatbot, status: %d", resp.StatusCode)
@@ -88,7 +88,7 @@ func mtCreateTextSource(t *testing.T, baseURL, token, chatbotID, content string)
 	if err != nil {
 		t.Fatalf("failed to create source: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create source, status: %d", resp.StatusCode)
@@ -119,7 +119,7 @@ func mtListChatbots(t *testing.T, baseURL, token string) []map[string]interface{
 	if err != nil {
 		t.Fatalf("failed to list chatbots: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("failed to list chatbots, status: %d", resp.StatusCode)
@@ -134,6 +134,7 @@ func mtListChatbots(t *testing.T, baseURL, token string) []map[string]interface{
 }
 
 func TestMultiTenant_ChatbotIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -151,11 +152,11 @@ func TestMultiTenant_ChatbotIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botA, nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		// Should be 403 Forbidden or 404 Not Found
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
@@ -170,11 +171,11 @@ func TestMultiTenant_ChatbotIsolation(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("expected 403/404, got %d", resp.StatusCode)
@@ -185,11 +186,11 @@ func TestMultiTenant_ChatbotIsolation(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", te.Server.URL+"/api/v1/chatbots/"+botA, nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("expected 403/404, got %d", resp.StatusCode)
@@ -198,6 +199,7 @@ func TestMultiTenant_ChatbotIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_SourceIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -216,11 +218,11 @@ func TestMultiTenant_SourceIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/sources/"+sourceA, nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("source access leak: got %d", resp.StatusCode)
@@ -231,11 +233,11 @@ func TestMultiTenant_SourceIsolation(t *testing.T) {
 		req, _ := http.NewRequest("DELETE", te.Server.URL+"/api/v1/sources/"+sourceA, nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("could delete other user's source: got %d", resp.StatusCode)
@@ -253,11 +255,11 @@ func TestMultiTenant_SourceIsolation(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 		req.Header.Set("Content-Type", mw.FormDataContentType())
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("could add source to other user's chatbot: got %d", resp.StatusCode)
@@ -266,6 +268,7 @@ func TestMultiTenant_SourceIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_JobIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -284,11 +287,11 @@ func TestMultiTenant_JobIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/sources/"+sourceA+"/job", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden {
 			t.Errorf("job status leak: got %d", resp.StatusCode)
@@ -299,11 +302,11 @@ func TestMultiTenant_JobIsolation(t *testing.T) {
 		req, _ := http.NewRequest("POST", te.Server.URL+"/api/v1/sources/"+sourceA+"/job/retry", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden {
 			t.Errorf("could retry other user's job: got %d", resp.StatusCode)
@@ -312,6 +315,7 @@ func TestMultiTenant_JobIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_ListingIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -365,6 +369,7 @@ func TestMultiTenant_ListingIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_SourceListingIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -386,11 +391,11 @@ func TestMultiTenant_SourceListingIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botA+"/sources", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("source listing leak: got %d", resp.StatusCode)
@@ -401,11 +406,11 @@ func TestMultiTenant_SourceListingIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botB+"/sources", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenA)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("source listing leak: got %d", resp.StatusCode)
@@ -414,6 +419,7 @@ func TestMultiTenant_SourceListingIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_AnalyticsIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -431,11 +437,11 @@ func TestMultiTenant_AnalyticsIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botA+"/analytics", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("analytics leak: got %d", resp.StatusCode)
@@ -444,6 +450,7 @@ func TestMultiTenant_AnalyticsIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_ActionIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -461,11 +468,11 @@ func TestMultiTenant_ActionIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botA+"/actions", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("actions leak: got %d", resp.StatusCode)
@@ -483,11 +490,11 @@ func TestMultiTenant_ActionIsolation(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("could create action on other user's bot: got %d", resp.StatusCode)
@@ -496,6 +503,7 @@ func TestMultiTenant_ActionIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_HandoffIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -513,11 +521,11 @@ func TestMultiTenant_HandoffIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botA+"/handoff-requests", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("handoff requests leak: got %d", resp.StatusCode)
@@ -526,6 +534,7 @@ func TestMultiTenant_HandoffIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_ChatIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnvWithMocks()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -549,11 +558,11 @@ func TestMultiTenant_ChatIsolation(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("could chat on other user's bot: got %d", resp.StatusCode)
@@ -562,6 +571,7 @@ func TestMultiTenant_ChatIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_SuggestionsIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -579,11 +589,11 @@ func TestMultiTenant_SuggestionsIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botA+"/suggestions", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("suggestions leak: got %d", resp.StatusCode)
@@ -599,11 +609,11 @@ func TestMultiTenant_SuggestionsIsolation(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("could update other user's suggestions: got %d", resp.StatusCode)
@@ -612,6 +622,7 @@ func TestMultiTenant_SuggestionsIsolation(t *testing.T) {
 }
 
 func TestMultiTenant_PendingURLsIsolation(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -629,11 +640,11 @@ func TestMultiTenant_PendingURLsIsolation(t *testing.T) {
 		req, _ := http.NewRequest("GET", te.Server.URL+"/api/v1/chatbots/"+botA+"/pending-urls", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenB)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusNotFound {
 			t.Errorf("pending URLs leak: got %d", resp.StatusCode)

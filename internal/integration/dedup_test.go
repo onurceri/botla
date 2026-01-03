@@ -14,6 +14,7 @@ import (
 )
 
 func TestPDFDeduplication_Integration(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -50,6 +51,7 @@ func TestPDFDeduplication_Integration(t *testing.T) {
 }
 
 func TestTextDeduplication_Integration(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -76,6 +78,7 @@ func TestTextDeduplication_Integration(t *testing.T) {
 }
 
 func TestDeduplication_DifferentChatbots_Allowed(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -108,11 +111,11 @@ func createChatbotForDedup(t *testing.T, baseURL, token, name string) string {
 	req, _ := http.NewRequest(http.MethodPost, baseURL+"/api/v1/chatbots", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create chatbot: %d", res.StatusCode)
 	}
@@ -135,7 +138,7 @@ func uploadPDF(t *testing.T, baseURL, token, chatbotID string, content []byte, f
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +156,7 @@ func uploadText(t *testing.T, baseURL, token, chatbotID, text string) *http.Resp
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,11 +168,11 @@ func authTokenDedup(t *testing.T, base string, email string) string {
 	// Register
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
-	resp, err := http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	resp, err := testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("auth register request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("auth register failed: %d %s", resp.StatusCode, string(body))
@@ -178,11 +181,11 @@ func authTokenDedup(t *testing.T, base string, email string) string {
 	// Login
 	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
-	resp, err = http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	resp, err = testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	if err != nil {
 		t.Fatalf("auth login request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("auth login failed: %d %s", resp.StatusCode, string(body))

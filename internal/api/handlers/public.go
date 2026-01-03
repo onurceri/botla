@@ -63,7 +63,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 		}
 
 		if !httputil.IsValidUUID(botID) {
-			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 			return
 		}
 
@@ -178,7 +178,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 
 	botID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/chat")
 	if !httputil.IsValidUUID(botID) {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return
 	}
 	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
@@ -373,7 +373,7 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	}
 	botID := parts[5]
 	if !httputil.IsValidUUID(botID) {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return
 	}
 

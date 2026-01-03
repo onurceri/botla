@@ -17,6 +17,7 @@ import (
 )
 
 func TestPrivacyFlow(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
@@ -50,9 +51,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/me/privacy/consents", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -60,9 +61,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ = http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/privacy/consents", nil)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
-		resp, err = http.DefaultClient.Do(req)
+		resp, err = testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -80,9 +81,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/export", nil)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		// It might return 200 OK or 201 Created
 		assert.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.StatusCode)
@@ -105,9 +106,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/delete", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -121,9 +122,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/correction", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -138,9 +139,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/admin/privacy/requests", nil)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -171,9 +172,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/admin/privacy/requests/"+exportRequestID, bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -204,9 +205,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/privacy/requests/"+exportRequestID+"/download", nil)
 		req.Header.Set("Authorization", "Bearer "+userToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -224,10 +225,10 @@ func TestPrivacyFlow(t *testing.T) {
 		require.NoError(t, err)
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/export", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+userToken)
-		resp, _ := http.DefaultClient.Do(req)
+		resp, _ := testHTTPClient().Do(req)
 		var pr db.PrivacyRequest
 		json.NewDecoder(resp.Body).Decode(&pr)
-		resp.Body.Close()
+		drainBody(resp)
 
 		// Deny it
 		denyBody := map[string]string{
@@ -239,9 +240,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ = http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/admin/privacy/requests/"+pr.ID, bytes.NewReader(dbDeny))
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err = http.DefaultClient.Do(req)
+		resp, err = testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		// Check status and denial reason in DB
@@ -267,9 +268,9 @@ func TestPrivacyFlow(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/admin/privacy/requests/"+requestID, bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer drainBody(resp)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 

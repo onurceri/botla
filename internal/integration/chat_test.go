@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 type chatReq struct {
@@ -21,18 +22,22 @@ type chatResp struct {
 }
 
 func TestChat_StubbedContext(t *testing.T) {
+	t.Parallel()
+
 	oai := fixtures.NewLLMMock(t)
-	qd := startQdrantStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	qd := fixtures.StartQdrantStub()
+	defer oai.Close()
+	defer qd.Close()
+
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
-	defer oai.Close()
-	defer qd.Close()
 
 	token := authToken(t, te.Server.URL, "chat@example.com")
 
@@ -42,7 +47,7 @@ func TestChat_StubbedContext(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -53,7 +58,7 @@ func TestChat_StubbedContext(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}
@@ -61,6 +66,6 @@ func TestChat_StubbedContext(t *testing.T) {
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
 	if crp.Response == "" || crp.TokensUsed == 0 {
-		t.Fatalf("invalid chat response")
+		t.Fatalf("invalid chat response: response=%s, tokens=%d", crp.Response, crp.TokensUsed)
 	}
 }

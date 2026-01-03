@@ -16,7 +16,12 @@ import (
 	"golang.org/x/net/html"
 )
 
-var ssrfValidator = urlutil.NewSSRFValidator()
+// ssrfValidator is the package-level validator. Override in tests if needed.
+var ssrfValidator = urlutil.NewSSRFValidator(false)
+
+func getSSRFValidator() *urlutil.SSRFValidator {
+	return ssrfValidator
+}
 
 type ScrapingTask struct {
 	URL       string
@@ -51,7 +56,7 @@ func visibleText(sel *goquery.Selection) string {
 // If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
 // Otherwise, the entire body is scraped.
 func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfig) (string, error) {
-	if err := ssrfValidator.ValidateURL(task.URL); err != nil {
+	if err := getSSRFValidator().ValidateURL(task.URL); err != nil {
 		return "", fmt.Errorf("SSRF blocked: %w", err)
 	}
 	l := logger.New("INFO")
@@ -118,7 +123,7 @@ func ScrapeURL(task ScrapingTask, cfg CollectorConfig, scrapeConfig *ScrapeConfi
 // FetchRawHTML fetches raw HTML content from a URL for link extraction purposes.
 // This is separate from ScrapeURL which extracts visible text.
 func FetchRawHTML(targetURL string, cfg CollectorConfig) (string, error) {
-	if err := ssrfValidator.ValidateURL(targetURL); err != nil {
+	if err := getSSRFValidator().ValidateURL(targetURL); err != nil {
 		return "", fmt.Errorf("SSRF blocked: %w", err)
 	}
 	l := logger.New("INFO")
@@ -223,8 +228,8 @@ func ExtractLinks(htmlContent string, baseURL string, filter *PathFilter) ([]str
 
 // ScrapeURLWithFallback tries static scraping first, then falls back to dynamic if enabled.
 // If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
-func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
-	if err := ssrfValidator.ValidateURL(task.URL); err != nil {
+func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, dcfg DynamicConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
+	if err := getSSRFValidator().ValidateURL(task.URL); err != nil {
 		return "", fmt.Errorf("SSRF blocked: %w", err)
 	}
 	l := logger.New("INFO")
@@ -257,8 +262,7 @@ func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, allowDynamic 
 	}
 
 	// Fallback to dynamic (dynamic doesn't support selectors yet)
-	dc := DefaultDynamicConfig()
-	ds, derr := ScrapeDynamicURL(task.URL, dc)
+	ds, derr := ScrapeDynamicURL(task.URL, dcfg)
 	if derr == nil && ds != "" {
 		_ = cache.Set(k, ds, 7*24*time.Hour)
 		l.Info("scraper_dynamic_ok", map[string]any{"url": task.URL, "len": len(ds)})

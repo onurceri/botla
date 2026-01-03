@@ -15,6 +15,7 @@ import (
 )
 
 func TestJobStatusEndpoint_NoJob(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -42,7 +43,7 @@ func TestJobStatusEndpoint_NoJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -86,6 +87,7 @@ func TestJobStatusEndpoint_NoJob(t *testing.T) {
 }
 
 func TestJobStatusEndpoint_WithJob(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -122,7 +124,7 @@ func TestJobStatusEndpoint_WithJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -155,6 +157,7 @@ func TestJobStatusEndpoint_WithJob(t *testing.T) {
 }
 
 func TestJobStatusEndpoint_FailedJob(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -190,7 +193,7 @@ func TestJobStatusEndpoint_FailedJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -219,6 +222,7 @@ func TestJobStatusEndpoint_FailedJob(t *testing.T) {
 }
 
 func TestJobStatusEndpoint_Forbidden(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -242,7 +246,7 @@ func TestJobStatusEndpoint_Forbidden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403 Forbidden, got %d", resp.StatusCode)
@@ -250,6 +254,7 @@ func TestJobStatusEndpoint_Forbidden(t *testing.T) {
 }
 
 func TestJobStatusEndpoint_NotFound(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -268,7 +273,7 @@ func TestJobStatusEndpoint_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404 Not Found, got %d", resp.StatusCode)
@@ -276,6 +281,7 @@ func TestJobStatusEndpoint_NotFound(t *testing.T) {
 }
 
 func TestJobStatusEndpoint_Unauthorized(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -290,7 +296,7 @@ func TestJobStatusEndpoint_Unauthorized(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 Unauthorized, got %d", resp.StatusCode)
@@ -298,6 +304,7 @@ func TestJobStatusEndpoint_Unauthorized(t *testing.T) {
 }
 
 func TestJobStatusEndpoint_InvalidSourceID(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -316,7 +323,7 @@ func TestJobStatusEndpoint_InvalidSourceID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 Bad Request, got %d", resp.StatusCode)
@@ -324,6 +331,7 @@ func TestJobStatusEndpoint_InvalidSourceID(t *testing.T) {
 }
 
 func TestJobStatusEndpoint_CompletedJob(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -359,7 +367,7 @@ func TestJobStatusEndpoint_CompletedJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -397,12 +405,12 @@ func createChatbot(t *testing.T, baseURL, token, name string) string {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := testHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create chatbot: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create chatbot, status: %d", resp.StatusCode)
@@ -436,12 +444,12 @@ func createTextSource(t *testing.T, baseURL, token, chatbotID, content string) s
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 
-	client := &http.Client{}
+	client := testHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to create source: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		t.Fatalf("failed to create source, status: %d", resp.StatusCode)
@@ -471,11 +479,15 @@ func registerAndGetToken(t *testing.T, baseURL, email, password string) string {
 	body, _ := json.Marshal(payload)
 
 	// Register
-	resp, err := http.Post(baseURL+"/api/v1/auth/register", "application/json", bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", baseURL+"/api/v1/auth/register", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := testHTTPClient()
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to register: %v", err)
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {

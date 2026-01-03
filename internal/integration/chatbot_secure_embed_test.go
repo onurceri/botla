@@ -11,6 +11,7 @@ import (
 )
 
 func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -30,7 +31,7 @@ func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var created chatbot
 	json.NewDecoder(resC.Body).Decode(&created)
 	resC.Body.Close()
@@ -38,7 +39,7 @@ func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
 	// find via list
 	reqL, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots", nil)
 	reqL.Header.Set("Authorization", "Bearer "+token)
-	resL, _ := http.DefaultClient.Do(reqL)
+	resL, _ := testHTTPClient().Do(reqL)
 	if resL.StatusCode != http.StatusOK {
 		t.Fatalf("list expected 200, got %d", resL.StatusCode)
 	}
@@ -55,7 +56,7 @@ func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+id, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resU.StatusCode)
 	}
@@ -68,7 +69,7 @@ func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {
 
 	reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+id, nil)
 	reqG.Header.Set("Authorization", "Bearer "+token)
-	resG, _ := http.DefaultClient.Do(reqG)
+	resG, _ := testHTTPClient().Do(reqG)
 	if resG.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resG.StatusCode)
 	}

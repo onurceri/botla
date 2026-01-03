@@ -7,32 +7,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/rag"
 	"github.com/stretchr/testify/mock"
 )
 
-// startOpenAIErrorStub returns embeddings OK, but chat completions 500
-func startOpenAIErrorStub() *httptest.Server {
-	h := http.NewServeMux()
-	h.HandleFunc("/v1/embeddings", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		data := make([]float64, 1536)
-		for i := range data {
-			data[i] = 0.01
-		}
-		resp := map[string]any{"data": []map[string]any{{"embedding": data}}, "usage": map[string]int{"prompt_tokens": 10, "total_tokens": 10}}
-		json.NewEncoder(w).Encode(resp)
-	})
-	h.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	})
-	return httptest.NewServer(h)
-}
 
 func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -52,14 +36,23 @@ func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
 			Score: 0.9,
 			Payload: rag.EmbeddingPayload{
 				OriginalText: "some context",
-				SourceID:     "test.pdf",
+				SourceID:     "00000000-0000-0000-0000-000000000001",
 				SourceType:   "file",
 			},
 		},
 	}, nil)
 
 	// Actually, let's just create a custom mux for this test
-	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	mux, q, rl, wp, _, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	if q != nil {
+		defer q.Stop()
+	}
+	if rl != nil {
+		defer rl.Close()
+	}
+	if wp != nil {
+		defer wp.Shutdown(1 * time.Second)
+	}
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
@@ -71,7 +64,7 @@ func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -82,7 +75,7 @@ func TestChat_OpenAIError_GracefulMessage(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}

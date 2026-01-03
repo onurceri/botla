@@ -9,6 +9,7 @@ import (
 )
 
 func TestPublicPlans_GetAllPlans(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -17,11 +18,11 @@ func TestPublicPlans_GetAllPlans(t *testing.T) {
 
 	// No auth required for public endpoint
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans", nil)
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
@@ -61,6 +62,7 @@ func TestPublicPlans_GetAllPlans(t *testing.T) {
 }
 
 func TestPublicPlans_GetPlanByCode(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -69,11 +71,11 @@ func TestPublicPlans_GetPlanByCode(t *testing.T) {
 
 	// Test getting 'free' plan
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans/free", nil)
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
@@ -110,6 +112,7 @@ func TestPublicPlans_GetPlanByCode(t *testing.T) {
 }
 
 func TestPublicPlans_GetPlanByCode_NotFound(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -117,11 +120,11 @@ func TestPublicPlans_GetPlanByCode_NotFound(t *testing.T) {
 	defer fixtures.TeardownTestEnv(te)
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans/nonexistent-plan", nil)
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", res.StatusCode)
@@ -129,6 +132,7 @@ func TestPublicPlans_GetPlanByCode_NotFound(t *testing.T) {
 }
 
 func TestPublicPlans_NoAuthRequired(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -138,11 +142,11 @@ func TestPublicPlans_NoAuthRequired(t *testing.T) {
 	// Verify /api/v1/plans doesn't require auth
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/plans", nil)
 	// Explicitly NOT setting Authorization header
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	// Should succeed without auth
 	if res.StatusCode != http.StatusOK {

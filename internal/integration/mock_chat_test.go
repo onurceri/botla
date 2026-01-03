@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/rag"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestMockChatFlow(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -25,7 +27,21 @@ func TestMockChatFlow(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 
 	// Setup Mux with mocks
-	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	mux, q, rl, wp, _, _ := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	// The original line was: mux, q, rl, wp := fixtures.NewTestMux(te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC)
+	// The requested change was: mux, _, _, _, _ := fixtures.NewTestMux(cfg, db, vs, llm, nil)te.VectorStore, mockLLM, mockVC)
+	// This was syntactically incorrect. Assuming the intent was to use underscores for the unused return values
+	// and keep the original arguments (te.Cfg, te.DB, te.VectorStore, mockLLM, mockVC) as they are the correct variables in scope.
+	// If the intent was to change the arguments, please provide a syntactically correct line.
+	if q != nil {
+		defer q.Stop()
+	}
+	if rl != nil {
+		defer rl.Close()
+	}
+	if wp != nil {
+		defer wp.Shutdown(1 * time.Second)
+	}
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
@@ -68,7 +84,7 @@ func TestMockChatFlow(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -82,7 +98,7 @@ func TestMockChatFlow(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/chatbots/"+bot.ID+"/chat", strings.NewReader(string(crb)))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 
 	assert.Equal(t, http.StatusOK, resCh.StatusCode)
 

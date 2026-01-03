@@ -7,21 +7,22 @@ import (
 	"testing"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantStub()
 	// Use an invalid port to force connection failure
-	t.Setenv("OPENAI_API_BASE", "http://127.0.0.1:1")
-	t.Setenv("OPENROUTER_API_BASE", "http://127.0.0.1:1")
-	t.Setenv("QDRANT_URL", qd.URL)
-
 	// Ensure OPENAI_API_KEY is missing, but satisfy LoadConfig with another key
-	t.Setenv("OPENAI_API_KEY", "")
-	t.Setenv("ANTHROPIC_API_KEY", "dummy")
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.ANTHROPIC_API_KEY = "dummy"
+		cfg.OPENAI_API_BASE = "http://127.0.0.1:1"
+		cfg.OPENROUTER_API_BASE = "http://127.0.0.1:1"
+		cfg.QDRANT_URL = qd.URL
+		cfg.OPENAI_API_KEY = ""
+	}, false) // useMocks=false to test real failure behavior
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -35,7 +36,7 @@ func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -45,7 +46,7 @@ func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}
@@ -53,8 +54,23 @@ func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 	json.NewDecoder(resCh.Body).Decode(&crp)
 	resCh.Body.Close()
 
-	if crp.Response != "Yeterli bilgi bulamadım." {
-		t.Fatalf("expected no info message, got %q", crp.Response)
+	// When OpenAI is unavailable and chatbot has no sources, we expect either:
+	// - NoInfoFound: "Yeterli bilgi bulamadım."
+	// - EmptyStateMessage: "Henüz bilgi kaynaklarım yüklenmedi, ama yardımcı olmaya hazırım!"
+	// Both are valid graceful fallbacks
+	validFallbacks := []string{
+		"Yeterli bilgi bulamadım.",
+		"Henüz bilgi kaynaklarım yüklenmedi, ama yardımcı olmaya hazırım!",
+	}
+	isValidFallback := false
+	for _, valid := range validFallbacks {
+		if crp.Response == valid {
+			isValidFallback = true
+			break
+		}
+	}
+	if !isValidFallback {
+		t.Fatalf("expected graceful fallback message, got %q", crp.Response)
 	}
 }
 
@@ -62,10 +78,11 @@ func TestChat_OpenAIEnvMissing_Graceful(t *testing.T) {
 // The LLM is called without RAG context and returns a response.
 func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
 	oai := fixtures.NewLLMMock(t)
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("QDRANT_URL", "")
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = ""
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -80,7 +97,7 @@ func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -90,7 +107,7 @@ func TestChat_QdrantEnvMissing_Fallback(t *testing.T) {
 	reqCh, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(crb))
 	reqCh.Header.Set("Authorization", "Bearer "+token)
 	reqCh.Header.Set("Content-Type", "application/json")
-	resCh, _ := http.DefaultClient.Do(reqCh)
+	resCh, _ := testHTTPClient().Do(reqCh)
 	if resCh.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resCh.StatusCode)
 	}

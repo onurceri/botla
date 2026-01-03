@@ -16,6 +16,7 @@ import (
 
 // Test full pipeline from source creation to completion
 func TestAsyncPipeline_FullLifecycle(t *testing.T) {
+t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -80,6 +81,7 @@ LOOP:
 
 // Test job failure and retry
 func TestAsyncPipeline_FailureAndRetry(t *testing.T) {
+t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -104,7 +106,7 @@ func TestAsyncPipeline_FailureAndRetry(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&src); err != nil {
 		t.Fatalf("failed to decode source response: %v", err)
 	}
-	resp.Body.Close()
+	drainBody(resp)
 	sourceID := src.ID
 
 	// Wait for failure
@@ -152,6 +154,7 @@ LOOP:
 
 // Test job recovery after simulated restart
 func TestAsyncPipeline_Recovery(t *testing.T) {
+t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -212,6 +215,7 @@ LOOP:
 
 // Test concurrent job processing
 func TestAsyncPipeline_ConcurrentJobs(t *testing.T) {
+t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -272,7 +276,7 @@ func getJobStatusMap(t *testing.T, baseURL, token, sourceID string) map[string]i
 	if err != nil {
 		return nil
 	}
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil

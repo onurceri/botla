@@ -268,7 +268,8 @@ func TestGetJobsByChatbotID(t *testing.T) {
 }
 
 func TestGetPendingJobs(t *testing.T) {
-	dbConn := testdb.OpenTestDB(t)
+	t.Parallel()
+	dbConn := testdb.OpenParallelTestDB(t)
 	sourceResult := testdb.CreateSource(t, dbConn)
 
 	// Create pending jobs

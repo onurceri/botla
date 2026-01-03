@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 )
 
 func startQdrantUpsertErrorStub() *httptest.Server {
@@ -44,17 +45,20 @@ func startQdrantUpsertErrorStub() *httptest.Server {
 }
 
 func TestSources_Text_QdrantUpsertError_FailedStatus(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	qd := startQdrantUpsertErrorStub()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("QDRANT_URL", qd.URL)
-	te, err := fixtures.SetupTestEnv()
+	defer oai.Close()
+	defer qd.Close()
+
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
-	defer oai.Close()
-	defer qd.Close()
 
 	token := authToken(t, te.Server.URL, "upserr@example.com")
 
@@ -63,7 +67,7 @@ func TestSources_Text_QdrantUpsertError_FailedStatus(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", strings.NewReader(string(cbj)))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot chatbot
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
@@ -76,7 +80,7 @@ func TestSources_Text_QdrantUpsertError_FailedStatus(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", strings.NewReader(b.String()))
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", mw.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 	if resS.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resS.StatusCode)
 	}
@@ -93,7 +97,7 @@ func TestSources_Text_QdrantUpsertError_FailedStatus(t *testing.T) {
 	for i := 0; i < 120; i++ {
 		reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+statusPath, nil)
 		reqG.Header.Set("Authorization", "Bearer "+token)
-		resG, _ := http.DefaultClient.Do(reqG)
+		resG, _ := testHTTPClient().Do(reqG)
 		if resG.StatusCode != http.StatusOK {
 			resG.Body.Close()
 			continue

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/rag"
@@ -13,6 +14,7 @@ import (
 )
 
 func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup env: %v", err)
@@ -23,7 +25,16 @@ func TestPublicChatbotConfig_IncludesSuggestions(t *testing.T) {
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(nil)
 	mockLLM := &rag.MockFullClient{}
 
-	mux, _ := fixtures.NewTestMux(te.Cfg, te.DB, nil, mockLLM, mockVC)
+	mux, q, rl, wp, _, _ := fixtures.NewTestMux(te.Cfg, te.DB, mockVC, mockLLM, mockVC)
+	if q != nil {
+		defer q.Stop()
+	}
+	if rl != nil {
+		defer rl.Close()
+	}
+	if wp != nil {
+		defer wp.Shutdown(1 * time.Second)
+	}
 
 	// Create user and bot using fixture
 	ctx := testdb.CreateChatbot(t, te.DB, testdb.ChatbotFixture{

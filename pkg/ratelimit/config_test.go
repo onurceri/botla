@@ -1,19 +1,13 @@
 package ratelimit
 
 import (
-	"os"
 	"testing"
 	"time"
 )
 
-func TestNewConfigFromEnv_Defaults(t *testing.T) {
-	// Clear all rate limit env vars
-	os.Unsetenv("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE")
-	os.Unsetenv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS")
-	os.Unsetenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE")
-	os.Unsetenv("RATE_LIMIT_USER_WINDOW_SECONDS")
-
-	cfg := NewConfigFromEnv()
+func TestNewConfig_Defaults(t *testing.T) {
+	// Empty settings should result in default values
+	cfg := NewConfig(Settings{})
 
 	// Check defaults
 	if cfg.Global.RequestsPerWindow != 60 {
@@ -30,19 +24,15 @@ func TestNewConfigFromEnv_Defaults(t *testing.T) {
 	}
 }
 
-func TestNewConfigFromEnv_CustomValues(t *testing.T) {
-	os.Setenv("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE", "100")
-	os.Setenv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS", "30")
-	os.Setenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE", "200")
-	os.Setenv("RATE_LIMIT_USER_WINDOW_SECONDS", "45")
-	defer func() {
-		os.Unsetenv("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE")
-		os.Unsetenv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS")
-		os.Unsetenv("RATE_LIMIT_USER_REQUESTS_PER_MINUTE")
-		os.Unsetenv("RATE_LIMIT_USER_WINDOW_SECONDS")
-	}()
+func TestNewConfig_CustomValues(t *testing.T) {
+	s := Settings{
+		GlobalRequestsPerMinute: 100,
+		GlobalWindowSeconds:     30,
+		UserRequestsPerMinute:   200,
+		UserWindowSeconds:       45,
+	}
 
-	cfg := NewConfigFromEnv()
+	cfg := NewConfig(s)
 
 	if cfg.Global.RequestsPerWindow != 100 {
 		t.Errorf("expected global requests 100, got %d", cfg.Global.RequestsPerWindow)
@@ -58,15 +48,13 @@ func TestNewConfigFromEnv_CustomValues(t *testing.T) {
 	}
 }
 
-func TestNewConfigFromEnv_EndpointOverrides(t *testing.T) {
-	os.Setenv("RATE_LIMIT_ENDPOINT_CHAT", "15")
-	os.Setenv("RATE_LIMIT_ENDPOINT_SOURCES", "5")
-	defer func() {
-		os.Unsetenv("RATE_LIMIT_ENDPOINT_CHAT")
-		os.Unsetenv("RATE_LIMIT_ENDPOINT_SOURCES")
-	}()
+func TestNewConfig_EndpointOverrides(t *testing.T) {
+	s := Settings{
+		EndpointChat:    15,
+		EndpointSources: 5,
+	}
 
-	cfg := NewConfigFromEnv()
+	cfg := NewConfig(s)
 
 	chatCfg, exists := cfg.EndpointOverrides["/api/v1/chat"]
 	if !exists {
@@ -138,17 +126,14 @@ func TestDefaultConfig_AuthEndpoints(t *testing.T) {
 	}
 }
 
-func TestNewConfigFromEnv_AuthEndpointOverrides(t *testing.T) {
-	os.Setenv("RATE_LIMIT_AUTH_LOGIN", "10")
-	os.Setenv("RATE_LIMIT_AUTH_REGISTER", "2")
-	os.Setenv("RATE_LIMIT_AUTH_REFRESH", "20")
-	defer func() {
-		os.Unsetenv("RATE_LIMIT_AUTH_LOGIN")
-		os.Unsetenv("RATE_LIMIT_AUTH_REGISTER")
-		os.Unsetenv("RATE_LIMIT_AUTH_REFRESH")
-	}()
+func TestNewConfig_AuthEndpointOverrides(t *testing.T) {
+	s := Settings{
+		AuthLogin:    10,
+		AuthRegister: 2,
+		AuthRefresh:  20,
+	}
 
-	cfg := NewConfigFromEnv()
+	cfg := NewConfig(s)
 
 	// Login should be overridden
 	loginCfg, exists := cfg.EndpointOverrides["/api/v1/auth/login"]

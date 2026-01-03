@@ -3,13 +3,12 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"runtime/debug"
 
 	"github.com/onurceri/botla-co/pkg/logger"
 )
 
-func RecoveryMiddleware(log *logger.Logger) func(http.Handler) http.Handler {
+func RecoveryMiddleware(log *logger.Logger, goEnv string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
@@ -24,7 +23,7 @@ func RecoveryMiddleware(log *logger.Logger) func(http.Handler) http.Handler {
 					})
 
 					// In dev, show stack trace in response
-					if os.Getenv("GO_ENV") == "development" {
+					if goEnv == "development" {
 						w.Header().Set("Content-Type", "text/plain")
 						_, _ = fmt.Fprintf(w, "Panic recovered: %v\n\n%s", err, stack)
 					} else {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -30,48 +31,45 @@ func (m *MockVectorStore) DeleteBySourceID(ctx context.Context, sourceID string)
 
 func StartQdrantStub() *httptest.Server {
 	h := http.NewServeMux()
-	h.HandleFunc("/collections/embeddings", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			w.Header().Set("Content-Type", "application/json")
+
+	// Handle any collection - supports dynamic collection names like embeddings_xyz
+	h.HandleFunc("/collections/", func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+
+		// GET/PUT collection (e.g. /collections/embeddings_it_xxx)
+		if !strings.Contains(path, "/points") {
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 			return
 		}
-		if r.Method == http.MethodPut {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-			return
-		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	})
-	h.HandleFunc("/collections/embeddings/points", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPut {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-			return
-		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	})
-	h.HandleFunc("/collections/embeddings/points/delete", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-			return
-		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	})
-	h.HandleFunc("/collections/embeddings/points/search", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"result": []map[string]any{},
-				"status": "ok",
-			})
-			return
+
+		// Points operations
+		switch {
+		case strings.HasSuffix(path, "/points"):
+			// PUT points - upsert
+			if r.Method == http.MethodPut {
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+				return
+			}
+		case strings.HasSuffix(path, "/points/delete"):
+			// POST delete
+			if r.Method == http.MethodPost {
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+				return
+			}
+		case strings.HasSuffix(path, "/points/search"):
+			// POST search
+			if r.Method == http.MethodPost {
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"result": []map[string]any{},
+					"status": "ok",
+				})
+				return
+			}
 		}
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
@@ -259,4 +257,21 @@ func (m *MockToolsClient) CreateCompletionWithTools(ctx context.Context, message
 			Message: rag.ChatMessage{Content: &content},
 		}},
 	}, nil
+}
+
+func (m *MockToolsClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	embedding := make([]float32, 1536)
+	for i := range embedding {
+		embedding[i] = 0.001
+	}
+	return embedding, nil
+}
+
+func (m *MockToolsClient) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	res := make([][]float32, len(texts))
+	for i := range texts {
+		eb, _ := m.CreateEmbedding(ctx, texts[i])
+		res[i] = eb
+	}
+	return res, nil
 }

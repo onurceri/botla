@@ -32,6 +32,7 @@ func hashTokenForTest(token string) string {
 }
 
 func TestAuth_Register_Login_Protected(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -45,7 +46,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal failed: %v", err)
 	}
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -56,7 +57,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 	if err = json.NewDecoder(res.Body).Decode(&tr); err != nil {
 		t.Fatalf("decode register response failed: %v", err)
 	}
-	res.Body.Close()
+	drainBody(res)
 	if tr.Token == "" {
 		t.Fatalf("token empty")
 	}
@@ -64,7 +65,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 		t.Fatalf("refresh token empty")
 	}
 
-	res2, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res2, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("re-register failed: %v", err)
 	}
@@ -85,7 +86,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
 	}
-	res3, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	res3, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
 	}
@@ -126,7 +127,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 		t.Fatalf("expected access token TTL around 60m, got %v", ttl)
 	}
 
-	res4, err := http.Get(te.Server.URL + "/api/v1/protected")
+	res4, err := testHTTPGet(te.Server.URL + "/api/v1/protected")
 	if err != nil {
 		t.Fatalf("protected without token request failed: %v", err)
 	}
@@ -140,7 +141,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 		t.Fatalf("create protected request failed: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+tr2.Token)
-	res5, err := http.DefaultClient.Do(req)
+	res5, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("protected with token request failed: %v", err)
 	}
@@ -151,6 +152,7 @@ func TestAuth_Register_Login_Protected(t *testing.T) {
 }
 
 func TestAuth_Register_InvalidEmailFormat(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -163,11 +165,11 @@ func TestAuth_Register_InvalidEmailFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal failed: %v", err)
 	}
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
@@ -183,6 +185,7 @@ func TestAuth_Register_InvalidEmailFormat(t *testing.T) {
 }
 
 func TestAuth_Register_MissingEmail(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -195,11 +198,11 @@ func TestAuth_Register_MissingEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal failed: %v", err)
 	}
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
@@ -215,6 +218,7 @@ func TestAuth_Register_MissingEmail(t *testing.T) {
 }
 
 func TestAuth_Register_MissingPassword(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -228,11 +232,11 @@ func TestAuth_Register_MissingPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal failed: %v", err)
 	}
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
@@ -248,6 +252,7 @@ func TestAuth_Register_MissingPassword(t *testing.T) {
 }
 
 func TestAuth_Login_InvalidEmail(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -259,11 +264,11 @@ func TestAuth_Login_InvalidEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
 	}
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
@@ -279,6 +284,7 @@ func TestAuth_Login_InvalidEmail(t *testing.T) {
 }
 
 func TestAuth_Login_InvalidPassword(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -291,7 +297,7 @@ func TestAuth_Login_InvalidPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
 	}
-	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -305,7 +311,7 @@ func TestAuth_Login_InvalidPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
 	}
-	resLogin, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	resLogin, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login request failed: %v", err)
 	}
@@ -324,6 +330,7 @@ func TestAuth_Login_InvalidPassword(t *testing.T) {
 }
 
 func TestAuth_Login_EmptyEmail(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -335,11 +342,11 @@ func TestAuth_Login_EmptyEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
 	}
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
@@ -347,6 +354,7 @@ func TestAuth_Login_EmptyEmail(t *testing.T) {
 }
 
 func TestAuth_Login_EmptyPassword(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -358,11 +366,11 @@ func TestAuth_Login_EmptyPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
 	}
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", res.StatusCode)
@@ -370,6 +378,7 @@ func TestAuth_Login_EmptyPassword(t *testing.T) {
 }
 
 func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -382,7 +391,7 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
 	}
-	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -399,12 +408,14 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal lower login body failed: %v", err)
 	}
-	resLower, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbLower))
+	resLower, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbLower))
 	if err != nil {
 		t.Fatalf("login lower failed: %v", err)
 	}
 	if resLower.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 for lower-case login, got %d", resLower.StatusCode)
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(resLower.Body)
+		t.Fatalf("expected 200 for lower-case login, got %d. Body: %s", resLower.StatusCode, buf.String())
 	}
 	resLower.Body.Close()
 
@@ -413,7 +424,7 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal upper login body failed: %v", err)
 	}
-	resUpper, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbUpper))
+	resUpper, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lbUpper))
 	if err != nil {
 		t.Fatalf("login upper failed: %v", err)
 	}
@@ -424,6 +435,7 @@ func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 }
 
 func TestAuth_Login_MultipleSessions(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -436,7 +448,7 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
 	}
-	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -451,7 +463,7 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 		t.Fatalf("marshal login body failed: %v", err)
 	}
 
-	resA, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	resA, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login A failed: %v", err)
 	}
@@ -464,7 +476,7 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 	}
 	resA.Body.Close()
 
-	resB, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	resB, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login B failed: %v", err)
 	}
@@ -508,7 +520,7 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal logout body failed: %v", err)
 	}
-	resLogout, err := http.Post(te.Server.URL+"/api/v1/auth/logout", "application/json", bytes.NewReader(logoutBody))
+	resLogout, err := testHTTPPost(te.Server.URL+"/api/v1/auth/logout", "application/json", bytes.NewReader(logoutBody))
 	if err != nil {
 		t.Fatalf("logout request failed: %v", err)
 	}
@@ -533,6 +545,7 @@ func TestAuth_Login_MultipleSessions(t *testing.T) {
 }
 
 func TestAuth_Login_RefreshTokenTracking(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -545,7 +558,7 @@ func TestAuth_Login_RefreshTokenTracking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal register body failed: %v", err)
 	}
-	resReg, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -563,7 +576,7 @@ func TestAuth_Login_RefreshTokenTracking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal login body failed: %v", err)
 	}
-	resLogin, err := http.Post(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
+	resLogin, err := testHTTPPost(te.Server.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(lb))
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
 	}

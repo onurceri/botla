@@ -8,6 +8,7 @@ import (
 )
 
 func TestAuth_InvalidBearerFormat_Protected401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -16,14 +17,15 @@ func TestAuth_InvalidBearerFormat_Protected401(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Token abc.def")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 }
 
 func TestAuth_BearerWithoutToken_Protected401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -32,14 +34,15 @@ func TestAuth_BearerWithoutToken_Protected401(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 }
 
 func TestAuth_BasicScheme_Protected401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -48,9 +51,9 @@ func TestAuth_BasicScheme_Protected401(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me", nil)
 	req.Header.Set("Authorization", "Basic abc123")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", res.StatusCode)
 	}
-	res.Body.Close()
+	drainBody(res)
 }

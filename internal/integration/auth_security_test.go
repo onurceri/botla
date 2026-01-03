@@ -14,6 +14,7 @@ import (
 )
 
 func TestAuth_Register_SQLInjectionEmail(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -27,11 +28,11 @@ func TestAuth_Register_SQLInjectionEmail(t *testing.T) {
 		t.Fatalf("marshal failed: %v", err)
 	}
 
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400 Bad Request for SQL injection email, got %d", res.StatusCode)
@@ -52,6 +53,7 @@ func TestAuth_Register_SQLInjectionEmail(t *testing.T) {
 }
 
 func TestAuth_Register_XSSFullName(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -66,7 +68,7 @@ func TestAuth_Register_XSSFullName(t *testing.T) {
 		t.Fatalf("marshal failed: %v", err)
 	}
 
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("register request failed: %v", err)
 	}
@@ -78,7 +80,7 @@ func TestAuth_Register_XSSFullName(t *testing.T) {
 	if err = json.NewDecoder(res.Body).Decode(&tr); err != nil {
 		t.Fatalf("failed to decode token response: %v", err)
 	}
-	res.Body.Close()
+	drainBody(res)
 	if tr.Token == "" {
 		t.Fatalf("token empty")
 	}
@@ -89,7 +91,7 @@ func TestAuth_Register_XSSFullName(t *testing.T) {
 	}
 	req.Header.Set("Authorization", "Bearer "+tr.Token)
 
-	meRes, err := http.DefaultClient.Do(req)
+	meRes, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("me request failed: %v", err)
 	}

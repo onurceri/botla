@@ -13,6 +13,7 @@ import (
 
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
@@ -31,13 +32,14 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	// Setup with mock OpenAI to avoid real calls
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	qd := startQdrantStub()
 	defer qd.Close()
-	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -55,7 +57,7 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -68,7 +70,7 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	reqOK, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(firstBody))
 	reqOK.Header.Set("Authorization", "Bearer "+token)
 	reqOK.Header.Set("Content-Type", "application/json")
-	resOK, _ := http.DefaultClient.Do(reqOK)
+	resOK, _ := testHTTPClient().Do(reqOK)
 	if resOK.StatusCode != http.StatusOK {
 		t.Fatalf("QTA-001: expected first chat 200 OK, got %d", resOK.StatusCode)
 	}
@@ -94,7 +96,7 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cb))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, _ := http.DefaultClient.Do(req)
+	res, _ := testHTTPClient().Do(req)
 
 	if res.StatusCode != http.StatusPaymentRequired {
 		t.Errorf("QTA-001: expected 402 Payment Required, got %d", res.StatusCode)
@@ -102,7 +104,7 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 
 	var errResp map[string]any
 	json.NewDecoder(res.Body).Decode(&errResp)
-	res.Body.Close()
+	drainBody(res)
 
 	if code, ok := errResp["code"].(string); !ok || code != "ERR_MONTHLY_TOKENS_EXCEEDED" {
 		t.Errorf("expected error code ERR_MONTHLY_TOKENS_EXCEEDED, got %v", errResp)
@@ -137,7 +139,7 @@ func TestQuota_RefreshExceeded(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -154,7 +156,7 @@ func TestQuota_RefreshExceeded(t *testing.T) {
 	// Try refresh
 	reqR, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/sources/"+sourceID+"/refresh", nil)
 	reqR.Header.Set("Authorization", "Bearer "+token)
-	resR, _ := http.DefaultClient.Do(reqR)
+	resR, _ := testHTTPClient().Do(reqR)
 
 	if resR.StatusCode != http.StatusPaymentRequired {
 		t.Errorf("QTA-003: expected 402, got %d", resR.StatusCode)
@@ -196,7 +198,7 @@ func TestQuota_IngestionExceeded(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -213,7 +215,7 @@ func TestQuota_IngestionExceeded(t *testing.T) {
 	reqS, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/sources", &b)
 	reqS.Header.Set("Authorization", "Bearer "+token)
 	reqS.Header.Set("Content-Type", w.FormDataContentType())
-	resS, _ := http.DefaultClient.Do(reqS)
+	resS, _ := testHTTPClient().Do(reqS)
 
 	// Note: If ingestion quota is exceeded, it should return 402 Payment Required
 	// or 403 Forbidden depending on implementation. checkIngestionQuota returns quotaError which usually maps to 402.
@@ -236,13 +238,14 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 	// Setup mocks
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
 	qd := startQdrantStub()
 	defer qd.Close()
-	t.Setenv("QDRANT_URL", qd.URL)
 
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.QDRANT_URL = qd.URL
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -267,7 +270,7 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cbj))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -301,13 +304,13 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer "+token)
 			req.Header.Set("Content-Type", "application/json")
 
-			res, err := http.DefaultClient.Do(req)
+			res, err := testHTTPClient().Do(req)
 			if err != nil {
 				t.Errorf("request failed: %v", err)
 				return
 			}
 			responses[idx] = res.StatusCode
-			res.Body.Close()
+			drainBody(res)
 		}(i)
 	}
 

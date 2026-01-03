@@ -14,6 +14,7 @@ import (
 )
 
 func TestAuth_Register_PasswordHashing(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -28,11 +29,11 @@ func TestAuth_Register_PasswordHashing(t *testing.T) {
 		t.Fatalf("marshal failed: %v", err)
 	}
 
-	res, err := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(body))
+	res, err := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("register request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201 Created, got %d", res.StatusCode)

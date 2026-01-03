@@ -16,6 +16,7 @@ import (
 	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/processing"
 	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/workers"
 	"github.com/onurceri/botla-co/pkg/config"
@@ -145,7 +146,7 @@ func initInfrastructure(cfg *config.Config, log *logger.Logger) (*infraDeps, err
 	}, nil
 }
 
-func initRateLimiting(log *logger.Logger, pool *sql.DB) (*rateLimitDeps, error) {
+func initRateLimiting(cfg *config.Config, log *logger.Logger, pool *sql.DB) (*rateLimitDeps, error) {
 	redisClient, err := initRedisClient(log)
 	if err != nil {
 		log.Error("redis_required", map[string]any{
@@ -155,7 +156,19 @@ func initRateLimiting(log *logger.Logger, pool *sql.DB) (*rateLimitDeps, error) 
 		return nil, fmt.Errorf("init redis: %w", err)
 	}
 
-	rlConfig := ratelimit.NewConfigFromEnv()
+	rlSettings := ratelimit.Settings{
+		GlobalRequestsPerMinute: cfg.RateLimitGlobalRequestsPerMinute,
+		GlobalWindowSeconds:     cfg.RateLimitGlobalWindowSeconds,
+		UserRequestsPerMinute:   cfg.RateLimitUserRequestsPerMinute,
+		UserWindowSeconds:       cfg.RateLimitUserWindowSeconds,
+		EndpointChat:            cfg.RateLimitEndpointChat,
+		EndpointSources:         cfg.RateLimitEndpointSources,
+		AuthLogin:               cfg.RateLimitAuthLogin,
+		AuthRegister:            cfg.RateLimitAuthRegister,
+		AuthRefresh:             cfg.RateLimitAuthRefresh,
+	}
+
+	rlConfig := ratelimit.NewConfig(rlSettings)
 	globalLimiter := ratelimit.NewRedisLimiter(redisClient, rlConfig.Global)
 	log.Info("rate_limiter_initialized", map[string]any{"backend": "redis", "mode": "plan-based"})
 	rl := middleware.NewRateLimiter(globalLimiter, redisClient, rlConfig)
@@ -174,7 +187,20 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 		return nil, fmt.Errorf("init openai: %w", err)
 	}
 
-	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, cfg.WORKER_COUNT)
+	scConfig := scraper.CollectorConfig{
+		AllowedDomains:  strings.Split(cfg.SCRAPER_ALLOWED_DOMAINS, ","),
+		Timeout:         30 * time.Second,
+		RateLimitPerSec: 2,
+	}
+	sdConfig := scraper.DynamicConfig{
+		PoolSize:   cfg.SCRAPER_BROWSER_POOL_SIZE,
+		IdleTTL:    time.Duration(cfg.SCRAPER_DYNAMIC_IDLE_SECS) * time.Second,
+		NavTimeout: time.Duration(cfg.SCRAPER_NAV_TIMEOUT_MS) * time.Millisecond,
+		Allowed:    strings.Split(cfg.SCRAPER_ALLOWED_DOMAINS, ","),
+	}
+	scrp := scraper.NewDefaultScraper(scConfig, sdConfig)
+
+	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, scrp, cfg.WORKER_COUNT)
 	if err != nil {
 		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init source queue: %w", err)
@@ -201,7 +227,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		return nil, err
 	}
 
-	rl, err := initRateLimiting(log, infra.db)
+	rl, err := initRateLimiting(cfg, log, infra.db)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +295,7 @@ func (app *application) start() {
 	planLoader := middleware.PlanLoaderMiddleware(app.db, app.log)
 	handler := middleware.RequestID(
 		middleware.SecurityHeadersMiddleware()(
-			middleware.RecoveryMiddleware(app.log)(
+			middleware.RecoveryMiddleware(app.log, app.cfg.GO_ENV)(
 				middleware.RequestLogger(app.log)(
 					middleware.MaxBytesMiddleware(1 * 1024 * 1024)( // 1MB limit
 						planLoader(

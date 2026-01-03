@@ -8,6 +8,7 @@ import (
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/urlutil"
 )
 
 // SourcesHandlers handles all source-related HTTP endpoints
@@ -19,4 +20,5 @@ type SourcesHandlers struct {
 	Log              *logger.Logger
 	WorkspaceService *services.WorkspaceService
 	OrgService       *services.OrganizationService
+	SSRFValidator    *urlutil.SSRFValidator
 }

@@ -17,15 +17,15 @@ type chatbotInfo struct {
 func ssrfAuthToken(t *testing.T, base string, email string) string {
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
-	http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
-	res, _ := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	res, _ := testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	var tr struct {
 		Token string `json:"token"`
 	}
 	json.NewDecoder(res.Body).Decode(&tr)
-	res.Body.Close()
+	drainBody(res)
 	return tr.Token
 }
 
@@ -35,11 +35,11 @@ func ssrfCreateChatbot(t *testing.T, base string, token string, name string) str
 	req, _ := http.NewRequest(http.MethodPost, base+"/api/v1/chatbots", bytes.NewReader(b))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("create chatbot request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer drainBody(res)
 	var bot chatbotInfo
 	json.NewDecoder(res.Body).Decode(&bot)
 	return bot.ID
@@ -55,7 +55,7 @@ func createURLSource(t *testing.T, base string, token string, chatbotID string, 
 	req, _ := http.NewRequest(http.MethodPost, base+"/api/v1/chatbots/"+chatbotID+"/sources", &body)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
-	res, err := http.DefaultClient.Do(req)
+	res, err := testHTTPClient().Do(req)
 	if err != nil {
 		t.Fatalf("create URL source request failed: %v", err)
 	}
@@ -63,6 +63,7 @@ func createURLSource(t *testing.T, base string, token string, chatbotID string, 
 }
 
 func TestSSRFProtection_Integration(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -71,6 +72,9 @@ func TestSSRFProtection_Integration(t *testing.T) {
 
 	token := ssrfAuthToken(t, te.Server.URL, "ssrf@example.com")
 	chatbotID := ssrfCreateChatbot(t, te.Server.URL, token, "SSRF Test Bot")
+
+	// Enforce strict SSRF protection for this test
+	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(false)
 
 	blockedURLs := []string{
 		"http://localhost/admin",
@@ -89,7 +93,7 @@ func TestSSRFProtection_Integration(t *testing.T) {
 
 		var body map[string]string
 		json.NewDecoder(resp.Body).Decode(&body)
-		resp.Body.Close()
+		drainBody(resp)
 
 		if body["code"] != "ERR_BLOCKED_URL" {
 			t.Errorf("expected ERR_BLOCKED_URL code, got %s", body["code"])
@@ -98,6 +102,7 @@ func TestSSRFProtection_Integration(t *testing.T) {
 }
 
 func TestSSRFProtection_AllowsPublicURLs(t *testing.T) {
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -109,7 +114,7 @@ func TestSSRFProtection_AllowsPublicURLs(t *testing.T) {
 
 	// This should succeed (though it might fail to scrape, it should pass SSRF check)
 	resp := createURLSource(t, te.Server.URL, token, chatbotID, "https://example.com")
-	defer resp.Body.Close()
+	defer drainBody(resp)
 
 	// Should be 201 Created (might process successfully) or not 403 (SSRF blocked)
 	if resp.StatusCode == http.StatusForbidden {

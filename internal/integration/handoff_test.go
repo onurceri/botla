@@ -9,18 +9,20 @@ import (
 
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
 )
 
 func TestHandoff_Flow(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -46,7 +48,7 @@ func TestHandoff_Flow(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	if resC.StatusCode != http.StatusCreated {
 		t.Fatalf("create bot failed: %d", resC.StatusCode)
 	}
@@ -68,7 +70,7 @@ func TestHandoff_Flow(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update bot failed: %d", resU.StatusCode)
 	}
@@ -85,7 +87,7 @@ func TestHandoff_Flow(t *testing.T) {
 	reqChat, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/chat", bytes.NewReader(cr))
 	reqChat.Header.Set("Authorization", "Bearer "+token) // Can be authenticated or public, let's use auth for simplicity or public endpoint if exists
 	reqChat.Header.Set("Content-Type", "application/json")
-	resChat, _ := http.DefaultClient.Do(reqChat)
+	resChat, _ := testHTTPClient().Do(reqChat)
 	if resChat.StatusCode != http.StatusOK {
 		t.Fatalf("chat failed: %d", resChat.StatusCode)
 	}
@@ -102,7 +104,7 @@ func TestHandoff_Flow(t *testing.T) {
 	// Path: /api/public/:botId/handoff
 	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
-	resH, _ := http.DefaultClient.Do(reqH)
+	resH, _ := testHTTPClient().Do(reqH)
 	if resH.StatusCode != http.StatusOK {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resH.Body)
@@ -122,7 +124,7 @@ func TestHandoff_Flow(t *testing.T) {
 	// 5. List Handoff Requests (Owner)
 	reqL, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests", nil)
 	reqL.Header.Set("Authorization", "Bearer "+token)
-	resL, _ := http.DefaultClient.Do(reqL)
+	resL, _ := testHTTPClient().Do(reqL)
 	if resL.StatusCode != http.StatusOK {
 		t.Fatalf("list requests failed: %d", resL.StatusCode)
 	}
@@ -147,7 +149,7 @@ func TestHandoff_Flow(t *testing.T) {
 	reqUp, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+handoffRes.RequestID, bytes.NewReader(ur))
 	reqUp.Header.Set("Authorization", "Bearer "+token)
 	reqUp.Header.Set("Content-Type", "application/json")
-	resUp, _ := http.DefaultClient.Do(reqUp)
+	resUp, _ := testHTTPClient().Do(reqUp)
 	if resUp.StatusCode != http.StatusNoContent {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(resUp.Body)
@@ -156,7 +158,7 @@ func TestHandoff_Flow(t *testing.T) {
 	resUp.Body.Close()
 
 	// 7. Verify Update
-	resL2, _ := http.DefaultClient.Do(reqL) // Reuse list request
+	resL2, _ := testHTTPClient().Do(reqL) // Reuse list request
 	json.NewDecoder(resL2.Body).Decode(&listRes)
 	resL2.Body.Close()
 	if listRes.Requests[0].Status != "assigned" {
@@ -165,14 +167,15 @@ func TestHandoff_Flow(t *testing.T) {
 }
 
 func TestHandoff_Analytics(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -197,7 +200,7 @@ func TestHandoff_Analytics(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -216,7 +219,7 @@ func TestHandoff_Analytics(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	http.DefaultClient.Do(reqU)
+	testHTTPClient().Do(reqU)
 
 	// Trigger Handoff
 	handoffReq := map[string]any{
@@ -226,7 +229,7 @@ func TestHandoff_Analytics(t *testing.T) {
 	hr, _ := json.Marshal(handoffReq)
 	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
-	resH, _ := http.DefaultClient.Do(reqH)
+	resH, _ := testHTTPClient().Do(reqH)
 	if resH.StatusCode != http.StatusOK {
 		t.Fatalf("handoff failed: %d", resH.StatusCode)
 	}
@@ -237,7 +240,7 @@ func TestHandoff_Analytics(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		reqA, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/analytics", nil)
 		reqA.Header.Set("Authorization", "Bearer "+token)
-		resA, _ := http.DefaultClient.Do(reqA)
+		resA, _ := testHTTPClient().Do(reqA)
 		if resA.StatusCode != http.StatusOK {
 			t.Fatalf("analytics failed: %d", resA.StatusCode)
 		}
@@ -265,14 +268,15 @@ func TestHandoff_Analytics(t *testing.T) {
 }
 
 func TestHandoff_Widget(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -297,7 +301,7 @@ func TestHandoff_Widget(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -306,7 +310,7 @@ func TestHandoff_Widget(t *testing.T) {
 
 	// Check Public Config
 	reqP, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID, nil)
-	resP, _ := http.DefaultClient.Do(reqP)
+	resP, _ := testHTTPClient().Do(reqP)
 	var pubConfig struct {
 		HandoffEnabled bool `json:"handoff_enabled"`
 	}
@@ -329,11 +333,11 @@ func TestHandoff_Widget(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	http.DefaultClient.Do(reqU)
+	testHTTPClient().Do(reqU)
 
 	// Check Public Config Again
 	reqP2, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID, nil)
-	resP2, _ := http.DefaultClient.Do(reqP2)
+	resP2, _ := testHTTPClient().Do(reqP2)
 	json.NewDecoder(resP2.Body).Decode(&pubConfig)
 	resP2.Body.Close()
 
@@ -343,14 +347,15 @@ func TestHandoff_Widget(t *testing.T) {
 }
 
 func TestHandoff_EdgeCases(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -375,7 +380,7 @@ func TestHandoff_EdgeCases(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -390,16 +395,16 @@ func TestHandoff_EdgeCases(t *testing.T) {
 	hr, _ := json.Marshal(handoffReq)
 	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
-	resH, _ := http.DefaultClient.Do(reqH)
+	resH, _ := testHTTPClient().Do(reqH)
 
 	if resH.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for disabled handoff, got %d", resH.StatusCode)
 	}
-	var errRes map[string]string
+	var errRes map[string]any
 	json.NewDecoder(resH.Body).Decode(&errRes)
 	resH.Body.Close()
-	if errRes["error"] != "handoff is not enabled for this chatbot" {
-		t.Errorf("unexpected error message: %s", errRes["error"])
+	if errRes["code"] != "ERR_HANDOFF_NOT_ENABLED" {
+		t.Errorf("expected error code ERR_HANDOFF_NOT_ENABLED, got %v", errRes["code"])
 	}
 
 	// 3. Enable Handoff but missing email config (HND-003)
@@ -415,7 +420,7 @@ func TestHandoff_EdgeCases(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	resU, _ := http.DefaultClient.Do(reqU)
+	resU, _ := testHTTPClient().Do(reqU)
 	if resU.StatusCode != http.StatusOK {
 		t.Fatalf("update bot failed: %d", resU.StatusCode)
 	}
@@ -424,7 +429,7 @@ func TestHandoff_EdgeCases(t *testing.T) {
 	// Request Handoff again
 	reqH2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH2.Header.Set("Content-Type", "application/json")
-	resH2, _ := http.DefaultClient.Do(reqH2)
+	resH2, _ := testHTTPClient().Do(reqH2)
 
 	// Expect 200 OK but with ErrorMessage in body
 	if resH2.StatusCode != http.StatusOK {
@@ -450,27 +455,28 @@ func TestHandoff_EdgeCases(t *testing.T) {
 func authTokenForHandoff(t *testing.T, base string, email string) string {
 	regBody := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	b, _ := json.Marshal(regBody)
-	http.Post(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+	testHTTPPost(base+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	lb := map[string]string{"email": email, "password": "Test@123"}
 	lbj, _ := json.Marshal(lb)
-	res, _ := http.Post(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
+	res, _ := testHTTPPost(base+"/api/v1/auth/login", "application/json", bytes.NewReader(lbj))
 	var tr struct {
 		Token string `json:"token"`
 	}
 	json.NewDecoder(res.Body).Decode(&tr)
-	res.Body.Close()
+	drainBody(res)
 	return tr.Token
 }
 
 func TestHandoff_Status_Lifecycle(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -495,7 +501,7 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -513,7 +519,7 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	http.DefaultClient.Do(reqU)
+	testHTTPClient().Do(reqU)
 
 	// 2. Create Request
 	handoffReq := map[string]any{
@@ -523,7 +529,7 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	hr, _ := json.Marshal(handoffReq)
 	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
-	resH, _ := http.DefaultClient.Do(reqH)
+	resH, _ := testHTTPClient().Do(reqH)
 	var hRes struct {
 		RequestID string `json:"request_id"`
 	}
@@ -536,7 +542,7 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	// Check Initial (Pending)
 	reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests", nil)
 	reqG.Header.Set("Authorization", "Bearer "+token)
-	resG, _ := http.DefaultClient.Do(reqG)
+	resG, _ := testHTTPClient().Do(reqG)
 	var listRes struct {
 		Requests []models.HandoffRequest `json:"requests"`
 	}
@@ -555,10 +561,10 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	reqUp1, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+reqID, bytes.NewReader(u1))
 	reqUp1.Header.Set("Authorization", "Bearer "+token)
 	reqUp1.Header.Set("Content-Type", "application/json")
-	http.DefaultClient.Do(reqUp1)
+	testHTTPClient().Do(reqUp1)
 
 	// Verify Assigned
-	resG2, _ := http.DefaultClient.Do(reqG)
+	resG2, _ := testHTTPClient().Do(reqG)
 	json.NewDecoder(resG2.Body).Decode(&listRes)
 	resG2.Body.Close()
 	if listRes.Requests[0].Status != "assigned" {
@@ -571,10 +577,10 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 	reqUp2, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+reqID, bytes.NewReader(u2))
 	reqUp2.Header.Set("Authorization", "Bearer "+token)
 	reqUp2.Header.Set("Content-Type", "application/json")
-	http.DefaultClient.Do(reqUp2)
+	testHTTPClient().Do(reqUp2)
 
 	// Verify Resolved
-	resG3, _ := http.DefaultClient.Do(reqG)
+	resG3, _ := testHTTPClient().Do(reqG)
 	json.NewDecoder(resG3.Body).Decode(&listRes)
 	resG3.Body.Close()
 	if listRes.Requests[0].Status != "resolved" {
@@ -583,14 +589,15 @@ func TestHandoff_Status_Lifecycle(t *testing.T) {
 }
 
 func TestHandoff_DuplicateRequest(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -615,7 +622,7 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -633,7 +640,7 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	reqU, _ := http.NewRequest(http.MethodPut, te.Server.URL+"/api/v1/chatbots/"+bot.ID, bytes.NewReader(ub))
 	reqU.Header.Set("Authorization", "Bearer "+token)
 	reqU.Header.Set("Content-Type", "application/json")
-	http.DefaultClient.Do(reqU)
+	testHTTPClient().Do(reqU)
 
 	// 2. Make First Request
 	handoffReq := map[string]any{
@@ -643,7 +650,7 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	hr, _ := json.Marshal(handoffReq)
 	reqH, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH.Header.Set("Content-Type", "application/json")
-	resH, _ := http.DefaultClient.Do(reqH)
+	resH, _ := testHTTPClient().Do(reqH)
 	if resH.StatusCode != http.StatusOK {
 		t.Fatalf("first handoff failed: %d", resH.StatusCode)
 	}
@@ -656,7 +663,7 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	// 3. Make Second Request (Should Fail)
 	reqH2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH2.Header.Set("Content-Type", "application/json")
-	resH2, _ := http.DefaultClient.Do(reqH2)
+	resH2, _ := testHTTPClient().Do(reqH2)
 
 	if resH2.StatusCode != http.StatusConflict {
 		t.Errorf("expected 409 for duplicate request, got %d", resH2.StatusCode)
@@ -666,8 +673,8 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 		Code  string `json:"code"`
 	}
 	_ = json.NewDecoder(resH2.Body).Decode(&errResp)
-	if errResp.Code != "handoff_exists" {
-		t.Errorf("expected error code handoff_exists, got %q (error=%q)", errResp.Code, errResp.Error)
+	if errResp.Code != "ERR_HANDOFF_EXISTS" {
+		t.Errorf("expected error code ERR_HANDOFF_EXISTS, got %q (error=%q)", errResp.Code, errResp.Error)
 	}
 	resH2.Body.Close()
 
@@ -677,12 +684,12 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 	reqUp, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+resBody1.RequestID, bytes.NewReader(ur))
 	reqUp.Header.Set("Authorization", "Bearer "+token)
 	reqUp.Header.Set("Content-Type", "application/json")
-	http.DefaultClient.Do(reqUp)
+	testHTTPClient().Do(reqUp)
 
 	// 5. Make Third Request (Should Succeed)
 	reqH3, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/public/chatbots/"+bot.ID+"/handoff", bytes.NewReader(hr))
 	reqH3.Header.Set("Content-Type", "application/json")
-	resH3, _ := http.DefaultClient.Do(reqH3)
+	resH3, _ := testHTTPClient().Do(reqH3)
 	if resH3.StatusCode != http.StatusOK {
 		t.Errorf("expected success for new request after resolution, got %d", resH3.StatusCode)
 	}
@@ -690,14 +697,15 @@ func TestHandoff_DuplicateRequest(t *testing.T) {
 }
 
 func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -718,7 +726,7 @@ func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -728,7 +736,7 @@ func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
 	missingID := "00000000-0000-0000-0000-000000000000"
 	reqG, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+missingID, nil)
 	reqG.Header.Set("Authorization", "Bearer "+token)
-	resG, _ := http.DefaultClient.Do(reqG)
+	resG, _ := testHTTPClient().Do(reqG)
 	if resG.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resG.StatusCode)
 	}
@@ -738,20 +746,21 @@ func TestHandoff_RequestDetail_NotFoundReturns404(t *testing.T) {
 	}
 	_ = json.NewDecoder(resG.Body).Decode(&errResp)
 	resG.Body.Close()
-	if errResp.Code != "handoff_not_found" {
-		t.Fatalf("expected error code handoff_not_found, got %q (error=%q)", errResp.Code, errResp.Error)
+	if errResp.Code != "ERR_HANDOFF_NOT_FOUND" {
+		t.Fatalf("expected error code ERR_HANDOFF_NOT_FOUND, got %q (error=%q)", errResp.Code, errResp.Error)
 	}
 }
 
 func TestHandoff_UpdateStatus_NotFoundReturns404(t *testing.T) {
+	t.Parallel()
 	oai := fixtures.NewLLMMock(t)
 	defer oai.Close()
 
-	t.Setenv("OPENAI_API_BASE", oai.URL)
-	t.Setenv("OPENROUTER_API_BASE", oai.URL+"/v1")
-	t.Setenv("OPENAI_API_KEY", "test-key")
-
-	te, err := fixtures.SetupTestEnv()
+	te, err := fixtures.SetupTestEnvWithConfigAndMocks(func(cfg *config.Config) {
+		cfg.OPENAI_API_BASE = oai.URL
+		cfg.OPENROUTER_API_BASE = oai.URL + "/v1"
+		cfg.OPENAI_API_KEY = "test-key"
+	}, false)
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
@@ -772,7 +781,7 @@ func TestHandoff_UpdateStatus_NotFoundReturns404(t *testing.T) {
 	reqC, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/chatbots", bytes.NewReader(cb))
 	reqC.Header.Set("Authorization", "Bearer "+token)
 	reqC.Header.Set("Content-Type", "application/json")
-	resC, _ := http.DefaultClient.Do(reqC)
+	resC, _ := testHTTPClient().Do(reqC)
 	var bot struct {
 		ID string `json:"id"`
 	}
@@ -785,7 +794,7 @@ func TestHandoff_UpdateStatus_NotFoundReturns404(t *testing.T) {
 	reqUp, _ := http.NewRequest(http.MethodPatch, te.Server.URL+"/api/v1/chatbots/"+bot.ID+"/handoff-requests/"+missingID, bytes.NewReader(ur))
 	reqUp.Header.Set("Authorization", "Bearer "+token)
 	reqUp.Header.Set("Content-Type", "application/json")
-	resUp, _ := http.DefaultClient.Do(reqUp)
+	resUp, _ := testHTTPClient().Do(reqUp)
 	if resUp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resUp.StatusCode)
 	}
@@ -795,7 +804,7 @@ func TestHandoff_UpdateStatus_NotFoundReturns404(t *testing.T) {
 	}
 	_ = json.NewDecoder(resUp.Body).Decode(&errResp)
 	resUp.Body.Close()
-	if errResp.Code != "handoff_not_found" {
-		t.Fatalf("expected error code handoff_not_found, got %q (error=%q)", errResp.Code, errResp.Error)
+	if errResp.Code != "ERR_HANDOFF_NOT_FOUND" {
+		t.Fatalf("expected error code ERR_HANDOFF_NOT_FOUND, got %q (error=%q)", errResp.Code, errResp.Error)
 	}
 }

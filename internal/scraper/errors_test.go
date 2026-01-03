@@ -5,9 +5,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/onurceri/botla-co/pkg/urlutil"
 )
 
 func TestScrapeURL_Error(t *testing.T) {
+	// Allow localhost for testing by overriding the package-level validator
+	ssrfValidator = urlutil.NewSSRFValidator(true)
+	defer func() { ssrfValidator = urlutil.NewSSRFValidator(false) }()
+
 	// Setup server that returns 403
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")

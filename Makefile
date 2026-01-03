@@ -100,10 +100,18 @@ widget-deploy:
 	cd widget && npm install && npm run build && npx wrangler pages deploy dist --project-name botla-widget
 
 test-all:
-	 CGO_ENABLED=1 go test -p 1 -tags fitz -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
+	 CGO_ENABLED=1 go test -tags fitz -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
 
 test-no-pdf:
 	 go test -covermode=atomic -coverpkg=./... ./... -coverprofile=coverage.out
+
+# Fast unit tests only (excludes integration tests)
+test-fast:
+	go test ./internal/... ./pkg/... -short -parallel 8 -timeout 60s
+
+# Integration tests with parallelism
+test-integration:
+	go test ./internal/integration/... -parallel 8 -timeout 300s
 
 cover-html:
 	 @[ -f coverage.out ] || (echo "coverage.out not found. Run 'make test-all' first." && exit 1)

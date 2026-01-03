@@ -12,12 +12,21 @@ type SSRFValidator struct {
 	allowPrivate bool // For testing only
 }
 
-// NewSSRFValidator creates a new SSRF validator
-func NewSSRFValidator() *SSRFValidator {
-	return &SSRFValidator{allowPrivate: false}
+// NewSSRFValidator creates a new SSRF validator with the specified configuration.
+// Set allowPrivate to true to allow private IPs (useful for testing).
+func NewSSRFValidator(allowPrivate bool) *SSRFValidator {
+	return &SSRFValidator{allowPrivate: allowPrivate}
 }
 
-// BlockedSchemes are URL schemes that should never be allowed
+// SetAllowPrivate allows enabling/disabling private IP checks at runtime.
+// This is primarily used for testing.
+func (v *SSRFValidator) SetAllowPrivate(allow bool) {
+	v.allowPrivate = allow
+}
+
+// BlockedSchemes are URL schemes that should never be allowed.
+// Note: These are documented here for reference; validation explicitly
+// requires http/https schemes, so these are implicitly blocked.
 var BlockedSchemes = []string{
 	"file",
 	"ftp",
@@ -54,72 +63,87 @@ var parsedBlockedRanges []*net.IPNet
 func init() {
 	for _, cidr := range BlockedIPRanges {
 		_, network, err := net.ParseCIDR(cidr)
-		if err == nil {
-			parsedBlockedRanges = append(parsedBlockedRanges, network)
+		if err != nil {
+			panic(fmt.Sprintf("invalid CIDR %q in BlockedIPRanges: %v", cidr, err))
 		}
+		parsedBlockedRanges = append(parsedBlockedRanges, network)
 	}
 }
 
-// ValidateURL checks if a URL is safe from SSRF attacks
+// ValidateURL checks if a URL is safe from SSRF attacks.
+// Returns an error if the URL is blocked or invalid.
 func (v *SSRFValidator) ValidateURL(rawURL string) error {
+	_, err := v.validateAndResolve(rawURL)
+	return err
+}
+
+// ValidateURLStrict performs validation and also returns resolved IPs.
+// Use this for logging what IP was actually contacted.
+// This avoids double DNS lookups compared to calling ValidateURL + LookupIP separately.
+func (v *SSRFValidator) ValidateURLStrict(rawURL string) ([]net.IP, error) {
+	return v.validateAndResolve(rawURL)
+}
+
+// validateAndResolve is the core validation logic that parses, validates,
+// and optionally resolves DNS for the given URL.
+func (v *SSRFValidator) validateAndResolve(rawURL string) ([]net.IP, error) {
 	// Parse URL
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
+		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// Check scheme
+	// Check scheme - only http and https are allowed
 	scheme := strings.ToLower(parsed.Scheme)
-	if scheme != "http" && scheme != "https" {
-		if scheme == "" {
-			return fmt.Errorf("missing URL scheme")
-		}
-		return fmt.Errorf("blocked URL scheme: %s", scheme)
+	if scheme == "" {
+		return nil, fmt.Errorf("missing URL scheme")
 	}
-
-	for _, blocked := range BlockedSchemes {
-		if scheme == blocked {
-			return fmt.Errorf("blocked URL scheme: %s", scheme)
-		}
+	if scheme != "http" && scheme != "https" {
+		return nil, fmt.Errorf("blocked URL scheme: %s", scheme)
 	}
 
 	// Check hostname
 	host := strings.ToLower(parsed.Hostname())
 	if host == "" {
-		return fmt.Errorf("missing hostname")
+		return nil, fmt.Errorf("missing hostname")
 	}
 
 	for _, blocked := range BlockedHosts {
 		if host == blocked {
-			return fmt.Errorf("blocked hostname: %s", host)
+			if v.allowPrivate && (host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" || host == "[::1]") {
+				continue
+			}
+			return nil, fmt.Errorf("blocked hostname: %s", host)
 		}
 	}
 
 	// Check for IP address directly in URL
 	if ip := net.ParseIP(host); ip != nil {
-		if err := v.validateIP(ip); err != nil {
-			return err
+		if ipErr := v.validateIP(ip); ipErr != nil {
+			return nil, ipErr
 		}
+		// Return this single IP for direct IP URLs
+		return []net.IP{ip}, nil
 	}
 
 	// Resolve hostname and validate IPs
-	if !v.allowPrivate {
-		ips, err := net.LookupIP(host)
-		if err != nil {
-			// If lookup fails, we can't validate IPs, but we already validated the host string
-			// Some systems might not have DNS reachable in tests, so we might want to handle this.
-			// However, for SSRF protection, being strict is better.
-			return fmt.Errorf("failed to resolve hostname: %w", err)
-		}
+	if v.allowPrivate {
+		// In test mode, skip DNS resolution
+		return nil, nil
+	}
 
-		for _, ip := range ips {
-			if err := v.validateIP(ip); err != nil {
-				return err
-			}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve hostname: %w", err)
+	}
+
+	for _, ip := range ips {
+		if err := v.validateIP(ip); err != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	return ips, nil
 }
 
 // validateIP checks if an IP is in a blocked range
@@ -151,23 +175,4 @@ func (v *SSRFValidator) validateIP(ip net.IP) error {
 	}
 
 	return nil
-}
-
-// ValidateURLStrict performs validation and also returns resolved IPs
-// Use this for logging what IP was actually contacted
-func (v *SSRFValidator) ValidateURLStrict(rawURL string) ([]net.IP, error) {
-	if err := v.ValidateURL(rawURL); err != nil {
-		return nil, err
-	}
-
-	parsed, _ := url.Parse(rawURL)
-	host := parsed.Hostname()
-
-	// Return resolved IPs for logging
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		return nil, fmt.Errorf("lookup ip failed: %w", err)
-	}
-
-	return ips, nil
 }

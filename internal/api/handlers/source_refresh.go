@@ -60,6 +60,16 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Enqueue for processing
+	if h.Queue != nil {
+		_, enqErr := h.Queue.EnqueueSource(r.Context(), sourceID, s.ChatbotID)
+		if enqErr != nil {
+			h.logError("refresh_enqueue_failed", map[string]any{"error": enqErr.Error(), "source_id": sourceID})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
 	// Update source for refresh
 	if err = db.UpdateSourceForRefresh(r.Context(), h.DB, sourceID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -68,11 +78,6 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 
 	// Increment refresh count
 	_ = db.IncrementRefreshCount(r.Context(), h.DB, userID, time.Now())
-
-	// Enqueue for processing
-	if h.Queue != nil {
-		h.Queue.Enqueue(sourceID)
-	}
 
 	api.WriteJSON(w, http.StatusAccepted, map[string]string{"id": sourceID})
 }

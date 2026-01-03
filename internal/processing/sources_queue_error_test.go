@@ -44,22 +44,19 @@ func (m *MockVectorClient) ScrollChunks(ctx context.Context, sourceID string, li
 	return args.Get(0).([]rag.SearchResult), args.Get(1).(*string), args.Error(2)
 }
 
-func TestStartSourceQueue_Error(t *testing.T) {
+func TestStartSourceQueue_NoFailOnVectorStoreError(t *testing.T) {
 	// Create mock that fails on EnsureEmbeddingsCollection
 	mockVC := &MockVectorClient{}
 	mockVC.On("EnsureEmbeddingsCollection", mock.Anything).Return(errors.New("connection failed"))
 
 	// We don't need real DB/ Storage/LLM for this test as it fails before using them
-	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC, 1)
+	q, err := StartSourceQueue(nil, storage.NewMemoryStorage(), nil, mockVC, nil, 1)
 
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	if err != nil {
+		t.Fatalf("expected no error (non-blocking), got %v", err)
 	}
-	// Error is wrapped with context, so check if it contains the original error
-	if err.Error() != "ensure embeddings collection: connection failed" {
-		t.Errorf("expected 'ensure embeddings collection: connection failed', got %v", err)
+	if q == nil {
+		t.Fatal("expected non-nil queue")
 	}
-	if q != nil {
-		t.Error("expected nil queue on error")
-	}
+	defer q.Stop()
 }

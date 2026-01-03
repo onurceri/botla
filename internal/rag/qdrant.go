@@ -21,15 +21,17 @@ type VectorClient interface {
 
 // QdrantConfig holds configuration for Qdrant client
 type QdrantConfig struct {
-	URL     string        // Required
-	APIKey  string        // Optional
-	Timeout time.Duration // Optional, defaults to 15s
+	URL            string        // Required
+	APIKey         string        // Optional
+	Timeout        time.Duration // Optional, defaults to 15s
+	CollectionName string        // Optional, defaults to "embeddings"
 }
 
 type QdrantClient struct {
-	baseURL string
-	apiKey  string
-	http    *http.Client
+	baseURL        string
+	apiKey         string
+	http           *http.Client
+	collectionName string
 }
 
 func NewQdrantClient(cfg *QdrantConfig) (*QdrantClient, error) {
@@ -42,10 +44,16 @@ func NewQdrantClient(cfg *QdrantConfig) (*QdrantClient, error) {
 		timeout = 15 * time.Second
 	}
 
+	collectionName := cfg.CollectionName
+	if collectionName == "" {
+		collectionName = "embeddings"
+	}
+
 	return &QdrantClient{
-		baseURL: cfg.URL,
-		apiKey:  cfg.APIKey,
-		http:    &http.Client{Timeout: timeout},
+		baseURL:        cfg.URL,
+		apiKey:         cfg.APIKey,
+		http:           &http.Client{Timeout: timeout},
+		collectionName: collectionName,
 	}, nil
 }
 
@@ -74,7 +82,7 @@ type qdrantResponse struct {
 }
 
 func (c *QdrantClient) EnsureEmbeddingsCollection(ctx context.Context) error {
-	url := fmt.Sprintf("%s/collections/embeddings", c.baseURL)
+	url := fmt.Sprintf("%s/collections/%s", c.baseURL, c.collectionName)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	setHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
@@ -120,7 +128,7 @@ func (c *QdrantClient) UpsertEmbedding(ctx context.Context, id interface{}, vect
 	reqBody.Points[0].Vector = vector
 	reqBody.Points[0].Payload = payload
 	b, _ := json.Marshal(reqBody)
-	url := fmt.Sprintf("%s/collections/embeddings/points?wait=true", c.baseURL)
+	url := fmt.Sprintf("%s/collections/%s/points?wait=true", c.baseURL, c.collectionName)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(b))
 	setJSONHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
@@ -163,7 +171,7 @@ type SearchResult struct {
 func (c *QdrantClient) SearchSimilar(ctx context.Context, embedding []float32, chatbotID string, topK int) ([]SearchResult, error) {
 	reqBody := searchRequest{Vector: embedding, Limit: topK, WithPayload: true, Filter: filterBody{Must: []condition{{Key: "chatbot_id", Match: matchBody{Value: chatbotID}}}}}
 	b, _ := json.Marshal(reqBody)
-	url := fmt.Sprintf("%s/collections/embeddings/points/search", c.baseURL)
+	url := fmt.Sprintf("%s/collections/%s/points/search", c.baseURL, c.collectionName)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
 	setJSONHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
@@ -192,7 +200,7 @@ type deleteFilterRequest struct {
 func (c *QdrantClient) DeleteBySourceID(ctx context.Context, sourceID string) error {
 	body := deleteFilterRequest{Filter: filterBody{Must: []condition{{Key: "source_id", Match: matchBody{Value: sourceID}}}}}
 	b, _ := json.Marshal(body)
-	url := fmt.Sprintf("%s/collections/embeddings/points/delete?wait=true", c.baseURL)
+	url := fmt.Sprintf("%s/collections/%s/points/delete?wait=true", c.baseURL, c.collectionName)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
 	setJSONHeaders(req, c.apiKey)
 	res, err := c.http.Do(req)
@@ -232,7 +240,7 @@ func (c *QdrantClient) ScrollChunks(ctx context.Context, sourceID string, limit 
 	}
 
 	b, _ := json.Marshal(reqBody)
-	url := fmt.Sprintf("%s/collections/embeddings/points/scroll", c.baseURL)
+	url := fmt.Sprintf("%s/collections/%s/points/scroll", c.baseURL, c.collectionName)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
 	setJSONHeaders(req, c.apiKey)
 

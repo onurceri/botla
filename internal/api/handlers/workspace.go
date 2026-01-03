@@ -105,7 +105,7 @@ func (h *WorkspaceHandlers) DeleteWorkspace(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if !httputil.IsValidUUID(wsID) {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return
 	}
 

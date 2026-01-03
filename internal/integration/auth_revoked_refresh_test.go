@@ -14,6 +14,7 @@ import (
 )
 
 func TestAuth_RevokedRefreshToken_401(t *testing.T) {
+t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -23,7 +24,7 @@ func TestAuth_RevokedRefreshToken_401(t *testing.T) {
 	email := "revoke+" + fmt.Sprintf("%d", time.Now().UnixNano()) + "@example.com"
 	reg := map[string]string{"email": email, "password": "Test@123", "full_name": "User"}
 	rb, _ := json.Marshal(reg)
-	resReg, _ := http.Post(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
+	resReg, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(rb))
 	if resReg.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resReg.StatusCode)
 	}
@@ -45,7 +46,7 @@ func TestAuth_RevokedRefreshToken_401(t *testing.T) {
 	// Attempt refresh with revoked token → expect 401
 	rr := refreshReq{RefreshToken: tp.RefreshToken}
 	rrj, _ := json.Marshal(rr)
-	resRef, _ := http.Post(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
+	resRef, _ := testHTTPPost(te.Server.URL+"/api/v1/auth/refresh", "application/json", bytes.NewReader(rrj))
 	if resRef.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resRef.StatusCode)
 	}
