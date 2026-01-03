@@ -359,7 +359,6 @@ func TestFormatDuration(t *testing.T) {
 }
 
 func TestGetVersion(t *testing.T) {
-	// Default version
 	version := getVersion()
 	if version != "dev" {
 		t.Errorf("expected 'dev', got %s", version)

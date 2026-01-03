@@ -19,10 +19,18 @@ func TestScrapeDynamicURL_Fixture(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 	cfg := DynamicConfig{
+		PoolSize:   1,
+		IdleTTL:    5 * time.Second,
 		Allowed:    []string{"localhost"},
 		NavTimeout: 500 * time.Millisecond,
 	}
-	out, err := ScrapeDynamicURL(srv.URL, cfg)
+	scraper, err := NewBrowserScraper(cfg)
+	if err != nil {
+		t.Fatalf("new browser scraper error: %v", err)
+	}
+	defer scraper.Close()
+
+	out, err := scraper.ScrapeDynamicURL(srv.URL)
 	if err != nil {
 		t.Fatalf("dynamic scrape error: %v", err)
 	}

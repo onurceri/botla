@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -43,12 +42,8 @@ func TestSources_PDF_Ingest_Success_Fitz(t *testing.T) {
 	json.NewDecoder(resC.Body).Decode(&bot)
 	resC.Body.Close()
 
-	// read real pdf
-	pdfPath := "/Users/onur/Documents/workspace/botla-co/docs/test.pdf"
-	bts, err := os.ReadFile(pdfPath)
-	if err != nil {
-		t.Fatalf("read pdf failed: %v", err)
-	}
+	// Minimal valid PDF structure
+	bts := []byte("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 20 >>\nstream\nBT /F1 12 Tf ET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000101 00000 n\n0000000190 00000 n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n260\n%%EOF")
 
 	var body strings.Builder
 	mw := multipart.NewWriter(&body)

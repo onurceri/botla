@@ -3,19 +3,19 @@ package scraper
 // DefaultScraper implements the Scraper interface by delegating to existing
 // package-level functions. This is the production implementation.
 type DefaultScraper struct {
-	cfg  CollectorConfig
-	dcfg DynamicConfig
+	cfg      CollectorConfig
+	bScraper *BrowserScraper
 }
 
 // NewDefaultScraper creates a new DefaultScraper instance.
-func NewDefaultScraper(cfg CollectorConfig, dcfg DynamicConfig) *DefaultScraper {
-	return &DefaultScraper{cfg: cfg, dcfg: dcfg}
+func NewDefaultScraper(cfg CollectorConfig, bScraper *BrowserScraper) *DefaultScraper {
+	return &DefaultScraper{cfg: cfg, bScraper: bScraper}
 }
 
 // ScrapeURLWithFallback implements Scraper.ScrapeURLWithFallback by delegating
 // to the package-level ScrapeURLWithFallback function.
 func (s *DefaultScraper) ScrapeURLWithFallback(task ScrapingTask, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
-	return ScrapeURLWithFallback(task, s.cfg, s.dcfg, allowDynamic, scrapeConfig)
+	return ScrapeURLWithFallback(task, s.cfg, s.bScraper, allowDynamic, scrapeConfig)
 }
 
 // FetchRawHTML implements Scraper.FetchRawHTML by delegating to the

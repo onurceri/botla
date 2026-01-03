@@ -13,6 +13,7 @@ import (
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 )
 
 // MaxRetries is the maximum number of retry attempts for a failed job.
@@ -25,10 +26,11 @@ type SourceQueue struct {
 	processor *JobProcessor
 	db        *sql.DB
 	log       *logger.Logger
+	loader    *tokenizer.Loader
 }
 
 // StartSourceQueue creates and starts a new source processing queue.
-func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, sc scraper.Scraper, workerCount int) (*SourceQueue, error) {
+func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, sc scraper.Scraper, loader *tokenizer.Loader, workerCount int) (*SourceQueue, error) {
 	log := logger.New("INFO")
 
 	// Create the orchestrator first (needed for circular dependency with processor)
@@ -45,6 +47,7 @@ func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClie
 		VectorClient: vc,
 		Log:          log,
 		Scraper:      sc,
+		Loader:       loader,
 		EnqueueWithDelay: func(jobID string, delay time.Duration) {
 			sq.queue.EnqueueWithDelay(jobID, delay)
 		},

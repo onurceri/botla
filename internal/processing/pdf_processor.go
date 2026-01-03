@@ -14,6 +14,7 @@ import (
 	"github.com/onurceri/botla-co/internal/text"
 	"github.com/onurceri/botla-co/pkg/logger"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 )
 
 // PDFProcessor handles PDF source processing
@@ -24,10 +25,11 @@ type PDFProcessor struct {
 	VectorClient     rag.VectorClient
 	Log              *logger.Logger
 	EmbeddingService *rag.EmbeddingService
+	Loader           *tokenizer.Loader
 }
 
 // NewPDFProcessor creates a new PDFProcessor
-func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger) *PDFProcessor {
+func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, loader *tokenizer.Loader) *PDFProcessor {
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
@@ -40,6 +42,7 @@ func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, v
 		VectorClient:     vc,
 		Log:              log,
 		EmbeddingService: embSvc,
+		Loader:           loader,
 	}
 }
 
@@ -113,7 +116,7 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	}
 
 	// Chunk and embed
-	rc, rerr := rag.ChunkText(content, 512, langCode)
+	rc, rerr := rag.ChunkText(p.Loader, content, 512, langCode)
 	if rerr != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}

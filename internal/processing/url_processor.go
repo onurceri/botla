@@ -14,6 +14,7 @@ import (
 	"github.com/onurceri/botla-co/internal/scraper"
 	"github.com/onurceri/botla-co/internal/text"
 	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 )
 
 // safeHashPrefix returns up to maxLen characters of hash.
@@ -37,10 +38,11 @@ type URLProcessor struct {
 	Log              *logger.Logger
 	Scraper          scraper.Scraper
 	EmbeddingService *rag.EmbeddingService
+	Loader           *tokenizer.Loader
 }
 
 // NewURLProcessor creates a new URLProcessor.
-func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper) *URLProcessor {
+func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper, loader *tokenizer.Loader) *URLProcessor {
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
@@ -53,6 +55,7 @@ func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *lo
 		Log:              log,
 		Scraper:          s,
 		EmbeddingService: embSvc,
+		Loader:           loader,
 	}
 }
 
@@ -218,7 +221,7 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		"lang_code":     langCode,
 	})
 
-	rc, rerr := rag.ChunkText(content, 512, langCode)
+	rc, rerr := rag.ChunkText(p.Loader, content, 512, langCode)
 	if rerr != nil {
 		p.logWarn("url_processing_chunking_failed", map[string]any{
 			"source_id": s.ID,

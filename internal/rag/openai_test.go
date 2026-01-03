@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreateEmbedding_Success(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/embeddings" {
 			w.Header().Set("Content-Type", "application/json")
@@ -25,7 +25,6 @@ func TestCreateEmbedding_Success(t *testing.T) {
 		}
 		http.NotFound(w, r)
 	}))
-	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -39,7 +38,7 @@ func TestCreateEmbedding_Success(t *testing.T) {
 }
 
 func TestCreateEmbeddingsBatch_Success(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/embeddings" {
 			w.Header().Set("Content-Type", "application/json")
@@ -51,7 +50,6 @@ func TestCreateEmbeddingsBatch_Success(t *testing.T) {
 		}
 		http.NotFound(w, r)
 	}))
-	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -65,11 +63,10 @@ func TestCreateEmbeddingsBatch_Success(t *testing.T) {
 }
 
 func TestCreateEmbedding_RetryFailure(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "fail", http.StatusInternalServerError)
 	}))
-	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -83,7 +80,7 @@ func TestCreateEmbedding_RetryFailure(t *testing.T) {
 }
 
 func TestCreateCompletion_NoChoices(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
 			w.Header().Set("Content-Type", "application/json")
@@ -92,7 +89,6 @@ func TestCreateCompletion_NoChoices(t *testing.T) {
 		}
 		http.NotFound(w, r)
 	}))
-	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -113,7 +109,7 @@ func TestCreateCompletion_NoChoices(t *testing.T) {
 }
 
 func TestCreateCompletion_Success(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
 			w.Header().Set("Content-Type", "application/json")
@@ -125,7 +121,6 @@ func TestCreateCompletion_Success(t *testing.T) {
 		}
 		http.NotFound(w, r)
 	}))
-	defer srv.Close()
 	defer srv.Close()
 	cfg := &config.Config{
 		OPENAI_API_KEY:  "k",
@@ -146,7 +141,7 @@ func TestCreateCompletion_Success(t *testing.T) {
 }
 
 func TestCreateCompletionWithTools_IncludesErrorBody(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {
 			w.Header().Set("Content-Type", "application/json")
@@ -174,7 +169,7 @@ func TestCreateCompletionWithTools_IncludesErrorBody(t *testing.T) {
 }
 
 func TestCreateEmbedding_ContextCancellation(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	// Server always returns error to trigger retries
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "fail", http.StatusInternalServerError)
@@ -191,16 +186,7 @@ func TestCreateEmbedding_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	start := testing.AllocsPerRun(1, func() {})
-	_ = start
-	startTime := testing.Benchmark(func(b *testing.B) {}).T
-
 	_, err := c.CreateEmbedding(ctx, "hi")
-
-	// Test should complete quickly (not wait for retry delays)
-	endTime := testing.Benchmark(func(b *testing.B) {}).T
-	_ = startTime
-	_ = endTime
 
 	if err != context.Canceled {
 		t.Fatalf("expected context.Canceled error, got: %v", err)
@@ -208,7 +194,7 @@ func TestCreateEmbedding_ContextCancellation(t *testing.T) {
 }
 
 func TestCreateEmbeddingsBatch_ContextCancellation(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "fail", http.StatusInternalServerError)
 	}))
@@ -231,7 +217,7 @@ func TestCreateEmbeddingsBatch_ContextCancellation(t *testing.T) {
 }
 
 func TestCreateCompletion_ContextCancellation(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "fail", http.StatusInternalServerError)
 	}))
@@ -261,7 +247,7 @@ func TestCreateCompletion_ContextCancellation(t *testing.T) {
 }
 
 func TestCreateCompletionWithTools_ContextCancellation(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "k")
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "fail", http.StatusInternalServerError)
 	}))
@@ -285,7 +271,7 @@ func TestCreateCompletionWithTools_ContextCancellation(t *testing.T) {
 }
 
 func TestNewOpenAIClient_WithHTTPClient(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/embeddings" {
@@ -329,7 +315,7 @@ func TestNewOpenAIClient_WithHTTPClient(t *testing.T) {
 }
 
 func TestNewOpenAIClient_WithNilHTTPClient(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Parallel()
 
 	cfg := &config.Config{
 		OPENAI_API_KEY: "test-key",
@@ -348,7 +334,7 @@ func TestNewOpenAIClient_WithNilHTTPClient(t *testing.T) {
 }
 
 func TestNewOpenAIClient_WithoutOptions(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Parallel()
 
 	cfg := &config.Config{
 		OPENAI_API_KEY: "test-key",
@@ -370,7 +356,7 @@ func TestNewOpenAIClient_WithoutOptions(t *testing.T) {
 }
 
 func TestNewOpenAIClient_MultipleOptions(t *testing.T) {
-	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Parallel()
 
 	mockHTTPClient := &http.Client{Timeout: 5 * time.Second}
 	cfg := &config.Config{

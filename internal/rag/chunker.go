@@ -16,7 +16,7 @@ import (
 
 // ChunkText splits raw text into token-aware chunks preserving paragraph and sentence boundaries.
 // targetTokens defines desired max tokens per chunk; chunks include ~15% tail overlap from previous chunk.
-func ChunkText(text string, targetTokens int, langCode string) ([]models.Chunk, error) {
+func ChunkText(loader *tokenizer.Loader, text string, targetTokens int, langCode string) ([]models.Chunk, error) {
 	s := strings.TrimSpace(text)
 	if s == "" {
 		return nil, nil
@@ -47,7 +47,7 @@ func ChunkText(text string, targetTokens int, langCode string) ([]models.Chunk, 
 	}
 
 	for _, p := range paras {
-		sentences := splitSentences(p, langCode)
+		sentences := splitSentences(loader, p, langCode)
 		for i := 0; i < len(sentences); i++ {
 			if len(current) == 0 && len(prevTail) > 0 {
 				current = append(current, prevTail...)
@@ -118,10 +118,10 @@ func tailFromSentences(sents []string, target int, langCode string) []string {
 }
 
 // splitSentences splits sentences using a hybrid approach:
-// 1. Tries to load a pre-trained Punkt model from langconfig.TokenizerData.
+// 1. Tries to load a pre-trained Punkt model from loader OR local files.
 // 2. Applies a "patch" layer for hardcoded abbreviations from langconfig.Abbreviations.
 // 3. Falls back to English tokenizer or Regex if model loading fails.
-func splitSentences(text string, langCode string) []string {
+func splitSentences(loader *tokenizer.Loader, text string, langCode string) []string {
 	if strings.TrimSpace(text) == "" {
 		return nil
 	}
@@ -146,10 +146,12 @@ func splitSentences(text string, langCode string) []string {
 	isProduction := os.Getenv("GO_ENV") == "production"
 
 	if isProduction {
-		// Production: use R2 cached data
-		if content, ok := tokenizer.GetTrainingData(langCode); ok {
-			if data, loadErr := sentences.LoadTraining(content); loadErr == nil {
-				tok = sentences.NewSentenceTokenizer(data)
+		// Production: use cached data from loader
+		if loader != nil {
+			if content, ok := loader.Get(langCode); ok {
+				if data, loadErr := sentences.LoadTraining(content); loadErr == nil {
+					tok = sentences.NewSentenceTokenizer(data)
+				}
 			}
 		}
 	} else if cfg.TokenizerData != "" {

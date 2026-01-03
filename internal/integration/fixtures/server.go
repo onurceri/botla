@@ -18,6 +18,7 @@ import (
 	"github.com/onurceri/botla-co/pkg/middleware"
 	"github.com/onurceri/botla-co/pkg/ratelimit"
 	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-co/pkg/tokenizer"
 	"github.com/onurceri/botla-co/pkg/urlutil"
 )
 
@@ -136,7 +137,10 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// Create mock scraper for tests
 	ms := scraper.NewMockScraper()
 
-	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC, ms, 2)
+	// Initialize tokenizer loader for tests (mock storage)
+	tokLoader := tokenizer.NewLoader(memStore)
+
+	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC, ms, tokLoader, 2)
 	if err != nil {
 		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
 	}

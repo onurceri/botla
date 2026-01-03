@@ -228,7 +228,7 @@ func ExtractLinks(htmlContent string, baseURL string, filter *PathFilter) ([]str
 
 // ScrapeURLWithFallback tries static scraping first, then falls back to dynamic if enabled.
 // If scrapeConfig is provided and contains Selectors, only content from matching elements is extracted.
-func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, dcfg DynamicConfig, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
+func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, bScraper *BrowserScraper, allowDynamic bool, scrapeConfig *ScrapeConfig) (string, error) {
 	if err := getSSRFValidator().ValidateURL(task.URL); err != nil {
 		return "", fmt.Errorf("SSRF blocked: %w", err)
 	}
@@ -262,7 +262,13 @@ func ScrapeURLWithFallback(task ScrapingTask, cfg CollectorConfig, dcfg DynamicC
 	}
 
 	// Fallback to dynamic (dynamic doesn't support selectors yet)
-	ds, derr := ScrapeDynamicURL(task.URL, dcfg)
+	var ds string
+	var derr error
+	if bScraper != nil {
+		ds, derr = bScraper.ScrapeDynamicURL(task.URL)
+	} else {
+		derr = fmt.Errorf("dynamic scraper not initialized")
+	}
 	if derr == nil && ds != "" {
 		_ = cache.Set(k, ds, 7*24*time.Hour)
 		l.Info("scraper_dynamic_ok", map[string]any{"url": task.URL, "len": len(ds)})
