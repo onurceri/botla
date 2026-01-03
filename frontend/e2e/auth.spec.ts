@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { setupAuthMocks, setupOrgMocks, setupAnalyticsMocks } from './helpers'
+import { TEST_IDS, TURKISH } from './test-constants'
 
 test.describe('Authentication', () => {
   test.describe('Registration', () => {
@@ -12,16 +13,25 @@ test.describe('Authentication', () => {
       // Navigate to register page
       await page.goto('/register')
 
-      // Verify page elements
-      await expect(page.getByRole('heading', { name: 'Hesap Oluştur' })).toBeVisible()
+      // Verify page elements using data-testid
+      await expect(page.getByTestId(TEST_IDS.REGISTER_PAGE)).toBeVisible()
+      await expect(page.getByTestId(TEST_IDS.REGISTER_TITLE)).toBeVisible()
 
-      // Fill registration form
-      await page.getByLabel('Ad Soyad').fill('Test User')
-      await page.getByLabel('Email').fill(`test-${Date.now()}@example.com`)
-      await page.getByLabel('Şifre').fill('SecurePass123!')
+      // Fill registration form using data-testid
+      await page.getByTestId(TEST_IDS.REGISTER_NAME_INPUT)
+        .or(page.getByLabel(TURKISH.NAME))
+        .fill('Test User')
+      await page.getByTestId(TEST_IDS.REGISTER_EMAIL_INPUT)
+        .or(page.getByLabel(TURKISH.EMAIL))
+        .fill(`test-${Date.now()}@example.com`)
+      await page.getByTestId(TEST_IDS.REGISTER_PASSWORD_INPUT)
+        .or(page.getByLabel(TURKISH.PASSWORD))
+        .fill('SecurePass123!')
 
       // Submit form
-      await page.getByRole('button', { name: 'Kayıt Ol' }).click()
+      await page.getByTestId(TEST_IDS.REGISTER_SUBMIT_BUTTON)
+        .or(page.getByRole('button', { name: TURKISH.REGISTER }))
+        .click()
 
       // Should redirect to dashboard or onboarding after successful registration
       await expect(page).toHaveURL(/\/(dashboard|onboarding|\/)/, { timeout: 15000 })
@@ -31,17 +41,19 @@ test.describe('Authentication', () => {
       await page.goto('/register')
 
       // Click submit without filling fields
-      await page.getByRole('button', { name: 'Kayıt Ol' }).click()
+      await page.getByTestId(TEST_IDS.REGISTER_SUBMIT_BUTTON)
+        .or(page.getByRole('button', { name: TURKISH.REGISTER }))
+        .click()
 
       // Should show error toast
-      await expect(page.getByText('Lütfen tüm alanları doldurun.')).toBeVisible()
+      await expect(page.getByText(TURKISH.FILL_ALL_FIELDS)).toBeVisible()
     })
 
     test('registration page has link to login', async ({ page }) => {
       await page.goto('/register')
 
       // Check for login link
-      const loginLink = page.getByRole('link', { name: 'Giriş Yapın' })
+      const loginLink = page.getByRole('link', { name: TURKISH.LOGIN_LINK })
       await expect(loginLink).toBeVisible()
 
       // Click and verify navigation
@@ -69,15 +81,22 @@ test.describe('Authentication', () => {
       // Navigate to login page
       await page.goto('/login')
 
-      // Verify page elements
-      await expect(page.getByRole('heading', { name: 'Hoş Geldiniz' })).toBeVisible()
+      // Verify page elements using data-testid
+      await expect(page.getByTestId(TEST_IDS.LOGIN_PAGE)).toBeVisible()
+      await expect(page.getByTestId(TEST_IDS.LOGIN_TITLE)).toBeVisible()
 
-      // Fill login form
-      await page.getByLabel('Email').fill('test@example.com')
-      await page.getByLabel('Şifre').fill('password123')
+      // Fill login form using data-testid
+      await page.getByTestId(TEST_IDS.LOGIN_EMAIL_INPUT)
+        .or(page.getByLabel(TURKISH.EMAIL))
+        .fill('test@example.com')
+      await page.getByTestId(TEST_IDS.LOGIN_PASSWORD_INPUT)
+        .or(page.getByLabel(TURKISH.PASSWORD))
+        .fill('password123')
 
       // Submit form
-      await page.getByRole('button', { name: 'Giriş Yap' }).click()
+      await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON)
+        .or(page.getByRole('button', { name: TURKISH.LOGIN }))
+        .click()
 
       // Should redirect to dashboard
       await expect(page).toHaveURL(/\/(dashboard)?/, { timeout: 10000 })
@@ -87,10 +106,12 @@ test.describe('Authentication', () => {
       await page.goto('/login')
 
       // Click submit without filling fields
-      await page.getByRole('button', { name: 'Giriş Yap' }).click()
+      await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON)
+        .or(page.getByRole('button', { name: TURKISH.LOGIN }))
+        .click()
 
       // Should show error toast
-      await expect(page.getByText('Lütfen tüm alanları doldurun.')).toBeVisible()
+      await expect(page.getByText(TURKISH.FILL_ALL_FIELDS)).toBeVisible()
     })
 
     test('login shows error for invalid credentials', async ({ page }) => {
@@ -105,24 +126,30 @@ test.describe('Authentication', () => {
 
       await page.goto('/login')
 
-      // Fill with invalid credentials
-      await page.getByLabel('Email').fill('wrong@example.com')
-      await page.getByLabel('Şifre').fill('wrongpassword')
+      // Fill with invalid credentials using data-testid
+      await page.getByTestId(TEST_IDS.LOGIN_EMAIL_INPUT)
+        .or(page.getByLabel(TURKISH.EMAIL))
+        .fill('wrong@example.com')
+      await page.getByTestId(TEST_IDS.LOGIN_PASSWORD_INPUT)
+        .or(page.getByLabel(TURKISH.PASSWORD))
+        .fill('wrongpassword')
 
       // Submit form
-      await page.getByRole('button', { name: 'Giriş Yap' }).click()
+      await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON)
+        .or(page.getByRole('button', { name: TURKISH.LOGIN }))
+        .click()
 
-      // Should show error
-      await expect(
-        page.getByText('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.'),
-      ).toBeVisible()
+      // Should show error using data-testid
+      await expect(page.getByTestId(TEST_IDS.LOGIN_ERROR_MESSAGE)
+        .or(page.getByText(TURKISH.LOGIN_FAILED)))
+        .toBeVisible()
     })
 
     test('login page has link to register', async ({ page }) => {
       await page.goto('/login')
 
       // Check for register link
-      const registerLink = page.getByRole('link', { name: 'Kayıt Olun' })
+      const registerLink = page.getByRole('link', { name: TURKISH.REGISTER_LINK })
       await expect(registerLink).toBeVisible()
 
       // Click and verify navigation
@@ -133,9 +160,10 @@ test.describe('Authentication', () => {
     test('login page has forgot password link', async ({ page }) => {
       await page.goto('/login')
 
-      // Check for forgot password link
-      const forgotLink = page.getByRole('link', { name: 'Şifremi unuttum?' })
-      await expect(forgotLink).toBeVisible()
+      // Check for forgot password link using data-testid
+      await expect(page.getByTestId(TEST_IDS.LOGIN_FORGOT_PASSWORD_LINK)
+        .or(page.getByRole('link', { name: TURKISH.FORGOT_PASSWORD })))
+        .toBeVisible()
     })
   })
 
@@ -156,16 +184,22 @@ test.describe('Authentication', () => {
 
       // Login first
       await page.goto('/login')
-      await page.getByLabel('Email').fill('test@example.com')
-      await page.getByLabel('Şifre').fill('password123')
-      await page.getByRole('button', { name: 'Giriş Yap' }).click()
+      await page.getByTestId(TEST_IDS.LOGIN_EMAIL_INPUT)
+        .or(page.getByLabel(TURKISH.EMAIL))
+        .fill('test@example.com')
+      await page.getByTestId(TEST_IDS.LOGIN_PASSWORD_INPUT)
+        .or(page.getByLabel(TURKISH.PASSWORD))
+        .fill('password123')
+      await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON)
+        .or(page.getByRole('button', { name: TURKISH.LOGIN }))
+        .click()
 
       // Wait for dashboard
       await expect(page).toHaveURL(/\/(dashboard)?/, { timeout: 10000 })
 
-      // Find and click logout (usually in a dropdown menu)
-      // This may need adjustment based on actual UI implementation
-      const userMenu = page.locator('[data-testid="user-menu"]').or(page.locator('.lucide-user'))
+      // Find and click logout using data-testid
+      const userMenu = page.getByTestId(TEST_IDS.USER_MENU)
+        .or(page.locator('.lucide-user'))
       if (await userMenu.isVisible()) {
         await userMenu.click()
         const logoutButton = page.getByRole('button', { name: /Çıkış|Logout/i })

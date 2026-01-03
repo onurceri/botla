@@ -46,6 +46,7 @@ export function ChatbotTabBar() {
           <NavLink
             key={tab.id}
             to={tab.id}
+            data-testid={`chatbot-${tab.id}-tab`}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',

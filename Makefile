@@ -178,3 +178,38 @@ test-cover:
 
 check-coverage:
 	 bash scripts/check_coverage.sh
+
+# Integration tests with real services
+test-integration-real:
+	docker compose -f docker-compose.integration.yml up -d
+	TEST_INTEGRATION=1 go test -v ./internal/integration/database/... ./internal/integration/redis/... ./internal/integration/qdrant/... ./internal/integration/scenarios/... -timeout=5m
+
+test-integration-real-race:
+	docker compose -f docker-compose.integration.yml up -d
+	TEST_INTEGRATION=1 go test -race -v ./internal/integration/database/... ./internal/integration/redis/... ./internal/integration/qdrant/... ./internal/integration/scenarios/... -timeout=10m
+
+test-integration-db:
+	docker compose -f docker-compose.integration.yml up -d
+	TEST_INTEGRATION=1 go test -v ./internal/integration/database/... -timeout=2m
+
+test-integration-redis:
+	docker compose -f docker-compose.integration.yml up -d
+	TEST_INTEGRATION=1 go test -v ./internal/integration/redis/... -timeout=2m
+
+test-integration-qdrant:
+	docker compose -f docker-compose.integration.yml up -d
+	TEST_INTEGRATION=1 go test -v ./internal/integration/qdrant/... -timeout=2m
+
+test-integration-full:
+	docker compose -f docker-compose.integration.yml up -d
+	TEST_INTEGRATION=1 go test -v ./internal/integration/scenarios/... -timeout=5m
+
+# Docker management for integration tests
+docker-compose-up-integration:
+	docker compose -f docker-compose.integration.yml up -d
+
+docker-compose-down-integration:
+	docker compose -f docker-compose.integration.yml down
+
+docker-compose-logs-integration:
+	docker compose -f docker-compose.integration.yml logs -f

@@ -1,0 +1,50 @@
+version: '3.8'
+
+# Docker Compose for real service integration tests
+# Uses separate ports to avoid conflicts with dev environment
+
+services:
+  postgres-integration:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: botla_integration
+      POSTGRES_USER: botla
+      POSTGRES_PASSWORD: botla
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U botla -d botla_integration"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_integration_data:/var/lib/postgresql/data
+
+  redis-integration:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_integration_data:/data
+
+  qdrant-integration:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6334:6333"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - qdrant_integration_data:/qdrant/storage
+
+volumes:
+  postgres_integration_data:
+  redis_integration_data:
+  qdrant_integration_data:

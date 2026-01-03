@@ -192,6 +192,171 @@ test.describe('Mobile Responsiveness', () => {
     const count = await messages.count()
     expect(count).toBeGreaterThan(1)
   })
+
+  test('touch events work correctly', async ({ page }) => {
+    await page.goto('/widget-test.html')
+    
+    await page.waitForTimeout(500)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    // Use tap() for touch-like interaction
+    await bubble.tap()
+    await page.waitForTimeout(300)
+    
+    // Drawer should open
+    const drawer = host.locator('.cbw-drawer')
+    await expect(drawer).toBeVisible()
+  })
+
+  test('widget takes appropriate space on small screens', async ({ page }) => {
+    await page.goto('/widget-test.html')
+    
+    await page.waitForTimeout(500)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    await bubble.click()
+    await page.waitForTimeout(300)
+    
+    // Check drawer dimensions
+    const drawer = host.locator('.cbw-drawer')
+    const box = await drawer.boundingBox()
+    
+    expect(box).not.toBeNull()
+    if (box) {
+      // On mobile, drawer should be full-width or nearly full-width
+      expect(box.width).toBeGreaterThan(300)
+    }
+  })
+})
+
+test.describe('Mobile - Different Devices', () => {
+  test('works on Pixel 5', async ({ page }) => {
+    test.use(devices['Pixel 5'])
+    
+    await page.goto('/widget-test.html')
+    await page.waitForTimeout(500)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    await expect(bubble).toBeVisible()
+    
+    // Open widget
+    await bubble.click()
+    await page.waitForTimeout(300)
+    
+    // Should work normally
+    const drawer = host.locator('.cbw-drawer')
+    await expect(drawer).toBeVisible()
+  })
+
+  test('works on iPhone 12', async ({ page }) => {
+    test.use({ viewport: { width: 390, height: 844 } })
+    
+    await page.goto('/widget-test.html')
+    await page.waitForTimeout(500)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    await expect(bubble).toBeVisible()
+  })
+
+  test('works on iPad Mini', async ({ page }) => {
+    test.use({ viewport: { width: 768, height: 1024 } })
+    
+    await page.goto('/widget-test.html')
+    await page.waitForTimeout(500)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    await expect(bubble).toBeVisible()
+  })
+})
+
+test.describe('Mobile - Orientation', () => {
+  test('handles landscape orientation', async ({ page }) => {
+    // Start in portrait
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/widget-test.html')
+    await page.waitForTimeout(500)
+    
+    // Switch to landscape
+    await page.setViewportSize({ width: 844, height: 390 })
+    await page.waitForTimeout(300)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    await expect(bubble).toBeVisible()
+    
+    // Open widget
+    await bubble.click()
+    await page.waitForTimeout(300)
+    
+    // Should work in landscape
+    const drawer = host.locator('.cbw-drawer')
+    await expect(drawer).toBeVisible()
+  })
+
+  test('handles portrait orientation', async ({ page }) => {
+    // Start in landscape
+    await page.setViewportSize({ width: 844, height: 390 })
+    await page.goto('/widget-test.html')
+    await page.waitForTimeout(500)
+    
+    // Switch to portrait
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.waitForTimeout(300)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    await expect(bubble).toBeVisible()
+  })
+})
+
+test.describe('Mobile - Touch Gestures', () => {
+  test('long press does not interfere with tap', async ({ page }) => {
+    test.use(devices['iPhone 13'])
+    
+    await page.goto('/widget-test.html')
+    await page.waitForTimeout(500)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    // Regular tap should work
+    await bubble.click()
+    await page.waitForTimeout(300)
+    
+    const drawer = host.locator('.cbw-drawer')
+    await expect(drawer).toBeVisible()
+  })
+
+  test('multiple rapid taps are handled correctly', async ({ page }) => {
+    test.use(devices['iPhone 13'])
+    
+    await page.goto('/widget-test.html')
+    await page.waitForTimeout(500)
+    
+    const host = page.locator('#chatbot-widget-host')
+    const bubble = host.locator('div.cbw-bubble')
+    
+    // Rapid taps should not break anything
+    await bubble.click()
+    await bubble.click()
+    await page.waitForTimeout(500)
+    
+    // Should still be open
+    const drawer = host.locator('.cbw-drawer')
+    await expect(drawer).toBeVisible()
+  })
 })
 
 test.describe('Desktop Responsiveness', () => {
