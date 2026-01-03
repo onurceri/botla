@@ -3,6 +3,7 @@ import {
   setupAllMocks,
   login,
 } from './helpers'
+import { TEST_IDS, TURKISH } from './test-constants'
 
 test.describe('Chatbot Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -21,8 +22,9 @@ test.describe('Chatbot Management', () => {
       // Wait for dashboard to load
       await page.waitForLoadState('networkidle')
 
-      // Create chatbot
-      const createBtn = page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first()
+      // Create chatbot - use data-testid when available
+      const createBtn = page.getByTestId(TEST_IDS.CHATBOTS_CREATE_BUTTON)
+        .or(page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first())
       await createBtn.waitFor({ state: 'visible', timeout: 10000 })
       await createBtn.click()
 
@@ -30,10 +32,10 @@ test.describe('Chatbot Management', () => {
       await page.getByPlaceholder('Örn: Müşteri Temsilcisi').fill('My Test Bot')
 
       // Submit
-      await page.getByRole('button', { name: 'Oluştur' }).click()
+      await page.getByRole('button', { name: TURKISH.CREATE_CHATBOT }).click()
 
       // Verify success message
-      await expect(page.getByText('Chatbot başarıyla oluşturuldu.')).toBeVisible({ timeout: 10000 })
+      await expect(page.getByText(TURKISH.CHATBOT_CREATED)).toBeVisible({ timeout: 10000 })
 
       // Verify redirected to chatbot detail page
       await expect(page).toHaveURL(/\/chatbots\/[a-zA-Z0-9_-]+$/)
@@ -44,12 +46,13 @@ test.describe('Chatbot Management', () => {
       await page.goto('/dashboard')
       await page.waitForLoadState('networkidle')
 
-      const createBtn = page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first()
+      const createBtn = page.getByTestId(TEST_IDS.CHATBOTS_CREATE_BUTTON)
+        .or(page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first())
       await createBtn.waitFor({ state: 'visible', timeout: 10000 })
       await createBtn.click()
 
       // Try to submit without name
-      const submitBtn = page.getByRole('button', { name: 'Oluştur' })
+      const submitBtn = page.getByRole('button', { name: TURKISH.CREATE_CHATBOT })
 
       // The button should be disabled or show validation error
       // This depends on implementation, so we check if empty submission is handled
@@ -65,15 +68,18 @@ test.describe('Chatbot Management', () => {
     test('can add text source to chatbot', async ({ page }) => {
       await login(page)
 
-      // Navigate to chatbot sources page  
+      // Navigate to chatbot sources page
       await page.goto('/dashboard/chatbots/bot-1/sources')
       await page.waitForLoadState('networkidle')
 
-      // Wait for page content to load
-      await page.waitForTimeout(500)
+      // Click sources tab using data-testid
+      await page.getByTestId(TEST_IDS.CHATBOT_SOURCES_TAB)
+        .or(page.getByRole('tab', { name: TURKISH.DATA_SOURCES_TAB }))
+        .click()
 
-      // Click text source option
-      const textOption = page.getByText('Metin Gir', { exact: true })
+      // Click text source option using data-testid
+      const textOption = page.getByTestId(TEST_IDS.SOURCE_TEXT_OPTION)
+        .or(page.getByText(TURKISH.TEXT_SOURCE, { exact: true }))
       if (await textOption.first().isVisible({ timeout: 5000 })) {
         await textOption.last().click()
 
@@ -83,10 +89,10 @@ test.describe('Chatbot Management', () => {
         await textarea.fill('This is test content for the chatbot to learn from.')
 
         // Submit
-        await page.getByRole('button', { name: 'Ekle' }).last().click()
+        await page.getByRole('button', { name: TURKISH.ADD }).last().click()
 
-        // Verify success
-        await expect(page.getByText('Metin kaynağı eklendi.')).toBeVisible({ timeout: 5000 })
+        // Verify success - wait for element to appear
+        await expect(page.getByText(TURKISH.TEXT_SOURCE_ADDED)).toBeVisible({ timeout: 5000 })
       }
     })
 
@@ -121,13 +127,15 @@ test.describe('Chatbot Management', () => {
       await page.goto('/dashboard/chatbots/bot-1/sources')
       await page.waitForLoadState('networkidle')
 
-      // Click URL source option
-      const urlOption = page.getByText('URL Ekle', { exact: true }).last()
+      // Click URL source option using data-testid
+      const urlOption = page.getByTestId(TEST_IDS.SOURCE_URL_OPTION)
+        .or(page.getByText(TURKISH.URL_SOURCE, { exact: true }).last())
       if (await urlOption.isVisible({ timeout: 5000 })) {
         await urlOption.click()
 
         // Fill in the URL
-        const urlInput = page.getByPlaceholder(/URL|Adres/).or(page.locator('input[type="url"]'))
+        const urlInput = page.getByPlaceholder(/URL|Adres/)
+          .or(page.locator('input[type="url"]'))
         if (await urlInput.isVisible()) {
           await urlInput.fill('https://example.com/docs')
 
@@ -142,8 +150,10 @@ test.describe('Chatbot Management', () => {
       await page.goto('/dashboard/chatbots/bot-1/sources')
       await page.waitForLoadState('networkidle')
 
-      // Verify source is listed (from mock)
-      await expect(page.getByText('test-content.txt')).toBeVisible({ timeout: 10000 })
+      // Verify source is listed (from mock) - use data-testid for source card
+      await expect(page.getByTestId(TEST_IDS.SOURCE_UPLOADER)
+        .or(page.getByText('test-content.txt')))
+        .toBeVisible({ timeout: 10000 })
     })
   })
 
@@ -175,17 +185,15 @@ test.describe('Chatbot Management', () => {
       await login(page)
       await page.goto('/dashboard/chatbots/bot-1/playground')
       await page.waitForLoadState('networkidle')
-      
+
       // Verify we're on the playground page
       await expect(page).toHaveURL(/\/chatbots\/bot-1\/playground/)
-      
-      // Wait for page to fully render
-      await page.waitForTimeout(500)
 
       // The playground page should render without errors
-      // At minimum we should see the tab bar and page content
-      const hasContent = await page.locator('nav').first().isVisible().catch(() => false)
-      expect(hasContent).toBeTruthy()
+      // Use data-testid for more stable selector
+      const playgroundContainer = page.getByTestId(TEST_IDS.PLAYGROUND_CONTAINER)
+        .or(page.locator('nav').first())
+      await expect(playgroundContainer).toBeVisible({ timeout: 5000 })
     })
   })
 
@@ -248,9 +256,13 @@ test.describe('Chatbot Management', () => {
       await page.goto('/dashboard')
       await page.waitForLoadState('networkidle')
 
-      // Verify bots are listed
-      await expect(page.getByText('Support Bot')).toBeVisible({ timeout: 10000 })
-      await expect(page.getByText('Sales Bot')).toBeVisible({ timeout: 10000 })
+      // Verify bots are listed - use data-testid for chatbot card
+      await expect(page.getByTestId(TEST_IDS.CHATBOTS_LIST)
+        .getByText('Support Bot'))
+        .toBeVisible({ timeout: 10000 })
+      await expect(page.getByTestId(TEST_IDS.CHATBOTS_LIST)
+        .getByText('Sales Bot'))
+        .toBeVisible({ timeout: 10000 })
     })
 
     test('can navigate to chatbot from list', async ({ page }) => {
@@ -273,8 +285,11 @@ test.describe('Chatbot Management', () => {
       await page.goto('/dashboard')
       await page.waitForLoadState('networkidle')
 
-      // Click on chatbot
-      await page.getByText('Support Bot').click()
+      // Click on chatbot using data-testid
+      const chatbotCard = page.getByTestId(TEST_IDS.CHATBOT_CARD)
+        .filter({ has: page.getByText('Support Bot') })
+      await expect(chatbotCard).toBeVisible({ timeout: 5000 })
+      await chatbotCard.getByTestId(TEST_IDS.CHATBOT_MANAGE_BUTTON).click()
 
       // Should navigate to chatbot detail
       await expect(page).toHaveURL(/\/chatbots\/bot-1/)

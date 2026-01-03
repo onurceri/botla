@@ -109,24 +109,28 @@ const ChatbotsPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-testid="chatbots-page">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Chatbotlarım</h1>
           <p className="text-muted-foreground">Tüm yapay zeka asistanlarınızı buradan yönetin.</p>
         </div>
         <Link to="/dashboard/chatbots/new">
-          <Button className="gap-2 shadow-lg shadow-primary/20">
+          <Button
+            className="gap-2 shadow-lg shadow-primary/20"
+            data-testid="chatbots-page-create-button"
+          >
             <Plus className="w-4 h-4" /> Yeni Oluştur
           </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="chatbots-page-list">
         {bots.map((bot: any) => (
           <Card
             key={bot.id}
             className="group hover:shadow-xl hover:-translate-y-1 hover:border-primary/50 transition-all duration-300"
+            data-testid="chatbot-card"
           >
             <CardHeader className="relative flex flex-row items-start justify-between space-y-0 pb-2">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10 group-hover:scale-110 transition-transform duration-300">
@@ -177,6 +181,7 @@ const ChatbotsPage = () => {
                 <Button
                   variant="outline"
                   className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all"
+                  data-testid="chatbot-manage-button"
                 >
                   Yönet
                 </Button>

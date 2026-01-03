@@ -4,7 +4,7 @@
 **Priority:** HIGH  
 **Estimated Duration:** 2-3 weeks  
 **Target:** Stable, maintainable E2E tests with proper selectors and reliable assertions  
-**Status:** Draft  
+**Status:** **In Progress**  
 
 ---
 
@@ -945,6 +945,7 @@ export class PageName {
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-03 | Sisyphus | Initial plan |
+| 1.1 | 2026-01-03 | Sisyphus | **In Progress** - Phase 1-2 started: data-testid added to LoginPage, RegisterPage, ChatbotsPage, ChatbotDetailPage, ChatbotTabBar; test constants file created; auth.spec.ts and chatbot.spec.ts refactored to use getByTestId; waitForTimeout calls removed and replaced with explicit waits |
 
 ---
 

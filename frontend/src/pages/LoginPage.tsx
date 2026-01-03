@@ -109,9 +109,17 @@ const LoginPage = () => {
           </div>
 
           {/* Form Card */}
-          <div className="glass-card p-8 lg:p-10 animate-scale-in">
+          <div
+            className="glass-card p-8 lg:p-10 animate-scale-in"
+            data-testid="login-page"
+          >
             <div className="text-center mb-8">
-              <h2 className="heading-md text-foreground mb-2">Hoş Geldiniz</h2>
+              <h2
+                className="heading-md text-foreground mb-2"
+                data-testid="login-page-title"
+              >
+                Hoş Geldiniz
+              </h2>
               <p className="body-sm">Hesabınıza giriş yapın</p>
             </div>
 
@@ -127,6 +135,7 @@ const LoginPage = () => {
                     id="email"
                     placeholder="ornek@sirket.com"
                     type="email"
+                    data-testid="login-page-email-input"
                     className="pl-12 h-12 rounded-xl border-border/50 bg-white/50 backdrop-blur-sm
                              focus:bg-white focus:border-primary/50 focus:ring-2 focus:ring-primary/20
                              transition-all duration-200"
@@ -144,8 +153,9 @@ const LoginPage = () => {
                   </label>
                   <Link
                     to="/forgot-password"
-                    className="text-sm font-medium text-primary hover:text-primary/80 
+                    className="text-sm font-medium text-primary hover:text-primary/80
                              transition-colors duration-200"
+                    data-testid="login-page-forgot-password-link"
                   >
                     Şifremi unuttum?
                   </Link>
@@ -156,6 +166,7 @@ const LoginPage = () => {
                     id="password"
                     type="password"
                     placeholder="••••••••"
+                    data-testid="login-page-password-input"
                     className="pl-12 h-12 rounded-xl border-border/50 bg-white/50 backdrop-blur-sm
                              focus:bg-white focus:border-primary/50 focus:ring-2 focus:ring-primary/20
                              transition-all duration-200"
@@ -168,11 +179,12 @@ const LoginPage = () => {
               {/* Submit Button */}
               <Button
                 className="w-full h-12 rounded-xl text-base font-semibold
-                         bg-primary hover:bg-primary/90 
+                         bg-primary hover:bg-primary/90
                          shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30
                          transition-all duration-300 group"
                 type="submit"
                 isLoading={isLoading}
+                data-testid="login-page-submit-button"
               >
                 <span>Giriş Yap</span>
                 {!isLoading && (

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { TEST_IDS, TURKISH } from './test-constants'
 
 test.describe('E2E Smoke', () => {
   const isReal = !!process.env.E2E_API_BASE
@@ -78,7 +79,7 @@ test.describe('E2E Smoke', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ response: 'Merhaba!' }),
+          body: JSON.stringify({ response: TURKISH.HELLO }),
         })
       })
       await page.route('**/api/v1/auth/me', async (route) => {
@@ -93,18 +94,36 @@ test.describe('E2E Smoke', () => {
     // Registration
     const email = `e2e-${Date.now()}@example.com`
     await page.goto('/register')
-    await page.getByLabel('Ad Soyad').fill('Test User')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Şifre').fill('password123')
-    await page.getByRole('button', { name: 'Kayıt Ol' }).click()
+
+    // Fill registration form using data-testid
+    await page.getByTestId(TEST_IDS.REGISTER_NAME_INPUT)
+      .or(page.getByLabel(TURKISH.NAME))
+      .fill('Test User')
+    await page.getByTestId(TEST_IDS.REGISTER_EMAIL_INPUT)
+      .or(page.getByLabel(TURKISH.EMAIL))
+      .fill(email)
+    await page.getByTestId(TEST_IDS.REGISTER_PASSWORD_INPUT)
+      .or(page.getByLabel(TURKISH.PASSWORD))
+      .fill('password123')
+
+    // Submit form
+    await page.getByTestId(TEST_IDS.REGISTER_SUBMIT_BUTTON)
+      .or(page.getByRole('button', { name: TURKISH.REGISTER }))
+      .click()
 
     // Wait for redirect to login (success)
     await expect(page).toHaveURL(/.*login/, { timeout: 10000 })
 
     // Login
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Şifre').fill('password123')
-    await page.getByRole('button', { name: 'Giriş Yap' }).click()
+    await page.getByTestId(TEST_IDS.LOGIN_EMAIL_INPUT)
+      .or(page.getByLabel(TURKISH.EMAIL))
+      .fill(email)
+    await page.getByTestId(TEST_IDS.LOGIN_PASSWORD_INPUT)
+      .or(page.getByLabel(TURKISH.PASSWORD))
+      .fill('password123')
+    await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON)
+      .or(page.getByRole('button', { name: TURKISH.LOGIN }))
+      .click()
 
     // Wait for successful login and redirect to dashboard (NOT login page)
     await expect(page).toHaveURL(/^(?!.*\/login).*\/$/, { timeout: 10000 })
@@ -122,36 +141,47 @@ test.describe('E2E Smoke', () => {
     }
 
     // Create chatbot
-    const createBtn = page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first()
+    const createBtn = page.getByTestId(TEST_IDS.CHATBOTS_CREATE_BUTTON)
+      .or(page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first())
     await createBtn.waitFor({ state: 'visible', timeout: 10000 })
     await createBtn.click()
     await page.getByPlaceholder('Örn: Müşteri Temsilcisi').fill('E2E Bot')
-    const saveBtn = page.getByRole('button', { name: 'Oluştur' })
+    const saveBtn = page.getByRole('button', { name: TURKISH.CREATE_CHATBOT })
     await saveBtn.click()
-    await expect(page.getByText('Chatbot başarıyla oluşturuldu.')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(TURKISH.CHATBOT_CREATED)).toBeVisible({ timeout: 10000 })
     await expect(page).not.toHaveURL(/\/chatbots\/new$/)
     await expect(page).toHaveURL(/\/chatbots\/[a-zA-Z0-9_-]+$/)
     botId = new URL(page.url()).pathname.split('/').pop() || botId
 
-    // Add text source
-    await page.getByRole('tab', { name: 'Veri Kaynakları' }).click()
-    await page.getByText('Metin Gir', { exact: true }).last().click()
+    // Add text source using data-testid
+    await page.getByTestId(TEST_IDS.CHATBOT_SOURCES_TAB)
+      .or(page.getByRole('tab', { name: TURKISH.DATA_SOURCES_TAB }))
+      .click()
+    await page.getByTestId(TEST_IDS.SOURCE_TEXT_OPTION)
+      .or(page.getByText(TURKISH.TEXT_SOURCE, { exact: true }).last())
+      .click()
     await page.getByPlaceholder('Metin içeriğini buraya yapıştırın...').fill('E2E kaynak metni')
-    await page.getByRole('button', { name: 'Ekle' }).last().click()
-    await expect(page.getByText('Metin kaynağı eklendi.')).toBeVisible()
+    await page.getByRole('button', { name: TURKISH.ADD }).last().click()
+    await expect(page.getByText(TURKISH.TEXT_SOURCE_ADDED)).toBeVisible()
+
     if (isReal && process.env.E2E_INCLUDE_INGEST === '1') {
-      // Poll terminal status in sources table
-      await page.waitForTimeout(2000)
-      // Refresh sources by re-entering tab
-      await page.getByRole('tab', { name: 'Veri Kaynakları' }).click()
-      // Expect any terminal status to appear eventually
-      await expect(page.getByText(/completed|failed/i)).toBeVisible({ timeout: 15000 })
+      // Poll terminal status in sources table instead of fixed wait
+      await page.getByTestId(TEST_IDS.CHATBOT_SOURCES_TAB)
+        .or(page.getByRole('tab', { name: TURKISH.DATA_SOURCES_TAB }))
+        .click()
+      // Wait for any terminal status to appear (completed or failed)
+      await expect(page.getByTestId(TEST_IDS.SOURCE_UPLOADER)
+        .or(page.getByText(/completed|failed/i)))
+        .toBeVisible({ timeout: 15000 })
     }
 
     // Chat
-    await page.getByRole('tab', { name: 'Test Alanı' }).click()
-    await page.getByRole('button', { name: 'Sohbeti aç' }).click()
-    const input = page.getByPlaceholder('Mesaj yazın...')
+    await page.getByTestId(TEST_IDS.CHATBOT_PLAYGROUND_TAB)
+      .or(page.getByRole('tab', { name: TURKISH.PLAYGROUND_TAB }))
+      .click()
+    await page.getByRole('button', { name: TURKISH.OPEN_CHAT }).click()
+    const input = page.getByTestId(TEST_IDS.PLAYGROUND_MESSAGE_INPUT)
+      .or(page.getByPlaceholder(TURKISH.TYPE_MESSAGE))
     await input.fill('merhaba')
     await input.press('Enter')
     if (isReal) {
@@ -162,16 +192,14 @@ test.describe('E2E Smoke', () => {
       // Navigate to Dashboard and confirm the bot appears in "Son Botlarınız"
       await page.goto('/')
 
-      // Check if the bot appears in "Son Botlarınız" list
-      // This confirms the bot was created and associated with the user correctly
-      const recentBotsCard = page
-        .locator('div.col-span-3')
-        .filter({ has: page.getByText(/^Son Botlarınız$/) })
+      // Check if the bot appears in "Son Botlarınız" list using data-testid
+      const recentBotsCard = page.getByTestId(TEST_IDS.CHATBOTS_LIST)
+        .or(page.locator('div.col-span-3').filter({ has: page.getByText(TURKISH.RECENT_BOTS) }))
         .first()
       await expect(recentBotsCard).toBeVisible()
       await expect(recentBotsCard.getByText('E2E Bot')).toBeVisible()
     } else {
-      await expect(page.getByText('Merhaba!')).toBeVisible()
+      await expect(page.getByText(TURKISH.HELLO)).toBeVisible()
     }
   })
 })

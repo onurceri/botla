@@ -96,18 +96,27 @@ const RegisterPage = () => {
           </div>
 
           {/* Form Card */}
-          <div className="glass-card p-8 lg:p-10 animate-scale-in">
+          <div
+            className="glass-card p-8 lg:p-10 animate-scale-in"
+            data-testid="register-page"
+          >
             <div className="text-center mb-8">
-              <h2 className="heading-md text-foreground mb-2">Hesap Oluştur</h2>
+              <h2
+                className="heading-md text-foreground mb-2"
+                data-testid="register-page-title"
+              >
+                Hesap Oluştur
+              </h2>
               <p className="body-sm">Hemen başlayın, ücretsiz deneyin</p>
             </div>
 
             {/* Error Message */}
             {errorMsg && (
               <div
-                className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 
+                className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20
                          text-destructive text-sm animate-fade-up"
                 role="alert"
+                data-testid="register-page-error-message"
               >
                 {errorMsg}
               </div>
@@ -124,6 +133,7 @@ const RegisterPage = () => {
                   <Input
                     id="name"
                     placeholder="Adınız Soyadınız"
+                    data-testid="register-page-name-input"
                     className="pl-12 h-12 rounded-xl border-border/50 bg-white/50 backdrop-blur-sm
                              focus:bg-white focus:border-primary/50 focus:ring-2 focus:ring-primary/20
                              transition-all duration-200"
@@ -144,6 +154,7 @@ const RegisterPage = () => {
                     id="email"
                     placeholder="ornek@sirket.com"
                     type="email"
+                    data-testid="register-page-email-input"
                     className="pl-12 h-12 rounded-xl border-border/50 bg-white/50 backdrop-blur-sm
                              focus:bg-white focus:border-primary/50 focus:ring-2 focus:ring-primary/20
                              transition-all duration-200"
@@ -164,6 +175,7 @@ const RegisterPage = () => {
                     id="password"
                     type="password"
                     placeholder="Güçlü şifre oluşturun"
+                    data-testid="register-page-password-input"
                     className="pl-12 h-12 rounded-xl border-border/50 bg-white/50 backdrop-blur-sm
                              focus:bg-white focus:border-primary/50 focus:ring-2 focus:ring-primary/20
                              transition-all duration-200"
@@ -179,11 +191,12 @@ const RegisterPage = () => {
               {/* Submit Button */}
               <Button
                 className="w-full h-12 rounded-xl text-base font-semibold
-                         bg-primary hover:bg-primary/90 
+                         bg-primary hover:bg-primary/90
                          shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30
                          transition-all duration-300 group"
                 type="submit"
                 isLoading={isLoading}
+                data-testid="register-page-submit-button"
               >
                 <span>Kayıt Ol</span>
                 {!isLoading && (
