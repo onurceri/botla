@@ -41,7 +41,7 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
         'max_monthly_embedding_tokens', 250000,
         'min_readd_cooldown_minutes', 60,
         'scraping', jsonb_build_object('dynamic_enabled', false, 'max_urls_per_bot', 5, 'max_pages_per_crawl', 0),
-        'files', jsonb_build_object('ocr_enabled', false, 'max_size_mb', 10, 'max_files_per_bot', 5, 'max_files_total', 100, 'total_storage_mb', 100),
+        'files', jsonb_build_object('max_size_mb', 10, 'max_files_per_bot', 5, 'max_files_total', 100, 'total_storage_mb', 100),
         'chat', jsonb_build_object('allowed_models', jsonb_build_array('gpt-4o-mini'), 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k',3,'max_context_tokens',1024))
     ) WHERE code=$1`, policy.PlanFree.String())
 

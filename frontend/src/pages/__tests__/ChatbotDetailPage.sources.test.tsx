@@ -46,7 +46,6 @@ describe('ChatbotDetailPage sources', () => {
               files: {
                 max_files_per_bot: 999,
                 max_size_mb: 50,
-                ocr_enabled: true,
                 max_files_total: 999,
                 total_storage_mb: 1000,
               },
@@ -110,7 +109,6 @@ describe('ChatbotDetailPage sources', () => {
               files: {
                 max_files_per_bot: 999,
                 max_size_mb: 50,
-                ocr_enabled: true,
                 max_files_total: 999,
                 total_storage_mb: 1000,
               },

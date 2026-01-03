@@ -91,7 +91,7 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	}
 
 	// Extract text from PDF
-	content, err := pdf.ExtractPDFText(localPath, langCode, plan.Config.Files.OCREnabled)
+	content, err := pdf.ExtractPDFText(localPath, langCode, false)
 	if err != nil {
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFParseFailed}, FailedStep: models.StepParseContent}
 	}

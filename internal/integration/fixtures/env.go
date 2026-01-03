@@ -486,7 +486,7 @@ func RestorePlans(db *sql.DB) {
 	// Free
 	res, err := db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', false, 'max_urls_per_bot', 1, 'max_pages_per_crawl', 5),
-    'files', jsonb_build_object('ocr_enabled', false, 'max_size_mb', 5, 'max_files_per_bot', 1, 'max_files_total', 5, 'total_storage_mb', 10, 'max_text_length', 400000),
+    'files', jsonb_build_object('max_size_mb', 5, 'max_files_per_bot', 1, 'max_files_total', 5, 'total_storage_mb', 10, 'max_text_length', 400000),
     'chat', jsonb_build_object('default_model', $1::text, 'allowed_models', '["gpt-4o-mini"]'::jsonb, 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k', 3, 'max_context_tokens', 2000), 'max_suggested_questions', 3, 'max_manual_questions', 3, 'min_response_token_limit', 1, 'max_response_token_limit', 4096),
     'refresh', jsonb_build_object('enabled', false, 'max_monthly', 0),
     'security', jsonb_build_object('secure_embed_enabled', false),
@@ -504,7 +504,7 @@ func RestorePlans(db *sql.DB) {
 	// Pro
 	res, err = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 10, 'max_pages_per_crawl', 50),
-    'files', jsonb_build_object('ocr_enabled', true, 'max_size_mb', 20, 'max_files_per_bot', 20, 'max_files_total', 100, 'total_storage_mb', 500, 'max_text_length', 400000),
+    'files', jsonb_build_object('max_size_mb', 20, 'max_files_per_bot', 20, 'max_files_total', 100, 'total_storage_mb', 500, 'max_text_length', 400000),
     'chat', jsonb_build_object('default_model', $1::text, 'allowed_models', '["gpt-4o-mini", "gpt-4o"]'::jsonb, 'max_monthly_tokens', 1000000, 'rag', jsonb_build_object('top_k', 5, 'max_context_tokens', 4000), 'max_suggested_questions', 6, 'max_manual_questions', 6, 'min_response_token_limit', 1, 'max_response_token_limit', 4096),
     'refresh', jsonb_build_object('enabled', true, 'max_monthly', 5),
     'security', jsonb_build_object('secure_embed_enabled', true),
@@ -522,7 +522,7 @@ func RestorePlans(db *sql.DB) {
 	// Ultra
 	res, err = db.Exec(`UPDATE plans SET config = jsonb_build_object(
     'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 50, 'max_pages_per_crawl', 200),
-    'files', jsonb_build_object('ocr_enabled', true, 'max_size_mb', 50, 'max_files_per_bot', 100, 'max_files_total', 1000, 'total_storage_mb', 2000, 'max_text_length', 400000),
+    'files', jsonb_build_object('max_size_mb', 50, 'max_files_per_bot', 100, 'max_files_total', 1000, 'total_storage_mb', 2000, 'max_text_length', 400000),
     'chat', jsonb_build_object('default_model', $1::text, 'allowed_models', '["gpt-4o-mini", "gpt-4o", "gpt-5"]'::jsonb, 'max_monthly_tokens', 5000000, 'rag', jsonb_build_object('top_k', 10, 'max_context_tokens', 8000), 'max_suggested_questions', 10, 'max_manual_questions', 10, 'min_response_token_limit', 1, 'max_response_token_limit', 8192),
     'refresh', jsonb_build_object('enabled', true, 'max_monthly', 100),
     'security', jsonb_build_object('secure_embed_enabled', true),

@@ -41,7 +41,6 @@ interface PlanFeatures {
     max_pages_per_crawl: number
   }
   files: {
-    ocr_enabled: boolean
     max_size_mb: number
     max_files_per_bot: number
     max_files_total: number
@@ -394,7 +393,6 @@ const PlanPage = () => {
                 current={usage?.max_files_count_in_one_bot ?? 0}
                 max={planFeatures?.files.max_files_per_bot ?? 0}
               />
-              <FeatureRow label="OCR (Görsel İçerik Tarama)" enabled={planFeatures?.files.ocr_enabled} />
             </div>
           </SectionCard>
 

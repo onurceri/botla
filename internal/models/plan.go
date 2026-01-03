@@ -79,12 +79,11 @@ type ScrapingConfig struct {
 }
 
 type FilesConfig struct {
-	OCREnabled     bool `json:"ocr_enabled"`
-	MaxSizeMB      int  `json:"max_size_mb"`
-	MaxFilesPerBot int  `json:"max_files_per_bot"`
-	MaxFilesTotal  int  `json:"max_files_total"`
-	TotalStorageMB int  `json:"total_storage_mb"`
-	MaxTextLength  int  `json:"max_text_length"`
+	MaxSizeMB      int `json:"max_size_mb"`
+	MaxFilesPerBot int `json:"max_files_per_bot"`
+	MaxFilesTotal  int `json:"max_files_total"`
+	TotalStorageMB int `json:"total_storage_mb"`
+	MaxTextLength  int `json:"max_text_length"`
 }
 
 type ChatConfig struct {

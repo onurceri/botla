@@ -26,7 +26,6 @@ describe('PlanPage hidden limits', () => {
             },
             features: {
               files: {
-                ocr_enabled: true,
                 max_size_mb: 20,
                 max_files_per_bot: 20,
                 max_files_total: 100,

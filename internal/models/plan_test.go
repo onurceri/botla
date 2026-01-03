@@ -8,7 +8,7 @@ import (
 func TestPlanConfig_ValueScan(t *testing.T) {
 	pc := PlanConfig{
 		Scraping:                  ScrapingConfig{DynamicEnabled: true, MaxURLsPerBot: 3, MaxPagesPerCrawl: 2},
-		Files:                     FilesConfig{OCREnabled: false, MaxSizeMB: 10, MaxFilesPerBot: 5, MaxFilesTotal: 50, TotalStorageMB: 100},
+		Files:                     FilesConfig{MaxSizeMB: 10, MaxFilesPerBot: 5, MaxFilesTotal: 50, TotalStorageMB: 100},
 		Chat:                      ChatConfig{AllowedModels: []string{"gpt-4o-mini"}, MaxMonthlyTokens: 1000, RAG: RAGConfig{TopK: 3, MaxContextTokens: 512}, MaxSuggestedQuestions: 3, MaxManualQuestions: 3},
 		MaxMonthlyIngestions:      5,
 		MaxMonthlyEmbeddingTokens: 10000,

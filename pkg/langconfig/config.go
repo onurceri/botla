@@ -6,7 +6,6 @@ type LanguageConfig struct {
 	Name            string
 	Abbreviations   []string // For sentence splitting (e.g., "Dr.", "Mr.")
 	TokenMultiplier float64  // For token estimation
-	OCRLanguage     string   // Tesseract language code (e.g., "tur", "eng")
 	TokenizerData   string   // Path to the JSON training data
 	// UserMessages contains localized strings shown to end users
 	UserMessages UserMessages
@@ -41,7 +40,6 @@ var Configs = map[string]LanguageConfig{
 			"Dr.", "Prof.", "vb.", "Av.", "Ecz.", "Doç.", "Yrd.", "Cad.", "Sok.", "Mah.",
 		},
 		TokenMultiplier: 1.3,
-		OCRLanguage:     "tur",
 		TokenizerData:   "data/sentences/turkish.json", // Local fallback only
 		UserMessages: UserMessages{
 			NoInfoFound:       "Yeterli bilgi bulamadım.",
@@ -106,7 +104,6 @@ var Configs = map[string]LanguageConfig{
 			"Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Inc.", "Ltd.", "Jr.", "Sr.", "St.",
 		},
 		TokenMultiplier: 1.0,
-		OCRLanguage:     "eng",
 		TokenizerData:   "data/sentences/english.json", // Local fallback only
 		UserMessages: UserMessages{
 			NoInfoFound:       "I could not find enough information.",
