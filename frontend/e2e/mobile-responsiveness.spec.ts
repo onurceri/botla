@@ -2,6 +2,22 @@ import { test, expect } from '@playwright/test'
 
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 
+/**
+ * Mobile Responsiveness E2E Tests
+ * 
+ * Tests cover:
+ * - Mobile viewport adaptation
+ * - Bottom navigation visibility
+ * - Sidebar behavior on mobile
+ * - Hamburger menu functionality
+ * 
+ * Element Selection Strategy:
+ * - Primary: CSS class selectors for responsive components
+ * - Fallback: Semantic selectors
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test.describe('Mobile Responsiveness', () => {
   test.beforeEach(async ({ page }) => {
     // Mock API

@@ -3,6 +3,21 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 import path from 'path'
 
+/**
+ * Widget Secure Embed E2E Tests
+ * 
+ * Tests cover:
+ * - Secure widget embedding
+ * - Captcha/token handling
+ * - Auto-open behavior with authentication
+ * 
+ * Element Selection Strategy:
+ * - Primary: CSS selectors for widget shadow DOM
+ * - Fallback: Direct element access
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test('Widget embed secure: auto-open shows input', async ({ page }) => {
   await page.route('http://api.test/api/v1/public/chatbots/bot1', async (route) => {
     await route.fulfill({

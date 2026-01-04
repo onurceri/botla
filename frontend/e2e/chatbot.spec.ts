@@ -5,6 +5,23 @@ import {
 } from './helpers'
 import { TEST_IDS, TURKISH } from './test-constants'
 
+/**
+ * Chatbot Management E2E Tests
+ * 
+ * Tests cover:
+ * - Chatbot creation and management
+ * - Source management (text, URL sources)
+ * - Playground testing
+ * - Chatbot settings
+ * - Chatbot list navigation
+ * 
+ * Element Selection Strategy:
+ * - Primary: data-testid attributes from SELECTORS
+ * - Fallback: Semantic selectors (getByLabel, getByRole)
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test.describe('Chatbot Management', () => {
   test.beforeEach(async ({ page }) => {
     // Setup all mocks before each test

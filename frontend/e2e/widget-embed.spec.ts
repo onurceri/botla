@@ -3,6 +3,21 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+/**
+ * Widget Embed E2E Tests
+ * 
+ * Tests cover:
+ * - Widget loading and initialization
+ * - Widget configuration
+ * - Widget host creation
+ * 
+ * Element Selection Strategy:
+ * - Primary: CSS selectors for widget shadow DOM
+ * - Fallback: Direct element access
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test('Widget embed basic flow', async ({ page }) => {
   let configCalled = false
   await page.route('http://api.test/api/v1/public/chatbots/bot1', async (route) => {
