@@ -42,7 +42,7 @@ func TestTextProcessor_Unit(t *testing.T) {
 			FilePath:   &filePath,
 		}
 		bot := &models.Chatbot{ID: "bot-1"}
-		plan := &models.Plan{Config: models.PlanConfig{}}
+		plan := &models.Plan{Limits: &models.PlanLimits{}}
 
 		// Mock Storage
 		mockStorage.On("DownloadFile", ctx, filePath).Return(io.NopCloser(strings.NewReader(content)), nil).Once()
@@ -124,7 +124,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 			SourceURL:  &testURL,
 		}
 		bot := &models.Chatbot{ID: "bot-2", DiscoveryMode: "disabled"}
-		plan := &models.Plan{Config: models.PlanConfig{}}
+		plan := &models.Plan{Limits: &models.PlanLimits{}}
 
 		result := p.ProcessWithSteps(ctx, "test-job", source, bot, "en", plan, nil, func(step models.TrainingStep) {})
 
@@ -157,8 +157,8 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 			SourceURL:  &testURL,
 		}
 		bot := &models.Chatbot{ID: "bot-3", DiscoveryMode: "disabled"}
-		plan := &models.Plan{Config: models.PlanConfig{
-			Scraping: models.ScrapingConfig{DynamicEnabled: false},
+		plan := &models.Plan{Limits: &models.PlanLimits{
+			ScrapingDynamicEnabled: false,
 		}}
 
 		result := p.ProcessWithSteps(ctx, "test-job", source, bot, "en", plan, nil, func(step models.TrainingStep) {})
@@ -190,8 +190,8 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 			SourceURL:  &testURL,
 		}
 		bot := &models.Chatbot{ID: "bot-3d", DiscoveryMode: "disabled"}
-		plan := &models.Plan{Config: models.PlanConfig{
-			Scraping: models.ScrapingConfig{DynamicEnabled: true},
+		plan := &models.Plan{Limits: &models.PlanLimits{
+			ScrapingDynamicEnabled: true,
 		}}
 
 		result := p.ProcessWithSteps(ctx, "test-job", source, bot, "en", plan, nil, func(step models.TrainingStep) {})
@@ -231,7 +231,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 			SourceURL:  &testURL,
 		}
 		bot := &models.Chatbot{ID: "bot-4", UserID: "u4", DiscoveryMode: "disabled"}
-		plan := &models.Plan{Config: models.PlanConfig{}}
+		plan := &models.Plan{Limits: &models.PlanLimits{}}
 
 		result := p.ProcessWithSteps(ctx, "test-job", source, bot, "en", plan, nil, func(step models.TrainingStep) {})
 
@@ -282,11 +282,9 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 			IsDiscovered: false,
 		}
 		bot := &models.Chatbot{ID: "bot-5", UserID: "u5", DiscoveryMode: "auto"}
-		plan := &models.Plan{Config: models.PlanConfig{
-			Scraping: models.ScrapingConfig{
-				MaxPagesPerCrawl: 10,
-				MaxURLsPerBot:    10,
-			},
+		plan := &models.Plan{Limits: &models.PlanLimits{
+			ScrapingMaxPagesPerCrawl: 10,
+			ScrapingMaxURLsPerBot:    10,
 		}}
 
 		_ = p.ProcessWithSteps(ctx, "test-job", source, bot, "en", plan, nil, func(step models.TrainingStep) {})
@@ -333,11 +331,9 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 			IsDiscovered: false,
 		}
 		bot := &models.Chatbot{ID: "bot-6", UserID: "u6", DiscoveryMode: "auto"}
-		plan := &models.Plan{Config: models.PlanConfig{
-			Scraping: models.ScrapingConfig{
-				MaxPagesPerCrawl: 5,
-				MaxURLsPerBot:    1, // Key: limit is 1, discovery should skip
-			},
+		plan := &models.Plan{Limits: &models.PlanLimits{
+			ScrapingMaxPagesPerCrawl: 5,
+			ScrapingMaxURLsPerBot:    1, // Key: limit is 1, discovery should skip
 		}}
 
 		_ = p.ProcessWithSteps(ctx, "test-job", source, bot, "en", plan, nil, func(step models.TrainingStep) {})
@@ -372,7 +368,7 @@ func TestPDFProcessor_Unit(t *testing.T) {
 			FilePath:   &filePath,
 		}
 		bot := &models.Chatbot{ID: "bot-pdf", UserID: "u_pdf"}
-		plan := &models.Plan{Config: models.PlanConfig{}}
+		plan := &models.Plan{Limits: &models.PlanLimits{}}
 
 		// Mock Storage
 		mockStorage.On("DownloadFile", ctx, filePath).Return(io.NopCloser(strings.NewReader("%PDF-1.4...")), nil).Once()

@@ -277,8 +277,8 @@ func setupTestEnvCommon(useMocks bool, override ConfigOverride) (*TestEnv, error
 	RestorePlans(db)
 
 	// Relax rate limits and limits for free plan in test environment
-	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits,requests_per_minute}', '1000'::jsonb) WHERE code = $1`, policy.PlanFree.String())
-	_, _ = db.Exec(`UPDATE plans SET config = jsonb_set(config, '{max_chatbots}', '100'::jsonb) WHERE code = $1`, policy.PlanFree.String())
+	_ = dbpkg.UpdatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "rate_limits_requests_per_minute", 1000)
+	_ = dbpkg.UpdatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "max_chatbots", 100)
 
 	// Insert dummy data for stub sources to prevent foreign key violations
 	dummyUUID := "00000000-0000-0000-0000-000000000001"
@@ -481,59 +481,67 @@ func getEnvOrDefault(key, defaultVal string) string {
 	return defaultVal
 }
 
+// RestorePlans resets plan_limits to their default values for testing.
 func RestorePlans(db *sql.DB) {
-	// Re-apply plan configs with bare model names (matching migration 000040)
-	// Free
-	res, err := db.Exec(`UPDATE plans SET config = jsonb_build_object(
-    'scraping', jsonb_build_object('dynamic_enabled', false, 'max_urls_per_bot', 1, 'max_pages_per_crawl', 5),
-    'files', jsonb_build_object('max_size_mb', 5, 'max_files_per_bot', 1, 'max_files_total', 5, 'total_storage_mb', 10, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', $1::text, 'allowed_models', '["gpt-4o-mini"]'::jsonb, 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k', 3, 'max_context_tokens', 2000), 'max_suggested_questions', 3, 'max_manual_questions', 3, 'min_response_token_limit', 1, 'max_response_token_limit', 4096),
-    'refresh', jsonb_build_object('enabled', false, 'max_monthly', 0),
-    'security', jsonb_build_object('secure_embed_enabled', false),
-    'guardrails', jsonb_build_object('can_customize_thresholds', false, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', false, 'can_manage_topics', false, 'can_customize_messages', false),
-    'branding', jsonb_build_object('can_hide_branding', false, 'can_custom_branding', false),
-    'rate_limits', jsonb_build_object('requests_per_minute', 100, 'window_seconds', 60, 'endpoints', jsonb_build_object('chat', jsonb_build_object('requests_per_minute', 30, 'window_seconds', 60), 'sources', jsonb_build_object('requests_per_minute', 10, 'window_seconds', 60))),
-    'max_chatbots', 1, 'max_monthly_ingestions', 50, 'max_monthly_embedding_tokens', 250000, 'min_readd_cooldown_minutes', 60
-) WHERE code = 'free'`, policy.ModelGPT4oMini.String())
-	if err != nil {
-		fmt.Printf("FAILED to restore free plan: %v\n", err)
-	} else if n, _ := res.RowsAffected(); n == 0 {
-		fmt.Printf("WARNING: No rows affected when restoring free plan\n")
-	}
+	ctx := context.Background()
 
-	// Pro
-	res, err = db.Exec(`UPDATE plans SET config = jsonb_build_object(
-    'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 10, 'max_pages_per_crawl', 50),
-    'files', jsonb_build_object('max_size_mb', 20, 'max_files_per_bot', 20, 'max_files_total', 100, 'total_storage_mb', 500, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', $1::text, 'allowed_models', '["gpt-4o-mini", "gpt-4o"]'::jsonb, 'max_monthly_tokens', 1000000, 'rag', jsonb_build_object('top_k', 5, 'max_context_tokens', 4000), 'max_suggested_questions', 6, 'max_manual_questions', 6, 'min_response_token_limit', 1, 'max_response_token_limit', 4096),
-    'refresh', jsonb_build_object('enabled', true, 'max_monthly', 5),
-    'security', jsonb_build_object('secure_embed_enabled', true),
-    'guardrails', jsonb_build_object('can_customize_thresholds', true, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', false, 'can_manage_topics', true, 'can_customize_messages', true),
-    'branding', jsonb_build_object('can_hide_branding', true, 'can_custom_branding', false),
-    'rate_limits', jsonb_build_object('requests_per_minute', 500, 'window_seconds', 60, 'endpoints', jsonb_build_object('chat', jsonb_build_object('requests_per_minute', 100, 'window_seconds', 60), 'sources', jsonb_build_object('requests_per_minute', 30, 'window_seconds', 60))),
-    'max_chatbots', 10, 'max_monthly_ingestions', 500, 'max_monthly_embedding_tokens', 2500000, 'min_readd_cooldown_minutes', 30
-) WHERE code = 'pro'`, policy.ModelGPT4o.String())
-	if err != nil {
-		fmt.Printf("FAILED to restore pro plan: %v\n", err)
-	} else if n, _ := res.RowsAffected(); n == 0 {
-		fmt.Printf("WARNING: No rows affected when restoring pro plan\n")
-	}
+	// Free plan limits
+	freeLimits := models.DefaultPlanLimits()
+	updatePlanLimits(ctx, db, "free", freeLimits)
 
-	// Ultra
-	res, err = db.Exec(`UPDATE plans SET config = jsonb_build_object(
-    'scraping', jsonb_build_object('dynamic_enabled', true, 'max_urls_per_bot', 50, 'max_pages_per_crawl', 200),
-    'files', jsonb_build_object('max_size_mb', 50, 'max_files_per_bot', 100, 'max_files_total', 1000, 'total_storage_mb', 2000, 'max_text_length', 400000),
-    'chat', jsonb_build_object('default_model', $1::text, 'allowed_models', '["gpt-4o-mini", "gpt-4o", "gpt-5"]'::jsonb, 'max_monthly_tokens', 5000000, 'rag', jsonb_build_object('top_k', 10, 'max_context_tokens', 8000), 'max_suggested_questions', 10, 'max_manual_questions', 10, 'min_response_token_limit', 1, 'max_response_token_limit', 8192),
-    'refresh', jsonb_build_object('enabled', true, 'max_monthly', 100),
-    'security', jsonb_build_object('secure_embed_enabled', true),
-    'guardrails', jsonb_build_object('can_customize_thresholds', true, 'can_use_smart_fallback', true, 'can_use_escalate_fallback', true, 'can_manage_topics', true, 'can_customize_messages', true),
-    'branding', jsonb_build_object('can_hide_branding', true, 'can_custom_branding', true),
-    'rate_limits', jsonb_build_object('requests_per_minute', 2000, 'window_seconds', 60, 'endpoints', jsonb_build_object('chat', jsonb_build_object('requests_per_minute', 500, 'window_seconds', 60), 'sources', jsonb_build_object('requests_per_minute', 100, 'window_seconds', 60))),
-    'max_chatbots', 100, 'max_monthly_ingestions', 10000, 'max_monthly_embedding_tokens', 100000000, 'min_readd_cooldown_minutes', 0
-) WHERE code = 'ultra'`, policy.ModelGPT4o.String())
-	if err != nil {
-		fmt.Printf("FAILED to restore ultra plan: %v\n", err)
-	} else if n, _ := res.RowsAffected(); n == 0 {
-		fmt.Printf("WARNING: No rows affected when restoring ultra plan\n")
-	}
+	// Pro plan limits
+	proLimits := models.ProPlanLimits()
+	updatePlanLimits(ctx, db, "pro", proLimits)
+
+	// Ultra plan limits
+	ultraLimits := models.UltraPlanLimits()
+	updatePlanLimits(ctx, db, "ultra", ultraLimits)
 }
+
+// updatePlanLimits updates all fields in plan_limits for a given plan code.
+func updatePlanLimits(ctx context.Context, db *sql.DB, code string, limits models.PlanLimits) {
+	// Use the db package helper for all fields
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "max_chatbots", limits.MaxChatbots)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "max_monthly_ingestions", limits.MaxMonthlyIngestions)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "max_monthly_embedding_tokens", limits.MaxMonthlyEmbeddingTokens)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "min_readd_cooldown_minutes", limits.MinReAddCooldownMinutes)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "scraping_dynamic_enabled", limits.ScrapingDynamicEnabled)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "scraping_max_urls_per_bot", limits.ScrapingMaxURLsPerBot)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "scraping_max_pages_per_crawl", limits.ScrapingMaxPagesPerCrawl)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_size_mb", limits.FilesMaxSizeMB)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_files_per_bot", limits.FilesMaxFilesPerBot)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_files_total", limits.FilesMaxFilesTotal)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_total_storage_mb", limits.FilesTotalStorageMB)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_text_length", limits.FilesMaxTextLength)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_default_model", limits.ChatDefaultModel)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_monthly_tokens", limits.ChatMaxMonthlyTokens)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_rag_top_k", limits.ChatRAGTopK)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_rag_max_context_tokens", limits.ChatRAGMaxContextTokens)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_suggested_questions", limits.ChatMaxSuggestedQuestions)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_manual_questions", limits.ChatMaxManualQuestions)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_min_response_token_limit", limits.ChatMinResponseTokenLimit)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_response_token_limit", limits.ChatMaxResponseTokenLimit)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "refresh_enabled", limits.RefreshEnabled)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "refresh_max_monthly", limits.RefreshMaxMonthly)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "security_secure_embed_enabled", limits.SecuritySecureEmbedEnabled)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_customize_thresholds", limits.GuardrailsCanCustomizeThresholds)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_use_smart_fallback", limits.GuardrailsCanUseSmartFallback)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_use_escalate_fallback", limits.GuardrailsCanUseEscalateFallback)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_manage_topics", limits.GuardrailsCanManageTopics)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_customize_messages", limits.GuardrailsCanCustomizeMessages)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "branding_can_hide_branding", limits.BrandingCanHideBranding)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "branding_can_custom_branding", limits.BrandingCanCustomBranding)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_requests_per_minute", limits.RateLimitsRequestsPerMinute)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_window_seconds", limits.RateLimitsWindowSeconds)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_chat_rpm", limits.RateLimitsChatRPM)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_chat_window", limits.RateLimitsChatWindow)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_sources_rpm", limits.RateLimitsSourcesRPM)
+	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_sources_window", limits.RateLimitsSourcesWindow)
+}
+
+// UpdatePlanLimit updates a single limit field for a plan. This is a convenience
+// wrapper around db.UpdatePlanLimitField for use in tests.
+func (te *TestEnv) UpdatePlanLimit(planCode, field string, value any) error {
+	return dbpkg.UpdatePlanLimitField(context.Background(), te.DB, planCode, field, value)
+}
+

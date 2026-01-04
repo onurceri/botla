@@ -135,7 +135,7 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	// Step 2: Extract text content for embedding
 	content, err := p.Scraper.ScrapeURLWithFallback(
 		scraper.ScrapingTask{URL: *s.SourceURL},
-		plan.Config.Scraping.DynamicEnabled,
+		plan.Limits.ScrapingDynamicEnabled,
 		scrapeConfig,
 	)
 	if err != nil {
@@ -152,12 +152,12 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		p.logWarn("url_processing_content_empty", map[string]any{
 			"source_id":       s.ID,
 			"url":             *s.SourceURL,
-			"dynamic_enabled": plan.Config.Scraping.DynamicEnabled,
+			"dynamic_enabled": plan.Limits.ScrapingDynamicEnabled,
 			"selectors_used":  len(bot.SelectorWhitelist) > 0,
 			"hint":            "Website may require JavaScript rendering or has anti-bot protection",
 		})
 		// Return specific error if dynamic scraping could help but is not available
-		if !plan.Config.Scraping.DynamicEnabled {
+		if !plan.Limits.ScrapingDynamicEnabled {
 			return ProcessResult{Error: &ProcessingError{Msg: ErrCodeDynamicRequired}, FailedStep: models.StepParseContent}
 		}
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyContent}, FailedStep: models.StepParseContent}
@@ -204,8 +204,8 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 
 	// Extract and persist metadata
 	maxQuestions := 0
-	if plan != nil && plan.Config.Chat.MaxSuggestedQuestions > 0 {
-		maxQuestions = plan.Config.Chat.MaxSuggestedQuestions
+	if plan != nil && plan.Limits.ChatMaxSuggestedQuestions > 0 {
+		maxQuestions = plan.Limits.ChatMaxSuggestedQuestions
 	}
 	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
@@ -357,19 +357,19 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 	}
 
 	// Skip discovery if plan only allows 1 URL (nothing can be added)
-	if plan.Config.Scraping.MaxURLsPerBot <= 1 {
+	if plan.Limits.ScrapingMaxURLsPerBot <= 1 {
 		p.logInfo("url_discovery_skipped_single_url_plan", map[string]any{
 			"source_id":        s.ID,
-			"max_urls_per_bot": plan.Config.Scraping.MaxURLsPerBot,
+			"max_urls_per_bot": plan.Limits.ScrapingMaxURLsPerBot,
 			"reason":           "Plan limit too low for discovery",
 		})
 		return nil
 	}
 
-	if plan.Config.Scraping.MaxPagesPerCrawl <= 0 {
+	if plan.Limits.ScrapingMaxPagesPerCrawl <= 0 {
 		p.logInfo("url_discovery_skipped_no_crawl_limit", map[string]any{
 			"source_id":           s.ID,
-			"max_pages_per_crawl": plan.Config.Scraping.MaxPagesPerCrawl,
+			"max_pages_per_crawl": plan.Limits.ScrapingMaxPagesPerCrawl,
 		})
 		return nil
 	}
@@ -384,7 +384,7 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 		return nil
 	}
 
-	maxTotal := plan.Config.Scraping.MaxPagesPerCrawl + plan.Config.Scraping.MaxURLsPerBot
+	maxTotal := plan.Limits.ScrapingMaxPagesPerCrawl + plan.Limits.ScrapingMaxURLsPerBot
 	if cnt >= maxTotal {
 		p.logInfo("url_discovery_skipped_limit_reached", map[string]any{
 			"source_id":     s.ID,
@@ -444,7 +444,7 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 
 	added := 0
 	skipped := 0
-	limit := plan.Config.Scraping.MaxPagesPerCrawl
+	limit := plan.Limits.ScrapingMaxPagesPerCrawl
 
 	for _, link := range links {
 		if added >= limit {

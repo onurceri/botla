@@ -169,7 +169,7 @@ func TestTurkish_LocalizedError(t *testing.T) {
 	defer fixtures.TeardownTestEnv(te)
 
 	// Update free plan to have very low token limit
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100'::jsonb) WHERE code=$1`, policy.PlanFree.String())
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "chat_max_monthly_tokens", 100)
 
 	email := "error-loc@example.com"
 	token := authToken(t, te.Server.URL, email)

@@ -123,27 +123,6 @@ func TestFreePlan_URLLimit_AllowsNewURLAfterDelete(t *testing.T) {
 	defer qd.Close()
 	defer page.Close()
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = '{
-  "scraping": {
-    "dynamic_enabled": false,
-    "max_urls_per_bot": 1,
-    "max_pages_per_crawl": 0
-  },
-  "files": {
-    "max_size_mb": 5,
-    "max_files_per_bot": 1,
-    "total_storage_mb": 10
-  },
-  "chat": {
-    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
-    "max_monthly_tokens": 100000,
-    "rag": {
-      "top_k": 3,
-      "max_context_tokens": 2000
-    }
-  }
-	}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
-
 	// Allow localhost URLs for SSRF validation in tests
 	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(true)
 
@@ -225,26 +204,9 @@ func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
 	// Allow localhost URLs for SSRF validation
 	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(true)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = '{
-  "scraping": {
-    "dynamic_enabled": false,
-    "max_urls_per_bot": 1,
-    "max_pages_per_crawl": 0
-  },
-  "files": {
-    "max_size_mb": 5,
-    "max_files_per_bot": 1,
-    "total_storage_mb": 10
-  },
-  "chat": {
-    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
-    "max_monthly_tokens": 100000,
-    "rag": {
-      "top_k": 3,
-      "max_context_tokens": 2000
-    }
-  }
-}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
+	// Use the proper plan_limits table for limit enforcement
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "scraping_dynamic_enabled", false)
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "scraping_max_pages_per_crawl", 0)
 
 	email := "dynamic_free@example.com"
 	token := authToken(t, te.Server.URL, email)
@@ -320,26 +282,8 @@ func TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit(t *testing.T) {
 	te.MockScraper.SetResponse(page1URL, "Page 1 content")
 	te.MockScraper.SetLinks(page1URL, []string{})
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = '{
-  "scraping": {
-    "dynamic_enabled": false,
-    "max_urls_per_bot": 1,
-    "max_pages_per_crawl": 0
-  },
-  "files": {
-    "max_size_mb": 5,
-    "max_files_per_bot": 1,
-    "total_storage_mb": 10
-  },
-  "chat": {
-    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `"],
-    "max_monthly_tokens": 100000,
-    "rag": {
-      "top_k": 3,
-      "max_context_tokens": 2000
-    }
-  }
-}'::jsonb WHERE code = '` + policy.PlanFree.String() + `'`)
+	// Use the proper plan_limits table for limit enforcement
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "scraping_max_pages_per_crawl", 0)
 
 	token := authToken(t, te.Server.URL, "disc_free@example.com")
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "disc_free@example.com")
@@ -408,7 +352,9 @@ func TestFreePlan_RefreshPolicyAuto_Forbidden(t *testing.T) {
 	}
 	defer fixtures.TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{refresh}', '{"enabled": false, "max_monthly": 0}'::jsonb, true) WHERE code = '` + policy.PlanFree.String() + `'`)
+	// Refresh config is now stored in plan_limits table
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "refresh_enabled", false)
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "refresh_max_monthly", 0)
 
 	token := authToken(t, te.Server.URL, "refresh_policy_free@example.com")
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "refresh_policy_free@example.com")
@@ -509,7 +455,8 @@ func TestFreePlan_SecureEmbed_Forbidden(t *testing.T) {
 	}
 	defer fixtures.TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": false}'::jsonb, true) WHERE code = '` + policy.PlanFree.String() + `'`)
+	// Security config is now stored in plan_limits table
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "security_secure_embed_enabled", false)
 
 	token := authToken(t, te.Server.URL, "secure_free@example.com")
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "secure_free@example.com")
@@ -571,18 +518,12 @@ func TestFreePlan_Guardrails_Restrictions(t *testing.T) {
 	}
 	defer fixtures.TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(
-		COALESCE(config, '{}'::jsonb),
-		'{guardrails}',
-		'{
-			"can_manage_topics": false,
-			"can_customize_messages": false,
-			"can_customize_thresholds": false,
-			"can_use_smart_fallback": false,
-			"can_use_escalate_fallback": false
-		}'::jsonb,
-		true
-	) WHERE code = '` + policy.PlanFree.String() + `'`)
+	// Guardrails config is now stored in plan_limits table
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "guardrails_can_manage_topics", false)
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "guardrails_can_customize_messages", false)
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "guardrails_can_customize_thresholds", false)
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "guardrails_can_use_smart_fallback", false)
+	_ = te.UpdatePlanLimit(policy.PlanFree.String(), "guardrails_can_use_escalate_fallback", false)
 
 	token := authToken(t, te.Server.URL, "guardrails_free@example.com")
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id = (SELECT id FROM plans WHERE code = '`+policy.PlanFree.String()+`') WHERE email = $1`, "guardrails_free@example.com")

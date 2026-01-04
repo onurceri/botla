@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/lib/pq"
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
@@ -86,7 +87,9 @@ func TestChat_TemperatureConfiguration(t *testing.T) {
 
 	token := authToken(t, te.Server.URL, "temp_test@example.com")
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"], "max_monthly_tokens": 0}') WHERE code=$1`, policy.PlanFree.String())
+	models := []string{"gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"}
+	_, _ = te.DB.Exec(`UPDATE plan_limits SET chat_allowed_models = $1, chat_max_monthly_tokens = 0 WHERE plan_id = (SELECT id FROM plans WHERE code = $2)`,
+		pq.Array(models), policy.PlanFree.String())
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "temp_test@example.com")
 
 	testCases := []struct {
@@ -182,7 +185,9 @@ func TestChat_MaxTokensConfiguration(t *testing.T) {
 
 	token := authToken(t, te.Server.URL, "maxtokens_test@example.com")
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022"], "max_monthly_tokens": 0}') WHERE code=$1`, policy.PlanFree.String())
+	models := []string{"gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022"}
+	_, _ = te.DB.Exec(`UPDATE plan_limits SET chat_allowed_models = $1, chat_max_monthly_tokens = 0 WHERE plan_id = (SELECT id FROM plans WHERE code = $2)`,
+		pq.Array(models), policy.PlanFree.String())
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "maxtokens_test@example.com")
 
 	testCases := []struct {

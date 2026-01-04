@@ -113,8 +113,8 @@ func (v *ChatbotValidator) validateMaxTokens(req ChatbotUpdateRequest, plan *mod
 	}
 
 	val := *req.MaxTokens
-	minLimit := plan.Config.Chat.MinResponseTokenLimit
-	maxLimit := plan.Config.Chat.MaxResponseTokenLimit
+	minLimit := plan.Limits.ChatMinResponseTokenLimit
+	maxLimit := plan.Limits.ChatMaxResponseTokenLimit
 
 	// Default fallbacks if not set in plan (backward compatibility)
 	if minLimit <= 0 {
@@ -146,7 +146,7 @@ func (v *ChatbotValidator) validateManualQuestions(req ChatbotUpdateRequest, pla
 		return nil
 	}
 
-	maxLimit := plan.Config.Chat.MaxManualQuestions
+	maxLimit := plan.Limits.ChatMaxManualQuestions
 	// Default fallback if not set in plan (backward compatibility)
 	if maxLimit <= 0 {
 		maxLimit = 3 // Default to free plan limit
@@ -166,9 +166,9 @@ func (v *ChatbotValidator) validateModel(req ChatbotUpdateRequest, plan *models.
 	if req.Model == nil {
 		return nil
 	}
-	if len(plan.Config.Chat.AllowedModels) > 0 {
+	if len(plan.Limits.ChatAllowedModels) > 0 {
 		allowed := false
-		for _, m := range plan.Config.Chat.AllowedModels {
+		for _, m := range plan.Limits.ChatAllowedModels {
 			if m == *req.Model || strings.HasSuffix(*req.Model, m) {
 				allowed = true
 				break
@@ -186,14 +186,14 @@ func (v *ChatbotValidator) validateModel(req ChatbotUpdateRequest, plan *models.
 }
 
 func (v *ChatbotValidator) validateBranding(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
-	if req.HideBranding != nil && *req.HideBranding && !plan.Config.Branding.CanHideBranding {
+	if req.HideBranding != nil && *req.HideBranding && !plan.Limits.BrandingCanHideBranding {
 		return &FeatureError{
 			Feature:         "hide_branding",
 			Message:         "Your plan does not allow hiding branding",
 			UpgradeRequired: true,
 		}
 	}
-	if req.CustomBranding != nil && !plan.Config.Branding.CanCustomBranding {
+	if req.CustomBranding != nil && !plan.Limits.BrandingCanCustomBranding {
 		return &FeatureError{
 			Feature:         "custom_branding",
 			Message:         "Custom branding requires Enterprise plan",
@@ -204,7 +204,7 @@ func (v *ChatbotValidator) validateBranding(req ChatbotUpdateRequest, plan *mode
 }
 
 func (v *ChatbotValidator) validateRefresh(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
-	if req.RefreshPolicy != nil && *req.RefreshPolicy == "auto" && !plan.Config.Refresh.Enabled {
+	if req.RefreshPolicy != nil && *req.RefreshPolicy == "auto" && !plan.Limits.RefreshEnabled {
 		return &FeatureError{
 			Feature:         "auto_refresh",
 			Message:         "Auto refresh is not available on your plan",
@@ -215,7 +215,7 @@ func (v *ChatbotValidator) validateRefresh(req ChatbotUpdateRequest, plan *model
 }
 
 func (v *ChatbotValidator) validateDiscovery(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
-	if req.DiscoveryMode != nil && *req.DiscoveryMode != "disabled" && plan.Config.Scraping.MaxPagesPerCrawl <= 0 {
+	if req.DiscoveryMode != nil && *req.DiscoveryMode != "disabled" && plan.Limits.ScrapingMaxPagesPerCrawl <= 0 {
 		return &FeatureError{
 			Feature:         "discovery_mode",
 			Message:         "Discovery mode is not available on your plan",
@@ -226,14 +226,14 @@ func (v *ChatbotValidator) validateDiscovery(req ChatbotUpdateRequest, plan *mod
 }
 
 func (v *ChatbotValidator) validateSecureEmbed(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
-	if req.SecureEmbedEnabled != nil && *req.SecureEmbedEnabled && !plan.Config.Security.SecureEmbedEnabled {
+	if req.SecureEmbedEnabled != nil && *req.SecureEmbedEnabled && !plan.Limits.SecuritySecureEmbedEnabled {
 		return &FeatureError{
 			Feature:         "secure_embed",
 			Message:         "Secure embed is not available on your plan",
 			UpgradeRequired: true,
 		}
 	}
-	if len(req.AllowedDomains) > 0 && !plan.Config.Security.SecureEmbedEnabled {
+	if len(req.AllowedDomains) > 0 && !plan.Limits.SecuritySecureEmbedEnabled {
 		return &FeatureError{
 			Feature:         "secure_embed",
 			Message:         "Domain restrictions require secure embed feature",
@@ -249,10 +249,10 @@ func (v *ChatbotValidator) validateGuardrails(req ChatbotUpdateRequest, plan *mo
 	}
 
 	tc := req.ThresholdConfig
-	guardrails := plan.Config.Guardrails
+	limits := plan.Limits
 
 	// Check threshold customization
-	if (tc.HighThreshold != 0 || tc.MediumThreshold != 0 || tc.ShowConfidenceWarning) && !guardrails.CanCustomizeThresholds {
+	if (tc.HighThreshold != 0 || tc.MediumThreshold != 0 || tc.ShowConfidenceWarning) && !limits.GuardrailsCanCustomizeThresholds {
 		return &FeatureError{
 			Feature:         "thresholds",
 			Message:         "Threshold customization is not available on your plan",
@@ -261,7 +261,7 @@ func (v *ChatbotValidator) validateGuardrails(req ChatbotUpdateRequest, plan *mo
 	}
 
 	// Check smart fallback
-	if tc.FallbackMode == "smart" && !guardrails.CanUseSmartFallback {
+	if tc.FallbackMode == "smart" && !limits.GuardrailsCanUseSmartFallback {
 		return &FeatureError{
 			Feature:         "smart_fallback",
 			Message:         "Smart fallback is not available on your plan",
@@ -270,7 +270,7 @@ func (v *ChatbotValidator) validateGuardrails(req ChatbotUpdateRequest, plan *mo
 	}
 
 	// Check escalate fallback
-	if tc.FallbackMode == "escalate" && !guardrails.CanUseEscalateFallback {
+	if tc.FallbackMode == "escalate" && !limits.GuardrailsCanUseEscalateFallback {
 		return &FeatureError{
 			Feature:         "escalate_fallback",
 			Message:         "Escalate fallback is not available on your plan",
@@ -282,7 +282,7 @@ func (v *ChatbotValidator) validateGuardrails(req ChatbotUpdateRequest, plan *mo
 }
 
 func (v *ChatbotValidator) validateHandoff(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
-	if req.HandoffEnabled != nil && *req.HandoffEnabled && !plan.Config.Guardrails.CanUseEscalateFallback {
+	if req.HandoffEnabled != nil && *req.HandoffEnabled && !plan.Limits.GuardrailsCanUseEscalateFallback {
 		return &FeatureError{
 			Feature:         "escalate_fallback",
 			Message:         "Human handoff is not available on your plan",
@@ -293,7 +293,7 @@ func (v *ChatbotValidator) validateHandoff(req ChatbotUpdateRequest, plan *model
 }
 
 func (v *ChatbotValidator) validateTopicRestrictions(req ChatbotUpdateRequest, plan *models.Plan) *FeatureError {
-	if req.TopicRestrictions != nil && !plan.Config.Guardrails.CanManageTopics {
+	if req.TopicRestrictions != nil && !plan.Limits.GuardrailsCanManageTopics {
 		return &FeatureError{
 			Feature:         "topic_restrictions",
 			Message:         "Topic restrictions are not available on your plan",

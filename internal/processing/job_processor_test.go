@@ -95,7 +95,7 @@ func TestProcessWithResume_URLType(t *testing.T) {
 		UserID: "test-user-1",
 	}
 	plan := &models.Plan{
-		Config: models.PlanConfig{},
+		Limits: &models.PlanLimits{},
 	}
 
 	result := jp.processWithResume(ctx, "test-job-1", source, bot, "en", plan, nil)
@@ -146,7 +146,7 @@ func TestProcessWithResume_PDFType(t *testing.T) {
 		UserID: "test-user-2",
 	}
 	plan := &models.Plan{
-		Config: models.PlanConfig{},
+		Limits: &models.PlanLimits{},
 	}
 
 	result := jp.processWithResume(ctx, "test-job-2", source, bot, "en", plan, nil)
@@ -197,7 +197,7 @@ func TestProcessWithResume_TextType(t *testing.T) {
 		UserID: "test-user-3",
 	}
 	plan := &models.Plan{
-		Config: models.PlanConfig{},
+		Limits: &models.PlanLimits{},
 	}
 
 	result := jp.processWithResume(ctx, "test-job-3", source, bot, "en", plan, nil)
@@ -233,7 +233,7 @@ func TestProcessWithResume_UnknownType(t *testing.T) {
 		ID: "test-bot-unknown",
 	}
 	plan := &models.Plan{
-		Config: models.PlanConfig{},
+		Limits: &models.PlanLimits{},
 	}
 
 	result := jp.processWithResume(ctx, "test-job-unknown", source, bot, "en", plan, nil)
@@ -274,7 +274,7 @@ func TestProcessWithResume_NilProcessor(t *testing.T) {
 		ID: "test-bot-nil",
 	}
 	plan := &models.Plan{
-		Config: models.PlanConfig{},
+		Limits: &models.PlanLimits{},
 	}
 
 	result := jp.processWithResume(ctx, "test-job-nil", source, bot, "en", plan, nil)
@@ -313,7 +313,7 @@ func TestProcessWithResume_EmptyMap(t *testing.T) {
 		ID: "test-bot-empty",
 	}
 	plan := &models.Plan{
-		Config: models.PlanConfig{},
+		Limits: &models.PlanLimits{},
 	}
 
 	result := jp.processWithResume(ctx, "test-job-empty", source, bot, "en", plan, nil)

@@ -14,7 +14,7 @@ import (
 )
 
 func TestPDFDeduplication_Integration(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -26,7 +26,7 @@ t.Parallel()
 	chatbotID := createChatbotForDedup(t, te.Server.URL, token, "Dedup Bot")
 
 	// Relax PDF limit for this test to avoid ERR_PDF_LIMIT_REACHED
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{files,max_files_per_bot}', '10'::jsonb) WHERE code = 'free'`)
+	_ = te.UpdatePlanLimit("free", "files_max_files_per_bot", 10)
 
 	// Create a simple PDF
 	pdfContent := []byte("%PDF-1.4 dummy content for test")
@@ -51,7 +51,7 @@ t.Parallel()
 }
 
 func TestTextDeduplication_Integration(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -78,7 +78,7 @@ t.Parallel()
 }
 
 func TestDeduplication_DifferentChatbots_Allowed(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)

@@ -88,13 +88,13 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if plan != nil && plan.Config.MaxChatbots > 0 {
+	if plan != nil && plan.Limits.MaxChatbots > 0 {
 		count, countErr := db.CountChatbotsByUserID(r.Context(), h.DB, userID)
 		if countErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if count >= plan.Config.MaxChatbots {
+		if count >= plan.Limits.MaxChatbots {
 			api.WriteErrorCode(w, http.StatusForbidden, api.ErrMaxChatbotsExceeded)
 			return
 		}

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/models"
 	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
 	"github.com/redis/go-redis/v9"
@@ -142,57 +143,14 @@ func (s *PlanService) InvalidateAllCache(ctx context.Context) error {
 	return nil
 }
 
-// fetchPlanByCode retrieves a plan from the database by code.
+// fetchPlanByCode retrieves a plan from the database by code using the plan_limits table.
 func (s *PlanService) fetchPlanByCode(ctx context.Context, code string) (*models.Plan, error) {
-	var p models.Plan
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id, code, status, billing_cycle, price, currency, trial_days, config, created_at, updated_at
-		FROM plans
-		WHERE code = $1 AND deleted_at IS NULL AND status = 'active'
-	`, code).Scan(
-		&p.ID, &p.Code, &p.Status, &p.BillingCycle,
-		&p.Price, &p.Currency, &p.TrialDays,
-		&p.Config, &p.CreatedAt, &p.UpdatedAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, pkgerrors.Wrapf(err, "fetch plan by code %s", code)
-	}
-	return &p, nil
+	return db.GetPlanWithLimits(ctx, s.db, code)
 }
 
-// fetchAllPlans retrieves all active plans from the database.
+// fetchAllPlans retrieves all active plans from the database using the plan_limits table.
 func (s *PlanService) fetchAllPlans(ctx context.Context) ([]models.Plan, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, code, status, billing_cycle, price, currency, trial_days, config, created_at, updated_at
-		FROM plans
-		WHERE deleted_at IS NULL AND status = 'active'
-		ORDER BY price ASC
-	`)
-	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "fetch all plans")
-	}
-	defer func() { _ = rows.Close() }()
-
-	var plans []models.Plan
-	for rows.Next() {
-		var p models.Plan
-		if err := rows.Scan(
-			&p.ID, &p.Code, &p.Status, &p.BillingCycle,
-			&p.Price, &p.Currency, &p.TrialDays,
-			&p.Config, &p.CreatedAt, &p.UpdatedAt,
-		); err != nil {
-			return nil, pkgerrors.Wrapf(err, "scan plan row")
-		}
-		plans = append(plans, p)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, pkgerrors.Wrapf(err, "iterate plan rows")
-	}
-
-	return plans, nil
+	return db.GetAllPlansWithLimits(ctx, s.db)
 }
 
 // getFromCache retrieves data from cache (Redis first, then memory).
@@ -240,7 +198,7 @@ func (s *PlanService) setInCache(ctx context.Context, key string, data []byte) {
 	})
 }
 
-// ValidateAllPlans fetches all active plans from the database and validates each plan's configuration.
+// ValidateAllPlans fetches all active plans from the database and validates each plan's limits.
 // Returns a combined error if any plan fails validation.
 // Returns nil if all plans are valid or if no plans exist.
 func (s *PlanService) ValidateAllPlans(ctx context.Context) error {
@@ -255,7 +213,11 @@ func (s *PlanService) ValidateAllPlans(ctx context.Context) error {
 
 	var validationErrors []error
 	for _, plan := range plans {
-		if err := plan.Config.Validate(); err != nil {
+		if plan.Limits == nil {
+			validationErrors = append(validationErrors, fmt.Errorf("plan %q: missing limits", plan.Code))
+			continue
+		}
+		if err := plan.Limits.Validate(); err != nil {
 			validationErrors = append(validationErrors, fmt.Errorf("plan %q: %w", plan.Code, err))
 		}
 	}

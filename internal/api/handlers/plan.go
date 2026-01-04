@@ -54,7 +54,7 @@ type planInfo struct {
 	Description *string
 	Price       float64
 	Currency    string
-	Config      models.PlanConfig
+	Limits      *models.PlanLimits
 }
 
 // PlanHandlers handles plan-related endpoints
@@ -88,11 +88,72 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 
 	// Initialize model service
 	modelService := services.NewModelService(h.DB)
-	availableModels, err := modelService.GetAvailableModels(r.Context(), plan.Config.Chat.AllowedModels)
+	availableModels, err := modelService.GetAvailableModels(r.Context(), plan.Limits.ChatAllowedModels)
 	if err != nil {
 		// Log error but continue with empty/default models to avoid blocking plan info
 		// In production, you might want to log this properly
 		availableModels = []models.ModelInfo{}
+	}
+
+	// Convert PlanLimits to PlanFeaturesResponse
+	features := PlanFeaturesResponse{
+		Scraping: models.ScrapingConfig{
+			DynamicEnabled:   plan.Limits.ScrapingDynamicEnabled,
+			MaxURLsPerBot:    plan.Limits.ScrapingMaxURLsPerBot,
+			MaxPagesPerCrawl: plan.Limits.ScrapingMaxPagesPerCrawl,
+		},
+		Files: models.FilesConfig{
+			MaxSizeMB:      plan.Limits.FilesMaxSizeMB,
+			MaxFilesPerBot: plan.Limits.FilesMaxFilesPerBot,
+			MaxFilesTotal:  plan.Limits.FilesMaxFilesTotal,
+			TotalStorageMB: plan.Limits.FilesTotalStorageMB,
+			MaxTextLength:  plan.Limits.FilesMaxTextLength,
+		},
+		Chat: models.ChatConfig{
+			DefaultModel:     plan.Limits.ChatDefaultModel,
+			AllowedModels:    plan.Limits.ChatAllowedModels,
+			MaxMonthlyTokens: plan.Limits.ChatMaxMonthlyTokens,
+			RAG: models.RAGConfig{
+				TopK:             plan.Limits.ChatRAGTopK,
+				MaxContextTokens: plan.Limits.ChatRAGMaxContextTokens,
+			},
+			MaxSuggestedQuestions: plan.Limits.ChatMaxSuggestedQuestions,
+			MaxManualQuestions:    plan.Limits.ChatMaxManualQuestions,
+			MinResponseTokenLimit: plan.Limits.ChatMinResponseTokenLimit,
+			MaxResponseTokenLimit: plan.Limits.ChatMaxResponseTokenLimit,
+		},
+		Refresh: models.RefreshConfig{
+			Enabled:    plan.Limits.RefreshEnabled,
+			MaxMonthly: plan.Limits.RefreshMaxMonthly,
+		},
+		Security: models.SecurityConfig{
+			SecureEmbedEnabled: plan.Limits.SecuritySecureEmbedEnabled,
+		},
+		Guardrails: models.GuardrailsConfig{
+			CanCustomizeThresholds: plan.Limits.GuardrailsCanCustomizeThresholds,
+			CanUseSmartFallback:    plan.Limits.GuardrailsCanUseSmartFallback,
+			CanUseEscalateFallback: plan.Limits.GuardrailsCanUseEscalateFallback,
+			CanManageTopics:        plan.Limits.GuardrailsCanManageTopics,
+			CanCustomizeMessages:   plan.Limits.GuardrailsCanCustomizeMessages,
+		},
+		Branding: models.BrandingConfig{
+			CanHideBranding:   plan.Limits.BrandingCanHideBranding,
+			CanCustomBranding: plan.Limits.BrandingCanCustomBranding,
+		},
+		RateLimits: models.RateLimitsConfig{
+			RequestsPerMinute: plan.Limits.RateLimitsRequestsPerMinute,
+			WindowSeconds:     plan.Limits.RateLimitsWindowSeconds,
+			Endpoints: map[string]models.EndpointLimits{
+				"chat": {
+					RequestsPerMinute: plan.Limits.RateLimitsChatRPM,
+					WindowSeconds:     plan.Limits.RateLimitsChatWindow,
+				},
+				"sources": {
+					RequestsPerMinute: plan.Limits.RateLimitsSourcesRPM,
+					WindowSeconds:     plan.Limits.RateLimitsSourcesWindow,
+				},
+			},
+		},
 	}
 
 	res := PlanResponse{
@@ -103,21 +164,12 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 		Price:       plan.Price,
 		Currency:    plan.Currency,
 		Limits: PlanLimitsResponse{
-			MaxChatbots:               plan.Config.MaxChatbots,
-			MaxMonthlyIngestions:      plan.Config.MaxMonthlyIngestions,
-			MaxMonthlyEmbeddingTokens: plan.Config.MaxMonthlyEmbeddingTokens,
-			MinReAddCooldownMinutes:   plan.Config.MinReAddCooldownMinutes,
+			MaxChatbots:               plan.Limits.MaxChatbots,
+			MaxMonthlyIngestions:      plan.Limits.MaxMonthlyIngestions,
+			MaxMonthlyEmbeddingTokens: plan.Limits.MaxMonthlyEmbeddingTokens,
+			MinReAddCooldownMinutes:   plan.Limits.MinReAddCooldownMinutes,
 		},
-		Features: PlanFeaturesResponse{
-			Scraping:   plan.Config.Scraping,
-			Files:      plan.Config.Files,
-			Chat:       plan.Config.Chat,
-			Refresh:    plan.Config.Refresh,
-			Security:   plan.Config.Security,
-			Guardrails: plan.Config.Guardrails,
-			Branding:   plan.Config.Branding,
-			RateLimits: plan.Config.RateLimits,
-		},
+		Features:        features,
 		AvailableModels: availableModels,
 	}
 
@@ -144,22 +196,31 @@ func (h *PlanHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planIn
 	var desc sql.NullString
 	var planPrice float64
 	var planCurrency string
-	var config models.PlanConfig
+	var limits models.PlanLimits
 
+	// First get plan info
 	err := h.DB.QueryRowContext(ctx, `
-		SELECT p.code, pt.name, pt.description, p.price, p.currency, p.config
+		SELECT p.code, pt.name, pt.description, p.price, p.currency
 		FROM plans p
 		LEFT JOIN plan_translations pt ON pt.plan_id=p.id AND pt.language_id=$2
 		WHERE p.id=$1
-	`, u.PlanID, langID).Scan(&planCode, &name, &desc, &planPrice, &planCurrency, &config)
+	`, u.PlanID, langID).Scan(&planCode, &name, &desc, &planPrice, &planCurrency)
 
 	if err != nil {
 		// Fallback to free plan using typed constant
 		planCode = policy.PlanFree.String()
 	}
 
+	// Then get plan limits
+	limitsPtr, err := db.GetPlanLimitsByPlanID(ctx, h.DB, *u.PlanID)
+	if err != nil || limitsPtr == nil {
+		// Fallback to defaults
+		defaults := models.DefaultPlanLimits()
+		limitsPtr = &defaults
+	}
+
 	// Apply config defaults
-	applyConfigDefaults(&config, planCode)
+	applyLimitsDefaults(limitsPtr, planCode)
 
 	return &planInfo{
 		ID:          *u.PlanID,
@@ -168,36 +229,36 @@ func (h *PlanHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planIn
 		Description: nullStringPtr(desc),
 		Price:       planPrice,
 		Currency:    planCurrency,
-		Config:      config,
+		Limits:      &limits,
 	}, nil
 }
 
 // --- Helper functions ---
 
-// applyConfigDefaults sets fallback values for plan config
-func applyConfigDefaults(config *models.PlanConfig, planCode string) {
-	if config.Files.MaxFilesTotal == 0 {
+// applyLimitsDefaults sets fallback values for plan limits
+func applyLimitsDefaults(limits *models.PlanLimits, planCode string) {
+	if limits.FilesMaxFilesTotal == 0 {
 		switch planCode {
 		case policy.PlanFree.String():
-			config.Files.MaxFilesTotal = 5
+			limits.FilesMaxFilesTotal = 5
 		case policy.PlanPro.String():
-			config.Files.MaxFilesTotal = 100
+			limits.FilesMaxFilesTotal = 100
 		case policy.PlanUltra.String():
-			config.Files.MaxFilesTotal = 1000
+			limits.FilesMaxFilesTotal = 1000
 		default:
-			config.Files.MaxFilesTotal = 5
+			limits.FilesMaxFilesTotal = 5
 		}
 	}
 
-	if config.Files.MaxTextLength == 0 {
-		config.Files.MaxTextLength = 400000
+	if limits.FilesMaxTextLength == 0 {
+		limits.FilesMaxTextLength = 400000
 	}
 
-	if config.Chat.MinResponseTokenLimit == 0 {
-		config.Chat.MinResponseTokenLimit = 20
+	if limits.ChatMinResponseTokenLimit == 0 {
+		limits.ChatMinResponseTokenLimit = 20
 	}
-	if config.Chat.MaxResponseTokenLimit == 0 {
-		config.Chat.MaxResponseTokenLimit = 8192
+	if limits.ChatMaxResponseTokenLimit == 0 {
+		limits.ChatMaxResponseTokenLimit = 8192
 	}
 }
 

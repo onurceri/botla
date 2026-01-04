@@ -29,10 +29,8 @@ func TestRateLimit_Headers(t *testing.T) {
 	defer qd.Close()
 
 	// Update plan config in DB to match test expectations
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 3, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
-	if err != nil {
-		t.Fatalf("failed to update rate limits: %v", err)
-	}
+	_ = te.UpdatePlanLimit("free", "rate_limits_requests_per_minute", 3)
+	_ = te.UpdatePlanLimit("free", "rate_limits_window_seconds", 60)
 
 	token := authToken(t, te.Server.URL, "rlhdr@example.com")
 

@@ -96,3 +96,17 @@ func (p *WorkerPool) Shutdown(timeout time.Duration) {
 		p.logger.Warn("worker_pool_shutdown_timeout", nil)
 	}
 }
+
+// WaitPending waits for all currently pending jobs to complete.
+// This is useful for tests that need to ensure all submitted work is finished.
+func (p *WorkerPool) WaitPending() {
+	done := make(chan struct{})
+	p.Submit(func(ctx context.Context) {
+		close(done)
+	})
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		p.logger.Warn("worker_pool_wait_pending_timeout", nil)
+	}
+}

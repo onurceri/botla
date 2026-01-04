@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/lib/pq"
 	"github.com/onurceri/botla-co/internal/integration/fixtures"
 	"github.com/onurceri/botla-co/pkg/config"
 	"github.com/onurceri/botla-co/pkg/policy"
@@ -369,7 +370,9 @@ func TestModelConfiguration(t *testing.T) {
 	token := authToken(t, te.Server.URL, "model_test@example.com")
 
 	// Update plan to allow all these models
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat,allowed_models}', '["gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"]') WHERE code=$1`, policy.PlanFree.String())
+	models := []string{"gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"}
+	_, _ = te.DB.Exec(`UPDATE plan_limits SET chat_allowed_models = $1 WHERE plan_id = (SELECT id FROM plans WHERE code = $2)`,
+		pq.Array(models), policy.PlanFree.String())
 	// Ensure user is on free plan
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "model_test@example.com")
 
@@ -468,8 +471,9 @@ func TestModelRestrictions(t *testing.T) {
 	token := authToken(t, te.Server.URL, "restricted_test@example.com")
 
 	// Update plan to allow ONLY gpt-4o-mini
-	// We set the entire 'chat' object to ensure it exists, avoiding jsonb_set limitation with missing parents
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{chat}', '{"allowed_models": ["gpt-4o-mini"]}') WHERE code=$1`, policy.PlanFree.String())
+	models := []string{"gpt-4o-mini"}
+	_, _ = te.DB.Exec(`UPDATE plan_limits SET chat_allowed_models = $1 WHERE plan_id = (SELECT id FROM plans WHERE code = $2)`,
+		pq.Array(models), policy.PlanFree.String())
 	_, _ = te.DB.Exec(`UPDATE users SET plan_id=(SELECT id FROM plans WHERE code=$1) WHERE email=$2`, policy.PlanFree.String(), "restricted_test@example.com")
 
 	// Try to create chatbot with forbidden model

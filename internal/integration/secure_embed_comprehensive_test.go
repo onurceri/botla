@@ -14,7 +14,7 @@ import (
 
 // TestSecureEmbed_DomainOnlyRestriction tests that domain restriction works without token
 func TestSecureEmbed_DomainOnlyRestriction(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -22,7 +22,7 @@ t.Parallel()
 	defer fixtures.TeardownTestEnv(te)
 
 	// Enable secure embed for free plan
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
+	err = te.UpdatePlanLimit(policy.PlanFree.String(), "security_secure_embed_enabled", true)
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}
@@ -92,7 +92,7 @@ t.Parallel()
 
 // TestSecureEmbed_TokenOnlyRestriction tests token validation without domain restriction
 func TestSecureEmbed_TokenOnlyRestriction(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -100,7 +100,7 @@ t.Parallel()
 	defer fixtures.TeardownTestEnv(te)
 
 	// Enable secure embed for free plan
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
+	err = te.UpdatePlanLimit(policy.PlanFree.String(), "security_secure_embed_enabled", true)
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}
@@ -163,7 +163,7 @@ t.Parallel()
 
 // TestSecureEmbed_ExpiredToken tests that expired tokens are rejected
 func TestSecureEmbed_ExpiredToken(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -171,7 +171,7 @@ t.Parallel()
 	defer fixtures.TeardownTestEnv(te)
 
 	// Enable secure embed for free plan
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
+	err = te.UpdatePlanLimit(policy.PlanFree.String(), "security_secure_embed_enabled", true)
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}
@@ -223,7 +223,7 @@ t.Parallel()
 
 // TestSecureEmbed_WrongChatbotIdInToken tests that tokens with wrong chatbot_id are rejected
 func TestSecureEmbed_WrongChatbotIdInToken(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -231,7 +231,7 @@ t.Parallel()
 	defer fixtures.TeardownTestEnv(te)
 
 	// Enable secure embed for free plan
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
+	err = te.UpdatePlanLimit(policy.PlanFree.String(), "security_secure_embed_enabled", true)
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}
@@ -283,7 +283,7 @@ t.Parallel()
 
 // TestSecureEmbed_WrongSecretSignature tests that tokens signed with wrong secret are rejected
 func TestSecureEmbed_WrongSecretSignature(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -291,7 +291,7 @@ t.Parallel()
 	defer fixtures.TeardownTestEnv(te)
 
 	// Enable secure embed for free plan
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
+	err = te.UpdatePlanLimit(policy.PlanFree.String(), "security_secure_embed_enabled", true)
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}
@@ -344,7 +344,7 @@ t.Parallel()
 
 // TestSecureEmbed_NoSecureEmbedEnabled tests that requests pass when secure embed is disabled
 func TestSecureEmbed_NoSecureEmbedEnabled(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -380,7 +380,7 @@ t.Parallel()
 
 // TestSecureEmbed_DomainAndTokenCombined tests both domain AND token restrictions together
 func TestSecureEmbed_DomainAndTokenCombined(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -388,7 +388,7 @@ t.Parallel()
 	defer fixtures.TeardownTestEnv(te)
 
 	// Enable secure embed for free plan
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config, '{}'::jsonb), '{security}', '{"secure_embed_enabled": true}'::jsonb, true) WHERE code=$1`, policy.PlanFree.String())
+	err = te.UpdatePlanLimit(policy.PlanFree.String(), "security_secure_embed_enabled", true)
 	if err != nil {
 		t.Fatalf("failed to update plan config: %v", err)
 	}

@@ -41,7 +41,8 @@ func TestSourceRefresh_Unchanged_Skipped(t *testing.T) {
 
 	// Create pro user with refresh enabled
 	token := authToken(t, te.Server.URL, "refresh_hash@example.com")
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh}', '{"enabled": true, "max_monthly": 10}'::jsonb) WHERE code = 'free'`)
+	_ = te.UpdatePlanLimit("free", "refresh_enabled", true)
+	_ = te.UpdatePlanLimit("free", "refresh_max_monthly", 10)
 
 	// Create chatbot
 	create := map[string]any{"name": "Hash Bot"}

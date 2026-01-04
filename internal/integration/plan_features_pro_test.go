@@ -21,47 +21,60 @@ import (
 )
 
 func updateProPlanConfig(t *testing.T, te *fixtures.TestEnv) {
-	_, err := te.DB.Exec(`UPDATE plans SET config = '{
-  "scraping": {
-    "dynamic_enabled": true,
-    "max_urls_per_bot": 10,
-    "max_pages_per_crawl": 10
-  },
-  "files": {
-    "max_size_mb": 20,
-    "max_files_per_bot": 20,
-    "total_storage_mb": 500
-  },
-  "chat": {
-    "allowed_models": ["` + policy.ModelGPT4oMini.String() + `", "` + policy.ModelGPT4o.String() + `"],
-    "max_monthly_tokens": 1000000,
-    "rag": {
-      "top_k": 5,
-      "max_context_tokens": 4000
-    }
-  },
-  "branding": {
-      "can_hide_branding": true,
-      "can_custom_branding": false
-  },
-  "refresh": {
-      "enabled": true,
-      "max_monthly": 100
-  },
-  "guardrails": {
-    "can_manage_topics": true,
-    "can_customize_messages": true,
-    "can_customize_thresholds": true,
-    "can_use_smart_fallback": true,
-    "can_use_escalate_fallback": true,
-    "handoff_enabled": true
-  },
-  "security": {
-      "secure_embed_enabled": true
-  }
-}'::jsonb WHERE code = 'pro'`)
+	// Get the pro plan ID
+	var proPlanID string
+	err := te.DB.QueryRow(`SELECT id FROM plans WHERE code = 'pro'`).Scan(&proPlanID)
 	if err != nil {
-		t.Fatalf("failed to update plan config: %v", err)
+		t.Fatalf("failed to get pro plan ID: %v", err)
+	}
+
+	// Update plan_limits table
+	_, err = te.DB.Exec(`
+		INSERT INTO plan_limits (
+			plan_id, scraping_dynamic_enabled, scraping_max_urls_per_bot, scraping_max_pages_per_crawl,
+			files_max_size_mb, files_max_files_per_bot, files_total_storage_mb,
+			chat_allowed_models, chat_max_monthly_tokens, chat_rag_top_k, chat_rag_max_context_tokens,
+			branding_can_hide_branding, branding_can_custom_branding,
+			refresh_enabled, refresh_max_monthly,
+			guardrails_can_manage_topics, guardrails_can_customize_messages,
+			guardrails_can_customize_thresholds, guardrails_can_use_smart_fallback,
+			guardrails_can_use_escalate_fallback,
+			security_secure_embed_enabled
+		) VALUES (
+			$1, true, 10, 10,
+			20, 20, 500,
+			ARRAY[$2, $3]::text[], 1000000, 5, 4000,
+			true, false,
+			true, 100,
+			true, true,
+			true, true,
+			true,
+			true
+		)
+		ON CONFLICT (plan_id) DO UPDATE SET
+			scraping_dynamic_enabled = EXCLUDED.scraping_dynamic_enabled,
+			scraping_max_urls_per_bot = EXCLUDED.scraping_max_urls_per_bot,
+			scraping_max_pages_per_crawl = EXCLUDED.scraping_max_pages_per_crawl,
+			files_max_size_mb = EXCLUDED.files_max_size_mb,
+			files_max_files_per_bot = EXCLUDED.files_max_files_per_bot,
+			files_total_storage_mb = EXCLUDED.files_total_storage_mb,
+			chat_allowed_models = EXCLUDED.chat_allowed_models,
+			chat_max_monthly_tokens = EXCLUDED.chat_max_monthly_tokens,
+			chat_rag_top_k = EXCLUDED.chat_rag_top_k,
+			chat_rag_max_context_tokens = EXCLUDED.chat_rag_max_context_tokens,
+			branding_can_hide_branding = EXCLUDED.branding_can_hide_branding,
+			branding_can_custom_branding = EXCLUDED.branding_can_custom_branding,
+			refresh_enabled = EXCLUDED.refresh_enabled,
+			refresh_max_monthly = EXCLUDED.refresh_max_monthly,
+			guardrails_can_manage_topics = EXCLUDED.guardrails_can_manage_topics,
+			guardrails_can_customize_messages = EXCLUDED.guardrails_can_customize_messages,
+			guardrails_can_customize_thresholds = EXCLUDED.guardrails_can_customize_thresholds,
+			guardrails_can_use_smart_fallback = EXCLUDED.guardrails_can_use_smart_fallback,
+			guardrails_can_use_escalate_fallback = EXCLUDED.guardrails_can_use_escalate_fallback,
+			security_secure_embed_enabled = EXCLUDED.security_secure_embed_enabled
+	`, proPlanID, policy.ModelGPT4oMini.String(), policy.ModelGPT4o.String())
+	if err != nil {
+		t.Fatalf("failed to update plan limits: %v", err)
 	}
 }
 

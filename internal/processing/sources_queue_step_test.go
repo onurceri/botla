@@ -501,13 +501,25 @@ func createTestChatbot(t *testing.T, db *sql.DB) string {
 
 	// Create plan first
 	err := db.QueryRowContext(ctx, `
-		INSERT INTO plans (id, code, config, created_at, updated_at)
-		VALUES ($1, $2, '{"max_monthly_ingestions": 100, "scraping": {"max_urls_per_bot": 10, "max_pages_per_crawl": 5}, "chat": {"max_suggested_questions": 3}, "files": {"max_size_mb": 10, "max_files_per_bot": 5}}'::jsonb, NOW(), NOW())
+		INSERT INTO plans (id, code, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW())
 		ON CONFLICT (code) DO NOTHING
 	`, planID, "plan_"+generateUUID()).Err()
 
 	if err != nil && err != sql.ErrNoRows {
 		t.Fatalf("failed to create test plan: %v", err)
+	}
+
+	// Create plan limits
+	_, err = db.ExecContext(ctx, `
+		INSERT INTO plan_limits (plan_id, max_monthly_ingestions, scraping_max_urls_per_bot, scraping_max_pages_per_crawl,
+			chat_max_suggested_questions, files_max_size_mb, files_max_files_per_bot, created_at)
+		VALUES ($1, 100, 10, 5, 3, 10, 5, NOW())
+		ON CONFLICT (plan_id) DO NOTHING
+	`, planID)
+
+	if err != nil {
+		t.Fatalf("failed to create test plan limits: %v", err)
 	}
 
 	// Create user

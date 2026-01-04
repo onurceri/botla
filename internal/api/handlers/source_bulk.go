@@ -53,7 +53,7 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	limit := plan.Config.Scraping.MaxURLsPerBot
+	limit := plan.Limits.ScrapingMaxURLsPerBot
 	if limit <= 0 {
 		limit = 5 // Safe fallback
 	}

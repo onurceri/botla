@@ -20,13 +20,11 @@ import (
 func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
 	pool := testdb.OpenTestDB(t)
 
-	// Ensure pro plan exists and has correct config
+	// Ensure pro plan exists
 	var proPlanID string
-	var configJSON []byte
-	if err := pool.QueryRow(`SELECT id, config FROM plans WHERE code='pro'`).Scan(&proPlanID, &configJSON); err != nil {
+	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='pro'`).Scan(&proPlanID); err != nil {
 		t.Fatalf("pro plan not found: %v", err)
 	}
-	t.Logf("Pro plan config: %s", string(configJSON))
 
 	// Create user with PRO plan
 	var userID string

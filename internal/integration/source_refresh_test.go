@@ -37,7 +37,8 @@ func TestSourceRefresh_Success(t *testing.T) {
 
 	// Create pro user with refresh enabled
 	token := authToken(t, te.Server.URL, "refresh_pro@example.com")
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh}', '{"enabled": true, "max_monthly": 5}'::jsonb) WHERE code = 'free'`)
+	_ = te.UpdatePlanLimit("free", "refresh_enabled", true)
+	_ = te.UpdatePlanLimit("free", "refresh_max_monthly", 5)
 
 	// Create chatbot
 	create := map[string]any{"name": "Refresh Bot"}
@@ -141,7 +142,8 @@ func TestSourceRefresh_FreePlanBlocked(t *testing.T) {
 	_, _ = te.DB.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)
 
 	// Ensure free plan has refresh disabled
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh}', '{"enabled": false, "max_monthly": 0}'::jsonb) WHERE code = 'free'`)
+	_ = te.UpdatePlanLimit("free", "refresh_enabled", false)
+	_ = te.UpdatePlanLimit("free", "refresh_max_monthly", 0)
 
 	token := authToken(t, te.Server.URL, "refresh_free@example.com")
 
@@ -186,7 +188,8 @@ func TestSourceRefresh_NonURLBlocked(t *testing.T) {
 	// Apply migration for refresh columns
 	_, _ = te.DB.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
 	_, _ = te.DB.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh}', '{"enabled": true, "max_monthly": 5}'::jsonb) WHERE code = 'free'`)
+	_ = te.UpdatePlanLimit("free", "refresh_enabled", true)
+	_ = te.UpdatePlanLimit("free", "refresh_max_monthly", 5)
 
 	token := authToken(t, te.Server.URL, "refresh_pdf@example.com")
 
@@ -230,7 +233,8 @@ func TestSourceRefresh_QuotaExceeded(t *testing.T) {
 	// Apply migration for refresh columns
 	_, _ = te.DB.Exec(`ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ`)
 	_, _ = te.DB.Exec(`ALTER TABLE usage_ingestions ADD COLUMN IF NOT EXISTS refresh_count INT DEFAULT 0`)
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{refresh}', '{"enabled": true, "max_monthly": 1}'::jsonb) WHERE code = 'free'`)
+	_ = te.UpdatePlanLimit("free", "refresh_enabled", true)
+	_ = te.UpdatePlanLimit("free", "refresh_max_monthly", 1)
 
 	token := authToken(t, te.Server.URL, "refresh_quota@example.com")
 

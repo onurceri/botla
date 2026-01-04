@@ -24,7 +24,7 @@ func (h *SourcesHandlers) checkIngestionQuota(r *http.Request, userID string, pl
 // getAvailableIngestionCount returns how many more ingestions the user can perform this month
 func (h *SourcesHandlers) getAvailableIngestionCount(r *http.Request, userID string, plan *models.Plan) int {
 	usedSources, _, _ := db.GetMonthlyIngestionUsage(r.Context(), h.DB, userID, time.Now())
-	maxIngest := plan.Config.MaxMonthlyIngestions
+	maxIngest := plan.Limits.MaxMonthlyIngestions
 	if maxIngest <= 0 {
 		maxIngest = 50
 	}
@@ -59,7 +59,7 @@ func (h *SourcesHandlers) persistAndEnqueueInternal(r *http.Request, ds *models.
 
 // checkCooldown validates if enough time has passed since the last action
 func (h *SourcesHandlers) checkCooldown(r *http.Request, lastActionTime *time.Time, plan *models.Plan) (time.Duration, bool) {
-	cdMin := plan.Config.MinReAddCooldownMinutes
+	cdMin := plan.Limits.MinReAddCooldownMinutes
 	if cdMin <= 0 || lastActionTime == nil {
 		return 0, true
 	}
@@ -74,7 +74,7 @@ func (h *SourcesHandlers) checkCooldown(r *http.Request, lastActionTime *time.Ti
 
 // checkStorageQuota validates total storage quota
 func (h *SourcesHandlers) checkStorageQuota(r *http.Request, userID string, sizeBytes int, plan *models.Plan) error {
-	limitMB := plan.Config.Files.TotalStorageMB
+	limitMB := plan.Limits.FilesTotalStorageMB
 	if limitMB > 0 {
 		usedMB, _ := db.GetStorageUsedMBByUserID(r.Context(), h.DB, userID)
 		newMB := sizeBytes / (1 << 20)

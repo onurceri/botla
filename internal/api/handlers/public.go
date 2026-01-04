@@ -267,14 +267,17 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	var maxMonthlyTokens int
 	var estimatedTokens int
 	if err == nil && plan != nil {
-		ragConfig = plan.Config.Chat.RAG
-		maxMonthlyTokens = plan.Config.Chat.MaxMonthlyTokens
+		ragConfig = models.RAGConfig{
+			TopK:             plan.Limits.ChatRAGTopK,
+			MaxContextTokens: plan.Limits.ChatRAGMaxContextTokens,
+		}
+		maxMonthlyTokens = plan.Limits.ChatMaxMonthlyTokens
 
 		// Enforce allowed model if set
-		if len(plan.Config.Chat.AllowedModels) > 0 {
-			allowed := slices.Contains(plan.Config.Chat.AllowedModels, cbot.Model)
+		if len(plan.Limits.ChatAllowedModels) > 0 {
+			allowed := slices.Contains(plan.Limits.ChatAllowedModels, cbot.Model)
 			if !allowed {
-				cbot.Model = plan.Config.Chat.AllowedModels[0]
+				cbot.Model = plan.Limits.ChatAllowedModels[0]
 			}
 		}
 	}
@@ -418,7 +421,7 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, time.Now(), oldThumbsUp, req.ThumbsUp)
+		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, oldThumbsUp, req.ThumbsUp)
 	}()
 
 	w.WriteHeader(http.StatusOK)
