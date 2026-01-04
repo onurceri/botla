@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/pkg/ratelimit"
+	"github.com/onurceri/botla-app/pkg/ratelimit"
 )
 
 func TestRateLimitMiddleware_EndpointOverride(t *testing.T) {

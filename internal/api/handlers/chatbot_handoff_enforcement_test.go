@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
@@ -40,7 +41,8 @@ func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
 		LanguageCode: "tr-TR",
 		Model:        "gpt-4o-mini",
 	}
-	botID, err := db.CreateChatbot(context.Background(), pool, bot)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	botID, err := chatbotRepo.Create(context.Background(), bot)
 	if err != nil {
 		t.Fatalf("create chatbot: %v", err)
 	}
@@ -48,7 +50,8 @@ func TestUpdateChatbot_HandoffForbidden_ForProPlan(t *testing.T) {
 	// Attempt to enable Handoff
 	h := &ChatbotHandlers{
 		DB:             pool,
-		ChatbotService: services.NewChatbotService(pool, nil),
+		ChatbotService: services.NewChatbotService(chatbotRepo, repository.NewPostgresPlanRepo(pool, nil), logger.New("info")),
+		ChatbotRepo:    chatbotRepo,
 	}
 	body := []byte(`{"handoff_enabled":true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))

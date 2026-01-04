@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 // TestMockChatbotRepo_InterfaceCompliance ensures MockChatbotRepo implements ChatbotRepository

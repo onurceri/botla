@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 // TestServiceLevelConstraints covers SVC-001 to SVC-010

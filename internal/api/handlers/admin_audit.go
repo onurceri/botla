@@ -1,20 +1,20 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"strconv"
+	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 type AdminAuditHandlers struct {
-	DB *sql.DB
+	AdminRepo repository.AdminRepository
 }
 
-func NewAdminAuditHandlers(database *sql.DB) *AdminAuditHandlers {
-	return &AdminAuditHandlers{DB: database}
+func NewAdminAuditHandlers(adminRepo repository.AdminRepository) *AdminAuditHandlers {
+	return &AdminAuditHandlers{AdminRepo: adminRepo}
 }
 
 // ListAuditLogs returns a paginated list of admin audit logs.
@@ -28,7 +28,7 @@ func (h *AdminAuditHandlers) ListAuditLogs(w http.ResponseWriter, r *http.Reques
 		offset = 0
 	}
 
-	filter := db.AuditFilter{}
+	filter := repository.AuditFilter{}
 	if adminID := r.URL.Query().Get("admin_user_id"); adminID != "" {
 		filter.AdminUserID = &adminID
 	}
@@ -38,8 +38,18 @@ func (h *AdminAuditHandlers) ListAuditLogs(w http.ResponseWriter, r *http.Reques
 	if targetType := r.URL.Query().Get("target_type"); targetType != "" {
 		filter.TargetType = &targetType
 	}
+	if startDateStr := r.URL.Query().Get("start_date"); startDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			filter.StartDate = &t
+		}
+	}
+	if endDateStr := r.URL.Query().Get("end_date"); endDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			filter.EndDate = &t
+		}
+	}
 
-	logs, total, err := db.ListAuditLogs(r.Context(), h.DB, filter, limit, offset)
+	logs, total, err := h.AdminRepo.ListAuditLogs(r.Context(), filter, limit, offset)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return

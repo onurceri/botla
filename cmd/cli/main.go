@@ -7,7 +7,7 @@ import (
 	"os"
 
 	_ "github.com/lib/pq"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 func main() {

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/langconfig"
 )
 
 // ErrorResponse is the standard error response format.

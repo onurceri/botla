@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestGetOnboardingState_Success(t *testing.T) {
@@ -30,7 +30,7 @@ func TestGetOnboardingState_Success(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	h := &OnboardingHandlers{DB: pool}
+	h := &OnboardingHandlers{DB: pool, UserRepo: repository.NewPostgresUserRepo(pool)}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/onboarding", nil)
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rr := httptest.NewRecorder()
@@ -69,7 +69,7 @@ func TestUpdateOnboardingState_Success(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	h := &OnboardingHandlers{DB: pool}
+	h := &OnboardingHandlers{DB: pool, UserRepo: repository.NewPostgresUserRepo(pool)}
 
 	// Update to step 2
 	reqBody := map[string]interface{}{
@@ -91,7 +91,7 @@ func TestUpdateOnboardingState_Success(t *testing.T) {
 	}
 
 	// Verify in DB
-	user, err := db.GetUserByID(context.Background(), pool, userID)
+	user, err := repository.NewPostgresUserRepo(pool).GetByID(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("get user: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestSkipOnboarding_Success(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	h := &OnboardingHandlers{DB: pool}
+	h := &OnboardingHandlers{DB: pool, UserRepo: repository.NewPostgresUserRepo(pool)}
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/onboarding/skip", nil)
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rr := httptest.NewRecorder()
@@ -130,7 +130,7 @@ func TestSkipOnboarding_Success(t *testing.T) {
 	}
 
 	// Verify in DB
-	user, err := db.GetUserByID(context.Background(), pool, userID)
+	user, err := repository.NewPostgresUserRepo(pool).GetByID(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("get user: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestCompleteOnboarding_Success(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	h := &OnboardingHandlers{DB: pool}
+	h := &OnboardingHandlers{DB: pool, UserRepo: repository.NewPostgresUserRepo(pool)}
 
 	reqBody := map[string]string{"bot_id": "bot-123"}
 	bodyBytes, _ := json.Marshal(reqBody)
@@ -169,7 +169,7 @@ func TestCompleteOnboarding_Success(t *testing.T) {
 	}
 
 	// Verify in DB
-	user, err := db.GetUserByID(context.Background(), pool, userID)
+	user, err := repository.NewPostgresUserRepo(pool).GetByID(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("get user: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestCompleteOnboarding_Success(t *testing.T) {
 
 func TestGetOnboardingState_Unauthorized(t *testing.T) {
 	pool := testdb.OpenTestDB(t)
-	h := &OnboardingHandlers{DB: pool}
+	h := &OnboardingHandlers{DB: pool, UserRepo: repository.NewPostgresUserRepo(pool)}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/onboarding", nil)
 	rr := httptest.NewRecorder()
 
@@ -212,7 +212,7 @@ func TestUpdateOnboardingState_InvalidJSON(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	h := &OnboardingHandlers{DB: pool}
+	h := &OnboardingHandlers{DB: pool, UserRepo: repository.NewPostgresUserRepo(pool)}
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/me/onboarding", bytes.NewReader([]byte("invalid json")))
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
 	rr := httptest.NewRecorder()

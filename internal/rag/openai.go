@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/config"
-	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/config"
+	pkgErrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 type OpenAIClient struct {

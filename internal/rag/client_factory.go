@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 // ClientFactory manages LLM client creation

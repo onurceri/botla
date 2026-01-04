@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,10 +24,11 @@ func setupTestHandler(t *testing.T) (*SuggestionsHandlers, *sql.DB) {
 	log := logger.New("info")
 
 	h := &SuggestionsHandlers{
-		DB:               dbConn,
-		Log:              log,
-		WorkspaceService: nil,
-		OrgService:       nil,
+		Log:               log,
+		WorkspaceService:  nil,
+		OrgService:        nil,
+		SuggestionJobRepo: repository.NewPostgresSuggestionJobRepo(dbConn),
+		ChatbotRepo:       repository.NewPostgresChatbotRepo(dbConn),
 	}
 
 	return h, dbConn
@@ -57,7 +58,7 @@ func TestRegenerateSuggestions_Success(t *testing.T) {
 
 	assert.NotEmpty(t, response.JobID)
 
-	job, err := db.GetSuggestionJob(ctx, dbConn, response.JobID)
+	job, err := h.SuggestionJobRepo.GetByID(ctx, response.JobID)
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 	assert.Equal(t, chatbotID, job.ChatbotID)
@@ -90,7 +91,7 @@ func TestGetSuggestionJobStatus_Success(t *testing.T) {
 	chatbotID := result.Chatbot.ID
 	userID := result.User.ID
 
-	job, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
+	job, err := h.SuggestionJobRepo.Create(ctx, chatbotID)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
@@ -152,11 +153,11 @@ func TestGetSuggestionJobStatus_WithSuggestions(t *testing.T) {
 	chatbotID := result.Chatbot.ID
 	userID := result.User.ID
 
-	job, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
+	job, err := h.SuggestionJobRepo.Create(ctx, chatbotID)
 	assert.NoError(t, err)
 
 	suggestions := []string{"Q1", "Q2", "Q3"}
-	err = db.CompleteSuggestionJob(ctx, dbConn, job.ID, suggestions)
+	err = h.SuggestionJobRepo.Complete(ctx, job.ID, suggestions)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
@@ -186,11 +187,11 @@ func TestGetSuggestionJobStatus_WithError(t *testing.T) {
 	chatbotID := result.Chatbot.ID
 	userID := result.User.ID
 
-	job, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
+	job, err := h.SuggestionJobRepo.Create(ctx, chatbotID)
 	assert.NoError(t, err)
 
 	errMsg := "test error"
-	err = db.FailSuggestionJob(ctx, dbConn, job.ID, errMsg)
+	err = h.SuggestionJobRepo.Fail(ctx, job.ID, errMsg)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
@@ -278,7 +279,7 @@ func TestGetSuggestionJobStatus_ReturnsJSON(t *testing.T) {
 	chatbotID := result.Chatbot.ID
 	userID := result.User.ID
 
-	_, err := db.CreateSuggestionJob(ctx, dbConn, chatbotID)
+	_, err := h.SuggestionJobRepo.Create(ctx, chatbotID)
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)

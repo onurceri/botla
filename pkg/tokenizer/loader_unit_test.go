@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/pkg/langconfig"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/langconfig"
+	"github.com/onurceri/botla-app/pkg/storage"
 )
 
 // mockStorageService is a mock implementation of storage.StorageService for testing.

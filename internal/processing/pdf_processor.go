@@ -2,24 +2,24 @@ package processing
 
 import (
 	"context"
-	"database/sql"
 	"io"
 	"os"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/pdf"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/text"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/pdf"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/text"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 )
 
 // PDFProcessor handles PDF source processing
 type PDFProcessor struct {
-	DB               *sql.DB
+	sourceRepo       repository.SourceRepository
+	usageRepo        repository.UsageRepository
 	Storage          storage.StorageService
 	OpenAIClient     rag.LLMClient
 	VectorClient     rag.VectorClient
@@ -29,14 +29,15 @@ type PDFProcessor struct {
 }
 
 // NewPDFProcessor creates a new PDFProcessor
-func NewPDFProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, loader *tokenizer.Loader) *PDFProcessor {
+func NewPDFProcessor(sourceRepo repository.SourceRepository, usageRepo repository.UsageRepository, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, loader *tokenizer.Loader) *PDFProcessor {
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
 		embSvc = rag.NewEmbeddingService(emb, vc, log)
 	}
 	return &PDFProcessor{
-		DB:               db,
+		sourceRepo:       sourceRepo,
+		usageRepo:        usageRepo,
 		Storage:          st,
 		OpenAIClient:     oai,
 		VectorClient:     vc,
@@ -83,8 +84,6 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		defer func() { _ = os.Remove(localPath) }()
 	}
 
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
-
 	// Step 2: Parse
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepParseContent, *lastStep) && models.StepParseContent != *lastStep) {
 		onStep(models.StepParseContent)
@@ -96,32 +95,21 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodePDFParseFailed}, FailedStep: models.StepParseContent}
 	}
 
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepParseContent, "")
 	if content == "" {
-		return ProcessResult{ChunkCount: 0}
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmptyContent}, FailedStep: models.StepParseContent}
 	}
-
-	content = text.NormalizeTR(content)
-
-	// Extract and persist metadata
-	maxQuestions := 0
-	if plan != nil && plan.Limits.ChatMaxSuggestedQuestions > 0 {
-		maxQuestions = plan.Limits.ChatMaxSuggestedQuestions
-	}
-	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 
 	// Step 3: Chunk
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepChunkText, *lastStep) && models.StepChunkText != *lastStep) {
 		onStep(models.StepChunkText)
 	}
 
-	// Chunk and embed
+	content = text.NormalizeTR(content)
 	rc, rerr := rag.ChunkText(p.Loader, content, 512, langCode)
 	if rerr != nil {
+		p.logWarn("pdf_chunking_failed", map[string]any{"error": rerr.Error()})
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
-
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
 
 	// Step 4: Embed
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepEmbedChunks, *lastStep) && models.StepEmbedChunks != *lastStep) {
@@ -132,11 +120,10 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
 	}
 
-	if err := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); err != nil {
+	if embedErr := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); embedErr != nil {
+		p.logWarn("pdf_embedding_failed", map[string]any{"error": embedErr.Error()})
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
-
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, "")
 
 	// Step 5: Store
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepStoreVectors, *lastStep) && models.StepStoreVectors != *lastStep) {
@@ -148,38 +135,19 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	for _, ch := range rc {
 		tokens += ch.TokenCount
 	}
-	_ = db.IncrementSuccessfulIngestion(ctx, p.DB, bot.UserID, time.Now(), 1)
-	_ = db.AddEmbeddingTokens(ctx, p.DB, bot.UserID, time.Now(), tokens)
+
+	now := time.Now()
+	_ = p.sourceRepo.UpdateSourceProcessing(ctx, s.ID, "completed", nil, len(rc), &now)
+
+	// Update usage statistics
+	if err := p.usageRepo.IncrementSuccessfulIngestion(ctx, bot.UserID, now, 1); err != nil {
+		p.logWarn("pdf_stats_increment_failed", map[string]any{"error": err.Error()})
+	}
+	if err := p.usageRepo.AddEmbeddingTokens(ctx, bot.UserID, now, tokens); err != nil {
+		p.logWarn("pdf_stats_tokens_failed", map[string]any{"error": err.Error()})
+	}
 
 	return ProcessResult{ChunkCount: len(rc)}
-}
-
-// persistIngestionMetadata extracts and saves metadata for the source
-func (p *PDFProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource, maxQuestions int) {
-	meta, err := rag.ExtractIngestionMetadata(ctx, p.OpenAIClient, content, langCode, maxQuestions)
-	if err != nil {
-		p.logWarn("extract_metadata_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
-		return
-	}
-
-	if len(meta.SuggestedQuestions) == 0 {
-		p.logWarn("extract_metadata_empty_questions", map[string]any{"source_id": s.ID})
-	} else {
-		p.logInfo("extract_metadata_success", map[string]any{
-			"source_id":       s.ID,
-			"questions_count": len(meta.SuggestedQuestions),
-			"questions":       meta.SuggestedQuestions,
-		})
-	}
-
-	if err := db.UpdateSourceCapability(ctx, p.DB, s.ID, meta.CapabilitySummary); err != nil {
-		p.logWarn("update_source_capability_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
-	}
-	if err := db.UpdateSourceSuggestions(ctx, p.DB, s.ID, meta.SuggestedQuestions); err != nil {
-		p.logWarn("update_source_suggestions_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
-	}
-
-	go AggregateAndPersistChatbotSuggestions(ctx, p.DB, s.ChatbotID, p.Log)
 }
 
 func (p *PDFProcessor) logInfo(event string, data map[string]any) {

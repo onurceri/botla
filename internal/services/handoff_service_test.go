@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/langconfig"
 )
 
 // TestBuildHandoffEmailBody verifies HND-004 (Turkish template) and HND-005 (Conversation history)

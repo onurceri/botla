@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/gen2brain/go-fitz"
-	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-app/internal/scraper"
 	hn "golang.org/x/net/html"
 )
 

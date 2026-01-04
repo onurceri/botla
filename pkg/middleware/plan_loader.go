@@ -1,16 +1,15 @@
 package middleware
 
 import (
-	"database/sql"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // PlanLoaderMiddleware loads the user's plan and stores it in the request context
 // This middleware should run AFTER AuthMiddleware so the user ID is available
-func PlanLoaderMiddleware(database *sql.DB, log *logger.Logger) func(http.Handler) http.Handler {
+func PlanLoaderMiddleware(planRepo repository.PlanRepository, log *logger.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -24,7 +23,7 @@ func PlanLoaderMiddleware(database *sql.DB, log *logger.Logger) func(http.Handle
 			}
 
 			// Fetch the user's plan from database
-			plan, err := db.GetPlanByUserID(ctx, database, userID)
+			plan, err := planRepo.GetByUserID(ctx, userID)
 			if err != nil {
 				log.Error("failed_to_load_plan", map[string]any{
 					"error":   err.Error(),

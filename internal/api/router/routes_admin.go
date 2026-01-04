@@ -3,9 +3,9 @@ package router
 import (
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api/guards"
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	pkgMiddleware "github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api/guards"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	pkgMiddleware "github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *handlers.AdminHealthHandlers, aqh *handlers.AdminQueueHandlers, aeh *handlers.AdminErrorHandlers, aah *handlers.AdminAuditHandlers, aph *handlers.PrivacyHandlers, ach *handlers.AdminChatbotHandlers, ash *handlers.AdminSourceHandlers, secret string) {

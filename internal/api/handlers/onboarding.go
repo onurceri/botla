@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type OnboardingHandlers struct {
-	DB *sql.DB
+	DB       *sql.DB
+	UserRepo repository.UserRepository
 }
 
 // GetOnboardingState handles GET /api/v1/me/onboarding
@@ -22,7 +23,7 @@ func (h *OnboardingHandlers) GetOnboardingState(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	user, err := db.GetUserByID(r.Context(), h.DB, userID)
+	user, err := h.UserRepo.GetByID(r.Context(), userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -69,7 +70,7 @@ func (h *OnboardingHandlers) UpdateOnboardingState(w http.ResponseWriter, r *htt
 		req.Data = &models.OnboardingData{}
 	}
 
-	if err := db.UpdateOnboardingState(r.Context(), h.DB, userID, req.Step, req.Data); err != nil {
+	if err := h.UserRepo.UpdateOnboardingState(r.Context(), userID, req.Step, req.Data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -85,7 +86,7 @@ func (h *OnboardingHandlers) SkipOnboarding(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := db.SkipOnboarding(r.Context(), h.DB, userID); err != nil {
+	if err := h.UserRepo.SkipOnboarding(r.Context(), userID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -109,7 +110,7 @@ func (h *OnboardingHandlers) CompleteOnboarding(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := db.CompleteOnboarding(r.Context(), h.DB, userID, req.BotID); err != nil {
+	if err := h.UserRepo.CompleteOnboarding(r.Context(), userID, req.BotID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

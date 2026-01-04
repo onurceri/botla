@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/models"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // checkIngestionQuota validates monthly ingestion quota
@@ -23,7 +22,7 @@ func (h *SourcesHandlers) checkIngestionQuota(r *http.Request, userID string, pl
 
 // getAvailableIngestionCount returns how many more ingestions the user can perform this month
 func (h *SourcesHandlers) getAvailableIngestionCount(r *http.Request, userID string, plan *models.Plan) int {
-	usedSources, _, _ := db.GetMonthlyIngestionUsage(r.Context(), h.DB, userID, time.Now())
+	usedSources, _, _ := h.UsageRepo.GetMonthlyIngestionUsage(r.Context(), userID, time.Now())
 	maxIngest := plan.Limits.MaxMonthlyIngestions
 	if maxIngest <= 0 {
 		maxIngest = 50
@@ -37,7 +36,7 @@ func (h *SourcesHandlers) getAvailableIngestionCount(r *http.Request, userID str
 // persistAndEnqueueInternal saves the data source to database and enqueues for processing without writing response
 func (h *SourcesHandlers) persistAndEnqueueInternal(r *http.Request, ds *models.DataSource) (string, error) {
 	ctx := r.Context()
-	newID, err := db.CreateDataSource(ctx, h.DB, ds)
+	newID, err := h.SourceRepo.Create(ctx, ds)
 	if err != nil {
 		h.logError("source_create_error", map[string]any{"error": err.Error(), "chatbot_id": ds.ChatbotID, "source_type": ds.SourceType})
 		return "", pkgerrors.Wrapf(err, "create data source")
@@ -51,7 +50,7 @@ func (h *SourcesHandlers) persistAndEnqueueInternal(r *http.Request, ds *models.
 			})
 			// Source is created, job failed to enqueue - mark source as failed
 			msg := "queue_failed"
-			_ = db.UpdateSourceProcessing(ctx, h.DB, newID, "failed", &msg, 0, nil)
+			_ = h.SourceRepo.UpdateSourceProcessing(ctx, newID, "failed", &msg, 0, nil)
 		}
 	}
 	return newID, nil
@@ -76,7 +75,7 @@ func (h *SourcesHandlers) checkCooldown(r *http.Request, lastActionTime *time.Ti
 func (h *SourcesHandlers) checkStorageQuota(r *http.Request, userID string, sizeBytes int, plan *models.Plan) error {
 	limitMB := plan.Limits.FilesTotalStorageMB
 	if limitMB > 0 {
-		usedMB, _ := db.GetStorageUsedMBByUserID(r.Context(), h.DB, userID)
+		usedMB, _ := h.UsageRepo.GetStorageUsedMBByUserID(r.Context(), userID)
 		newMB := sizeBytes / (1 << 20)
 		if usedMB+newMB > limitMB {
 			return &quotaError{"Total storage limit exceeded"}

@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
@@ -36,16 +37,18 @@ func TestUpdateChatbot_AutoRefreshForbidden_ForFreePlan(t *testing.T) {
 		LanguageCode: "tr-TR",
 		Model:        "gpt-4o-mini",
 	}
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
 	var botID string
 	var err error
-	botID, err = db.CreateChatbot(context.Background(), pool, bot)
+	botID, err = chatbotRepo.Create(context.Background(), bot)
 	if err != nil {
 		t.Fatalf("create chatbot: %v", err)
 	}
 
 	h := &ChatbotHandlers{
 		DB:             pool,
-		ChatbotService: services.NewChatbotService(pool, nil),
+		ChatbotService: services.NewChatbotService(chatbotRepo, repository.NewPostgresPlanRepo(pool, nil), logger.New("info")),
+		ChatbotRepo:    chatbotRepo,
 	}
 	body := []byte(`{"refresh_policy":"auto","refresh_frequency":"weekly"}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))
@@ -81,16 +84,18 @@ func TestUpdateChatbot_SecureEmbedForbidden_ForFreePlan(t *testing.T) {
 		LanguageCode: "tr-TR",
 		Model:        "gpt-4o-mini",
 	}
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
 	var botID string
 	var err error
-	botID, err = db.CreateChatbot(context.Background(), pool, bot)
+	botID, err = chatbotRepo.Create(context.Background(), bot)
 	if err != nil {
 		t.Fatalf("create chatbot: %v", err)
 	}
 
 	h := &ChatbotHandlers{
 		DB:             pool,
-		ChatbotService: services.NewChatbotService(pool, nil),
+		ChatbotService: services.NewChatbotService(chatbotRepo, repository.NewPostgresPlanRepo(pool, nil), logger.New("info")),
+		ChatbotRepo:    chatbotRepo,
 	}
 	body := []byte(`{"secure_embed_enabled": true}`)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/chatbots/"+botID, bytes.NewReader(body))

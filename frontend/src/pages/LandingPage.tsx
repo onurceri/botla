@@ -5,7 +5,6 @@ import {
   Bot,
   Zap,
   ShieldCheck,
-  Globe,
   Database,
   ArrowRight,
   CheckCircle2,
@@ -14,18 +13,34 @@ import {
   Sparkles,
   MessagesSquare,
   Search,
+  BarChart3,
+  Lock,
+  Palette,
+  Headphones,
+  Building2,
+  ShoppingCart,
+  Code2,
+  BookOpen,
+  Play,
+  ChevronRight,
+  Shield,
+  Key,
+  Eye,
+  Activity,
+  Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
 import { cn } from '@/lib/utils'
 import { usePlans } from '@/hooks/queries/usePlans'
+import { landing } from '@/i18n/landing'
 
-// --- Components ---
+const t = landing
 
 // --- Premium Visual Primitives ---
 
 const Noise = () => (
-  <div className="fixed inset-0 w-full h-full pointer-events-none opacity-[0.03] z-[100] mix-blend-overlay">
+  <div className="fixed inset-0 w-full h-full pointer-events-none opacity-[0.02] z-[100] mix-blend-overlay">
     <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <filter id="noise">
         <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
@@ -47,11 +62,13 @@ const MouseHighlight = () => {
     <div 
       className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300"
       style={{
-        background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(245, 158, 11, 0.06), transparent 80%)`
+        background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(245, 158, 11, 0.04), transparent 80%)`
       }}
     />
   )
 }
+
+// --- Navbar ---
 
 const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -66,10 +83,11 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   }, [])
 
   const links = [
-    { name: 'Özellikler', href: '#features' },
-    { name: 'Nasıl Çalışır?', href: '#how-it-works' },
-    { name: 'Fiyatlandırma', href: '#pricing' },
-    { name: 'SSS', href: '#faq' },
+    { name: t.nav.features, href: '#features' },
+    { name: t.nav.useCases, href: '#use-cases' },
+    { name: t.nav.howItWorks, href: '#how-it-works' },
+    { name: t.nav.pricing, href: '#pricing' },
+    { name: t.nav.faq, href: '#faq' },
   ]
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -113,7 +131,7 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
           </div>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border/40">
+          <div className="hidden lg:flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border/40">
             {links.map((link) => (
               <a
                 key={link.name}
@@ -126,27 +144,27 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             {authenticated ? (
               <Link to="/dashboard">
-                <Button className="rounded-full px-6 font-semibold shadow-sm">Dashboard</Button>
+                <Button className="rounded-full px-6 font-semibold shadow-sm">{t.nav.dashboard}</Button>
               </Link>
             ) : (
               <>
                 <Link to="/login">
                   <Button variant="ghost" className="rounded-full px-6 font-medium text-muted-foreground hover:text-foreground">
-                    Giriş Yap
+                    {t.nav.login}
                   </Button>
                 </Link>
                 <Link to="/register">
-                  <Button className="rounded-full px-6 font-semibold shadow-glow transition-all hover:scale-105">Ücretsiz Dene</Button>
+                  <Button className="rounded-full px-6 font-semibold shadow-glow transition-all hover:scale-105">{t.nav.register}</Button>
                 </Link>
               </>
             )}
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <button onClick={() => setIsOpen(!isOpen)} className="text-foreground p-2 rounded-full hover:bg-muted transition-colors">
               {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -161,7 +179,7 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            className="md:hidden fixed top-[80px] inset-x-4 glass p-8 rounded-3xl shadow-xl z-50 border border-white/20"
+            className="lg:hidden fixed top-[80px] inset-x-4 glass p-8 rounded-3xl shadow-xl z-50 border border-white/20"
           >
             <div className="space-y-6">
               {links.map((link) => (
@@ -178,17 +196,17 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
               <div className="flex flex-col gap-4">
                 {authenticated ? (
                   <Link to="/dashboard" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full h-14 rounded-2xl text-lg">Dashboard'a Git</Button>
+                    <Button className="w-full h-14 rounded-2xl text-lg">{t.nav.goToDashboard}</Button>
                   </Link>
                 ) : (
                   <>
                     <Link to="/login" onClick={() => setIsOpen(false)}>
                       <Button variant="outline" className="w-full h-14 rounded-2xl text-lg border-border/40">
-                        Giriş Yap
+                        {t.nav.login}
                       </Button>
                     </Link>
                     <Link to="/register" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full h-14 rounded-2xl text-lg shadow-glow">Ücretsiz Dene</Button>
+                      <Button className="w-full h-14 rounded-2xl text-lg shadow-glow">{t.nav.register}</Button>
                     </Link>
                   </>
                 )}
@@ -201,309 +219,582 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   )
 }
 
-const Hero = ({ authenticated }: { authenticated: boolean }) => {
-  const [heroSrc, setHeroSrc] = useState('/assets/landing-hero.png')
-  const [useVideo, setUseVideo] = useState(true)
+// --- Hero Section ---
 
+const Hero = ({ authenticated }: { authenticated: boolean }) => {
   return (
-    <section className="relative pt-32 pb-24 lg:pt-56 lg:pb-40 overflow-hidden">
-      {/* Refractive Intelligence Orb */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10 pointer-events-none sticky">
-        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/15 blur-[180px] rounded-full animate-pulse" />
-        <div className="absolute top-[10%] left-[40%] w-[400px] h-[400px] bg-orange-600/10 blur-[140px] rounded-full animate-bounce" style={{ animationDuration: '8s' }} />
+    <section className="relative pt-32 pb-24 lg:pt-48 lg:pb-32 overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10 pointer-events-none">
+        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 blur-[150px] rounded-full animate-pulse" />
+        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] bg-orange-600/5 blur-[100px] rounded-full animate-bounce" style={{ animationDuration: '8s' }} />
       </div>
 
-      {/* Floating Data Markers */}
-      <div className="absolute inset-0 -z-5 pointer-events-none overflow-hidden opacity-20">
-        {[...Array(6)].map((_, i) => (
+      {/* Floating Elements */}
+      <div className="absolute inset-0 -z-5 pointer-events-none overflow-hidden opacity-15">
+        {[...Array(5)].map((_, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, scale: 0 }}
             animate={{ 
               opacity: [0, 1, 0], 
               scale: [0.5, 1, 0.5],
-              y: [0, -100, 0],
-              x: [0, Math.sin(i) * 50, 0]
+              y: [0, -80, 0],
             }}
-            transition={{ duration: 10 + i * 2, repeat: Infinity, delay: i * 1.5 }}
+            transition={{ duration: 8 + i * 2, repeat: Infinity, delay: i * 1.5 }}
             className="absolute rounded-full border border-primary/20 bg-primary/5 flex items-center justify-center p-2"
             style={{ 
-              top: `${20 + i * 12}%`, 
-              left: `${15 + i * 14}%`,
+              top: `${25 + i * 12}%`, 
+              left: `${10 + i * 16}%`,
             }}
           >
-            <div className="w-1 h-1 rounded-full bg-primary" />
+            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
           </motion.div>
         ))}
       </div>
 
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative">
-        <div className="flex flex-col items-center text-center max-w-5xl mx-auto mb-20 px-4">
+        <div className="flex flex-col items-center text-center max-w-5xl mx-auto">
+          {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-3 px-5 py-2 rounded-full glass border border-white/30 text-foreground text-xs font-bold uppercase tracking-widest mb-10 shadow-xl shadow-primary/5"
+            className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full glass border border-white/30 text-foreground text-xs font-bold uppercase tracking-widest mb-10 shadow-xl shadow-primary/5"
           >
             <div className="flex -space-x-2">
-              <div className="w-6 h-6 rounded-full border-2 border-background bg-red-400" />
-              <div className="w-6 h-6 rounded-full border-2 border-background bg-blue-400" />
-              <div className="w-6 h-6 rounded-full border-2 border-background bg-primary" />
+              <div className="w-5 h-5 rounded-full border-2 border-background bg-emerald-400" />
+              <div className="w-5 h-5 rounded-full border-2 border-background bg-primary" />
+              <div className="w-5 h-5 rounded-full border-2 border-background bg-violet-400" />
             </div>
-            <span className="opacity-80">GPT-4o & GPT-4o Mini Destekli</span>
-            <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
+            <span className="opacity-80">{t.hero.badge}</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-emerald-500 text-[10px]">{t.hero.badgeLive}</span>
+            </div>
           </motion.div>
 
+          {/* Title */}
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="text-6xl sm:text-7xl lg:text-9xl font-bold tracking-tight text-foreground mb-10 leading-[0.95]"
+            className="text-5xl sm:text-6xl lg:text-8xl font-bold tracking-tight text-foreground mb-8 leading-[1.05]"
           >
-            Pasif Veriyi <br />
+            {t.hero.title.line1} <br />
             <span className="relative inline-block">
-              <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-b from-primary via-primary to-orange-700">
-                Aktif Akla
+              <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-primary via-orange-500 to-primary">
+                {t.hero.title.highlight}
               </span>
-              <svg className="absolute -bottom-2 left-0 w-full h-4 text-primary/20 -z-1" viewBox="0 0 400 20" fill="none">
-                <path d="M5 15C100 5 300 5 395 15" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
-              </svg>
             </span>
-            <br /> Dönüştürün.
+            <br />{t.hero.title.line2}
           </motion.h1>
 
+          {/* Subtitle */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="text-xl sm:text-2xl text-muted-foreground/80 mb-14 max-w-3xl leading-relaxed font-medium"
+            className="text-lg sm:text-xl text-muted-foreground/80 mb-12 max-w-3xl leading-relaxed"
           >
-            Statik dokümanlarınızı saniyeler içinde yaşayan bir şirket hafızasına dönüştürün. 
-            Botla.app ile yapay zeka, sadece cevap vermez; işinizi sizinle birlikte yönetir.
+            {t.hero.subtitle}
           </motion.p>
 
+          {/* CTA Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 1 }}
-            className="flex flex-col sm:flex-row gap-6 items-center"
+            className="flex flex-col sm:flex-row gap-4 items-center mb-16"
           >
             <Link to={authenticated ? "/dashboard" : "/register"}>
-              <Button size="lg" className="h-16 px-12 text-xl font-bold rounded-2xl shadow-glow group hover:scale-105 transition-all">
-                {authenticated ? "Dashboard'a Dön" : "Ücretsiz Eğitime Başla"}
-                <ArrowRight className="ml-3 w-6 h-6 transition-transform group-hover:translate-x-2" />
+              <Button size="lg" className="h-14 px-10 text-lg font-bold rounded-2xl shadow-glow group hover:scale-105 transition-all">
+                {authenticated ? t.hero.cta.primaryAuth : t.hero.cta.primary}
+                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <a href="#features">
+            <a href="#how-it-works">
               <Button
                 variant="outline"
                 size="lg"
-                className="h-16 px-12 text-xl font-bold rounded-2xl border-border/40 hover:bg-muted/50 transition-all"
+                className="h-14 px-10 text-lg font-medium rounded-2xl border-border/40 hover:bg-muted/50 transition-all group"
               >
-                Yetenekleri Keşfet
+                <Play className="mr-2 w-5 h-5 text-primary" />
+                {t.hero.cta.secondary}
               </Button>
             </a>
           </motion.div>
+
+          {/* Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 1 }}
+            className="grid grid-cols-3 gap-8 sm:gap-16 pt-8 border-t border-border/30"
+          >
+            <div className="text-center">
+              <div className="text-3xl sm:text-4xl font-bold text-foreground mb-1">{t.hero.stats.sourcesValue}</div>
+              <div className="text-sm text-muted-foreground">{t.hero.stats.sources}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl sm:text-4xl font-bold text-primary mb-1">{t.hero.stats.securityValue}</div>
+              <div className="text-sm text-muted-foreground">{t.hero.stats.security}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl sm:text-4xl font-bold text-foreground mb-1">{t.hero.stats.languagesValue}</div>
+              <div className="text-sm text-muted-foreground">{t.hero.stats.languages}</div>
+            </div>
+          </motion.div>
         </div>
 
+        {/* Chat Widget Demo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.98, y: 60 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-w-6xl mx-auto group"
+          transition={{ delay: 0.5, duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="relative max-w-lg mx-auto mt-16 group"
         >
-          {/* Edge Glow Effect */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-orange-500/10 to-primary/20 rounded-[3rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+          <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-orange-500/10 to-primary/20 rounded-[3rem] blur-3xl opacity-50 group-hover:opacity-80 transition-opacity duration-1000" />
           
-          <div className="glass shadow-[0_0_100px_rgba(245,158,11,0.1)] rounded-[3rem] p-4 border border-white/40 backdrop-blur-3xl relative overflow-hidden">
-            {/* Glossy Overlay */}
-            <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-            
-            <div className="relative rounded-[2.5rem] overflow-hidden bg-card border border-border/40 aspect-[16/10]">
-              {useVideo ? (
-                <video
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-[1.02]"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
-                  poster={heroSrc}
-                  onError={() => setUseVideo(false)}
-                >
-                  <source src="/assets/landing_hero.mp4" type="video/mp4" />
-                </video>
-              ) : (
-                <img
-                  src={heroSrc}
-                  alt="Executive Dashboard"
-                  className="w-full h-full object-cover"
-                  onError={() => setHeroSrc('/assets/landing-hero-final.png')}
-                />
-              )}
+          {/* Chat Widget Container */}
+          <div className="relative rounded-3xl shadow-2xl shadow-primary/20 overflow-hidden border border-border/50 bg-card">
+            {/* Widget Header */}
+            <div className="bg-gradient-to-r from-primary to-orange-500 px-6 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="text-white font-semibold text-sm">Müşteri Asistanı</div>
+                <div className="text-white/70 text-xs flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Çevrimiçi
+                </div>
+              </div>
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
+                <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="p-5 space-y-4 bg-gradient-to-b from-muted/30 to-background min-h-[320px]">
+              {/* Bot Welcome */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="flex gap-3"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="w-4 h-4 text-primary" />
+                </div>
+                <div className="bg-card rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-border/50 max-w-[85%]">
+                  <p className="text-sm text-foreground">
+                    Merhaba! 👋 Size nasıl yardımcı olabilirim?
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* User Question */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.5 }}
+                className="flex gap-3 justify-end"
+              >
+                <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-md px-4 py-3 shadow-sm max-w-[85%]">
+                  <p className="text-sm">Kargo takip numaram nedir?</p>
+                </div>
+              </motion.div>
+
+              {/* Bot Response with Typing Animation */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 2.2 }}
+                className="flex gap-3"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="w-4 h-4 text-primary" />
+                </div>
+                <div className="bg-card rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-border/50 max-w-[85%]">
+                  <p className="text-sm text-foreground">
+                    Siparişinizin kargo takip numarası: <span className="font-mono font-semibold text-primary">TR1234567890</span>
+                  </p>
+                  <p className="text-sm text-foreground mt-2">
+                    📦 Kargo şu an <span className="font-medium">dağıtımda</span> - Bugün teslim edilecek.
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* Suggestions */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 2.8 }}
+                className="flex gap-2 flex-wrap pt-2"
+              >
+                {['İade nasıl yapılır?', 'Ödeme seçenekleri', 'İletişim'].map((suggestion) => (
+                  <span
+                    key={suggestion}
+                    className="px-3 py-1.5 text-xs font-medium bg-primary/5 text-primary border border-primary/20 rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
+                  >
+                    {suggestion}
+                  </span>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* Input Area */}
+            <div className="px-4 py-3 border-t border-border/50 bg-card">
+              <div className="flex items-center gap-2 bg-muted/50 rounded-xl px-4 py-2.5">
+                <span className="text-sm text-muted-foreground flex-1">Mesajınızı yazın...</span>
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <ArrowRight className="w-4 h-4 text-primary-foreground" />
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Decorative elements */}
+          <div className="absolute -right-8 top-1/4 w-16 h-16 bg-primary/10 rounded-full blur-2xl" />
+          <div className="absolute -left-8 bottom-1/4 w-20 h-20 bg-orange-500/10 rounded-full blur-2xl" />
         </motion.div>
       </div>
     </section>
   )
 }
 
-const BentoCard = ({ icon: Icon, title, desc, className, delay, href }: any) => {
-  const CardContent = (
-    <>
-      {/* Refractive Edge Highlight */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
-      </div>
+// --- Features Section ---
 
-      <div className="h-full flex flex-col items-start gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-          <Icon className="w-7 h-7 text-primary" />
-        </div>
-        <div>
-          <h3 className="text-2xl font-bold mb-3 tracking-tight">{title}</h3>
-          <p className="text-muted-foreground/80 leading-relaxed text-sm md:text-base">{desc}</p>
-        </div>
-        <div className="mt-auto opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-          <span className="text-primary font-bold text-sm flex items-center gap-1">
-            Detayları Gör <ArrowRight className="w-4 h-4" />
-          </span>
-        </div>
-      </div>
-    </>
-  )
+const Badge = ({ children }: { children: React.ReactNode }) => (
+  <span className="inline-flex items-center rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary tracking-widest uppercase ring-1 ring-inset ring-primary/20 shadow-sm shadow-primary/5">
+    {children}
+  </span>
+)
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true }}
-      transition={{ delay, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className={cn(
-        "group relative overflow-hidden rounded-[2.5rem] bg-card border border-border/50 p-8 hover:border-primary/40 transition-all duration-500",
-        href && "cursor-pointer",
-        className
-      )}
-    >
-      {href ? (
-        <a href={href} className="absolute inset-0 z-10 p-8">
-          {CardContent}
-        </a>
-      ) : CardContent}
-    </motion.div>
-  )
-}
+const FeatureCard = ({ icon: Icon, title, description, delay, gradient }: {
+  icon: React.ElementType
+  title: string
+  description: string
+  delay: number
+  gradient?: boolean
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ delay, duration: 0.6 }}
+    className={cn(
+      "group relative overflow-hidden rounded-3xl bg-card border border-border/50 p-8 hover:border-primary/40 transition-all duration-500",
+      gradient && "bg-gradient-to-br from-card to-primary/5"
+    )}
+  >
+    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+    </div>
+
+    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+      <Icon className="w-6 h-6 text-primary" />
+    </div>
+    <h3 className="text-xl font-bold mb-3 tracking-tight">{title}</h3>
+    <p className="text-muted-foreground/80 leading-relaxed text-sm">{description}</p>
+  </motion.div>
+)
 
 const Features = () => {
+  const features = [
+    { icon: Search, ...t.features.items.rag, gradient: true },
+    { icon: Database, ...t.features.items.sources },
+    { icon: Palette, ...t.features.items.widget },
+    { icon: Zap, ...t.features.items.actions },
+    { icon: ShieldCheck, ...t.features.items.guardrails, gradient: true },
+    { icon: BarChart3, ...t.features.items.analytics },
+    { icon: Headphones, ...t.features.items.handoff },
+    { icon: Building2, ...t.features.items.multiTenant },
+  ]
+
   return (
     <section id="features" className="py-32 bg-secondary/30 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="max-w-3xl mb-24">
-          <Badge>Teknoloji</Badge>
-          <h2 className="text-5xl md:text-7xl font-bold mt-6 mb-8 tracking-tight">
-            Hiper-Akıllı Bir <br />
-            <span className="text-primary">Ekosistem.</span>
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <Badge>{t.features.badge}</Badge>
+          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
+            {t.features.title} <span className="text-primary">{t.features.titleHighlight}</span>
           </h2>
-          <p className="text-xl text-muted-foreground leading-relaxed">
-            Statik veriyi dinamik bir asistanın ötesine taşıyan, her sektör için özelleştirilmiş 
-            akıllı araçlar bütünü.
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            {t.features.subtitle}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 h-auto md:h-[900px]">
-          <BentoCard 
-            delay={0.1}
-            href="#how-it-works"
-            icon={Database}
-            title="Geniş Bilgi Dağarcığı"
-            desc="Dokümanlarınızı, web sitenizi ve metin verilerinizi saniyeler içinde analiz edip tek bir akıllı bilgi tabanında toplar."
-            className="md:col-span-3 md:row-span-2 bg-gradient-to-br from-card to-primary/5"
-          />
-          <BentoCard 
-            delay={0.2}
-            href="#how-it-works"
-            icon={Zap}
-            title="Yüksek Performans"
-            desc="Optimize edilmiş RAG altyapısı ile karmaşık sorulara saniyeler içinde doğru ve bağlam odaklı yanıtlar üretir."
-            className="md:col-span-3 md:row-span-1"
-          />
-          <BentoCard 
-            delay={0.3}
-            href="#how-it-works"
-            icon={ShieldCheck}
-            title="Akıllı Denetim"
-            desc="Guardrails sayesinde botunuzun hedeften sapmasını ve hatalı bilgi üretmesini kontrol altında tutarsınız."
-            className="md:col-span-3 md:row-span-2"
-          />
-          <BentoCard 
-            delay={0.4}
-            href="#faq"
-            icon={Globe}
-            title="Gelişmiş Dil Yeteneği"
-            desc="Yapay zekanın doğal dil işleme gücüyle onlarca dilde akıcı ve anlamlı kullanıcı etkileşimi sağlar."
-            className="md:col-span-3 md:row-span-1"
-          />
-          <BentoCard 
-            delay={0.5}
-            href="#pricing"
-            icon={Search}
-            title="Veriye Dayalı Analiz"
-            desc="Konuşmaları madencilik yaparak kullanıcılarınızın beklentilerini ve bot performansını raporlar."
-            className="md:col-span-6 md:row-span-1 border-primary/20 bg-primary/5"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {features.map((feature, i) => (
+            <FeatureCard
+              key={feature.title}
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+              delay={i * 0.1}
+              gradient={feature.gradient}
+            />
+          ))}
         </div>
       </div>
     </section>
   )
 }
 
-const PricingCard = ({ title, price, features, recommended, cta }: any) => (
+// --- Use Cases Section ---
+
+const UseCaseCard = ({ icon: Icon, title, description, features, delay }: {
+  icon: React.ElementType
+  title: string
+  description: string
+  features: string[]
+  delay: number
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ delay, duration: 0.6 }}
+    className="group relative rounded-3xl bg-card border border-border/50 p-8 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500"
+  >
+    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+      <Icon className="w-7 h-7 text-primary" />
+    </div>
+    <h3 className="text-2xl font-bold mb-3 tracking-tight">{title}</h3>
+    <p className="text-muted-foreground leading-relaxed mb-6">{description}</p>
+    <div className="flex flex-wrap gap-2">
+      {features.map((feature) => (
+        <span
+          key={feature}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-medium border border-primary/10"
+        >
+          <CheckCircle2 className="w-3 h-3" />
+          {feature}
+        </span>
+      ))}
+    </div>
+  </motion.div>
+)
+
+const UseCases = () => {
+  const cases = [
+    { icon: ShoppingCart, ...t.useCases.items.ecommerce },
+    { icon: Code2, ...t.useCases.items.saas },
+    { icon: Headphones, ...t.useCases.items.support },
+    { icon: BookOpen, ...t.useCases.items.internal },
+  ]
+
+  return (
+    <section id="use-cases" className="py-32 bg-background relative overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <Badge>{t.useCases.badge}</Badge>
+          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
+            {t.useCases.title} <span className="text-primary">{t.useCases.titleHighlight}</span>
+          </h2>
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            {t.useCases.subtitle}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {cases.map((useCase, i) => (
+            <UseCaseCard
+              key={useCase.title}
+              icon={useCase.icon}
+              title={useCase.title}
+              description={useCase.description}
+              features={useCase.features}
+              delay={i * 0.15}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// --- How It Works Section ---
+
+const HowItWorks = () => {
+  const [activeStep, setActiveStep] = useState(0)
+  const steps = [
+    { ...t.howItWorks.steps.step1, icon: Database },
+    { ...t.howItWorks.steps.step2, icon: ShieldCheck },
+    { ...t.howItWorks.steps.step3, icon: MessagesSquare },
+  ]
+
+  const active = steps[activeStep]
+  const ActiveIcon = active.icon
+
+  return (
+    <section id="how-it-works" className="scroll-mt-24 py-32 bg-secondary/20 relative overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <Badge>{t.howItWorks.badge}</Badge>
+          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
+            {t.howItWorks.title} <span className="text-primary">{t.howItWorks.titleHighlight}</span>
+          </h2>
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            {t.howItWorks.subtitle}
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-12 gap-12 items-start">
+          <div className="lg:col-span-5 space-y-4">
+            {steps.map((step, i) => {
+              const isActive = i === activeStep
+              const Icon = step.icon
+              return (
+                <button
+                  key={step.number}
+                  type="button"
+                  onClick={() => setActiveStep(i)}
+                  onMouseEnter={() => setActiveStep(i)}
+                  className={cn(
+                    "w-full text-left relative rounded-[2rem] border transition-all duration-300 p-6 sm:p-8",
+                    isActive 
+                      ? "border-primary/40 bg-card shadow-xl shadow-primary/5 -translate-x-2" 
+                      : "border-border/40 bg-card/40 hover:bg-card hover:border-border"
+                  )}
+                >
+                  <div className="flex items-start gap-5">
+                    <div
+                      className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-300 shrink-0",
+                        isActive 
+                          ? "bg-primary text-primary-foreground border-primary shadow-glow" 
+                          : "bg-muted text-muted-foreground border-border"
+                      )}
+                    >
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <div className="font-bold text-lg text-foreground">{step.title}</div>
+                        <div className={cn("text-sm font-bold opacity-30 tracking-widest", isActive && "text-primary opacity-100")}>
+                          {step.number}
+                        </div>
+                      </div>
+                      <div className="text-muted-foreground text-sm leading-relaxed">
+                        {step.description}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="lg:col-span-7 lg:sticky lg:top-32">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="rounded-[2.5rem] glass shadow-2xl p-8 sm:p-10 border border-white/30"
+              >
+                <div className="flex items-center gap-5 mb-8">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                    <ActiveIcon className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-primary uppercase tracking-[0.2em]">Adım {active.number}</div>
+                    <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{active.title}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-8">
+                  {active.bullets.map((bullet: string) => (
+                    <div
+                      key={bullet}
+                      className="rounded-2xl border border-border/40 bg-background/50 px-5 py-4 flex items-center gap-3 text-sm font-medium text-foreground transition-all hover:bg-background hover:border-primary/30"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                      {bullet}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-2xl bg-primary/5 p-5 border border-primary/10">
+                  <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Profesyonel İpucu
+                  </div>
+                  <div className="text-muted-foreground text-sm leading-relaxed">
+                    {active.tip}
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// --- Pricing Section ---
+
+const PricingCard = ({ title, price, features, recommended, cta, description }: {
+  title: string
+  price: string
+  features: { text: string; included: boolean }[]
+  recommended?: boolean
+  cta: { text: string; href: string }
+  description?: string
+}) => (
   <div
     className={cn(
-      "relative p-10 rounded-[2.5rem] border transition-all duration-500 flex flex-col items-center text-center",
+      "relative p-8 sm:p-10 rounded-[2.5rem] border transition-all duration-500 flex flex-col",
       recommended 
-        ? "border-primary/50 shadow-2xl shadow-primary/10 bg-card scale-105 z-10" 
+        ? "border-primary/50 shadow-2xl shadow-primary/10 bg-card scale-100 lg:scale-105 z-10" 
         : "border-border/50 bg-card/50 hover:bg-card hover:border-border transition-colors"
     )}
   >
     {recommended && (
-      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow">
-        En Popüler
+      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-5 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-glow">
+        {t.pricing.mostPopular}
       </div>
     )}
 
-    <div className="mb-10 w-full">
+    <div className="mb-8">
       <div className="flex justify-center mb-4">
         <PlanBadge plan={title.toLowerCase() as PlanTier} size="lg" variant="soft" />
       </div>
-      <h3 className="text-2xl font-bold mb-4">{title}</h3>
+      {description && (
+        <p className="text-sm text-muted-foreground text-center mb-4">{description}</p>
+      )}
       <div className="flex items-baseline justify-center gap-1">
-        <span className="text-5xl font-bold tracking-tight">{price}</span>
-        <span className="text-muted-foreground text-base">/ay</span>
+        <span className="text-4xl sm:text-5xl font-bold tracking-tight">{price}</span>
+        <span className="text-muted-foreground text-base">{t.pricing.perMonth}</span>
       </div>
     </div>
 
-    <ul className="space-y-4 mb-10 flex-1 w-full">
-      {features.map((f: any, i: number) => (
-        <li key={i} className="flex items-center justify-center gap-3 text-sm">
+    <ul className="space-y-3 mb-8 flex-1">
+      {features.map((f, i) => (
+        <li key={i} className="flex items-start gap-3 text-sm">
           {f.included ? (
-            <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
           ) : (
-            <X className="w-5 h-5 text-muted-foreground/30 shrink-0" />
+            <X className="w-5 h-5 text-muted-foreground/30 shrink-0 mt-0.5" />
           )}
-          <span className={f.included ? 'text-foreground font-medium text-base' : 'text-muted-foreground/60 text-base line-through opacity-50'}>
+          <span className={f.included ? 'text-foreground' : 'text-muted-foreground/50 line-through'}>
             {f.text}
           </span>
         </li>
       ))}
     </ul>
 
-    <Link to={cta.href} className="w-full">
+    <Link to={cta.href} className="w-full mt-auto">
       <Button
         variant={recommended ? 'default' : 'outline'}
         className={cn(
-          "w-full h-14 text-lg font-semibold rounded-2xl transition-all",
+          "w-full h-12 text-base font-semibold rounded-2xl transition-all",
           recommended ? "shadow-glow hover:scale-[1.02]" : "border-border/40 hover:bg-muted/50"
         )}
       >
@@ -525,28 +816,29 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
       title: p.name || (p.code.charAt(0).toUpperCase() + p.code.slice(1)),
       price: p.price === 0 ? '0 TL' : `${p.price} ${p.currency}`,
       recommended: isPro,
+      description: isFree 
+        ? t.pricing.plans.free.description 
+        : isPro 
+          ? t.pricing.plans.pro.description 
+          : t.pricing.plans.ultra.description,
       cta: isUltra 
-        ? { text: 'İletişime Geç', href: 'mailto:sales@botla.app' }
+        ? { text: t.pricing.cta.ultra, href: 'mailto:sales@botla.app' }
         : {
-            text: authenticated ? "Dashboard'a Git" : (isFree ? 'Ücretsiz Başla' : "Pro'ya Geç"),
+            text: authenticated ? t.pricing.cta.authenticated : (isFree ? t.pricing.cta.free : t.pricing.cta.pro),
             href: authenticated ? '/dashboard' : '/register',
           },
       features: [
-        { text: `${p.limits.max_chatbots} Adet Chatbot`, included: true },
-        { text: `Aylık ${p.limits.max_monthly_ingestions.toLocaleString('tr-TR')} Token`, included: true },
-        { 
-          text: isFree 
-            ? `${p.features.scraping.max_urls_per_bot} Web Sitesi Kaynağı`
-            : `${p.features.scraping.max_urls_per_bot} Site & ${p.features.files.max_files_per_bot} PDF`, 
-          included: true 
-        },
-        isFree ? { text: `1 PDF Dosyası (Max ${p.features.files.max_size_mb}MB)`, included: true } : null,
-        { text: isUltra ? 'GPT-4o & GPT-5 Hazır' : (isPro ? 'GPT-4o & GPT-4o Mini' : 'GPT-4o Mini Modeli'), included: true },
-        isPro || isUltra ? { text: 'Dinamik Web Tarama', included: true } : { text: 'Dinamik Web Tarama', included: false },
-        isUltra ? { text: 'İnsan Desteğine Aktarma', included: true } : null,
-        isFree ? { text: 'botla.app İmzası', included: true } : { text: 'Branding Kaldırma', included: true },
-        { text: isUltra ? '7/24 Öncelikli Destek' : (isPro ? 'Öncelikli Destek' : 'Gelişmiş Guardrails'), included: !isFree },
-      ].filter(f => f !== null),
+        { text: `${p.limits.max_chatbots} ${t.pricing.features.chatbots}`, included: true },
+        { text: `${p.limits.max_monthly_ingestions.toLocaleString('tr-TR')} ${t.pricing.features.tokens}`, included: true },
+        { text: `${p.features.scraping.max_urls_per_bot} ${t.pricing.features.sites}`, included: true },
+        { text: `${p.features.files.max_files_per_bot} ${t.pricing.features.pdfs}`, included: true },
+        { text: isUltra ? 'GPT-4o & GPT-5' : (isPro ? 'GPT-4o & GPT-4o Mini' : 'GPT-4o Mini'), included: true },
+        { text: t.pricing.features.dynamicScraping, included: isPro || isUltra },
+        { text: t.pricing.features.guardrails, included: isPro || isUltra },
+        { text: t.pricing.features.smartFallback, included: isPro || isUltra },
+        { text: t.pricing.features.handoff, included: isUltra },
+        { text: t.pricing.features.branding, included: isUltra },
+      ],
     }
   }) || []
 
@@ -554,11 +846,11 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
     return (
       <section id="pricing" className="py-32 bg-background relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <Badge>Fiyatlandırma</Badge>
-          <div className="mt-20 flex justify-center gap-8">
-            <div className="w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
-            <div className="w-80 h-[550px] bg-muted animate-pulse rounded-3xl" />
-            <div className="w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
+          <Badge>{t.pricing.badge}</Badge>
+          <div className="mt-20 flex flex-col lg:flex-row justify-center gap-8">
+            <div className="w-full lg:w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
+            <div className="w-full lg:w-80 h-[550px] bg-muted animate-pulse rounded-3xl" />
+            <div className="w-full lg:w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
           </div>
         </div>
       </section>
@@ -568,17 +860,17 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
   return (
     <section id="pricing" className="scroll-mt-24 py-32 bg-background relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center max-w-3xl mx-auto mb-20 px-4">
-          <Badge>Fiyatlandırma</Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-8 text-foreground tracking-tight leading-[1.1]">
-            Şeffaf ve <span className="text-primary italic">Esnek</span> Paketler
+        <div className="text-center max-w-3xl mx-auto mb-20">
+          <Badge>{t.pricing.badge}</Badge>
+          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
+            {t.pricing.title} <span className="text-primary italic">{t.pricing.titleHighlight}</span>
           </h2>
-          <p className="text-xl text-muted-foreground">
-            İster küçük bir blog, ister büyük bir e-ticaret sitesi olun. Size uygun bir planımız var.
+          <p className="text-lg text-muted-foreground">
+            {t.pricing.subtitle}
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-center">
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto items-start">
           {plans.map((plan, i) => (
             <PricingCard key={i} {...plan} />
           ))}
@@ -588,140 +880,79 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
   )
 }
 
-const HowItWorks = () => {
-  const [activeStep, setActiveStep] = useState(0)
-  const steps = [
-    {
-      num: '01',
-      title: 'Kaynak Ekleyin',
-      desc: 'PDF, web sitesi URL’i veya metin ekleyerek botunuzu eğitin.',
-      icon: Database,
-      bullets: ['PDF yükleyin', 'Web sitenizi taratın', 'Metin ekleyin'],
-      tip: 'URL eklediğinizde sistem sayfaları otomatik keşfedebilir; isterseniz sadece belirli yolları dahil/hariç tutarak taramayı kontrol edebilirsiniz.',
-    },
-    {
-      num: '02',
-      title: 'Kuralları Belirleyin',
-      desc: 'Botunuzun tonunu, güvenlik kurallarını ve sınırlarını ayarlayın.',
-      icon: ShieldCheck,
-      bullets: ['Guardrails', 'Güvenli konuşma sınırları', 'Gerekirse insan desteğine yönlendirme'],
-      tip: 'Guardrails özelliğini kullanarak botun rakip markalardan bahsetmesini veya kapsam dışı konulara girmesini tamamen engelleyebilirsiniz.',
-    },
-    {
-      num: '03',
-      title: 'Widget ile Yayınlayın',
-      desc: 'Tek satır kodla sitenize ekleyin, isterseniz domain kısıtlayın.',
-      icon: MessagesSquare,
-      bullets: ['Tek satır embed kodu', 'İzinli domain listesi', 'Güvenli embed (planına göre)'],
-      tip: 'Güvenlik için "Allowed Domains" listesini doldurmayı unutmayın; böylece botunuz sadece sizin yetkilendirdiğiniz sitelerde çalışır.',
-    },
+// --- Security Section ---
+
+const SecurityFeature = ({ icon: Icon, title, description }: {
+  icon: React.ElementType
+  title: string
+  description: string
+}) => (
+  <div className="flex items-start gap-4">
+    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+      <Icon className="w-5 h-5 text-primary" />
+    </div>
+    <div>
+      <h4 className="font-bold text-foreground mb-1">{title}</h4>
+      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </div>
+  </div>
+)
+
+const Security = () => {
+  const securityItems = [
+    { icon: Key, ...t.security.items.jwt },
+    { icon: Shield, ...t.security.items.ssrf },
+    { icon: Lock, ...t.security.items.encryption },
+    { icon: Eye, ...t.security.items.rls },
+    { icon: Activity, ...t.security.items.rateLimit },
+    { icon: Clock, ...t.security.items.audit },
   ]
 
-  const active = steps[activeStep]
-  const ActiveIcon = active.icon
-
   return (
-    <section id="how-it-works" className="scroll-mt-24 py-32 bg-secondary/20 relative overflow-hidden">
+    <section className="py-32 bg-secondary/30 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center max-w-3xl mx-auto mb-20 px-4">
-          <Badge>Nasıl Çalışır?</Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-8 text-foreground tracking-tight leading-[1.1]">
-            3 Adımda Yayına Alın
-          </h2>
-          <p className="text-xl text-muted-foreground leading-relaxed">
-            Dakikalar içinde kurulum, günlerce süren geliştirme süreçlerine son.
-          </p>
-        </div>
-
-        <div className="grid lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-5 space-y-4">
-            {steps.map((step, i) => {
-              const isActive = i === activeStep
-              const Icon = step.icon
-              return (
-                <button
-                  key={step.num}
-                  type="button"
-                  onClick={() => setActiveStep(i)}
-                  onMouseEnter={() => setActiveStep(i)}
-                  className={cn(
-                    "w-full text-left relative rounded-[2rem] border transition-all duration-300 p-8",
-                    isActive 
-                      ? "border-primary/40 bg-card shadow-xl shadow-primary/5 -translate-x-2" 
-                      : "border-border/40 bg-card/40 hover:bg-card hover:border-border"
-                  )}
-                >
-                  <div className="flex items-center gap-6">
-                    <div
-                      className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-300",
-                        isActive 
-                          ? "bg-primary text-primary-foreground border-primary shadow-glow" 
-                          : "bg-muted text-muted-foreground border-border"
-                      )}
-                    >
-                      <Icon className="w-7 h-7" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-3 mb-1">
-                        <div className="font-bold text-xl text-foreground">{step.title}</div>
-                        <div className={cn("text-sm font-bold opacity-30 tracking-widest", isActive && "text-primary opacity-100")}>
-                          {step.num}
-                        </div>
-                      </div>
-                      <div className="text-muted-foreground leading-relaxed">
-                        {step.desc}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <Badge>{t.security.badge}</Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mt-6 mb-6 tracking-tight">
+              {t.security.title} <span className="text-primary">{t.security.titleHighlight}</span>
+            </h2>
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+              {t.security.subtitle}
+            </p>
+            <div className="grid sm:grid-cols-2 gap-6">
+              {securityItems.map((item) => (
+                <SecurityFeature
+                  key={item.title}
+                  icon={item.icon}
+                  title={item.title}
+                  description={item.description}
+                />
+              ))}
+            </div>
           </div>
 
-          <div className="lg:col-span-7">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="rounded-[3rem] glass shadow-2xl p-12 border border-white/30"
-              >
-                <div className="flex items-center gap-6 mb-10">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                    <ActiveIcon className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-primary uppercase tracking-[0.2em]">Adım {active.num}</div>
-                    <div className="text-3xl font-bold tracking-tight text-foreground">{active.title}</div>
-                  </div>
+          <div className="relative">
+            <div className="absolute -inset-8 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 blur-3xl rounded-full" />
+            <div className="relative glass rounded-3xl p-8 border border-white/20">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6 text-emerald-500" />
                 </div>
-
-                <div className="space-y-4 mb-10">
-                  {active.bullets.map((b: string) => (
-                    <div
-                      key={b}
-                      className="rounded-2xl border border-border/40 bg-background/50 px-6 py-4 flex items-center gap-4 text-base font-medium text-foreground transition-all hover:bg-background hover:border-primary/30"
-                    >
-                      <CheckCircle2 className="w-6 h-6 text-success" />
-                      {b}
-                    </div>
-                  ))}
+                <div>
+                  <div className="font-bold text-foreground">Güvenlik Durumu</div>
+                  <div className="text-sm text-emerald-500">Tüm sistemler aktif</div>
                 </div>
-
-                <div className="rounded-[2rem] bg-muted/40 p-6 border border-border/30">
-                  <div className="flex items-center gap-3 text-sm font-bold text-foreground mb-2">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    Profesyonel İpucu
+              </div>
+              <div className="space-y-4">
+                {['KVKK Uyumlu', 'GDPR Uyumlu', 'SSL/TLS Şifreleme', 'SOC 2 Ready'].map((item) => (
+                  <div key={item} className="flex items-center gap-3 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span className="text-foreground">{item}</span>
                   </div>
-                  <div className="text-muted-foreground leading-relaxed">
-                    {active.tip}
-                  </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -729,67 +960,39 @@ const HowItWorks = () => {
   )
 }
 
-// Minimal Badge Component
-const Badge = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary tracking-widest uppercase ring-1 ring-inset ring-primary/20 shadow-sm shadow-primary/5">
-    {children}
-  </span>
-)
+// --- FAQ Section ---
 
 const FAQ = () => {
-  const faqs = [
-    {
-      q: 'Botu sitelerime nasıl eklerim?',
-      a: 'Size verdiğimiz tek satırlık JavaScript kodunu sitenizin <head> veya <body> etiketleri arasına yapıştırmanız yeterlidir. Wordpress, Shopify, Wix gibi tüm altyapılarla uyumludur.',
-    },
-    {
-      q: 'Hangi dosya formatlarını destekliyorsunuz?',
-      a: "Şu an için PDF, metin (TXT / kopyala-yapıştır) ve doğrudan web sitesi URL'lerini destekliyoruz.",
-    },
-    {
-      q: 'Ücretsiz planda kredi kartı gerekiyor mu?',
-      a: 'Hayır, Başlangıç (Free) planımızı kullanmak için kredi kartı gerekmez. Sonsuza kadar ücretsiz kullanabilirsiniz.',
-    },
-    {
-      q: 'Botum yanlış cevap verirse ne olur?',
-      a: "Guardrails (Güvenlik Önlemleri) özelliğimiz sayesinde botun cevap veremediği veya emin olamadığı durumlarda 'Bunu bilmiyorum' demesini veya insan temsilciye yönlendirmesini sağlayabilirsiniz.",
-    },
-    {
-      q: 'Verilerim güvende mi?',
-      a: 'Evet, tüm verileriniz şifrelenerek saklanır ve sadece sizin botunuzun eğitimi için kullanılır. Başka hiçbir amaçla kullanılmaz veya paylaşılmaz.',
-    },
-  ]
-
   return (
-    <section id="faq" className="scroll-mt-24 py-32 bg-secondary/20">
+    <section id="faq" className="scroll-mt-24 py-32 bg-background">
       <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center mb-20 px-4">
-          <Badge>SSS</Badge>
-          <h2 className="text-4xl md:text-5xl font-bold mt-6 mb-8 text-foreground tracking-tight">
-            Sıkça Sorulan Sorular
+        <div className="text-center mb-16">
+          <Badge>{t.faq.badge}</Badge>
+          <h2 className="text-4xl md:text-5xl font-bold mt-6 mb-6 tracking-tight">
+            {t.faq.title} <span className="text-primary">{t.faq.titleHighlight}</span>
           </h2>
-          <p className="text-lg text-muted-foreground">Merak ettiğiniz her şey burada.</p>
+          <p className="text-lg text-muted-foreground">{t.faq.subtitle}</p>
         </div>
 
         <div className="space-y-4">
-          {faqs.map((faq, i) => (
+          {t.faq.items.map((faq, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="border border-border/40 rounded-[2rem] bg-card overflow-hidden hover:border-primary/30 transition-colors"
+              className="border border-border/40 rounded-2xl bg-card overflow-hidden hover:border-primary/30 transition-colors"
             >
               <details className="group">
-                <summary className="flex items-center justify-between p-8 cursor-pointer list-none">
-                  <span className="font-bold text-xl pr-8">{faq.q}</span>
-                  <span className="transition-transform group-open:rotate-180 bg-muted/50 p-2 rounded-full">
-                    <ArrowRight className="w-5 h-5 rotate-90" />
+                <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
+                  <span className="font-bold text-lg pr-6">{faq.question}</span>
+                  <span className="transition-transform group-open:rotate-180 bg-muted/50 p-2 rounded-full shrink-0">
+                    <ChevronRight className="w-5 h-5 rotate-90" />
                   </span>
                 </summary>
-                <div className="px-8 pb-8 pt-0 text-muted-foreground leading-relaxed">
-                  <div className="pt-4 border-t border-border/10 text-lg">{faq.a}</div>
+                <div className="px-6 pb-6 pt-0 text-muted-foreground leading-relaxed">
+                  <div className="pt-4 border-t border-border/10">{faq.answer}</div>
                 </div>
               </details>
             </motion.div>
@@ -800,76 +1003,110 @@ const FAQ = () => {
   )
 }
 
+// --- CTA Section ---
+
+const CTASection = ({ authenticated }: { authenticated: boolean }) => (
+  <section className="py-32 bg-gradient-to-b from-background to-secondary/30 relative overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 blur-[150px] rounded-full" />
+    </div>
+
+    <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-10 text-center relative">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+      >
+        <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
+          {t.cta.title} <br />
+          <span className="text-primary">{t.cta.titleHighlight}</span>
+        </h2>
+        <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
+          {t.cta.subtitle}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <Link to={authenticated ? "/dashboard" : "/register"}>
+            <Button size="lg" className="h-14 px-12 text-lg font-bold rounded-2xl shadow-glow group hover:scale-105 transition-all">
+              {authenticated ? t.cta.buttonAuth : t.cta.button}
+              <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </Link>
+          <span className="text-sm text-muted-foreground">{t.cta.note}</span>
+        </div>
+      </motion.div>
+    </div>
+  </section>
+)
+
+// --- Footer ---
+
 const Footer = ({ authenticated }: { authenticated: boolean }) => (
-  <footer className="bg-foreground text-background py-24 border-t border-border/10">
+  <footer className="bg-foreground text-background py-20 border-t border-border/10">
     <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-      <div className="grid md:grid-cols-12 gap-16">
+      <div className="grid md:grid-cols-12 gap-12">
         <div className="col-span-12 md:col-span-5">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="bg-primary p-3 rounded-2xl shadow-glow">
-              <Bot className="w-7 h-7 text-primary-foreground" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-primary p-2.5 rounded-xl shadow-glow">
+              <Bot className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="font-bold text-3xl tracking-tight text-background">botla.app</span>
+            <span className="font-bold text-2xl tracking-tight text-background">botla.app</span>
           </div>
-          <p className="text-background/60 text-lg mb-8 leading-relaxed max-w-sm">
-            Yeni nesil web siteleri için geliştirilmiş, verilerinizle eğitilen akıllı müşteri asistanı. 
-            Müşterilerinize 7/24 kesintisiz destek sunun.
+          <p className="text-background/60 leading-relaxed max-w-sm">
+            {t.footer.description}
           </p>
         </div>
 
         <div className="col-span-6 md:col-span-2 md:col-start-7">
-          <h4 className="font-bold text-background text-lg mb-6">Ürün</h4>
-          <ul className="space-y-4 text-background/60 text-base">
-            <li><a href="#features" className="hover:text-primary transition-colors">Özellikler</a></li>
-            <li><a href="#pricing" className="hover:text-primary transition-colors">Fiyatlandırma</a></li>
+          <h4 className="font-bold text-background mb-5">{t.footer.product.title}</h4>
+          <ul className="space-y-3 text-background/60 text-sm">
+            <li><a href="#features" className="hover:text-primary transition-colors">{t.footer.product.features}</a></li>
+            <li><a href="#pricing" className="hover:text-primary transition-colors">{t.footer.product.pricing}</a></li>
             {authenticated ? (
-              <li><Link to="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>
+              <li><Link to="/dashboard" className="hover:text-primary transition-colors">{t.footer.product.dashboard}</Link></li>
             ) : (
               <>
-                <li><Link to="/login" className="hover:text-primary transition-colors">Giriş Yap</Link></li>
-                <li><Link to="/register" className="hover:text-primary transition-colors">Kayıt Ol</Link></li>
+                <li><Link to="/login" className="hover:text-primary transition-colors">{t.footer.product.login}</Link></li>
+                <li><Link to="/register" className="hover:text-primary transition-colors">{t.footer.product.register}</Link></li>
               </>
             )}
           </ul>
         </div>
 
         <div className="col-span-6 md:col-span-2">
-          <h4 className="font-bold text-background text-lg mb-6">Şirket</h4>
-          <ul className="space-y-4 text-background/60 text-base">
-            <li><a href="#" className="hover:text-primary transition-colors">Hakkımızda</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">İletişim</a></li>
+          <h4 className="font-bold text-background mb-5">{t.footer.company.title}</h4>
+          <ul className="space-y-3 text-background/60 text-sm">
+            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.company.about}</a></li>
+            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.company.blog}</a></li>
+            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.company.contact}</a></li>
           </ul>
         </div>
 
         <div className="col-span-6 md:col-span-2">
-          <h4 className="font-bold text-background text-lg mb-6">Yasal</h4>
-          <ul className="space-y-4 text-background/60 text-base">
-            <li><a href="#" className="hover:text-primary transition-colors">Gizlilik</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">Koşullar</a></li>
+          <h4 className="font-bold text-background mb-5">{t.footer.legal.title}</h4>
+          <ul className="space-y-3 text-background/60 text-sm">
+            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.legal.privacy}</a></li>
+            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.legal.terms}</a></li>
+            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.legal.kvkk}</a></li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-background/10 mt-20 pt-10 flex flex-col md:flex-row justify-between items-center gap-4 text-background/40">
-        <p className="text-sm font-medium">
-          &copy; {new Date().getFullYear()} botla.app. Tüm hakları saklıdır.
-        </p>
-        <div className="flex items-center gap-6 text-sm">
-          <span>Made with ❤️ in Istanbul</span>
-        </div>
+      <div className="border-t border-background/10 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-background/40 text-sm">
+        <p>{t.footer.copyright.replace('{year}', new Date().getFullYear().toString())}</p>
+        <p>{t.footer.madeWith}</p>
       </div>
     </div>
   </footer>
 )
+
+// --- Main Component ---
 
 export default function LandingPage() {
   const [authenticated, setAuthenticated] = useState(false)
 
   useEffect(() => {
     const token = window.localStorage.getItem('botla_token')
-    const isValid =
-      token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
+    const isValid = token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
     setAuthenticated(isValid)
   }, [])
 
@@ -888,7 +1125,6 @@ export default function LandingPage() {
 
   // Dynamically load chatbot widget for landing page demo
   useEffect(() => {
-    // Check if user is authenticated - don't show widget for logged in users
     const token = window.localStorage.getItem('botla_token')
     const isAuthenticated = token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
     if (isAuthenticated) return
@@ -896,14 +1132,12 @@ export default function LandingPage() {
     const chatbotId = import.meta.env.VITE_LANDING_CHATBOT_ID
     const widgetUrl = import.meta.env.VITE_WIDGET_SCRIPT_URL
 
-    if (!chatbotId || !widgetUrl) return // Skip if not configured
+    if (!chatbotId || !widgetUrl) return
 
-    // Check if script already exists
     const existingScript = document.querySelector(`script[data-bot="${chatbotId}"]`)
     if (existingScript) return
 
     const script = document.createElement('script')
-    // Add reset-session=1 to URL for fresh demo experience each visit
     const widgetUrlWithReset = new URL(widgetUrl)
     widgetUrlWithReset.searchParams.set('reset-session', '1')
     script.src = widgetUrlWithReset.toString()
@@ -913,9 +1147,7 @@ export default function LandingPage() {
     document.body.appendChild(script)
 
     return () => {
-      // Cleanup on unmount
       script.remove()
-      // Also remove widget container if present
       const widgetHost = document.getElementById('chatbot-widget-host')
       if (widgetHost) widgetHost.remove()
     }
@@ -929,9 +1161,12 @@ export default function LandingPage() {
       <main>
         <Hero authenticated={authenticated} />
         <Features />
+        <UseCases />
         <HowItWorks />
         <Pricing authenticated={authenticated} />
+        <Security />
         <FAQ />
+        <CTASection authenticated={authenticated} />
       </main>
       <Footer authenticated={authenticated} />
     </div>

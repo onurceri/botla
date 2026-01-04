@@ -2,22 +2,22 @@ package processing
 
 import (
 	"context"
-	"database/sql"
 	"io"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/text"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/text"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 )
 
 // TextProcessor handles text source processing
 type TextProcessor struct {
-	DB               *sql.DB
+	sourceRepo       repository.SourceRepository
+	usageRepo        repository.UsageRepository
 	Storage          storage.StorageService
 	OpenAIClient     rag.LLMClient
 	VectorClient     rag.VectorClient
@@ -27,14 +27,15 @@ type TextProcessor struct {
 }
 
 // NewTextProcessor creates a new TextProcessor
-func NewTextProcessor(db *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, loader *tokenizer.Loader) *TextProcessor {
+func NewTextProcessor(sourceRepo repository.SourceRepository, usageRepo repository.UsageRepository, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, loader *tokenizer.Loader) *TextProcessor {
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
 		embSvc = rag.NewEmbeddingService(emb, vc, log)
 	}
 	return &TextProcessor{
-		DB:               db,
+		sourceRepo:       sourceRepo,
+		usageRepo:        usageRepo,
 		Storage:          st,
 		OpenAIClient:     oai,
 		VectorClient:     vc,
@@ -71,8 +72,6 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *m
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeStorageRequired}, FailedStep: models.StepFetchSource}
 	}
 
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
-
 	// Step 2: Parse
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepParseContent, *lastStep) && models.StepParseContent != *lastStep) {
 		onStep(models.StepParseContent)
@@ -102,8 +101,6 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *m
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
 
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
-
 	// Step 4: Embed
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepEmbedChunks, *lastStep) && models.StepEmbedChunks != *lastStep) {
 		onStep(models.StepEmbedChunks)
@@ -117,8 +114,6 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *m
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
 	}
 
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, "")
-
 	// Step 5: Store
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepStoreVectors, *lastStep) && models.StepStoreVectors != *lastStep) {
 		onStep(models.StepStoreVectors)
@@ -129,8 +124,17 @@ func (p *TextProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *m
 	for _, ch := range rc {
 		tokens += ch.TokenCount
 	}
-	_ = db.IncrementSuccessfulIngestion(ctx, p.DB, bot.UserID, time.Now(), 1)
-	_ = db.AddEmbeddingTokens(ctx, p.DB, bot.UserID, time.Now(), tokens)
+
+	now := time.Now()
+	_ = p.sourceRepo.UpdateSourceProcessing(ctx, s.ID, "completed", nil, len(rc), &now)
+
+	// Update usage statistics
+	if err := p.usageRepo.IncrementSuccessfulIngestion(ctx, bot.UserID, now, 1); err != nil {
+		p.logWarn("text_stats_increment_failed", map[string]any{"error": err.Error()})
+	}
+	if err := p.usageRepo.AddEmbeddingTokens(ctx, bot.UserID, now, tokens); err != nil {
+		p.logWarn("text_stats_tokens_failed", map[string]any{"error": err.Error()})
+	}
 
 	return ProcessResult{ChunkCount: len(rc)}
 }
@@ -153,14 +157,12 @@ func (p *TextProcessor) persistIngestionMetadata(ctx context.Context, content, l
 		})
 	}
 
-	if err := db.UpdateSourceCapability(ctx, p.DB, s.ID, meta.CapabilitySummary); err != nil {
+	if err := p.sourceRepo.UpdateSourceCapability(ctx, s.ID, meta.CapabilitySummary); err != nil {
 		p.logWarn("update_source_capability_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
 	}
-	if err := db.UpdateSourceSuggestions(ctx, p.DB, s.ID, meta.SuggestedQuestions); err != nil {
+	if err := p.sourceRepo.UpdateSourceSuggestions(ctx, s.ID, meta.SuggestedQuestions); err != nil {
 		p.logWarn("update_source_suggestions_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
 	}
-
-	go AggregateAndPersistChatbotSuggestions(ctx, p.DB, s.ChatbotID, p.Log)
 }
 
 func (p *TextProcessor) logInfo(event string, data map[string]any) {

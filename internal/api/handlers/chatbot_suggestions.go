@@ -2,21 +2,20 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type SuggestionsHandlers struct {
-	DB               *sql.DB
-	Log              *logger.Logger
-	WorkspaceService *services.WorkspaceService
-	OrgService       *services.OrganizationService
+	Log               *logger.Logger
+	WorkspaceService  *services.WorkspaceService
+	OrgService        *services.OrganizationService
+	SuggestionJobRepo repository.SuggestionJobRepository
+	ChatbotRepo       repository.ChatbotRepository
 }
 
 type RegenerateResponse struct {
@@ -36,21 +35,19 @@ func (h *SuggestionsHandlers) RegenerateSuggestions(w http.ResponseWriter, r *ht
 		return
 	}
 
-	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContextWithRepo(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
 	ctx := context.Background()
 
-	job, err := db.CreateSuggestionJob(ctx, h.DB, chatbotID)
+	job, err := h.SuggestionJobRepo.Create(ctx, chatbotID)
 	if err != nil {
 		h.Log.Error("create_suggestion_job_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		http.Error(w, "Failed to create suggestion job", http.StatusInternalServerError)
 		return
 	}
-
-	go processing.ReAggregateSuggestionsForChatbotWithJob(context.Background(), h.DB, chatbotID, job.ID, h.Log)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
@@ -65,14 +62,14 @@ func (h *SuggestionsHandlers) GetSuggestionJobStatus(w http.ResponseWriter, r *h
 		return
 	}
 
-	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContextWithRepo(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
 	ctx := context.Background()
 
-	job, err := db.GetLatestSuggestionJobForChatbot(ctx, h.DB, chatbotID)
+	job, err := h.SuggestionJobRepo.GetLatestForChatbot(ctx, chatbotID)
 	if err != nil {
 		h.Log.Error("get_suggestion_job_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		http.Error(w, "Failed to get suggestion job", http.StatusInternalServerError)

@@ -398,13 +398,16 @@ func TestAdminChatbotFilter(t *testing.T) {
 func TestAdminChatbot(t *testing.T) {
 	t.Parallel()
 
+	workspaceID := "workspace-789"
+	orgID := "org-abc"
+	orgName := "Test Org"
 	chatbot := AdminChatbot{
 		ID:               "chatbot-123",
 		Name:             "Test Chatbot",
 		OwnerID:          "user-456",
-		WorkspaceID:      "workspace-789",
-		OrganizationID:   "org-abc",
-		OrganizationName: "Test Org",
+		WorkspaceID:      &workspaceID,
+		OrganizationID:   &orgID,
+		OrganizationName: &orgName,
 		OwnerEmail:       "test@example.com",
 		SourceCount:      5,
 		MessageCount:     100,

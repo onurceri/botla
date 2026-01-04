@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 func TestChatbot_SecureEmbed_UpdateAndGet(t *testing.T) {

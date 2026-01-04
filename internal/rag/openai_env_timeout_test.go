@@ -3,7 +3,7 @@ package rag
 import (
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 func TestNewOpenAIClient_TimeoutOverride(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/httputil"
-	"github.com/onurceri/botla-co/pkg/ratelimit"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/httputil"
+	"github.com/onurceri/botla-app/pkg/ratelimit"
 	"github.com/redis/go-redis/v9"
 )
 

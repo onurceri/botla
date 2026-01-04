@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 func updateProPlanConfig(t *testing.T, te *fixtures.TestEnv) {
@@ -554,7 +554,8 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 	// Wait for processing
 	waitForProcessingPro(t, te, token, sourceID)
 
-	src, err := db.GetSourceByID(context.Background(), te.DB, sourceID)
+	sourceRepo := repository.NewPostgresSourceRepo(te.DB)
+	src, err := sourceRepo.GetByID(context.Background(), sourceID)
 	if err != nil {
 		t.Fatalf("failed to load source: %v", err)
 	}

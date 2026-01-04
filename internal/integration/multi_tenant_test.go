@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 // Multi-tenant isolation tests verify that users cannot access resources

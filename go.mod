@@ -1,4 +1,4 @@
-module github.com/onurceri/botla-co
+module github.com/onurceri/botla-app
 
 go 1.25
 

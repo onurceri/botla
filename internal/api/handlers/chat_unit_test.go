@@ -10,12 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestChat_NoInfoFound(t *testing.T) {
@@ -34,15 +35,20 @@ func TestChat_NoInfoFound(t *testing.T) {
 	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
-	h := &ChatbotHandlers{DB: dbx}
 
 	// Create a dummy config and factory to avoid panic
 	cfg := &config.Config{OPENAI_API_KEY: "k", OPENAI_API_BASE: oai.URL}
 	factory := rag.NewClientFactory(cfg)
 
-	chatSvc := services.NewChatService(dbx, factory, nil, nil, nil) // factory provided
-	chatSvc.SyncAnalytics = true                                    // Run analytics synchronously in tests
-	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc, Logger: logger.New("info")}
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	conversationRepo := repository.NewPostgresConversationRepo(dbx)
+	analyticsRepo := repository.NewPostgresAnalyticsRepo(dbx)
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+
+	h := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, nil, nil, nil, factory, nil, nil, logger.New("info")) // factory provided
+	chatSvc.SyncAnalytics = true                                                                                                        // Run analytics synchronously in tests
+	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc, Logger: logger.New("info"), ChatbotRepo: chatbotRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -60,8 +66,15 @@ func TestChat_NoInfoFound(t *testing.T) {
 	r2.SetPathValue("id", id)
 	rr2 := httptest.NewRecorder()
 	ch.Chat(rr2, ctx(r2))
-	// The mock server returns 500, so the chat handler should return 500 too
-	if rr2.Code != http.StatusInternalServerError {
-		t.Fatalf("chat: expected 500, got %d", rr2.Code)
+	// The mock server returns 500, but the system should gracefully fallback to an empty state message
+	if rr2.Code != http.StatusOK {
+		t.Fatalf("chat: expected 200, got %d", rr2.Code)
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rr2.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if resp["response"] == "" {
+		t.Fatal("chat: expected non-empty response from fallback")
 	}
 }

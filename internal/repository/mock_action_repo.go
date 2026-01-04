@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 // MockActionRepo is a mock implementation of ActionRepository for testing.

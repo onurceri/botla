@@ -1,26 +1,27 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // TrainingJobHandlers handles training job related requests
 type TrainingJobHandlers struct {
-	DB               *sql.DB
 	Log              *logger.Logger
 	WorkspaceService *services.WorkspaceService
 	OrgService       *services.OrganizationService
 	Queue            interface {
 		Enqueue(jobID string)
 	}
+	TrainingJobRepo repository.TrainingJobRepository
+	SourceRepo      repository.SourceRepository
+	ChatbotRepo     repository.ChatbotRepository
 }
 
 // JobStatusResponse is the response for job status endpoint
@@ -40,13 +41,13 @@ type JobStatusResponse struct {
 // GetJobStatus handles GET /api/v1/sources/{id}/job
 func (h *TrainingJobHandlers) GetJobStatus(w http.ResponseWriter, r *http.Request) {
 	// Use the shared getSourceContext to validate access
-	source, _, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	source, _, sourceID, ok := getSourceContextWithRepos(w, r, h.SourceRepo, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
 	// Get latest job for this source
-	job, err := db.GetJobBySourceID(r.Context(), h.DB, sourceID)
+	job, err := h.TrainingJobRepo.GetBySourceID(r.Context(), sourceID)
 	if err != nil {
 		h.logError("get_job_by_source_failed", map[string]any{"error": err.Error(), "source_id": sourceID})
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
@@ -83,13 +84,13 @@ func (h *TrainingJobHandlers) GetJobStatus(w http.ResponseWriter, r *http.Reques
 // RetryJob handles POST /api/v1/sources/{id}/job/retry
 func (h *TrainingJobHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
 	// Use the shared getSourceContext to validate access
-	_, _, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, _, sourceID, ok := getSourceContextWithRepos(w, r, h.SourceRepo, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
 	// Get latest job for this source
-	job, err := db.GetJobBySourceID(r.Context(), h.DB, sourceID)
+	job, err := h.TrainingJobRepo.GetBySourceID(r.Context(), sourceID)
 	if err != nil || job == nil {
 		h.logError("get_job_by_source_failed", map[string]any{"error": err, "source_id": sourceID})
 		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
@@ -103,11 +104,7 @@ func (h *TrainingJobHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Reset retry count for manual retry
-	_, err = h.DB.ExecContext(r.Context(), `
-		UPDATE training_jobs 
-		SET status = 'pending', retry_count = 0, error_code = NULL, error_message = NULL, failed_step = NULL
-		WHERE id = $1
-	`, job.ID)
+	err = h.TrainingJobRepo.ResetForRetry(r.Context(), job.ID)
 	if err != nil {
 		h.logError("reset_job_failed", map[string]any{"error": err.Error(), "job_id": job.ID})
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 // authToken helper for onboarding tests

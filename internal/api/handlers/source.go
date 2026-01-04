@@ -3,12 +3,13 @@ package handlers
 import (
 	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/urlutil"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/urlutil"
 )
 
 // SourcesHandlers handles all source-related HTTP endpoints
@@ -21,4 +22,8 @@ type SourcesHandlers struct {
 	WorkspaceService *services.WorkspaceService
 	OrgService       *services.OrganizationService
 	SSRFValidator    *urlutil.SSRFValidator
+	PlanRepo         repository.PlanRepository
+	SourceRepo       repository.SourceRepository
+	UsageRepo        repository.UsageRepository
+	ChatbotRepo      repository.ChatbotRepository
 }

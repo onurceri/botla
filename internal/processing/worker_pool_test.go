@@ -3,7 +3,7 @@ package processing
 import (
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/storage"
 	"github.com/stretchr/testify/mock"
 )
 

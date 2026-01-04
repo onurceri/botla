@@ -14,16 +14,16 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	dbpkg "github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/internal/workers"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/internal/db"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/internal/workers"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/policy"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -261,7 +261,7 @@ func setupTestEnvCommon(useMocks bool, override ConfigOverride) (*TestEnv, error
 
 	// Use the config we built earlier (with overrides applied)
 	cfg.DB_SCHEMA = schema
-	db, err := dbpkg.New(cfg)
+	db, err := db.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("new db: %w", err)
 	}
@@ -277,8 +277,8 @@ func setupTestEnvCommon(useMocks bool, override ConfigOverride) (*TestEnv, error
 	RestorePlans(db)
 
 	// Relax rate limits and limits for free plan in test environment
-	_ = dbpkg.UpdatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "rate_limits_requests_per_minute", 1000)
-	_ = dbpkg.UpdatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "max_chatbots", 100)
+	_ = updatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "rate_limits_requests_per_minute", 1000)
+	_ = updatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "max_chatbots", 100)
 
 	// Insert dummy data for stub sources to prevent foreign key violations
 	dummyUUID := "00000000-0000-0000-0000-000000000001"
@@ -501,47 +501,59 @@ func RestorePlans(db *sql.DB) {
 // updatePlanLimits updates all fields in plan_limits for a given plan code.
 func updatePlanLimits(ctx context.Context, db *sql.DB, code string, limits models.PlanLimits) {
 	// Use the db package helper for all fields
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "max_chatbots", limits.MaxChatbots)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "max_monthly_ingestions", limits.MaxMonthlyIngestions)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "max_monthly_embedding_tokens", limits.MaxMonthlyEmbeddingTokens)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "min_readd_cooldown_minutes", limits.MinReAddCooldownMinutes)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "scraping_dynamic_enabled", limits.ScrapingDynamicEnabled)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "scraping_max_urls_per_bot", limits.ScrapingMaxURLsPerBot)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "scraping_max_pages_per_crawl", limits.ScrapingMaxPagesPerCrawl)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_size_mb", limits.FilesMaxSizeMB)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_files_per_bot", limits.FilesMaxFilesPerBot)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_files_total", limits.FilesMaxFilesTotal)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_total_storage_mb", limits.FilesTotalStorageMB)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "files_max_text_length", limits.FilesMaxTextLength)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_default_model", limits.ChatDefaultModel)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_monthly_tokens", limits.ChatMaxMonthlyTokens)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_rag_top_k", limits.ChatRAGTopK)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_rag_max_context_tokens", limits.ChatRAGMaxContextTokens)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_suggested_questions", limits.ChatMaxSuggestedQuestions)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_manual_questions", limits.ChatMaxManualQuestions)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_min_response_token_limit", limits.ChatMinResponseTokenLimit)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "chat_max_response_token_limit", limits.ChatMaxResponseTokenLimit)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "refresh_enabled", limits.RefreshEnabled)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "refresh_max_monthly", limits.RefreshMaxMonthly)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "security_secure_embed_enabled", limits.SecuritySecureEmbedEnabled)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_customize_thresholds", limits.GuardrailsCanCustomizeThresholds)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_use_smart_fallback", limits.GuardrailsCanUseSmartFallback)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_use_escalate_fallback", limits.GuardrailsCanUseEscalateFallback)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_manage_topics", limits.GuardrailsCanManageTopics)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "guardrails_can_customize_messages", limits.GuardrailsCanCustomizeMessages)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "branding_can_hide_branding", limits.BrandingCanHideBranding)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "branding_can_custom_branding", limits.BrandingCanCustomBranding)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_requests_per_minute", limits.RateLimitsRequestsPerMinute)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_window_seconds", limits.RateLimitsWindowSeconds)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_chat_rpm", limits.RateLimitsChatRPM)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_chat_window", limits.RateLimitsChatWindow)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_sources_rpm", limits.RateLimitsSourcesRPM)
-	_ = dbpkg.UpdatePlanLimitField(ctx, db, code, "rate_limits_sources_window", limits.RateLimitsSourcesWindow)
+	_ = updatePlanLimitField(ctx, db, code, "max_chatbots", limits.MaxChatbots)
+	_ = updatePlanLimitField(ctx, db, code, "max_monthly_ingestions", limits.MaxMonthlyIngestions)
+	_ = updatePlanLimitField(ctx, db, code, "max_monthly_embedding_tokens", limits.MaxMonthlyEmbeddingTokens)
+	_ = updatePlanLimitField(ctx, db, code, "min_readd_cooldown_minutes", limits.MinReAddCooldownMinutes)
+	_ = updatePlanLimitField(ctx, db, code, "scraping_dynamic_enabled", limits.ScrapingDynamicEnabled)
+	_ = updatePlanLimitField(ctx, db, code, "scraping_max_urls_per_bot", limits.ScrapingMaxURLsPerBot)
+	_ = updatePlanLimitField(ctx, db, code, "scraping_max_pages_per_crawl", limits.ScrapingMaxPagesPerCrawl)
+	_ = updatePlanLimitField(ctx, db, code, "files_max_size_mb", limits.FilesMaxSizeMB)
+	_ = updatePlanLimitField(ctx, db, code, "files_max_files_per_bot", limits.FilesMaxFilesPerBot)
+	_ = updatePlanLimitField(ctx, db, code, "files_max_files_total", limits.FilesMaxFilesTotal)
+	_ = updatePlanLimitField(ctx, db, code, "files_total_storage_mb", limits.FilesTotalStorageMB)
+	_ = updatePlanLimitField(ctx, db, code, "files_max_text_length", limits.FilesMaxTextLength)
+	_ = updatePlanLimitField(ctx, db, code, "chat_default_model", limits.ChatDefaultModel)
+	_ = updatePlanLimitField(ctx, db, code, "chat_max_monthly_tokens", limits.ChatMaxMonthlyTokens)
+	_ = updatePlanLimitField(ctx, db, code, "chat_rag_top_k", limits.ChatRAGTopK)
+	_ = updatePlanLimitField(ctx, db, code, "chat_rag_max_context_tokens", limits.ChatRAGMaxContextTokens)
+	_ = updatePlanLimitField(ctx, db, code, "chat_max_suggested_questions", limits.ChatMaxSuggestedQuestions)
+	_ = updatePlanLimitField(ctx, db, code, "chat_max_manual_questions", limits.ChatMaxManualQuestions)
+	_ = updatePlanLimitField(ctx, db, code, "chat_min_response_token_limit", limits.ChatMinResponseTokenLimit)
+	_ = updatePlanLimitField(ctx, db, code, "chat_max_response_token_limit", limits.ChatMaxResponseTokenLimit)
+	_ = updatePlanLimitField(ctx, db, code, "refresh_enabled", limits.RefreshEnabled)
+	_ = updatePlanLimitField(ctx, db, code, "refresh_max_monthly", limits.RefreshMaxMonthly)
+	_ = updatePlanLimitField(ctx, db, code, "security_secure_embed_enabled", limits.SecuritySecureEmbedEnabled)
+	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_customize_thresholds", limits.GuardrailsCanCustomizeThresholds)
+	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_use_smart_fallback", limits.GuardrailsCanUseSmartFallback)
+	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_use_escalate_fallback", limits.GuardrailsCanUseEscalateFallback)
+	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_manage_topics", limits.GuardrailsCanManageTopics)
+	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_customize_messages", limits.GuardrailsCanCustomizeMessages)
+	_ = updatePlanLimitField(ctx, db, code, "branding_can_hide_branding", limits.BrandingCanHideBranding)
+	_ = updatePlanLimitField(ctx, db, code, "branding_can_custom_branding", limits.BrandingCanCustomBranding)
+	_ = updatePlanLimitField(ctx, db, code, "rate_limits_requests_per_minute", limits.RateLimitsRequestsPerMinute)
+	_ = updatePlanLimitField(ctx, db, code, "rate_limits_window_seconds", limits.RateLimitsWindowSeconds)
+	_ = updatePlanLimitField(ctx, db, code, "rate_limits_chat_rpm", limits.RateLimitsChatRPM)
+	_ = updatePlanLimitField(ctx, db, code, "rate_limits_chat_window", limits.RateLimitsChatWindow)
+	_ = updatePlanLimitField(ctx, db, code, "rate_limits_sources_rpm", limits.RateLimitsSourcesRPM)
+	_ = updatePlanLimitField(ctx, db, code, "rate_limits_sources_window", limits.RateLimitsSourcesWindow)
 }
 
 // UpdatePlanLimit updates a single limit field for a plan. This is a convenience
-// wrapper around db.UpdatePlanLimitField for use in tests.
+// wrapper around updatePlanLimitField for use in tests.
 func (te *TestEnv) UpdatePlanLimit(planCode, field string, value any) error {
-	return dbpkg.UpdatePlanLimitField(context.Background(), te.DB, planCode, field, value)
+	return updatePlanLimitField(context.Background(), te.DB, planCode, field, value)
 }
 
+// updatePlanLimitField updates a single field in the plan_limits table for a given plan code.
+// This is a local implementation that replaces the deprecated db.UpdatePlanLimitField.
+func updatePlanLimitField(ctx context.Context, db *sql.DB, planCode, field string, value any) error {
+	query := fmt.Sprintf(`
+		UPDATE plan_limits
+		SET value = $1, updated_at = NOW()
+		WHERE plan_id = (SELECT id FROM plans WHERE code = $2)
+		  AND field = $3
+	`)
+	_, err := db.ExecContext(ctx, query, value, planCode, field)
+	return err
+}

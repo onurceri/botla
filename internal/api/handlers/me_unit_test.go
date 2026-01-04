@@ -9,8 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestMe_Success(t *testing.T) {
@@ -24,7 +27,10 @@ func TestMe_Success(t *testing.T) {
 	if err := db.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", proPlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
-	h := &MeHandlers{DB: db}
+
+	userRepo := repository.NewPostgresUserRepo(db)
+	orgSvc := services.NewOrganizationService(db, nil)
+	h := NewMeHandlers(userRepo, orgSvc)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, uid)
@@ -46,7 +52,9 @@ func TestMe_IsPlatformAdmin_DefaultFalse(t *testing.T) {
 		t.Fatalf("user: %v", err)
 	}
 
-	h := &MeHandlers{DB: db}
+	userRepo := repository.NewPostgresUserRepo(db)
+	orgSvc := services.NewOrganizationService(db, nil)
+	h := NewMeHandlers(userRepo, orgSvc)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, uid)
@@ -79,7 +87,9 @@ func TestMe_IsPlatformAdmin_WhenTrue(t *testing.T) {
 		t.Fatalf("user: %v", err)
 	}
 
-	h := &MeHandlers{DB: db}
+	userRepo := repository.NewPostgresUserRepo(db)
+	orgSvc := services.NewOrganizationService(db, nil)
+	h := NewMeHandlers(userRepo, orgSvc)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, uid)
@@ -102,7 +112,9 @@ func TestMe_IsPlatformAdmin_WhenTrue(t *testing.T) {
 
 func TestMe_Unauthorized(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	h := &MeHandlers{DB: db}
+	userRepo := repository.NewPostgresUserRepo(db)
+	orgSvc := services.NewOrganizationService(db, nil)
+	h := NewMeHandlers(userRepo, orgSvc)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	// No user ID in context
@@ -115,7 +127,9 @@ func TestMe_Unauthorized(t *testing.T) {
 
 func TestMe_UserNotFound(t *testing.T) {
 	db := testdb.OpenTestDB(t)
-	h := &MeHandlers{DB: db}
+	userRepo := repository.NewPostgresUserRepo(db)
+	orgSvc := services.NewOrganizationService(db, nil)
+	h := NewMeHandlers(userRepo, orgSvc)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	// Use a non-existent user ID
@@ -125,4 +139,22 @@ func TestMe_UserNotFound(t *testing.T) {
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("expected status 404, got: %d", rr.Code)
 	}
+}
+
+// MockUserRepo for testing without database
+type MockUserRepo struct {
+	users map[string]*models.User
+}
+
+func (m *MockUserRepo) GetByID(ctx context.Context, id string) (*models.User, error) {
+	return m.users[id], nil
+}
+
+func (m *MockUserRepo) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+	for _, u := range m.users {
+		if u.Email == email {
+			return u, nil
+		}
+	}
+	return nil, nil
 }

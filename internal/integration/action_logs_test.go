@@ -8,19 +8,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 func TestActionLogs_API(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
 	token := authTokenForAction(t, te.Server.URL, "action_logs_api@example.com")
+
+	repo := repository.NewPostgresActionRepo(te.DB)
 
 	// Create chatbot
 	createBot := map[string]any{"name": "Action Log API Bot", "language": "en-US"}
@@ -73,7 +75,7 @@ t.Parallel()
 		DurationMs:      123,
 		CreatedAt:       time.Now(),
 	}
-	if err := db.CreateActionLog(context.Background(), te.DB, log); err != nil {
+	if err := repo.CreateLog(context.Background(), log); err != nil {
 		t.Fatalf("failed to seed action log: %v", err)
 	}
 
@@ -114,7 +116,7 @@ t.Parallel()
 			Status:     "success",
 			DurationMs: i,
 		}
-		db.CreateActionLog(context.Background(), te.DB, l)
+		repo.CreateLog(context.Background(), l)
 	}
 
 	// Request page 1 with limit 10

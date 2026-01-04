@@ -3,9 +3,9 @@ package router
 import (
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func registerOrgRoutes(mux *http.ServeMux, secret string, orgSvc *services.OrganizationService, oh *handlers.OrganizationHandlers, wh *handlers.WorkspaceHandlers) {

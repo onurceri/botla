@@ -2,16 +2,15 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -24,17 +23,17 @@ const (
 // PlanService provides cached access to plan configurations.
 // It uses Redis for distributed caching when available, with in-memory fallback.
 type PlanService struct {
-	db          *sql.DB
+	planRepo    repository.PlanRepository
 	redis       *redis.Client
 	memoryCache sync.Map
 }
 
 // NewPlanService creates a new PlanService instance.
 // redis can be nil for in-memory only caching (tests, development).
-func NewPlanService(db *sql.DB, redis *redis.Client) *PlanService {
+func NewPlanService(planRepo repository.PlanRepository, redis *redis.Client) *PlanService {
 	return &PlanService{
-		db:    db,
-		redis: redis,
+		planRepo: planRepo,
+		redis:    redis,
 	}
 }
 
@@ -145,12 +144,12 @@ func (s *PlanService) InvalidateAllCache(ctx context.Context) error {
 
 // fetchPlanByCode retrieves a plan from the database by code using the plan_limits table.
 func (s *PlanService) fetchPlanByCode(ctx context.Context, code string) (*models.Plan, error) {
-	return db.GetPlanWithLimits(ctx, s.db, code)
+	return s.planRepo.GetByCode(ctx, code)
 }
 
 // fetchAllPlans retrieves all active plans from the database using the plan_limits table.
 func (s *PlanService) fetchAllPlans(ctx context.Context) ([]models.Plan, error) {
-	return db.GetAllPlansWithLimits(ctx, s.db)
+	return s.planRepo.GetAllPlansWithLimits(ctx)
 }
 
 // getFromCache retrieves data from cache (Redis first, then memory).

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/repository"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 // MockChatbotRepository is a test double for ChatbotRepository.
@@ -22,6 +22,8 @@ type MockChatbotRepository struct {
 	CountByUserIDFunc            func(ctx context.Context, userID string) (int, error)
 	CountByWorkspaceFunc         func(ctx context.Context, workspaceID string) (int, error)
 	UpdateSuggestedQuestionsFunc func(ctx context.Context, id string, suggestions []string) error
+	GetDueForRefreshFunc         func(ctx context.Context, now time.Time) ([]models.Chatbot, error)
+	UpdateRefreshTimesFunc       func(ctx context.Context, botID string, nextRefresh, lastRefresh time.Time) error
 
 	// Invocation tracking
 	GetByIDCalls                  []string
@@ -35,6 +37,12 @@ type MockChatbotRepository struct {
 	UpdateSuggestedQuestionsCalls []struct {
 		ID          string
 		Suggestions []string
+	}
+	GetDueForRefreshCalls   []time.Time
+	UpdateRefreshTimesCalls []struct {
+		BotID       string
+		NextRefresh time.Time
+		LastRefresh time.Time
 	}
 }
 
@@ -111,6 +119,26 @@ func (m *MockChatbotRepository) UpdateSuggestedQuestions(ctx context.Context, id
 	}{id, suggestions})
 	if m.UpdateSuggestedQuestionsFunc != nil {
 		return m.UpdateSuggestedQuestionsFunc(ctx, id, suggestions)
+	}
+	return nil
+}
+
+func (m *MockChatbotRepository) GetDueForRefresh(ctx context.Context, now time.Time) ([]models.Chatbot, error) {
+	m.GetDueForRefreshCalls = append(m.GetDueForRefreshCalls, now)
+	if m.GetDueForRefreshFunc != nil {
+		return m.GetDueForRefreshFunc(ctx, now)
+	}
+	return nil, nil
+}
+
+func (m *MockChatbotRepository) UpdateRefreshTimes(ctx context.Context, botID string, nextRefresh, lastRefresh time.Time) error {
+	m.UpdateRefreshTimesCalls = append(m.UpdateRefreshTimesCalls, struct {
+		BotID       string
+		NextRefresh time.Time
+		LastRefresh time.Time
+	}{botID, nextRefresh, lastRefresh})
+	if m.UpdateRefreshTimesFunc != nil {
+		return m.UpdateRefreshTimesFunc(ctx, botID, nextRefresh, lastRefresh)
 	}
 	return nil
 }
@@ -221,28 +249,30 @@ func (m *MockActionRepository) CreateLog(ctx context.Context, log *models.Action
 
 // MockSourceRepository is a test double for SourceRepository.
 type MockSourceRepository struct {
-	GetByIDFunc       func(ctx context.Context, id string) (*models.DataSource, error)
-	GetByChatbotFunc  func(ctx context.Context, chatbotID string) ([]models.DataSource, error)
-	GetURLSourcesFunc func(ctx context.Context, chatbotID string) ([]models.DataSource, error)
-	CreateFunc        func(ctx context.Context, source *models.DataSource) (string, error)
-	SoftDeleteFunc    func(ctx context.Context, id string) error
-	DeleteFunc        func(ctx context.Context, id string) error
-	ExistsFunc        func(ctx context.Context, chatbotID, url string) (bool, error)
-	ExistsByHashFunc  func(ctx context.Context, chatbotID, hash string) (bool, error)
-	GetByHashFunc     func(ctx context.Context, chatbotID, hash string) (*models.DataSource, error)
-	CountByTypeFunc   func(ctx context.Context, chatbotID, sourceType string) (int, error)
+	GetByIDFunc          func(ctx context.Context, id string) (*models.DataSource, error)
+	GetByChatbotFunc     func(ctx context.Context, chatbotID string) ([]models.DataSource, error)
+	GetURLSourcesFunc    func(ctx context.Context, chatbotID string) ([]models.DataSource, error)
+	CreateFunc           func(ctx context.Context, source *models.DataSource) (string, error)
+	SoftDeleteFunc       func(ctx context.Context, id string) error
+	DeleteFunc           func(ctx context.Context, id string) error
+	ExistsFunc           func(ctx context.Context, chatbotID, url string) (bool, error)
+	ExistsByHashFunc     func(ctx context.Context, chatbotID, hash string) (bool, error)
+	GetByHashFunc        func(ctx context.Context, chatbotID, hash string) (*models.DataSource, error)
+	CountByTypeFunc      func(ctx context.Context, chatbotID, sourceType string) (int, error)
+	UpdateForRefreshFunc func(ctx context.Context, id string) error
 
 	// Invocation tracking
-	GetByIDCalls       []string
-	GetByChatbotCalls  []string
-	GetURLSourcesCalls []string
-	CreateCalls        []*models.DataSource
-	SoftDeleteCalls    []string
-	DeleteCalls        []string
-	ExistsCalls        []struct{ ChatbotID, URL string }
-	ExistsByHashCalls  []struct{ ChatbotID, Hash string }
-	GetByHashCalls     []struct{ ChatbotID, Hash string }
-	CountByTypeCalls   []struct{ ChatbotID, SourceType string }
+	GetByIDCalls          []string
+	GetByChatbotCalls     []string
+	GetURLSourcesCalls    []string
+	CreateCalls           []*models.DataSource
+	SoftDeleteCalls       []string
+	DeleteCalls           []string
+	ExistsCalls           []struct{ ChatbotID, URL string }
+	ExistsByHashCalls     []struct{ ChatbotID, Hash string }
+	GetByHashCalls        []struct{ ChatbotID, Hash string }
+	CountByTypeCalls      []struct{ ChatbotID, SourceType string }
+	UpdateForRefreshCalls []string
 }
 
 var _ repository.SourceRepository = (*MockSourceRepository)(nil)
@@ -325,6 +355,34 @@ func (m *MockSourceRepository) CountByType(ctx context.Context, chatbotID, sourc
 		return m.CountByTypeFunc(ctx, chatbotID, sourceType)
 	}
 	return 0, nil
+}
+
+func (m *MockSourceRepository) UpdateForRefresh(ctx context.Context, id string) error {
+	m.UpdateForRefreshCalls = append(m.UpdateForRefreshCalls, id)
+	if m.UpdateForRefreshFunc != nil {
+		return m.UpdateForRefreshFunc(ctx, id)
+	}
+	return nil
+}
+
+func (m *MockSourceRepository) UpdateSourceHash(ctx context.Context, id string, hash string) error {
+	return nil
+}
+
+func (m *MockSourceRepository) UpdateSourceProcessing(ctx context.Context, id string, status string, errorMessage *string, chunkCount int, processedAt *time.Time) error {
+	return nil
+}
+
+func (m *MockSourceRepository) UpdateSourceCapability(ctx context.Context, id string, summary string) error {
+	return nil
+}
+
+func (m *MockSourceRepository) UpdateSourceSuggestions(ctx context.Context, id string, suggestions []string) error {
+	return nil
+}
+
+func (m *MockSourceRepository) GetLastDeletedAtForURL(ctx context.Context, chatbotID, url string) (time.Time, bool, error) {
+	return time.Time{}, false, nil
 }
 
 // =============================================================================

@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 // Test full pipeline from source creation to completion
 func TestAsyncPipeline_FullLifecycle(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -81,7 +81,7 @@ LOOP:
 
 // Test job failure and retry
 func TestAsyncPipeline_FailureAndRetry(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -154,7 +154,7 @@ LOOP:
 
 // Test job recovery after simulated restart
 func TestAsyncPipeline_Recovery(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -179,7 +179,8 @@ t.Parallel()
 	time.Sleep(500 * time.Millisecond)
 
 	// Create a new job in pending state (simulating a scenario where a job was enqueued but not processed)
-	job, err := db.CreateTrainingJob(ctx, te.DB, sourceID, botID)
+	trainingJobRepo := repository.NewPostgresTrainingJobRepo(te.DB)
+	job, err := trainingJobRepo.Create(ctx, sourceID, botID)
 	if err != nil {
 		t.Fatalf("failed to create pending job: %v", err)
 	}
@@ -199,7 +200,7 @@ LOOP:
 			t.Fatal("recovery did not complete in time")
 		case <-ticker.C:
 			// Check job status
-			j, err := db.GetTrainingJob(ctx, te.DB, job.ID)
+			j, err := trainingJobRepo.GetByID(ctx, job.ID)
 			if err != nil {
 				continue
 			}
@@ -215,7 +216,7 @@ LOOP:
 
 // Test concurrent job processing
 func TestAsyncPipeline_ConcurrentJobs(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/scraper"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/scraper"
 )
 
 // DiscoverSitemap handles POST /api/v1/chatbots/:id/sitemap/discover
@@ -16,7 +16,7 @@ func (h *SourcesHandlers) DiscoverSitemap(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	chatbot, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	chatbot, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}

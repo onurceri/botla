@@ -35,7 +35,7 @@ if tokenCount > policy.TokenLimitFree { ... }
 ### Working with Plans
 
 ```go
-import "github.com/onurceri/botla-co/pkg/policy"
+import "github.com/onurceri/botla-app/pkg/policy"
 
 // Define plan type
 var userPlan policy.Plan = policy.PlanFree
@@ -57,7 +57,7 @@ for _, plan := range policy.AllPlans() {
 ### Working with Models
 
 ```go
-import "github.com/onurceri/botla-co/pkg/policy"
+import "github.com/onurceri/botla-app/pkg/policy"
 
 // Use default model
 defaultModel := policy.DefaultChatModel() // ModelGPT4oMini
@@ -75,7 +75,7 @@ modelName := userModel.String() // "gpt-4o"
 ### Reference Limits (Testing/Validation)
 
 ```go
-import "github.com/onurceri/botla-co/pkg/policy"
+import "github.com/onurceri/botla-app/pkg/policy"
 
 // Use reference constants for validation
 // NOTE: Always fetch actual limits from the database plan.Config

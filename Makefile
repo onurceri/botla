@@ -56,25 +56,25 @@ migrate-force-test:
 	migrate -path=$(MIGRATIONS_DIR) -database="$(TEST_DATABASE_URL)" force $(v)
 
 migrate-up-docker:
-	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) up
+	 docker run --rm --network=botla-app_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) up
 
 migrate-down-docker:
-	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) down
+	 docker run --rm --network=botla-app_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) down
 
 migrate-version-docker:
-	 -docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) version
+	 -docker run --rm --network=botla-app_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database=$(DOCKER_DATABASE_URL) version
 
 migrate-up-test-docker:
-	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_TEST_DATABASE_URL)" up
+	 docker run --rm --network=botla-app_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_TEST_DATABASE_URL)" up
 
 migrate-down-test-docker:
-	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_TEST_DATABASE_URL)" down
+	 docker run --rm --network=botla-app_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_TEST_DATABASE_URL)" down
 
 migrate-version-test-docker:
-	 -docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_TEST_DATABASE_URL)" version
+	 -docker run --rm --network=botla-app_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_TEST_DATABASE_URL)" version
 
 migrate-force-docker:
-	 docker run --rm --network=botla-co_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_DATABASE_URL)" force $(v)
+	 docker run --rm --network=botla-app_default -v $(PWD)/$(MIGRATIONS_DIR):/migrations migrate/migrate -path=/migrations -database="$(DOCKER_DATABASE_URL)" force $(v)
 
 
 

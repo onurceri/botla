@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/onurceri/botla-co/internal/integration"
-	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-app/internal/integration"
+	"github.com/onurceri/botla-app/internal/rag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

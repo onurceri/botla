@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 func TestUpdateAction_OptimisticLocking(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -93,7 +93,7 @@ t.Parallel()
 }
 
 func TestUpdateAction_DB_OptimisticLocking(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -152,9 +152,10 @@ t.Parallel()
 
 	// 3. Direct DB Test for Optimistic Locking
 	ctx := context.Background()
+	repo := repository.NewPostgresActionRepo(te.DB)
 
 	// Get current version
-	a1, err := db.GetActionByID(ctx, te.DB, action.ID)
+	a1, err := repo.GetByID(ctx, action.ID)
 	if err != nil {
 		t.Fatalf("get action 1: %v", err)
 	}
@@ -162,23 +163,23 @@ t.Parallel()
 	// Simulate "Concurrent" Update 1 (increments version)
 	a1_concurrent := *a1
 	a1_concurrent.Name = "Updated Concurrent"
-	if err := db.UpdateAction(ctx, te.DB, &a1_concurrent); err != nil {
+	if err := repo.Update(ctx, &a1_concurrent); err != nil {
 		t.Fatalf("concurrent update failed: %v", err)
 	}
 
 	// Initial action "a1" is now stale (its version is old)
 	a1.Name = "Updated Stale"
-	err = db.UpdateAction(ctx, te.DB, a1)
+	err = repo.Update(ctx, a1)
 	if err == nil {
 		t.Fatal("expected error on stale update, got nil")
 	}
-	if err != db.ErrVersionConflict {
+	if err != repository.ErrVersionConflict {
 		t.Errorf("expected ErrVersionConflict, got %v", err)
 	}
 }
 
 func TestGetOrCreateConversation_Concurrency(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -213,9 +214,10 @@ t.Parallel()
 
 	// Launch concurrent requests calling DB function directly (as we want to test DB logic primarily)
 	// We use the integration DB connection.
+	conversationRepo := repository.NewPostgresConversationRepo(te.DB)
 	for i := 0; i < concurrency; i++ {
 		go func() {
-			c, err := db.GetOrCreateConversationBySessionID(ctx, te.DB, bot.ID, sessionID)
+			c, err := conversationRepo.GetOrCreateBySessionID(ctx, bot.ID, sessionID)
 			if err != nil {
 				errCh <- err
 				return

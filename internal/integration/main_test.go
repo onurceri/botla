@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 func TestMain(m *testing.M) {

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 // TestURLDiscovery_AutoMode tests that when a chatbot has discovery_mode=auto,
@@ -32,6 +32,8 @@ func TestURLDiscovery_AutoMode(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
+
+	sourceRepo := repository.NewPostgresSourceRepo(te.DB)
 
 	// Configure mock scraper to return HTML with links
 	rootURL := "https://example.com"
@@ -98,7 +100,7 @@ func TestURLDiscovery_AutoMode(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Check sources - should have root + page1
-	sources, err := db.ListSourcesByChatbotID(context.Background(), te.DB, bot.ID)
+	sources, err := sourceRepo.GetByChatbot(context.Background(), bot.ID)
 	if err != nil {
 		t.Fatalf("failed to list sources: %v", err)
 	}
@@ -145,6 +147,8 @@ func TestURLDiscovery_PendingMode(t *testing.T) {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
+
+	sourceRepo := repository.NewPostgresSourceRepo(te.DB)
 
 	// Configure mock scraper
 	rootURL := "https://example.com"
@@ -206,7 +210,7 @@ func TestURLDiscovery_PendingMode(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// In pending mode, discovered links should NOT be in sources
-	sources, err := db.ListSourcesByChatbotID(context.Background(), te.DB, bot.ID)
+	sources, err := sourceRepo.GetByChatbot(context.Background(), bot.ID)
 	if err != nil {
 		t.Fatalf("failed to list sources: %v", err)
 	}
@@ -267,7 +271,7 @@ func TestURLDiscovery_PendingMode(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Verify page1 is now in sources
-	sources, err = db.ListSourcesByChatbotID(context.Background(), te.DB, bot.ID)
+	sources, err = sourceRepo.GetByChatbot(context.Background(), bot.ID)
 	if err != nil {
 		t.Fatalf("failed to list sources: %v", err)
 	}

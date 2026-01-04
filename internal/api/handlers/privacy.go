@@ -9,16 +9,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type PrivacyHandlers struct {
 	DB             *sql.DB
 	PrivacyService *services.PrivacyService
 	AdminService   *services.AdminService
+	PrivacyRepo    repository.PrivacyRepository
 }
 
 // ListPrivacyRequests returns pending/processed KVKK requests
@@ -34,7 +35,7 @@ func (h *PrivacyHandlers) ListPrivacyRequests(w http.ResponseWriter, r *http.Req
 	}
 	offset := (page - 1) * limit
 
-	requests, total, err := db.ListPrivacyRequests(r.Context(), h.DB, status, limit, offset)
+	requests, total, err := h.PrivacyRepo.ListPrivacyRequests(r.Context(), status, limit, offset)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -56,7 +57,7 @@ func (h *PrivacyHandlers) GetPrivacyRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
+	req, err := h.PrivacyRepo.GetPrivacyRequest(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -76,7 +77,7 @@ func (h *PrivacyHandlers) GetDownloadURL(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
+	req, err := h.PrivacyRepo.GetPrivacyRequest(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -125,7 +126,7 @@ func (h *PrivacyHandlers) DownloadPrivacyExport(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
+	req, err := h.PrivacyRepo.GetPrivacyRequest(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -182,7 +183,7 @@ func (h *PrivacyHandlers) DownloadDataExport(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	exp, err := db.GetDataExport(r.Context(), h.DB, id)
+	exp, err := h.PrivacyRepo.GetDataExport(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -253,7 +254,7 @@ func (h *PrivacyHandlers) ProcessPrivacyRequest(w http.ResponseWriter, r *http.R
 
 	var err error
 	// Get request first
-	req, errGet := db.GetPrivacyRequest(r.Context(), h.DB, id)
+	req, errGet := h.PrivacyRepo.GetPrivacyRequest(r.Context(), id)
 	if errGet != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -272,10 +273,10 @@ func (h *PrivacyHandlers) ProcessPrivacyRequest(w http.ResponseWriter, r *http.R
 			err = h.PrivacyService.ProcessExportRequest(r.Context(), id, adminID)
 		default:
 			// Just mark completed for other types
-			err = db.UpdatePrivacyRequestStatus(r.Context(), h.DB, id, "completed", adminID, nil)
+			err = h.PrivacyRepo.UpdatePrivacyRequestStatus(r.Context(), id, "completed", adminID, nil)
 		}
 	case "deny":
-		err = db.UpdatePrivacyRequestStatus(r.Context(), h.DB, id, "denied", adminID, &payload.DenialReason)
+		err = h.PrivacyRepo.UpdatePrivacyRequestStatus(r.Context(), id, "denied", adminID, &payload.DenialReason)
 	default:
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return

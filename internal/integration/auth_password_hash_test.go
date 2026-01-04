@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 func TestAuth_Register_PasswordHashing(t *testing.T) {

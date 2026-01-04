@@ -1,24 +1,24 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 
 	"strconv"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type AnalyticsHandlers struct {
-	DB               *sql.DB
 	AnalyticsService *services.AnalyticsService
 	OrgService       *services.OrganizationService
 	WorkspaceService *services.WorkspaceService
+	AnalyticsRepo    repository.AnalyticsRepository
+	ChatbotRepo      repository.ChatbotRepository
 }
 
 func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request) {
@@ -61,14 +61,14 @@ func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Fetch data with scoped logic
-	data, err := db.GetGlobalAnalytics(r.Context(), h.DB, userID, orgIDPtr, wsIDPtr)
+	data, err := h.AnalyticsRepo.GetGlobalAnalytics(r.Context(), userID, orgIDPtr, wsIDPtr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if data == nil {
-		data = []db.AnalyticsPoint{}
+		data = []repository.AnalyticsPoint{}
 	}
 
 	api.WriteJSON(w, http.StatusOK, data)
@@ -76,7 +76,7 @@ func (h *AnalyticsHandlers) GetAnalytics(w http.ResponseWriter, r *http.Request)
 
 // GetChatbotAnalyticsOverview returns aggregated analytics for a specific chatbot
 func (h *AnalyticsHandlers) GetChatbotAnalyticsOverview(w http.ResponseWriter, r *http.Request) {
-	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContextWithRepo(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -95,7 +95,7 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsOverview(w http.ResponseWriter, r
 
 // GetChatbotAnalyticsTrends returns daily trends for a chatbot
 func (h *AnalyticsHandlers) GetChatbotAnalyticsTrends(w http.ResponseWriter, r *http.Request) {
-	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContextWithRepo(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -119,7 +119,7 @@ func (h *AnalyticsHandlers) GetChatbotAnalyticsTrends(w http.ResponseWriter, r *
 
 // GetSourceUsage returns source usage analytics for a chatbot
 func (h *AnalyticsHandlers) GetSourceUsage(w http.ResponseWriter, r *http.Request) {
-	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContextWithRepo(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -132,7 +132,7 @@ func (h *AnalyticsHandlers) GetSourceUsage(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	stats, err := db.GetSourceUsageStats(r.Context(), h.DB, botID, days)
+	stats, err := h.AnalyticsRepo.GetSourceUsageStats(r.Context(), botID, days)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

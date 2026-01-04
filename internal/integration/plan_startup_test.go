@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +30,8 @@ func TestPlanValidationStartupSuccess(t *testing.T) {
 
 	// The default seeded plans should be valid
 	// In the real app, this ensures the server starts correctly with standard plans.
-	planSvc := services.NewPlanService(dbConn, nil)
+	planRepo := repository.NewPostgresPlanRepo(dbConn, nil)
+	planSvc := services.NewPlanService(planRepo, nil)
 	err := planSvc.ValidateAllPlans(context.Background())
 	assert.NoError(t, err, "Seeded plans should be valid")
 }

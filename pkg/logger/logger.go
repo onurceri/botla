@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/pkg/requestid"
+	"github.com/onurceri/botla-app/pkg/requestid"
 )
 
 type Logger struct {

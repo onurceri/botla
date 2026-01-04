@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/requestid"
+	"github.com/onurceri/botla-app/pkg/requestid"
 )
 
 func TestNew_DefaultLevel(t *testing.T) {

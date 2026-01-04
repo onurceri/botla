@@ -8,16 +8,18 @@ import (
 	"path"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/httputil"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/httputil"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type UserPrivacyHandlers struct {
 	DB             *sql.DB
 	PrivacyService *services.PrivacyService
+	UserRepo       repository.UserRepository
+	PrivacyRepo    repository.PrivacyRepository
 }
 
 // GetMyConsents returns user's current consent settings
@@ -28,7 +30,7 @@ func (h *UserPrivacyHandlers) GetMyConsents(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	consents, err := db.GetUserConsents(r.Context(), h.DB, userID)
+	consents, err := h.PrivacyRepo.GetUserConsents(r.Context(), userID)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -73,25 +75,25 @@ func (h *UserPrivacyHandlers) UpdateMyConsents(w http.ResponseWriter, r *http.Re
 
 	// Update each consent if provided
 	if req.Marketing != nil {
-		if err := db.UpsertConsent(r.Context(), h.DB, userID, "marketing", *req.Marketing, ip, userAgent); err != nil {
+		if err := h.PrivacyRepo.UpsertConsent(r.Context(), userID, "marketing", *req.Marketing, ip, userAgent); err != nil {
 			api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 			return
 		}
 	}
 	if req.Analytics != nil {
-		if err := db.UpsertConsent(r.Context(), h.DB, userID, "analytics", *req.Analytics, ip, userAgent); err != nil {
+		if err := h.PrivacyRepo.UpsertConsent(r.Context(), userID, "analytics", *req.Analytics, ip, userAgent); err != nil {
 			api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 			return
 		}
 	}
 	if req.Personalization != nil {
-		if err := db.UpsertConsent(r.Context(), h.DB, userID, "personalization", *req.Personalization, ip, userAgent); err != nil {
+		if err := h.PrivacyRepo.UpsertConsent(r.Context(), userID, "personalization", *req.Personalization, ip, userAgent); err != nil {
 			api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 			return
 		}
 	}
 	if req.ThirdParty != nil {
-		if err := db.UpsertConsent(r.Context(), h.DB, userID, "third_party", *req.ThirdParty, ip, userAgent); err != nil {
+		if err := h.PrivacyRepo.UpsertConsent(r.Context(), userID, "third_party", *req.ThirdParty, ip, userAgent); err != nil {
 			api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 			return
 		}
@@ -108,7 +110,7 @@ func (h *UserPrivacyHandlers) RequestMyDataExport(w http.ResponseWriter, r *http
 		return
 	}
 
-	user, err := db.GetUserByID(r.Context(), h.DB, userID)
+	user, err := h.UserRepo.GetByID(r.Context(), userID)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -148,7 +150,7 @@ func (h *UserPrivacyHandlers) RequestDataCorrection(w http.ResponseWriter, r *ht
 		return
 	}
 
-	user, err := db.GetUserByID(r.Context(), h.DB, userID)
+	user, err := h.UserRepo.GetByID(r.Context(), userID)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -184,7 +186,7 @@ func (h *UserPrivacyHandlers) RequestAccountDeletion(w http.ResponseWriter, r *h
 	}
 
 	// We need user email
-	user, err := db.GetUserByID(r.Context(), h.DB, userID)
+	user, err := h.UserRepo.GetByID(r.Context(), userID)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -216,7 +218,7 @@ func (h *UserPrivacyHandlers) GetMyPrivacyRequest(w http.ResponseWriter, r *http
 		return
 	}
 
-	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
+	req, err := h.PrivacyRepo.GetPrivacyRequest(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -242,7 +244,7 @@ func (h *UserPrivacyHandlers) DownloadMyPrivacyExport(w http.ResponseWriter, r *
 		return
 	}
 
-	req, err := db.GetPrivacyRequest(r.Context(), h.DB, id)
+	req, err := h.PrivacyRepo.GetPrivacyRequest(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -305,7 +307,7 @@ func (h *UserPrivacyHandlers) DownloadMyDataExport(w http.ResponseWriter, r *htt
 		return
 	}
 
-	exp, err := db.GetDataExport(r.Context(), h.DB, id)
+	exp, err := h.PrivacyRepo.GetDataExport(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return

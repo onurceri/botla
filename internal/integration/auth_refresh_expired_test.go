@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/auth"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/auth"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 func TestAuth_RefreshWithExpiredToken(t *testing.T) {

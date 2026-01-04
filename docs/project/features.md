@@ -1,6 +1,6 @@
 # Existing Features Audit (Comprehensive)
 
-This document provides a detailed, documentation-style inventory of the features implemented in Botla-co. It serves as the definitive reference for the project's current capabilities.
+This document provides a detailed, documentation-style inventory of the features implemented in botla-app. It serves as the definitive reference for the project's current capabilities.
 
 ## 1. Authentication & Multi-Tenancy
 - **User Management:**

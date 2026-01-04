@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/integration"
+	"github.com/onurceri/botla-app/internal/integration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

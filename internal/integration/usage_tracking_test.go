@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 // Helper to insert user
@@ -46,6 +46,9 @@ func TestMonthlyTokenUsageTracking(t *testing.T) {
 	}
 	defer fixtures.TeardownTestEnv(te)
 
+	analyticsRepo := repository.NewPostgresAnalyticsRepo(te.DB)
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+
 	// Create user
 	userID, _ := insertUser(t, te.DB, "usg-test@example.com")
 
@@ -57,13 +60,13 @@ func TestMonthlyTokenUsageTracking(t *testing.T) {
 
 	// USG-002: IncrementAnalytics upsert (initial)
 	// Add 100 tokens to Bot 1
-	err = db.IncrementAnalytics(ctx, te.DB, bot1ID, true, 100, false, 500)
+	err = analyticsRepo.IncrementAnalytics(ctx, bot1ID, true, 100, false, 500)
 	if err != nil {
 		t.Fatalf("IncrementAnalytics failed: %v", err)
 	}
 
 	// USG-001: GetMonthlyTokenUsage aggregates from analytics
-	used, err := db.GetMonthlyTokenUsage(ctx, te.DB, userID)
+	used, err := usageRepo.GetMonthlyTokenUsage(ctx, userID)
 	if err != nil {
 		t.Fatalf("GetMonthlyTokenUsage failed: %v", err)
 	}
@@ -73,24 +76,24 @@ func TestMonthlyTokenUsageTracking(t *testing.T) {
 
 	// USG-003: IncrementAnalytics upsert (update)
 	// Add 50 more tokens to Bot 1
-	err = db.IncrementAnalytics(ctx, te.DB, bot1ID, false, 50, false, 200)
+	err = analyticsRepo.IncrementAnalytics(ctx, bot1ID, false, 50, false, 200)
 	if err != nil {
 		t.Fatalf("IncrementAnalytics update failed: %v", err)
 	}
 
-	used, _ = db.GetMonthlyTokenUsage(ctx, te.DB, userID)
+	used, _ = usageRepo.GetMonthlyTokenUsage(ctx, userID)
 	if used != 150 {
 		t.Errorf("USG-003: expected 150 tokens, got %d", used)
 	}
 
 	// USG-004: Token usage across multiple chatbots
 	// Add 200 tokens to Bot 2
-	err = db.IncrementAnalytics(ctx, te.DB, bot2ID, true, 200, false, 600)
+	err = analyticsRepo.IncrementAnalytics(ctx, bot2ID, true, 200, false, 600)
 	if err != nil {
 		t.Fatalf("IncrementAnalytics bot2 failed: %v", err)
 	}
 
-	used, _ = db.GetMonthlyTokenUsage(ctx, te.DB, userID)
+	used, _ = usageRepo.GetMonthlyTokenUsage(ctx, userID)
 	if used != 350 { // 150 + 200
 		t.Errorf("USG-004: expected 350 tokens, got %d", used)
 	}
@@ -107,7 +110,7 @@ func TestMonthlyTokenUsageTracking(t *testing.T) {
 	}
 
 	// Should still be 350 for current month
-	used, _ = db.GetMonthlyTokenUsage(ctx, te.DB, userID)
+	used, _ = usageRepo.GetMonthlyTokenUsage(ctx, userID)
 	if used != 350 {
 		t.Errorf("USG-005: expected 350 tokens (ignoring prev month), got %d", used)
 	}
@@ -122,12 +125,14 @@ func TestIngestionUsageTracking(t *testing.T) {
 	}
 	defer fixtures.TeardownTestEnv(te)
 
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+
 	userID, _ := insertUser(t, te.DB, "ingest-usg@example.com")
 	ctx := context.Background()
 	now := time.Now()
 
 	// Initial check
-	sources, tokens, err := db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
+	sources, tokens, err := usageRepo.GetMonthlyIngestionUsage(ctx, userID, now)
 	if err != nil {
 		t.Fatalf("GetMonthlyIngestionUsage failed: %v", err)
 	}
@@ -136,35 +141,35 @@ func TestIngestionUsageTracking(t *testing.T) {
 	}
 
 	// USG-007: IncrementSuccessfulIngestion
-	err = db.IncrementSuccessfulIngestion(ctx, te.DB, userID, now, 1)
+	err = usageRepo.IncrementSuccessfulIngestion(ctx, userID, now, 1)
 	if err != nil {
 		t.Fatalf("IncrementSuccessfulIngestion failed: %v", err)
 	}
 
 	var incrementedSources int
-	incrementedSources, _, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
+	incrementedSources, _, _ = usageRepo.GetMonthlyIngestionUsage(ctx, userID, now)
 	if incrementedSources != 1 {
 		t.Errorf("USG-007: expected 1 source, got %d", incrementedSources)
 	}
 
 	// USG-008: AddEmbeddingTokens
-	err = db.AddEmbeddingTokens(ctx, te.DB, userID, now, 500)
+	err = usageRepo.AddEmbeddingTokens(ctx, userID, now, 500)
 	if err != nil {
 		t.Fatalf("AddEmbeddingTokens failed: %v", err)
 	}
 
-	_, tokens, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
+	_, tokens, _ = usageRepo.GetMonthlyIngestionUsage(ctx, userID, now)
 	if tokens != 500 {
 		t.Errorf("USG-008: expected 500 tokens, got %d", tokens)
 	}
 
 	// USG-006: GetMonthlyIngestionUsage returns sources + embedding tokens
 	// Add more to verify aggregation
-	_ = db.IncrementSuccessfulIngestion(ctx, te.DB, userID, now, 2)
-	_ = db.AddEmbeddingTokens(ctx, te.DB, userID, now, 1000)
+	_ = usageRepo.IncrementSuccessfulIngestion(ctx, userID, now, 2)
+	_ = usageRepo.AddEmbeddingTokens(ctx, userID, now, 1000)
 
 	var embeddingSources int
-	embeddingSources, tokens, _ = db.GetMonthlyIngestionUsage(ctx, te.DB, userID, now)
+	embeddingSources, tokens, _ = usageRepo.GetMonthlyIngestionUsage(ctx, userID, now)
 	if embeddingSources != 3 || tokens != 1500 {
 		t.Errorf("USG-006: expected 3/1500, got %d/%d", embeddingSources, tokens)
 	}

@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 func TestNewHTTPServer_Config(t *testing.T) {

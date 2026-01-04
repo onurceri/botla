@@ -3,7 +3,7 @@ package testdb
 import (
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 func TestCreateUser(t *testing.T) {

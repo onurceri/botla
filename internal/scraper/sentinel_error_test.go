@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
+	pkgErrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // TestScrapeError_RateLimit verifies that HTTP 429 produces an error wrapping ErrRateLimit

@@ -6,15 +6,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/processing"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/processing"
 )
 
 // GetSourceStatusOrDelete handles GET/DELETE for individual sources
 func (h *SourcesHandlers) GetSourceStatusOrDelete(w http.ResponseWriter, r *http.Request) {
-	s, _, _, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	s, _, _, ok := getSourceContext(w, r, h.SourceRepo, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -61,7 +60,7 @@ func (h *SourcesHandlers) deleteSource(w http.ResponseWriter, r *http.Request, s
 		_ = h.Storage.DeleteFile(r.Context(), *s.FilePath)
 	}
 
-	if err := db.SoftDeleteSource(r.Context(), h.DB, s.ID); err != nil {
+	if err := h.SourceRepo.SoftDelete(r.Context(), s.ID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -74,7 +73,7 @@ func (h *SourcesHandlers) deleteSource(w http.ResponseWriter, r *http.Request, s
 				h.Log.Error("re_aggregate_panic", map[string]any{"panic": r, "chatbot_id": s.ChatbotID})
 			}
 		}()
-		processing.ReAggregateSuggestionsForChatbot(context.Background(), h.DB, s.ChatbotID, h.Log)
+		processing.ReAggregateSuggestionsForChatbot(context.Background(), h.ChatbotRepo, s.ChatbotID, h.Log)
 	}()
 
 	w.WriteHeader(http.StatusNoContent)

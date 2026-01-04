@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 	"github.com/sony/gobreaker/v2"
 )
 

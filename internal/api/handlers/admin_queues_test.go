@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,8 +20,11 @@ func TestAdminQueueHandlers(t *testing.T) {
 	pool := testdb.OpenParallelTestDB(t)
 
 	log := logger.New("INFO")
-	adminSvc := services.NewAdminService(pool, log)
-	h := NewAdminQueueHandlers(pool, adminSvc)
+	adminRepo := repository.NewPostgresAdminRepo(pool)
+	adminSvc := services.NewAdminService(adminRepo, log)
+	queueRepo := repository.NewPostgresQueueRepo(pool)
+	sourceRepo := repository.NewPostgresSourceRepo(pool)
+	h := NewAdminQueueHandlers(adminSvc, queueRepo, sourceRepo)
 	ctx := context.Background()
 
 	// Seed required data for foreign keys
@@ -64,7 +67,7 @@ func TestAdminQueueHandlers(t *testing.T) {
 		h.GetQueues(rr, req)
 
 		assert.Equal(t, http.StatusOK, rr.Code)
-		var stats []db.QueueStats
+		var stats []repository.QueueStats
 		err := json.Unmarshal(rr.Body.Bytes(), &stats)
 		require.NoError(t, err)
 
@@ -86,7 +89,7 @@ func TestAdminQueueHandlers(t *testing.T) {
 		h.GetStuckJobs(rr, req)
 
 		assert.Equal(t, http.StatusOK, rr.Code)
-		var jobs []db.StuckJob
+		var jobs []repository.StuckJob
 		err := json.Unmarshal(rr.Body.Bytes(), &jobs)
 		require.NoError(t, err)
 

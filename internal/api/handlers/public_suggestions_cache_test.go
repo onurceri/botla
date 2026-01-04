@@ -10,13 +10,14 @@ import (
 
 	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
 )
 
 func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
 	pool := mustInitDB(t)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
 	var uid string
 	var freePlanID string
 	if err := pool.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
@@ -48,14 +49,14 @@ func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
 		SuggestedQuestions:   []string{"A", "B"},
 		SuggestionsEnabled:   true,
 	}
-	bid, err := db.CreateChatbot(context.Background(), pool, bot)
+	bid, err := repository.NewPostgresChatbotRepo(pool).Create(context.Background(), bot)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
 	req1 := httptest.NewRequest(http.MethodGet, "/api/v1/public/chatbots/"+bid, nil)
 	w1 := httptest.NewRecorder()
-	PublicChatbotConfig(pool)(w1, req1)
+	PublicChatbotConfig(chatbotRepo)(w1, req1)
 	if w1.Code != http.StatusOK {
 		t.Fatalf("status1: %d", w1.Code)
 	}
@@ -72,7 +73,7 @@ func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
 
 	req2 := httptest.NewRequest(http.MethodGet, "/api/v1/public/chatbots/"+bid, nil)
 	w2 := httptest.NewRecorder()
-	PublicChatbotConfig(pool)(w2, req2)
+	PublicChatbotConfig(chatbotRepo)(w2, req2)
 	var m2 map[string]any
 	_ = json.Unmarshal(w2.Body.Bytes(), &m2)
 	if len(m2["suggested_questions"].([]any)) != 1 {

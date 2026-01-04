@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/auth"
+	"github.com/onurceri/botla-app/internal/auth"
 )
 
 func TestAuthMiddleware_InvalidBearerFormat(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 func TestProcessingSubsystemInterface(t *testing.T) {

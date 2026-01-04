@@ -2,29 +2,28 @@ package services
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type AnalyticsService struct {
-	DB  *sql.DB
-	Log *logger.Logger
+	AnalyticsRepo repository.AnalyticsRepository
+	Log           *logger.Logger
 }
 
-func NewAnalyticsService(db *sql.DB, log *logger.Logger) *AnalyticsService {
+func NewAnalyticsService(analyticsRepo repository.AnalyticsRepository, log *logger.Logger) *AnalyticsService {
 	return &AnalyticsService{
-		DB:  db,
-		Log: log,
+		AnalyticsRepo: analyticsRepo,
+		Log:           log,
 	}
 }
 
 // GetChatbotOverview returns aggregated analytics for a specific chatbot
 func (s *AnalyticsService) GetChatbotOverview(ctx context.Context, chatbotID string) (*models.AnalyticsOverview, error) {
-	res, err := db.GetAnalyticsOverview(ctx, s.DB, chatbotID)
+	res, err := s.AnalyticsRepo.GetOverview(ctx, chatbotID)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get analytics overview")
 	}
@@ -33,7 +32,7 @@ func (s *AnalyticsService) GetChatbotOverview(ctx context.Context, chatbotID str
 
 // GetChatbotTrends returns daily trends for a chatbot
 func (s *AnalyticsService) GetChatbotTrends(ctx context.Context, chatbotID string, days int) (*models.TrendData, error) {
-	daily, err := db.GetAnalyticsTrends(ctx, s.DB, chatbotID, days)
+	daily, err := s.AnalyticsRepo.GetTrends(ctx, chatbotID, days)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get analytics trends")
 	}
@@ -42,7 +41,7 @@ func (s *AnalyticsService) GetChatbotTrends(ctx context.Context, chatbotID strin
 
 // TrackUnansweredQuery records a low confidence query
 func (s *AnalyticsService) TrackUnansweredQuery(ctx context.Context, chatbotID, query string) error {
-	if err := db.TrackUnansweredQuery(ctx, s.DB, chatbotID, query); err != nil {
+	if err := s.AnalyticsRepo.TrackUnansweredQuery(ctx, chatbotID, query); err != nil {
 		return pkgerrors.Wrapf(err, "track unanswered query")
 	}
 	return nil

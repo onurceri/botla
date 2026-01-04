@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 // Helper to create org and users with roles

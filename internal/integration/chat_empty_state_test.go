@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 // TestChat_EmptyState_GreetingResponse verifies that the bot responds to greetings

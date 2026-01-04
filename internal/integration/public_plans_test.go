@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 func TestPublicPlans_GetAllPlans(t *testing.T) {

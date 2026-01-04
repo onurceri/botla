@@ -12,19 +12,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api/router"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/workers"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/ratelimit"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
+	"github.com/onurceri/botla-app/internal/api/router"
+	"github.com/onurceri/botla-app/internal/db"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/workers"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/ratelimit"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -98,7 +99,8 @@ func initInfrastructure(cfg *config.Config, log *logger.Logger) (*infraDeps, err
 		return nil, fmt.Errorf("init db: %w", err)
 	}
 
-	planSvc := services.NewPlanService(pool, nil)
+	planRepo := repository.NewPostgresPlanRepo(pool, nil)
+	planSvc := services.NewPlanService(planRepo, nil)
 	if vErr := planSvc.ValidateAllPlans(context.Background()); vErr != nil {
 		log.Error("plan_validation_failed", map[string]any{
 			"error":   vErr.Error(),
@@ -209,8 +211,11 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 	}
 
 	scrp := scraper.NewDefaultScraper(scConfig, bScraper)
-	
-	q, err := processing.StartSourceQueue(pool, storageService, oaiClient, qdrantClient, scrp, tokLoader, cfg.WORKER_COUNT)
+
+	// Create repositories needed for the source queue
+	trainingJobRepo := repository.NewPostgresTrainingJobRepo(pool)
+
+	q, err := processing.StartSourceQueue(trainingJobRepo, storageService, oaiClient, qdrantClient, scrp, tokLoader, cfg.WORKER_COUNT)
 	if err != nil {
 		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init source queue: %w", err)
@@ -224,9 +229,14 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 	}, nil
 }
 
-func initSchedulers(pool *sql.DB, log *logger.Logger, queue *processing.SourceQueue, storageService storage.StorageService) *schedulerDeps {
+func initSchedulers(pool *sql.DB, redisClient *redis.Client, log *logger.Logger, queue *processing.SourceQueue, storageService storage.StorageService) *schedulerDeps {
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	sourceRepo := repository.NewPostgresSourceRepo(pool)
+	planRepo := repository.NewPostgresPlanRepo(pool, redisClient)
+	analyticsRepo := repository.NewPostgresAnalyticsRepo(pool)
+
 	return &schedulerDeps{
-		refreshScheduler: services.NewRefreshScheduler(pool, queue, log),
+		refreshScheduler: services.NewRefreshScheduler(chatbotRepo, sourceRepo, planRepo, analyticsRepo, queue, log),
 		retentionJob:     services.NewRetentionJob(pool, log, storageService),
 	}
 }
@@ -247,7 +257,7 @@ func newApplication(cfg *config.Config, log *logger.Logger) (*application, error
 		return nil, err
 	}
 
-	sched := initSchedulers(infra.db, log, proc.queue, infra.storage)
+	sched := initSchedulers(infra.db, rl.redisClient, log, proc.queue, infra.storage)
 
 	return &application{
 		cfg:              cfg,
@@ -302,7 +312,8 @@ func (app *application) start() {
 	origins := strings.Split(app.cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
 	// Middleware chain: RequestID -> Security -> Recovery -> Logger -> MaxBytes -> PlanLoader -> RateLimit -> Mux
-	planLoader := middleware.PlanLoaderMiddleware(app.db, app.log)
+	planRepo := repository.NewPostgresPlanRepo(app.db, app.redisClient)
+	planLoader := middleware.PlanLoaderMiddleware(planRepo, app.log)
 	handler := middleware.RequestID(
 		middleware.SecurityHeadersMiddleware()(
 			middleware.RecoveryMiddleware(app.log, app.cfg.GO_ENV)(

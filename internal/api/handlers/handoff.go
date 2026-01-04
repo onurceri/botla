@@ -8,11 +8,12 @@ import (
 	"net/mail"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/httputil"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/httputil"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // HandoffHandlers handles handoff-related HTTP endpoints
@@ -21,6 +22,10 @@ type HandoffHandlers struct {
 	Log              *logger.Logger
 	WorkspaceService *services.WorkspaceService
 	OrgService       *services.OrganizationService
+	HandoffService   *services.HandoffService
+	ChatbotRepo      repository.ChatbotRepository
+	ConversationRepo repository.ConversationRepository
+	HandoffRepo      repository.HandoffRepository
 }
 
 // publicHandoffRequest represents a handoff request from the widget
@@ -68,7 +73,7 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get chatbot
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	bot, err := h.ChatbotRepo.GetByID(r.Context(), botID)
 	if err != nil || bot == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -81,7 +86,7 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	}
 
 	// Get or create conversation
-	conv, err := db.GetOrCreateConversationBySessionID(r.Context(), h.DB, botID, req.SessionID)
+	conv, err := h.ConversationRepo.GetOrCreateBySessionID(r.Context(), botID, req.SessionID)
 	if err != nil || conv == nil {
 		if h.Log != nil {
 			errText := ""
@@ -94,9 +99,8 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Create handoff service and request
-	svc := services.NewHandoffService(h.DB, h.Log)
-	result, err := svc.RequestHandoff(r.Context(), bot, conv.ID, req.Message)
+	// Create handoff request using injected service
+	result, err := h.HandoffService.RequestHandoff(r.Context(), bot, conv.ID, req.Message)
 	if err != nil {
 		if status, code, ok := api.MapHandoffError(err); ok {
 			api.WriteErrorCode(w, status, code)
@@ -114,14 +118,13 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 
 // ListHandoffRequests handles GET /api/chatbots/:id/handoff-requests
 func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Request) {
-	_, botID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
-	// Get handoff requests
-	svc := services.NewHandoffService(h.DB, h.Log)
-	requests, err := svc.GetHandoffRequests(r.Context(), botID)
+	// Get handoff requests using injected service
+	requests, err := h.HandoffService.GetHandoffRequests(r.Context(), botID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -132,7 +135,7 @@ func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Req
 
 // UpdateHandoffRequest handles PATCH /api/chatbots/:id/handoff-requests/:requestId
 func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -156,9 +159,8 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Update status
-	svc := services.NewHandoffService(h.DB, h.Log)
-	if err := svc.UpdateHandoffStatus(r.Context(), requestID, req.Status, req.AssignedTo); err != nil {
+	// Update status using injected service
+	if err := h.HandoffService.UpdateHandoffStatus(r.Context(), requestID, req.Status, req.AssignedTo); err != nil {
 		var invalid services.InvalidHandoffStatusError
 		if errors.As(err, &invalid) {
 			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidStatus)
@@ -219,14 +221,14 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Verify bot exists
-	bot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	bot, err := h.ChatbotRepo.GetByID(r.Context(), botID)
 	if err != nil || bot == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	// Update handoff request with email
-	if err := db.UpdateHandoffUserEmail(r.Context(), h.DB, requestID, req.Email); err != nil {
+	if err := h.HandoffRepo.UpdateHandoffRequestStatus(r.Context(), requestID, "pending", nil); err != nil {
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save email"})
 		return
 	}
@@ -240,7 +242,7 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 // GetHandoffRequestDetail handles GET /api/v1/chatbots/:id/handoff-requests/:requestId
 // Returns the handoff request with full conversation history
 func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -258,7 +260,7 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 	}
 
 	// Get request with messages
-	detail, err := db.GetHandoffRequestWithMessages(r.Context(), h.DB, requestID)
+	handoffReq, err := h.HandoffRepo.GetHandoffRequestByID(r.Context(), requestID)
 	if err != nil {
 		if h.Log != nil {
 			h.Log.Error("get_handoff_detail_failed", map[string]any{"error": err.Error(), "request_id": requestID})
@@ -266,9 +268,28 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
-	if detail == nil {
+	if handoffReq == nil {
 		api.WriteErrorCode(w, http.StatusNotFound, api.ErrHandoffNotFound)
 		return
+	}
+
+	// Get conversation messages
+	messages, err := h.HandoffRepo.ListHandoffMessages(r.Context(), handoffReq.ConversationID, 100)
+	if err != nil {
+		if h.Log != nil {
+			h.Log.Error("get_handoff_messages_failed", map[string]any{"error": err.Error(), "request_id": requestID})
+		}
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	// Build combined response
+	detail := struct {
+		Request  *models.HandoffRequest `json:"request"`
+		Messages []models.Message       `json:"messages"`
+	}{
+		Request:  handoffReq,
+		Messages: messages,
 	}
 
 	api.WriteJSON(w, http.StatusOK, detail)

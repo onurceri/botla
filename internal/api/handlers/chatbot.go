@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // VectorStore interface for vector operations
@@ -21,6 +22,8 @@ type ChatbotHandlers struct {
 	Cfg              *config.Config
 	VectorStore      VectorStore
 	ChatbotService   *services.ChatbotService
+	ChatbotRepo      repository.ChatbotRepository
+	PlanRepo         repository.PlanRepository
 	OrgService       *services.OrganizationService
 	WorkspaceService *services.WorkspaceService
 	Logger           *logger.Logger

@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,11 +11,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
+
+// updatePlanLimitField is a test helper that updates a plan limit field
+func updatePlanLimitField(ctx context.Context, db *sql.DB, planCode, field string, value any) error {
+	query := fmt.Sprintf(`
+		UPDATE plan_limits
+		SET %s = $1, updated_at = NOW()
+		WHERE plan_id = (SELECT id FROM plans WHERE code = $2)
+	`, field)
+	_, err := db.ExecContext(ctx, query, value, planCode)
+	return err
+}
 
 func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
@@ -23,8 +36,8 @@ func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 	if err := dbConn.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	// Use db.UpdatePlanLimitField to update the plan limit (new pattern)
-	if err := db.UpdatePlanLimitField(context.Background(), dbConn, "free", "scraping_max_pages_per_crawl", 0); err != nil {
+	// Use updatePlanLimitField to update the plan limit (new pattern)
+	if err := updatePlanLimitField(context.Background(), dbConn, "free", "scraping_max_pages_per_crawl", 0); err != nil {
 		t.Fatalf("update plan: %v", err)
 	}
 
@@ -36,7 +49,9 @@ func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 
 	h := &ChatbotHandlers{
 		DB:             dbConn,
-		ChatbotService: services.NewChatbotService(dbConn, nil),
+		ChatbotService: services.NewChatbotService(repository.NewPostgresChatbotRepo(dbConn), repository.NewPostgresPlanRepo(dbConn, nil), logger.New("info")),
+		ChatbotRepo:    repository.NewPostgresChatbotRepo(dbConn),
+		PlanRepo:       repository.NewPostgresPlanRepo(dbConn, nil),
 	}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))

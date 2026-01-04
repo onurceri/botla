@@ -158,7 +158,7 @@ func TestRefreshFrequencyConstants(t *testing.T) {
 }
 
 func TestNewRefreshScheduler(t *testing.T) {
-	scheduler := NewRefreshScheduler(nil, nil, nil)
+	scheduler := NewRefreshScheduler(nil, nil, nil, nil, nil, nil)
 
 	if scheduler.interval != 5*time.Minute {
 		t.Errorf("Default interval should be 5 minutes, got %v", scheduler.interval)
@@ -170,7 +170,7 @@ func TestNewRefreshScheduler(t *testing.T) {
 
 func TestNewRefreshSchedulerWithInterval(t *testing.T) {
 	customInterval := 10 * time.Minute
-	scheduler := NewRefreshSchedulerWithInterval(nil, nil, nil, customInterval)
+	scheduler := NewRefreshSchedulerWithInterval(nil, nil, nil, nil, nil, nil, customInterval)
 
 	if scheduler.interval != customInterval {
 		t.Errorf("Custom interval should be %v, got %v", customInterval, scheduler.interval)

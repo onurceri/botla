@@ -3,7 +3,7 @@ package scraper
 import (
 	"fmt"
 
-	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
+	pkgErrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // ScrapeError represents an error during scraping

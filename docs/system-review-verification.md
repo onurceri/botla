@@ -1,7 +1,7 @@
 # Botla Backend System Review - Comprehensive Verification Report
 
 **Report Generated**: January 3, 2026  
-**Repository**: botla-co  
+**Repository**: botla-app  
 **Scope**: Complete verification of the system review findings against the codebase
 
 ---

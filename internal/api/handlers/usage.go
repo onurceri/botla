@@ -2,20 +2,21 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // UsageHandlers handles usage-related endpoints
 type UsageHandlers struct {
-	DB *sql.DB
+	UserRepo    repository.UserRepository
+	ChatbotRepo repository.ChatbotRepository
+	UsageRepo   repository.UsageRepository
 }
 
 // GetUsage handles GET /me/usage endpoint
@@ -27,7 +28,7 @@ func (h *UsageHandlers) GetUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify user exists
-	u, err := db.GetUserByID(r.Context(), h.DB, uid)
+	u, err := h.UserRepo.GetByID(r.Context(), uid)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -56,43 +57,43 @@ func (h *UsageHandlers) getUserUsage(ctx context.Context, userID string, workspa
 
 	// Count chatbots based on workspace context (to match dashboard)
 	if workspaceID != "" {
-		chatbotsCount, err = db.CountChatbotsByWorkspace(ctx, h.DB, workspaceID)
+		chatbotsCount, err = h.UsageRepo.CountChatbotsByWorkspace(ctx, workspaceID)
 	} else {
-		chatbotsCount, err = db.CountChatbotsByUserID(ctx, h.DB, userID)
+		chatbotsCount, err = h.UsageRepo.CountChatbotsByUserID(ctx, userID)
 	}
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "count chatbots")
 	}
 
-	filesCount, err := db.GetFileCountByUserID(ctx, h.DB, userID)
+	filesCount, err := h.UsageRepo.GetFileCountByUserID(ctx, userID)
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get file count")
 	}
-	urlsCount, err := db.GetURLCountByUserID(ctx, h.DB, userID)
+	urlsCount, err := h.UsageRepo.GetURLCountByUserID(ctx, userID)
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get url count")
 	}
-	tokensUsed, err := db.GetMonthlyTokenUsage(ctx, h.DB, userID)
+	tokensUsed, err := h.UsageRepo.GetMonthlyTokenUsage(ctx, userID)
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get monthly token usage")
 	}
-	storageUsedMB, err := db.GetStorageUsedMBByUserID(ctx, h.DB, userID)
+	storageUsedMB, err := h.UsageRepo.GetStorageUsedMBByUserID(ctx, userID)
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get storage used")
 	}
-	usedIngestions, usedEmbedTokens, err := db.GetMonthlyIngestionUsage(ctx, h.DB, userID, time.Now())
+	usedIngestions, usedEmbedTokens, err := h.UsageRepo.GetMonthlyIngestionUsage(ctx, userID, time.Now())
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get monthly ingestion usage")
 	}
-	maxFilesBot, err := db.GetMaxFileCountInAnyBot(ctx, h.DB, userID)
+	maxFilesBot, err := h.UsageRepo.GetMaxFileCountInAnyBot(ctx, userID)
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get max file count")
 	}
-	maxURLsBot, err := db.GetMaxURLCountInAnyBot(ctx, h.DB, userID)
+	maxURLsBot, err := h.UsageRepo.GetMaxURLCountInAnyBot(ctx, userID)
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get max url count")
 	}
-	refreshCount, err := db.GetMonthlyRefreshCount(ctx, h.DB, userID, time.Now())
+	refreshCount, err := h.UsageRepo.GetMonthlyRefreshCount(ctx, userID, time.Now())
 	if err != nil {
 		return models.Usage{}, pkgerrors.Wrapf(err, "get monthly refresh count")
 	}

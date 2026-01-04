@@ -3,7 +3,7 @@ package db
 import (
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 func TestBuildDSN(t *testing.T) {

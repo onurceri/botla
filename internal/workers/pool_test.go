@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 func TestWorkerPool_ExecuteJob(t *testing.T) {

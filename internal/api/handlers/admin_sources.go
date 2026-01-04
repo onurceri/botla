@@ -5,24 +5,24 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // AdminSourceHandlers handles admin data source management endpoints
 type AdminSourceHandlers struct {
-	DB           *sql.DB
+	AdminRepo    repository.AdminRepository
 	AdminService *services.AdminService
 	RagService   *services.RAGService
 	Queue        *services.Queue
 }
 
 // NewAdminSourceHandlers creates a new AdminSourceHandlers instance
-func NewAdminSourceHandlers(database *sql.DB, adminSvc *services.AdminService, ragSvc *services.RAGService, queue *services.Queue) *AdminSourceHandlers {
+func NewAdminSourceHandlers(adminRepo repository.AdminRepository, adminSvc *services.AdminService, ragSvc *services.RAGService, queue *services.Queue) *AdminSourceHandlers {
 	return &AdminSourceHandlers{
-		DB:           database,
+		AdminRepo:    adminRepo,
 		AdminService: adminSvc,
 		RagService:   ragSvc,
 		Queue:        queue,
@@ -40,7 +40,7 @@ func (h *AdminSourceHandlers) ListSources(w http.ResponseWriter, r *http.Request
 		offset = 0
 	}
 
-	filter := db.SourceFilter{}
+	filter := repository.AdminSourceFilter{}
 	if chatbotID := r.URL.Query().Get("chatbot_id"); chatbotID != "" {
 		filter.ChatbotID = &chatbotID
 	}
@@ -54,7 +54,7 @@ func (h *AdminSourceHandlers) ListSources(w http.ResponseWriter, r *http.Request
 		filter.OwnerID = &ownerID
 	}
 
-	sources, total, err := db.AdminListSources(r.Context(), h.DB, filter, limit, offset)
+	sources, total, err := h.AdminRepo.AdminListSources(r.Context(), filter, limit, offset)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -74,7 +74,7 @@ func (h *AdminSourceHandlers) GetSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	source, err := db.AdminGetSourceByID(r.Context(), h.DB, id)
+	source, err := h.AdminRepo.AdminGetSourceByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
@@ -89,7 +89,7 @@ func (h *AdminSourceHandlers) GetSource(w http.ResponseWriter, r *http.Request) 
 
 // GetSourceStats returns aggregated statistics for data sources
 func (h *AdminSourceHandlers) GetSourceStats(w http.ResponseWriter, r *http.Request) {
-	stats, err := db.AdminGetSourceStats(r.Context(), h.DB)
+	stats, err := h.AdminRepo.AdminGetSourceStats(r.Context())
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -107,7 +107,7 @@ func (h *AdminSourceHandlers) ReprocessSource(w http.ResponseWriter, r *http.Req
 	}
 
 	// Get source details for logging
-	source, err := db.AdminGetSourceByID(r.Context(), h.DB, id)
+	source, err := h.AdminRepo.AdminGetSourceByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
@@ -123,7 +123,7 @@ func (h *AdminSourceHandlers) ReprocessSource(w http.ResponseWriter, r *http.Req
 	}
 
 	// Reset source to pending
-	if err := db.AdminReprocessSource(r.Context(), h.DB, id); err != nil {
+	if err := h.AdminRepo.AdminReprocessSource(r.Context(), id); err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
@@ -154,7 +154,7 @@ func (h *AdminSourceHandlers) ReprocessSource(w http.ResponseWriter, r *http.Req
 // GetSourceTypes returns available source types
 func (h *AdminSourceHandlers) GetSourceTypes(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, http.StatusOK, map[string]any{
-		"types":    db.AdminListSourceTypes(),
-		"statuses": db.AdminListSourceStatuses(),
+		"types":    []string{"url", "file", "pdf", "text"},
+		"statuses": []string{"pending", "processing", "ready", "failed"},
 	})
 }

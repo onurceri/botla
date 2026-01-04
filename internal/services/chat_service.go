@@ -2,13 +2,12 @@ package services
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // =============================================================================
@@ -29,19 +28,35 @@ import (
 //   - Context: Chat context initialization
 //   - Guardrails: Content filtering and fallback messages
 type ChatService struct {
-	DB            *sql.DB
-	Factory       *rag.ClientFactory
-	Embedder      rag.EmbeddingClient
-	QC            rag.VectorClient
-	Log           *logger.Logger
-	Guardrails    *GuardrailService
-	Quota         *QuotaEnforcer
-	Context       *ChatContextBuilder
-	SyncAnalytics bool // When true, analytics run synchronously (useful for testing)
+	PlanRepo         repository.PlanRepository
+	ConversationRepo repository.ConversationRepository
+	AnalyticsRepo    repository.AnalyticsRepository
+	ActionRepo       repository.ActionRepository
+	SourceRepo       repository.SourceRepository
+	HandoffRepo      repository.HandoffRepository
+	Factory          *rag.ClientFactory
+	Embedder         rag.EmbeddingClient
+	QC               rag.VectorClient
+	Log              *logger.Logger
+	Guardrails       *GuardrailService
+	Quota            *QuotaEnforcer
+	Context          *ChatContextBuilder
+	SyncAnalytics    bool
 }
 
 // NewChatService creates a new ChatService instance with all sub-services composed.
-func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.EmbeddingClient, qc rag.VectorClient, log *logger.Logger) *ChatService {
+func NewChatService(
+	planRepo repository.PlanRepository,
+	conversationRepo repository.ConversationRepository,
+	analyticsRepo repository.AnalyticsRepository,
+	actionRepo repository.ActionRepository,
+	sourceRepo repository.SourceRepository,
+	handoffRepo repository.HandoffRepository,
+	factory *rag.ClientFactory,
+	embedder rag.EmbeddingClient,
+	qc rag.VectorClient,
+	log *logger.Logger,
+) *ChatService {
 	if embedder == nil {
 		if client, err := factory.GetClient("openai"); err == nil {
 			if e, ok := client.(rag.EmbeddingClient); ok {
@@ -51,14 +66,19 @@ func NewChatService(db *sql.DB, factory *rag.ClientFactory, embedder rag.Embeddi
 	}
 	guardrails := NewGuardrailService(log)
 	return &ChatService{
-		DB:         db,
-		Factory:    factory,
-		Embedder:   embedder,
-		QC:         qc,
-		Log:        log,
-		Guardrails: guardrails,
-		Quota:      NewQuotaEnforcer(db),
-		Context:    NewChatContextBuilder(guardrails),
+		PlanRepo:         planRepo,
+		ConversationRepo: conversationRepo,
+		AnalyticsRepo:    analyticsRepo,
+		ActionRepo:       actionRepo,
+		SourceRepo:       sourceRepo,
+		HandoffRepo:      handoffRepo,
+		Factory:          factory,
+		Embedder:         embedder,
+		QC:               qc,
+		Log:              log,
+		Guardrails:       guardrails,
+		Quota:            NewQuotaEnforcer(nil),
+		Context:          NewChatContextBuilder(guardrails),
 	}
 }
 
@@ -72,7 +92,7 @@ type ChatRequestWithUser struct {
 // ProcessChatWithValidation handles the complete chat flow including plan validation, quota enforcement, and model adjustment.
 func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatRequestWithUser) (*models.ChatResult, error) {
 	// 1. Get and validate plan
-	plan, err := db.GetPlanByUserID(ctx, s.DB, req.UserID)
+	plan, err := s.PlanRepo.GetByUserID(ctx, req.UserID)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get plan")
 	}
@@ -150,7 +170,7 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, bot *models.Chatbot, ragConfig models.RAGConfig) (*models.ChatResult, error) {
 	// Step 0: Fetch plan for guardrails enforcement
 	var guardrailsCfg *models.GuardrailsConfig
-	if plan, err := db.GetPlanByUserID(ctx, s.DB, bot.UserID); err == nil && plan != nil {
+	if plan, err := s.PlanRepo.GetByUserID(ctx, bot.UserID); err == nil && plan != nil {
 		guardrailsCfg = &models.GuardrailsConfig{
 			CanCustomizeThresholds: plan.Limits.GuardrailsCanCustomizeThresholds,
 			CanUseSmartFallback:    plan.Limits.GuardrailsCanUseSmartFallback,

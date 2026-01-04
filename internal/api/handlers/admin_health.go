@@ -11,8 +11,8 @@ import (
 
 	"encoding/json"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/pkg/config"
 	"github.com/redis/go-redis/v9"
 )
 

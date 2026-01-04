@@ -31,9 +31,9 @@ import (
     "errors"
     "fmt"
 
-    "github.com/onurceri/botla-co/internal/models"
-    "github.com/onurceri/botla-co/internal/rag"
-    "github.com/onurceri/botla-co/internal/repository"
+    "github.com/onurceri/botla-app/internal/models"
+    "github.com/onurceri/botla-app/internal/rag"
+    "github.com/onurceri/botla-app/internal/repository"
 )
 
 // Sentinel errors for ActionService
