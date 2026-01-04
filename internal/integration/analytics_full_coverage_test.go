@@ -129,10 +129,9 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	foundDB := false
 	for i := 0; i < 10; i++ {
 		err = te.DB.QueryRow(`
-			SELECT total_messages, total_conversations, total_tokens_used, thumbs_up_count, handoff_count 
-			FROM analytics 
-			WHERE chatbot_id=$1 AND analytics_date=$2`,
-			bot.ID, time.Now().Format("2006-01-02")).Scan(&dbTotalM, &dbTotalC, &dbTotalTokens, &dbThumbsUp, &dbHandoff)
+			SELECT total_messages, total_conversations, total_tokens_used, thumbs_up_count, handoff_count
+			FROM analytics
+			WHERE chatbot_id=$1 AND analytics_date=CURRENT_DATE`, bot.ID).Scan(&dbTotalM, &dbTotalC, &dbTotalTokens, &dbThumbsUp, &dbHandoff)
 
 		if err == nil && dbHandoff >= 1 && dbThumbsUp >= 1 {
 			foundDB = true
@@ -187,8 +186,12 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 	}
 	t.Logf("Series: %+v", series)
 
-	// Verify we have data for today
-	today := time.Now().Format("2006-01-02")
+	// Verify we have data for today - use database's CURRENT_DATE to match API response
+	var today string
+	err = te.DB.QueryRow("SELECT TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')").Scan(&today)
+	if err != nil {
+		t.Fatalf("failed to get current date from DB: %v", err)
+	}
 	var todayStats AnalyticsResponse
 	found := false
 	for _, s := range series {
@@ -245,10 +248,10 @@ func TestAnalytics_FullCoverage(t *testing.T) {
 		t.Fatalf("Failed to decode chatbot analytics response: %v", err)
 	}
 
-	// Verify today's data in the list
+	// Verify today's data in the list (today is already declared above)
 	foundBot := false
 	for _, day := range resp.Daily {
-		if day.Date == time.Now().Format("2006-01-02") {
+		if day.Date == today {
 			foundBot = true
 			if day.TotalMessages != 4 {
 				t.Errorf("Chatbot analytics TotalMessages mismatch. Got %d, want 4", day.TotalMessages)

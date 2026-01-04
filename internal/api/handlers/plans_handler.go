@@ -78,24 +78,82 @@ func (h *PlansHandlers) GetPlanByCode(w http.ResponseWriter, r *http.Request) {
 
 // toPublicPlanResponse converts a Plan model to a public API response
 func (h *PlansHandlers) toPublicPlanResponse(plan models.Plan) PublicPlanResponse {
+	limits := plan.Limits
+	if limits == nil {
+		defaults := models.DefaultPlanLimits()
+		limits = &defaults
+	}
+
+	// Convert PlanLimits to PlanFeaturesResponse
+	features := PlanFeaturesResponse{
+		Scraping: models.ScrapingConfig{
+			DynamicEnabled:   limits.ScrapingDynamicEnabled,
+			MaxURLsPerBot:    limits.ScrapingMaxURLsPerBot,
+			MaxPagesPerCrawl: limits.ScrapingMaxPagesPerCrawl,
+		},
+		Files: models.FilesConfig{
+			MaxSizeMB:      limits.FilesMaxSizeMB,
+			MaxFilesPerBot: limits.FilesMaxFilesPerBot,
+			MaxFilesTotal:  limits.FilesMaxFilesTotal,
+			TotalStorageMB: limits.FilesTotalStorageMB,
+			MaxTextLength:  limits.FilesMaxTextLength,
+		},
+		Chat: models.ChatConfig{
+			DefaultModel:     limits.ChatDefaultModel,
+			AllowedModels:    limits.ChatAllowedModels,
+			MaxMonthlyTokens: limits.ChatMaxMonthlyTokens,
+			RAG: models.RAGConfig{
+				TopK:             limits.ChatRAGTopK,
+				MaxContextTokens: limits.ChatRAGMaxContextTokens,
+			},
+			MaxSuggestedQuestions: limits.ChatMaxSuggestedQuestions,
+			MaxManualQuestions:    limits.ChatMaxManualQuestions,
+			MinResponseTokenLimit: limits.ChatMinResponseTokenLimit,
+			MaxResponseTokenLimit: limits.ChatMaxResponseTokenLimit,
+		},
+		Refresh: models.RefreshConfig{
+			Enabled:    limits.RefreshEnabled,
+			MaxMonthly: limits.RefreshMaxMonthly,
+		},
+		Security: models.SecurityConfig{
+			SecureEmbedEnabled: limits.SecuritySecureEmbedEnabled,
+		},
+		Guardrails: models.GuardrailsConfig{
+			CanCustomizeThresholds: limits.GuardrailsCanCustomizeThresholds,
+			CanUseSmartFallback:    limits.GuardrailsCanUseSmartFallback,
+			CanUseEscalateFallback: limits.GuardrailsCanUseEscalateFallback,
+			CanManageTopics:        limits.GuardrailsCanManageTopics,
+			CanCustomizeMessages:   limits.GuardrailsCanCustomizeMessages,
+		},
+		Branding: models.BrandingConfig{
+			CanHideBranding:   limits.BrandingCanHideBranding,
+			CanCustomBranding: limits.BrandingCanCustomBranding,
+		},
+		RateLimits: models.RateLimitsConfig{
+			RequestsPerMinute: limits.RateLimitsRequestsPerMinute,
+			WindowSeconds:     limits.RateLimitsWindowSeconds,
+			Endpoints: map[string]models.EndpointLimits{
+				"chat": {
+					RequestsPerMinute: limits.RateLimitsChatRPM,
+					WindowSeconds:     limits.RateLimitsChatWindow,
+				},
+				"sources": {
+					RequestsPerMinute: limits.RateLimitsSourcesRPM,
+					WindowSeconds:     limits.RateLimitsSourcesWindow,
+				},
+			},
+		},
+	}
+
 	return PublicPlanResponse{
 		Code:     plan.Code,
 		Price:    plan.Price,
 		Currency: plan.Currency,
 		Limits: PublicPlanLimitsResponse{
-			MaxChatbots:               plan.Config.MaxChatbots,
-			MaxMonthlyIngestions:      plan.Config.MaxMonthlyIngestions,
-			MaxMonthlyEmbeddingTokens: plan.Config.MaxMonthlyEmbeddingTokens,
+			MaxChatbots:               limits.MaxChatbots,
+			MaxMonthlyIngestions:      limits.MaxMonthlyIngestions,
+			MaxMonthlyEmbeddingTokens: limits.MaxMonthlyEmbeddingTokens,
 		},
-		Features: PlanFeaturesResponse{
-			Scraping:   plan.Config.Scraping,
-			Files:      plan.Config.Files,
-			Chat:       plan.Config.Chat,
-			Refresh:    plan.Config.Refresh,
-			Security:   plan.Config.Security,
-			Guardrails: plan.Config.Guardrails,
-			Branding:   plan.Config.Branding,
-			RateLimits: plan.Config.RateLimits,
-		},
+		Features: features,
 	}
 }

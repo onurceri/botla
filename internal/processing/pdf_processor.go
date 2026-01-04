@@ -105,8 +105,8 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 
 	// Extract and persist metadata
 	maxQuestions := 0
-	if plan != nil && plan.Config.Chat.MaxSuggestedQuestions > 0 {
-		maxQuestions = plan.Config.Chat.MaxSuggestedQuestions
+	if plan != nil && plan.Limits.ChatMaxSuggestedQuestions > 0 {
+		maxQuestions = plan.Limits.ChatMaxSuggestedQuestions
 	}
 	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
 

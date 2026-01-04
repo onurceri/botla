@@ -78,9 +78,9 @@ function ChatbotDetailContent() {
 
     const payload = buildPayload()
     try {
-      const { data } = await createChatbot(payload)
+      const response = await createChatbot(payload)
       toast('Chatbot başarıyla oluşturuldu.', 'success')
-      navigate(`/dashboard/chatbots/${data.id}`)
+      navigate(`/dashboard/chatbots/${response.id}`)
     } catch (error: any) {
       console.error(error)
       toasts.error(getTurkishErrorMessage(error, 'Bir hata oluştu. Lütfen tekrar deneyin.'))

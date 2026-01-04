@@ -29,14 +29,7 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 	// The test schema migrations seed plans. Let's assume 'free' exists.
 	// We'll update 'free' plan to have specific MaxMonthlyTokens.
 
-	_, err := dbConn.Exec(`
-		UPDATE plans 
-		SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '100') 
-		WHERE code = $1
-	`, policy.PlanFree.String())
-	if err != nil {
-		t.Fatalf("failed to update plan config: %v", err)
-	}
+	_ = db.UpdatePlanLimitField(context.Background(), dbConn, policy.PlanFree.String(), "chat_max_monthly_tokens", 100)
 
 	// Create User on 'free' plan
 	user := testdb.CreateUser(t, dbConn, testdb.UserFixture{
@@ -59,6 +52,7 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 	// Let's assume ReserveChatTokens works if usage is high.
 	// We can cheat by calling ReserveChatTokens manually to use up quota.
 
+	var err error
 	err = db.ReserveChatTokens(context.Background(), dbConn, user.ID, 100, 100)
 	if err != nil {
 		t.Fatalf("failed to setup initial quota usage: %v", err)
@@ -87,14 +81,9 @@ func TestChatService_ProcessChatWithValidation_DelegationAndRefund(t *testing.T)
 	dbConn := testdb.OpenParallelTestDB(t)
 
 	// Update plan to have quota
-	_, err := dbConn.Exec(`
-		UPDATE plans 
-		SET config = jsonb_set(config, '{chat,max_monthly_tokens}', '1000') 
-		WHERE code = $1
-	`, policy.PlanFree.String())
-	if err != nil {
-		t.Fatalf("failed to update plan config: %v", err)
-	}
+	_ = db.UpdatePlanLimitField(context.Background(), dbConn, policy.PlanFree.String(), "chat_max_monthly_tokens", 1000)
+
+	var err error
 
 	user := testdb.CreateUser(t, dbConn, testdb.UserFixture{PlanCode: policy.PlanFree.String()})
 	cbResult := testdb.CreateChatbot(t, dbConn, testdb.ChatbotFixture{

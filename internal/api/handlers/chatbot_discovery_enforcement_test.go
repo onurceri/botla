@@ -10,31 +10,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-co/internal/db"
 	"github.com/onurceri/botla-co/internal/services"
 	"github.com/onurceri/botla-co/internal/testdb"
 	"github.com/onurceri/botla-co/pkg/middleware"
 )
 
 func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
-	db := testdb.OpenTestDB(t)
+	dbConn := testdb.OpenTestDB(t)
 
 	var freePlanID string
-	if err := db.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
+	if err := dbConn.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if _, err := db.Exec(`UPDATE plans SET config = jsonb_set(COALESCE(config,'{}'::jsonb), '{scraping,max_pages_per_crawl}', '0') WHERE id=$1`, freePlanID); err != nil {
+	// Use db.UpdatePlanLimitField to update the plan limit (new pattern)
+	if err := db.UpdatePlanLimitField(context.Background(), dbConn, "free", "scraping_max_pages_per_crawl", 0); err != nil {
 		t.Fatalf("update plan: %v", err)
 	}
 
 	var uid string
 	email := fmt.Sprintf("disc_enf+%d@example.com", time.Now().UnixNano())
-	if err := db.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
+	if err := dbConn.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
 
 	h := &ChatbotHandlers{
-		DB:             db,
-		ChatbotService: services.NewChatbotService(db, nil),
+		DB:             dbConn,
+		ChatbotService: services.NewChatbotService(dbConn, nil),
 	}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))

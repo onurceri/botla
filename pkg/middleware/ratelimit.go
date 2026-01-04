@@ -60,14 +60,17 @@ func (rl *RateLimiter) getOrCreatePlanLimiter(plan *models.Plan) ratelimit.Limit
 	}
 
 	// Extract rate limit config from plan
-	rateLimitsCfg := plan.Config.RateLimits
+	limits := plan.Limits
+	requestsPerMinute := 0
+	windowSeconds := 0
 
-	// Validate config - use defaults if invalid
-	requestsPerMinute := rateLimitsCfg.RequestsPerMinute
-	windowSeconds := rateLimitsCfg.WindowSeconds
+	if limits != nil {
+		requestsPerMinute = limits.RateLimitsRequestsPerMinute
+		windowSeconds = limits.RateLimitsWindowSeconds
+	}
 
+	// Validate config - use defaults if invalid or missing
 	if requestsPerMinute <= 0 {
-		// Fallback to legacy user config if plan config is missing
 		requestsPerMinute = rl.tieredConfig.User.RequestsPerWindow
 	}
 	if windowSeconds <= 0 {

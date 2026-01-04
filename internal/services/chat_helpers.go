@@ -116,7 +116,7 @@ func (s *ChatService) collectTools(ctx context.Context, bot *models.Chatbot) ([]
 	includeHandoff := bot.HandoffEnabled
 	if includeHandoff {
 		plan, planErr := db.GetPlanByUserID(ctx, s.DB, bot.UserID)
-		if planErr == nil && plan != nil && !plan.Config.Guardrails.CanUseEscalateFallback {
+		if planErr == nil && plan != nil && !plan.Limits.GuardrailsCanUseEscalateFallback {
 			includeHandoff = false
 		}
 	}
@@ -225,7 +225,7 @@ func (s *ChatService) trackAnalyticsAsync(cc *chatContext, messageID string) {
 		defer cancel()
 
 		responseTime := int(time.Since(startTime).Milliseconds())
-		if err := db.IncrementAnalytics(bgCtx, s.DB, botID, time.Now(), isNewConv, totalTokens, isHandoff, responseTime); err != nil && s.Log != nil {
+		if err := db.IncrementAnalytics(bgCtx, s.DB, botID, isNewConv, totalTokens, isHandoff, responseTime); err != nil && s.Log != nil {
 			s.Log.Warn("analytics_error", map[string]any{"chatbot_id": botID, "error": err.Error()})
 		}
 

@@ -200,10 +200,11 @@ func fetchSourceQuestions(ctx context.Context, pool *sql.DB, chatbotID string) (
 func fetchMaxSuggestionsForChatbot(ctx context.Context, pool *sql.DB, chatbotID string) int {
 	var limit int
 	err := pool.QueryRowContext(ctx, `
-		SELECT COALESCE((p.config->'chat'->>'max_suggested_questions')::int, $2)
+		SELECT COALESCE(pl.chat_max_suggested_questions, $2)
 		FROM chatbots c
 		JOIN users u ON c.user_id = u.id
 		JOIN plans p ON u.plan_id = p.id
+		LEFT JOIN plan_limits pl ON pl.plan_id = p.id
 		WHERE c.id = $1
 	`, chatbotID, DefaultMaxSuggestions).Scan(&limit)
 	if err != nil || limit <= 0 {

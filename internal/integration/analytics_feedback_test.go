@@ -84,6 +84,9 @@ func TestAnalytics_ThumbsUpAfterFeedback(t *testing.T) {
 	}
 	resF.Body.Close()
 
+	// Wait for the async feedback analytics update to complete
+	te.WorkerPool.WaitPending()
+
 	// verify analytics thumbs_up_count increased (sum across series >=1) with retry
 	var sumThumbs int
 	found := false

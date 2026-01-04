@@ -199,7 +199,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	}
 
 	// Get limit from plan config - use refresh.max_monthly if available
-	limit := plan.Config.Refresh.MaxMonthly
+	limit := plan.Limits.RefreshMaxMonthly
 	if usage >= limit {
 		s.logInfo("auto_refresh_limit_reached", map[string]any{
 			"user_id": bot.UserID,

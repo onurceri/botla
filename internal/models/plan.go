@@ -1,39 +1,20 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"time"
 )
 
 type Plan struct {
-	ID           string     `json:"id"`
-	Code         string     `json:"code"`
-	Status       string     `json:"status"`
-	BillingCycle string     `json:"billing_cycle"`
-	Price        float64    `json:"price"`
-	Currency     string     `json:"currency"`
-	TrialDays    int        `json:"trial_days"`
-	Config       PlanConfig `json:"config"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    *time.Time `json:"updated_at"`
-}
-
-type PlanConfig struct {
-	Scraping                  ScrapingConfig   `json:"scraping"`
-	Files                     FilesConfig      `json:"files"`
-	Chat                      ChatConfig       `json:"chat"`
-	Refresh                   RefreshConfig    `json:"refresh"`
-	Security                  SecurityConfig   `json:"security"`
-	Guardrails                GuardrailsConfig `json:"guardrails"`
-	Branding                  BrandingConfig   `json:"branding"`
-	RateLimits                RateLimitsConfig `json:"rate_limits"` // NEW: Plan-based rate limiting
-	MaxChatbots               int              `json:"max_chatbots"`
-	MaxMonthlyIngestions      int              `json:"max_monthly_ingestions"`
-	MaxMonthlyEmbeddingTokens int              `json:"max_monthly_embedding_tokens"`
-	MinReAddCooldownMinutes   int              `json:"min_readd_cooldown_minutes"`
+	ID           string      `json:"id"`
+	Code         string      `json:"code"`
+	Status       string      `json:"status"`
+	BillingCycle string      `json:"billing_cycle"`
+	Price        float64     `json:"price"`
+	Currency     string      `json:"currency"`
+	TrialDays    int         `json:"trial_days"`
+	Limits       *PlanLimits `json:"limits,omitempty"` // From plan_limits table
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    *time.Time  `json:"updated_at"`
 }
 
 // RateLimitsConfig defines rate limit configuration per plan
@@ -100,145 +81,4 @@ type ChatConfig struct {
 type RAGConfig struct {
 	TopK             int `json:"top_k"`
 	MaxContextTokens int `json:"max_context_tokens"`
-}
-
-// Value implements the driver.Valuer interface for PlanConfig
-func (p PlanConfig) Value() (driver.Value, error) {
-	b, err := json.Marshal(p)
-	if err != nil {
-		return nil, fmt.Errorf("marshal plan config: %w", err)
-	}
-	return b, nil
-}
-
-// Scan implements the sql.Scanner interface for PlanConfig
-func (p *PlanConfig) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-	if err := json.Unmarshal(b, &p); err != nil {
-		return fmt.Errorf("unmarshal plan config: %w", err)
-	}
-	return nil
-}
-
-func (p PlanConfig) Validate() error {
-	if p.MaxChatbots <= 0 {
-		return fmt.Errorf("config.max_chatbots must be >= 1, got %d", p.MaxChatbots)
-	}
-	if p.MaxMonthlyIngestions < 0 {
-		return fmt.Errorf("config.max_monthly_ingestions must be >= 0, got %d", p.MaxMonthlyIngestions)
-	}
-	if p.MaxMonthlyEmbeddingTokens < 0 {
-		return fmt.Errorf("config.max_monthly_embedding_tokens must be >= 0, got %d", p.MaxMonthlyEmbeddingTokens)
-	}
-	if p.MinReAddCooldownMinutes < 0 {
-		return fmt.Errorf("config.min_readd_cooldown_minutes must be >= 0, got %d", p.MinReAddCooldownMinutes)
-	}
-	if err := p.Scraping.Validate(); err != nil {
-		return err
-	}
-	if err := p.Files.Validate(); err != nil {
-		return err
-	}
-	if err := p.Chat.Validate(); err != nil {
-		return err
-	}
-	if err := p.Refresh.Validate(); err != nil {
-		return err
-	}
-	if err := p.RateLimits.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s ScrapingConfig) Validate() error {
-	if s.MaxURLsPerBot < 0 {
-		return fmt.Errorf("scraping.max_urls_per_bot must be >= 0, got %d", s.MaxURLsPerBot)
-	}
-	if s.MaxPagesPerCrawl < 0 {
-		return fmt.Errorf("scraping.max_pages_per_crawl must be >= 0, got %d", s.MaxPagesPerCrawl)
-	}
-	return nil
-}
-
-func (f FilesConfig) Validate() error {
-	if f.MaxSizeMB <= 0 {
-		return fmt.Errorf("files.max_size_mb must be > 0, got %d", f.MaxSizeMB)
-	}
-	if f.MaxFilesPerBot < 0 {
-		return fmt.Errorf("files.max_files_per_bot must be >= 0, got %d", f.MaxFilesPerBot)
-	}
-	if f.MaxFilesTotal < 0 {
-		return fmt.Errorf("files.max_files_total must be >= 0, got %d", f.MaxFilesTotal)
-	}
-	if f.TotalStorageMB <= 0 {
-		return fmt.Errorf("files.total_storage_mb must be > 0, got %d", f.TotalStorageMB)
-	}
-	if f.MaxTextLength < 0 {
-		return fmt.Errorf("files.max_text_length must be >= 0, got %d", f.MaxTextLength)
-	}
-	return nil
-}
-
-func (c ChatConfig) Validate() error {
-	if c.DefaultModel != "" && len(c.AllowedModels) == 0 {
-		return fmt.Errorf("chat.allowed_models must not be empty when default_model is set")
-	}
-	if c.MaxMonthlyTokens < 0 {
-		return fmt.Errorf("chat.max_monthly_tokens must be >= 0, got %d", c.MaxMonthlyTokens)
-	}
-	if c.MaxSuggestedQuestions < 0 {
-		return fmt.Errorf("chat.max_suggested_questions must be >= 0, got %d", c.MaxSuggestedQuestions)
-	}
-	if c.MaxManualQuestions < 0 {
-		return fmt.Errorf("chat.max_manual_questions must be >= 0, got %d", c.MaxManualQuestions)
-	}
-	if c.MinResponseTokenLimit <= 0 {
-		return fmt.Errorf("chat.min_response_token_limit must be >= 1, got %d", c.MinResponseTokenLimit)
-	}
-	if c.MaxResponseTokenLimit < c.MinResponseTokenLimit {
-		return fmt.Errorf("chat.max_response_token_limit must be >= min_response_token_limit (%d), got %d", c.MinResponseTokenLimit, c.MaxResponseTokenLimit)
-	}
-	if err := c.RAG.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r RAGConfig) Validate() error {
-	if r.TopK <= 0 {
-		return fmt.Errorf("chat.rag.top_k must be >= 1, got %d", r.TopK)
-	}
-	if r.MaxContextTokens <= 0 {
-		return fmt.Errorf("chat.rag.max_context_tokens must be >= 1, got %d", r.MaxContextTokens)
-	}
-	return nil
-}
-
-func (r RefreshConfig) Validate() error {
-	if r.MaxMonthly < 0 {
-		return fmt.Errorf("refresh.max_monthly must be >= 0, got %d", r.MaxMonthly)
-	}
-	return nil
-}
-
-func (r RateLimitsConfig) Validate() error {
-	if r.RequestsPerMinute <= 0 {
-		return fmt.Errorf("rate_limits.requests_per_minute must be >= 1, got %d", r.RequestsPerMinute)
-	}
-	if r.WindowSeconds <= 0 {
-		return fmt.Errorf("rate_limits.window_seconds must be >= 1, got %d", r.WindowSeconds)
-	}
-	for endpoint, limits := range r.Endpoints {
-		if limits.RequestsPerMinute <= 0 {
-			return fmt.Errorf("rate_limits.endpoints[%s].requests_per_minute must be >= 1, got %d", endpoint, limits.RequestsPerMinute)
-		}
-		if limits.WindowSeconds <= 0 {
-			return fmt.Errorf("rate_limits.endpoints[%s].window_seconds must be >= 1, got %d", endpoint, limits.WindowSeconds)
-		}
-	}
-	return nil
 }

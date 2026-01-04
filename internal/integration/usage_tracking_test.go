@@ -39,7 +39,7 @@ func insertChatbot(t *testing.T, pool *sql.DB, userID string, name string) (stri
 
 // USG-001 to USG-005: Monthly Token Usage Tracking
 func TestMonthlyTokenUsageTracking(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -54,11 +54,10 @@ t.Parallel()
 	bot2ID, _ := insertChatbot(t, te.DB, userID, "Bot 2")
 
 	ctx := context.Background()
-	now := time.Now()
 
 	// USG-002: IncrementAnalytics upsert (initial)
 	// Add 100 tokens to Bot 1
-	err = db.IncrementAnalytics(ctx, te.DB, bot1ID, now, true, 100, false, 500)
+	err = db.IncrementAnalytics(ctx, te.DB, bot1ID, true, 100, false, 500)
 	if err != nil {
 		t.Fatalf("IncrementAnalytics failed: %v", err)
 	}
@@ -74,7 +73,7 @@ t.Parallel()
 
 	// USG-003: IncrementAnalytics upsert (update)
 	// Add 50 more tokens to Bot 1
-	err = db.IncrementAnalytics(ctx, te.DB, bot1ID, now, false, 50, false, 200)
+	err = db.IncrementAnalytics(ctx, te.DB, bot1ID, false, 50, false, 200)
 	if err != nil {
 		t.Fatalf("IncrementAnalytics update failed: %v", err)
 	}
@@ -86,7 +85,7 @@ t.Parallel()
 
 	// USG-004: Token usage across multiple chatbots
 	// Add 200 tokens to Bot 2
-	err = db.IncrementAnalytics(ctx, te.DB, bot2ID, now, true, 200, false, 600)
+	err = db.IncrementAnalytics(ctx, te.DB, bot2ID, true, 200, false, 600)
 	if err != nil {
 		t.Fatalf("IncrementAnalytics bot2 failed: %v", err)
 	}
@@ -97,14 +96,14 @@ t.Parallel()
 	}
 
 	// USG-005: Usage resets at month boundary
-	// Add usage for previous month
-	// Use explicit date to avoid issues near month boundaries
-	currentMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	prevMonth := currentMonth.AddDate(0, -1, 15) // 15th of previous month
-
-	err = db.IncrementAnalytics(ctx, te.DB, bot1ID, prevMonth, true, 1000, false, 500)
+	// Add usage for previous month using direct SQL
+	prevMonth := time.Now().AddDate(0, -1, 0).Format("2006-01-02")
+	_, err = te.DB.ExecContext(ctx, `
+		INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations, total_tokens_used, handoff_count)
+		VALUES ($1, $2, 0, 0, 1000, 0)`,
+		bot1ID, prevMonth)
 	if err != nil {
-		t.Fatalf("IncrementAnalytics prev month failed: %v", err)
+		t.Fatalf("Insert prev month analytics failed: %v", err)
 	}
 
 	// Should still be 350 for current month
@@ -116,7 +115,7 @@ t.Parallel()
 
 // USG-006 to USG-008: Ingestion Usage Tracking
 func TestIngestionUsageTracking(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)

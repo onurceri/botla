@@ -81,9 +81,9 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 	}
 
 	// 2. Validate and adjust model
-	if len(plan.Config.Chat.AllowedModels) > 0 {
+	if len(plan.Limits.ChatAllowedModels) > 0 {
 		allowed := false
-		for _, m := range plan.Config.Chat.AllowedModels {
+		for _, m := range plan.Limits.ChatAllowedModels {
 			if m == req.Chatbot.Model {
 				allowed = true
 				break
@@ -91,12 +91,12 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 		}
 		// If requested model is not allowed, default to the first allowed model
 		if !allowed {
-			req.Chatbot.Model = plan.Config.Chat.AllowedModels[0]
+			req.Chatbot.Model = plan.Limits.ChatAllowedModels[0]
 		}
 	}
 
 	// 3. Token Check & Reservation (Atomic) - delegated to QuotaEnforcer
-	maxMonthlyTokens := plan.Config.Chat.MaxMonthlyTokens
+	maxMonthlyTokens := plan.Limits.ChatMaxMonthlyTokens
 	var estimatedTokens int
 
 	if maxMonthlyTokens > 0 {
@@ -112,7 +112,10 @@ func (s *ChatService) ProcessChatWithValidation(ctx context.Context, req ChatReq
 	}
 
 	// 4. Process Chat
-	result, err := s.ProcessChat(ctx, req.ChatRequest, req.Chatbot, plan.Config.Chat.RAG)
+	result, err := s.ProcessChat(ctx, req.ChatRequest, req.Chatbot, models.RAGConfig{
+		TopK:             plan.Limits.ChatRAGTopK,
+		MaxContextTokens: plan.Limits.ChatRAGMaxContextTokens,
+	})
 
 	// 5. Adjust Token Usage - delegated to QuotaEnforcer
 	if maxMonthlyTokens > 0 {
@@ -148,7 +151,13 @@ func (s *ChatService) ProcessChat(ctx context.Context, req models.ChatRequest, b
 	// Step 0: Fetch plan for guardrails enforcement
 	var guardrailsCfg *models.GuardrailsConfig
 	if plan, err := db.GetPlanByUserID(ctx, s.DB, bot.UserID); err == nil && plan != nil {
-		guardrailsCfg = &plan.Config.Guardrails
+		guardrailsCfg = &models.GuardrailsConfig{
+			CanCustomizeThresholds: plan.Limits.GuardrailsCanCustomizeThresholds,
+			CanUseSmartFallback:    plan.Limits.GuardrailsCanUseSmartFallback,
+			CanUseEscalateFallback: plan.Limits.GuardrailsCanUseEscalateFallback,
+			CanManageTopics:        plan.Limits.GuardrailsCanManageTopics,
+			CanCustomizeMessages:   plan.Limits.GuardrailsCanCustomizeMessages,
+		}
 	}
 
 	// Step 1: Initialize chat context - delegated to ChatContextBuilder

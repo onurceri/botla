@@ -12,10 +12,7 @@ import (
 
 // IncrementAnalytics updates the analytics table for a given chatbot and date.
 // It uses an UPSERT (INSERT ... ON CONFLICT DO UPDATE) to ensure the row exists.
-func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, date time.Time, isNewConversation bool, tokens int, isHandoff bool, responseTimeMs int) error {
-	// Format date as YYYY-MM-DD
-	dateStr := date.Format("2006-01-02")
-
+func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, isNewConversation bool, tokens int, isHandoff bool, responseTimeMs int) error {
 	// Calculate increments
 	msgInc := 2 // User + Assistant
 	convInc := 0
@@ -30,7 +27,7 @@ func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, dat
 
 	query := `
 		INSERT INTO analytics (chatbot_id, analytics_date, total_messages, total_conversations, total_tokens_used, handoff_count)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)
 		ON CONFLICT (chatbot_id, analytics_date)
 		DO UPDATE SET
 			total_messages = analytics.total_messages + EXCLUDED.total_messages,
@@ -39,7 +36,7 @@ func IncrementAnalytics(ctx context.Context, pool *sql.DB, chatbotID string, dat
 			handoff_count = analytics.handoff_count + EXCLUDED.handoff_count
 	`
 
-	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, msgInc, convInc, tokens, handoffInc)
+	_, err := pool.ExecContext(ctx, query, chatbotID, msgInc, convInc, tokens, handoffInc)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "increment analytics")
 	}
@@ -67,9 +64,7 @@ func GetMonthlyTokenUsage(ctx context.Context, pool *sql.DB, userID string) (int
 }
 
 // IncrementFeedback updates the thumbs up/down count in analytics
-func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, date time.Time, oldState *bool, newState bool) error {
-	dateStr := date.Format("2006-01-02")
-
+func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, oldState *bool, newState bool) error {
 	upInc := 0
 	downInc := 0
 
@@ -102,14 +97,14 @@ func IncrementFeedback(ctx context.Context, pool *sql.DB, chatbotID string, date
 
 	query := `
 		INSERT INTO analytics (chatbot_id, analytics_date, thumbs_up_count, thumbs_down_count)
-		VALUES ($1, $2, $3, $4)
+		VALUES ($1, CURRENT_DATE, $2, $3)
 		ON CONFLICT (chatbot_id, analytics_date)
 		DO UPDATE SET
 			thumbs_up_count = analytics.thumbs_up_count + EXCLUDED.thumbs_up_count,
 			thumbs_down_count = analytics.thumbs_down_count + EXCLUDED.thumbs_down_count
 	`
 
-	_, err := pool.ExecContext(ctx, query, chatbotID, dateStr, upInc, downInc)
+	_, err := pool.ExecContext(ctx, query, chatbotID, upInc, downInc)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "increment feedback")
 	}

@@ -140,10 +140,8 @@ func TestRateLimit_ChatEndpoint(t *testing.T) {
 	defer qd.Close()
 
 	// Update plan config in DB to match test expectations
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 4, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
-	if err != nil {
-		t.Fatalf("failed to update rate limits: %v", err)
-	}
+	_ = te.UpdatePlanLimit("free", "rate_limits_requests_per_minute", 4)
+	_ = te.UpdatePlanLimit("free", "rate_limits_window_seconds", 60)
 
 	token := rlAuthToken(t, te.Server.URL, "rl_chat@example.com")
 	botID := rlCreateChatbot(t, te.Server.URL, token, "Rate Limit Chat Bot")
@@ -183,10 +181,8 @@ func TestRateLimit_SourceCreation(t *testing.T) {
 	defer fixtures.TeardownTestEnv(te)
 
 	// Update plan config in DB to match test expectations (low limit for testing)
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 3, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
-	if err != nil {
-		t.Fatalf("failed to update rate limits: %v", err)
-	}
+	_ = te.UpdatePlanLimit("free", "rate_limits_requests_per_minute", 3)
+	_ = te.UpdatePlanLimit("free", "rate_limits_window_seconds", 60)
 
 	token := rlAuthToken(t, te.Server.URL, "rl_source@example.com")
 	botID := rlCreateChatbot(t, te.Server.URL, token, "Rate Limit Source Bot")
@@ -222,10 +218,8 @@ func TestRateLimit_Recovery(t *testing.T) {
 	defer fixtures.TeardownTestEnv(te)
 
 	// Update plan config in DB to match test expectations
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 2, "window_seconds": 2}'::jsonb) WHERE code = 'free'`)
-	if err != nil {
-		t.Fatalf("failed to update rate limits: %v", err)
-	}
+	_ = te.UpdatePlanLimit("free", "rate_limits_requests_per_minute", 2)
+	_ = te.UpdatePlanLimit("free", "rate_limits_window_seconds", 2)
 
 	token := rlAuthToken(t, te.Server.URL, "rl_recovery@example.com")
 
@@ -283,10 +277,8 @@ func TestRateLimit_PerUserIsolationExtended(t *testing.T) {
 	defer qd.Close()
 
 	// Update plan config in DB to match test expectations
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 2, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
-	if err != nil {
-		t.Fatalf("failed to update rate limits: %v", err)
-	}
+	_ = te.UpdatePlanLimit("free", "rate_limits_requests_per_minute", 2)
+	_ = te.UpdatePlanLimit("free", "rate_limits_window_seconds", 60)
 
 	tokenA := rlAuthToken(t, te.Server.URL, "rl_isoA@example.com")
 	tokenB := rlAuthToken(t, te.Server.URL, "rl_isoB@example.com")
@@ -330,10 +322,8 @@ func TestRateLimit_HeadersPresent(t *testing.T) {
 	defer qd.Close()
 
 	// Update plan config in DB
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 5, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
-	if err != nil {
-		t.Fatalf("failed to update rate limits: %v", err)
-	}
+	_ = te.UpdatePlanLimit("free", "rate_limits_requests_per_minute", 5)
+	_ = te.UpdatePlanLimit("free", "rate_limits_window_seconds", 60)
 
 	token := rlAuthToken(t, te.Server.URL, "rl_headers@example.com")
 	botID := rlCreateChatbot(t, te.Server.URL, token, "Rate Limit Headers Bot")
@@ -388,10 +378,8 @@ func TestRateLimit_RetryAfterOnBlock(t *testing.T) {
 	defer qd.Close()
 
 	// Update plan config in DB - only allow 2 requests per minute
-	_, err = te.DB.Exec(`UPDATE plans SET config = jsonb_set(config, '{rate_limits}', '{"requests_per_minute": 2, "window_seconds": 60}'::jsonb) WHERE code = 'free'`)
-	if err != nil {
-		t.Fatalf("failed to update rate limits: %v", err)
-	}
+	_ = te.UpdatePlanLimit("free", "rate_limits_requests_per_minute", 2)
+	_ = te.UpdatePlanLimit("free", "rate_limits_window_seconds", 60)
 
 	token := rlAuthToken(t, te.Server.URL, "rl_retry@example.com")
 	botID := rlCreateChatbot(t, te.Server.URL, token, "Rate Limit Retry Bot")

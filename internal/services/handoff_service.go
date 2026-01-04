@@ -184,7 +184,7 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		// isHandoff=true, tokens=0, responseTime=0 (not applicable for handoff event itself)
-		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, time.Now(), false, 0, true, 0); err != nil {
+		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, false, 0, true, 0); err != nil {
 			if s.Log != nil {
 				s.Log.Error("handoff_analytics_failed", map[string]any{"error": err.Error()})
 			}

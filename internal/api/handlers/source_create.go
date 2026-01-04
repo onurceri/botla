@@ -65,7 +65,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	limit := plan.Config.Files.MaxFilesPerBot
+	limit := plan.Limits.FilesMaxFilesPerBot
 	if limit <= 0 {
 		limit = 5 // Safe fallback
 	}
@@ -82,7 +82,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 	defer func() { _ = file.Close() }()
 
 	// Check file size limit
-	maxSizeMB := plan.Config.Files.MaxSizeMB
+	maxSizeMB := plan.Limits.FilesMaxSizeMB
 	if maxSizeMB <= 0 {
 		maxSizeMB = 10 // Safe fallback
 	}
@@ -159,7 +159,7 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	limit := plan.Config.Scraping.MaxURLsPerBot
+	limit := plan.Limits.ScrapingMaxURLsPerBot
 	if limit <= 0 {
 		limit = 5 // Safe fallback
 	}
@@ -224,7 +224,7 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Check text length limit
-	limit := plan.Config.Files.MaxTextLength
+	limit := plan.Limits.FilesMaxTextLength
 	if limit <= 0 {
 		limit = 400000 // Safe fallback
 	}
