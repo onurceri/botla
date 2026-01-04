@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestGetSourceChunks_Success(t *testing.T) {
@@ -73,7 +74,9 @@ func TestGetSourceChunks_Success(t *testing.T) {
 	qc, _ := rag.NewQdrantClient(&rag.QdrantConfig{URL: qSrv.URL, Timeout: 15 * time.Second})
 
 	// 3. Init Handler
-	sh := &SourcesHandlers{DB: db, QdrantClient: qc}
+	chatbotRepo := repository.NewPostgresChatbotRepo(db)
+	sourceRepo := repository.NewPostgresSourceRepo(db)
+	sh := &SourcesHandlers{DB: db, QdrantClient: qc, ChatbotRepo: chatbotRepo, SourceRepo: sourceRepo}
 
 	// 4. Request
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/sources/%s/chunks?chatbot_id=%s", sourceID, chatbotID), nil)

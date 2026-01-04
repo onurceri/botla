@@ -3,8 +3,8 @@ package router
 import (
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func registerAuthRoutes(mux *http.ServeMux, ah *handlers.AuthHandlers, secret string) {

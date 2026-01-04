@@ -2,14 +2,13 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/validation"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/validation"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // =============================================================================
@@ -18,17 +17,19 @@ import (
 
 // ChatbotService handles chatbot CRUD operations with validation.
 type ChatbotService struct {
-	DB        *sql.DB
-	Validator *validation.ChatbotValidator
-	Log       *logger.Logger
+	ChatbotRepo repository.ChatbotRepository
+	PlanRepo    repository.PlanRepository
+	Validator   *validation.ChatbotValidator
+	Log         *logger.Logger
 }
 
 // NewChatbotService creates a new ChatbotService.
-func NewChatbotService(db *sql.DB, log *logger.Logger) *ChatbotService {
+func NewChatbotService(chatbotRepo repository.ChatbotRepository, planRepo repository.PlanRepository, log *logger.Logger) *ChatbotService {
 	return &ChatbotService{
-		DB:        db,
-		Validator: validation.NewChatbotValidator(db),
-		Log:       log,
+		ChatbotRepo: chatbotRepo,
+		PlanRepo:    planRepo,
+		Validator:   validation.NewChatbotValidator(planRepo),
+		Log:         log,
 	}
 }
 
@@ -109,7 +110,7 @@ func (s *ChatbotService) Update(ctx context.Context, chatbot *models.Chatbot, re
 	s.applyUpdates(chatbot, req)
 
 	// Save to database
-	if err := db.UpdateChatbot(ctx, s.DB, chatbot); err != nil {
+	if err := s.ChatbotRepo.Update(ctx, chatbot); err != nil {
 		if s.Log != nil {
 			s.Log.Error("chatbot_update_failed", map[string]any{"chatbot_id": chatbot.ID, "error": err.Error()})
 		}
@@ -120,7 +121,7 @@ func (s *ChatbotService) Update(ctx context.Context, chatbot *models.Chatbot, re
 	}
 
 	// Re-fetch for updated_at
-	updated, err := db.GetChatbotByID(ctx, s.DB, chatbot.ID)
+	updated, err := s.ChatbotRepo.GetByID(ctx, chatbot.ID)
 	if err != nil || updated == nil {
 		return chatbot, nil // Return original if re-fetch fails
 	}

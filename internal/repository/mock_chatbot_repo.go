@@ -2,8 +2,9 @@ package repository
 
 import (
 	"context"
+	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 // MockChatbotRepo is a mock implementation of ChatbotRepository for testing.
@@ -37,6 +38,12 @@ type MockChatbotRepo struct {
 	// UpdateSuggestedQuestionsFunc is called when UpdateSuggestedQuestions is invoked.
 	UpdateSuggestedQuestionsFunc func(ctx context.Context, id string, suggestions []string) error
 
+	// GetDueForRefreshFunc is called when GetDueForRefresh is invoked.
+	GetDueForRefreshFunc func(ctx context.Context, now time.Time) ([]models.Chatbot, error)
+
+	// UpdateRefreshTimesFunc is called when UpdateRefreshTimes is invoked.
+	UpdateRefreshTimesFunc func(ctx context.Context, botID string, nextRefresh, lastRefresh time.Time) error
+
 	// Invocation tracking for test assertions
 	Calls struct {
 		GetByID                  []GetByIDCall
@@ -48,6 +55,8 @@ type MockChatbotRepo struct {
 		CountByUserID            []CountByUserIDCall
 		CountByWorkspace         []CountByWorkspaceCall
 		UpdateSuggestedQuestions []UpdateSuggestedQuestionsCall
+		GetDueForRefresh         []GetDueForRefreshCall
+		UpdateRefreshTimes       []UpdateRefreshTimesCall
 	}
 }
 
@@ -88,6 +97,16 @@ type CountByWorkspaceCall struct {
 type UpdateSuggestedQuestionsCall struct {
 	ID          string
 	Suggestions []string
+}
+
+type GetDueForRefreshCall struct {
+	Now time.Time
+}
+
+type UpdateRefreshTimesCall struct {
+	BotID       string
+	NextRefresh time.Time
+	LastRefresh time.Time
 }
 
 // Compile-time check that MockChatbotRepo implements ChatbotRepository.
@@ -179,6 +198,24 @@ func (m *MockChatbotRepo) UpdateSuggestedQuestions(ctx context.Context, id strin
 	return nil
 }
 
+// GetDueForRefresh returns chatbots with auto refresh enabled that are due for refresh.
+func (m *MockChatbotRepo) GetDueForRefresh(ctx context.Context, now time.Time) ([]models.Chatbot, error) {
+	m.Calls.GetDueForRefresh = append(m.Calls.GetDueForRefresh, GetDueForRefreshCall{Now: now})
+	if m.GetDueForRefreshFunc != nil {
+		return m.GetDueForRefreshFunc(ctx, now)
+	}
+	return nil, nil
+}
+
+// UpdateRefreshTimes updates the next_refresh_at and last_refresh_at for a chatbot.
+func (m *MockChatbotRepo) UpdateRefreshTimes(ctx context.Context, botID string, nextRefresh, lastRefresh time.Time) error {
+	m.Calls.UpdateRefreshTimes = append(m.Calls.UpdateRefreshTimes, UpdateRefreshTimesCall{BotID: botID, NextRefresh: nextRefresh, LastRefresh: lastRefresh})
+	if m.UpdateRefreshTimesFunc != nil {
+		return m.UpdateRefreshTimesFunc(ctx, botID, nextRefresh, lastRefresh)
+	}
+	return nil
+}
+
 // Reset clears all recorded calls. Useful for resetting state between tests.
 func (m *MockChatbotRepo) Reset() {
 	m.Calls.GetByID = nil
@@ -190,4 +227,6 @@ func (m *MockChatbotRepo) Reset() {
 	m.Calls.CountByUserID = nil
 	m.Calls.CountByWorkspace = nil
 	m.Calls.UpdateSuggestedQuestions = nil
+	m.Calls.GetDueForRefresh = nil
+	m.Calls.UpdateRefreshTimes = nil
 }

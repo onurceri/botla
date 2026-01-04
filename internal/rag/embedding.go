@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // EmbeddingService handles batch embedding creation and vector storage.

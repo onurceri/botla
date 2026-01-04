@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-app/pkg/langconfig"
 )
 
 func BaseLang(code string) string {

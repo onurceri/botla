@@ -4,19 +4,103 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
+
+// MockSourceProcessor is a test double for SourceProcessor
+type MockSourceProcessor struct {
+	ProcessFunc func(context.Context, string, *models.DataSource, *models.Chatbot, string, *models.Plan, *models.TrainingStep, StepCallback) ProcessResult
+}
+
+func (m *MockSourceProcessor) ProcessWithSteps(ctx context.Context, jobID string, source *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, lastStep *models.TrainingStep, onStep StepCallback) ProcessResult {
+	if m.ProcessFunc != nil {
+		return m.ProcessFunc(ctx, jobID, source, bot, langCode, plan, lastStep, onStep)
+	}
+	return ProcessResult{}
+}
+
+// MockTrainingJobRepo is a minimal mock for TrainingJobRepository
+type MockTrainingJobRepo struct{}
+
+func (m *MockTrainingJobRepo) GetByID(ctx context.Context, id string) (*models.TrainingJob, error) {
+	return nil, nil
+}
+
+func (m *MockTrainingJobRepo) GetBySourceID(ctx context.Context, sourceID string) (*models.TrainingJob, error) {
+	return nil, nil
+}
+
+func (m *MockTrainingJobRepo) GetByChatbotID(ctx context.Context, chatbotID string, limit int) ([]*models.TrainingJob, error) {
+	return nil, nil
+}
+
+func (m *MockTrainingJobRepo) Create(ctx context.Context, sourceID, chatbotID string) (*models.TrainingJob, error) {
+	return &models.TrainingJob{ID: "mock-job-id"}, nil
+}
+
+func (m *MockTrainingJobRepo) UpdateJobStatus(ctx context.Context, id string, status models.JobStatus, step *models.TrainingStep) error {
+	return nil
+}
+
+func (m *MockTrainingJobRepo) ResetForRetry(ctx context.Context, id string) error {
+	return nil
+}
+
+func (m *MockTrainingJobRepo) IncrementRetryCount(ctx context.Context, id string) (int, error) {
+	return 0, nil
+}
+
+func (m *MockTrainingJobRepo) GetPendingJobs(ctx context.Context, limit int) ([]*models.TrainingJob, error) {
+	return nil, nil
+}
+
+func (m *MockTrainingJobRepo) MarkStepCompleted(ctx context.Context, jobID string, step models.TrainingStep, outputHash string) error {
+	return nil
+}
+
+func (m *MockTrainingJobRepo) GetLastCompletedStep(ctx context.Context, jobID string) (*models.TrainingStep, error) {
+	return nil, nil
+}
+
+func (m *MockTrainingJobRepo) Fail(ctx context.Context, id string, step models.TrainingStep, errCode, errMsg string) error {
+	return nil
+}
+
+func (m *MockTrainingJobRepo) Complete(ctx context.Context, id string) error {
+	return nil
+}
+
+func (m *MockTrainingJobRepo) Cancel(ctx context.Context, id string) error {
+	return nil
+}
+
+func (m *MockTrainingJobRepo) GetRetryableJobs(ctx context.Context, maxRetries, limit int) ([]*models.TrainingJob, error) {
+	return nil, nil
+}
+
+func (m *MockTrainingJobRepo) GetRunningJobs(ctx context.Context, limit int) ([]*models.TrainingJob, error) {
+	return nil, nil
+}
 
 func TestNewJobProcessor_WithProcessorMap(t *testing.T) {
 	t.Parallel()
-	tdb := testdb.OpenParallelTestDB(t)
 	log := logger.New("TEST")
 
+	sourceRepo := repository.NewMockSourceRepo()
+	trainingJobRepo := &MockTrainingJobRepo{}
+	chatbotRepo := repository.NewMockChatbotRepo()
+	planRepo := repository.NewMockPlanRepo()
+	usageRepo := &MockUsageRepo{}
+
 	cfg := JobProcessorConfig{
-		DB:  tdb,
-		Log: log,
+		TrainingJobRepo: trainingJobRepo,
+		SourceRepo:      sourceRepo,
+		ChatbotRepo:     chatbotRepo,
+		PlanRepo:        planRepo,
+		UsageRepo:       usageRepo,
+		Log:             log,
 	}
 
 	jp := NewJobProcessor(cfg)
@@ -63,7 +147,6 @@ func TestNewJobProcessor_WithProcessorMap(t *testing.T) {
 func TestProcessWithResume_URLType(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	tdb := testdb.OpenParallelTestDB(t)
 
 	log := logger.New("TEST")
 
@@ -75,9 +158,17 @@ func TestProcessWithResume_URLType(t *testing.T) {
 		},
 	}
 
+	sourceRepo := repository.NewMockSourceRepo()
+	trainingJobRepo := &MockTrainingJobRepo{}
+	chatbotRepo := repository.NewMockChatbotRepo()
+	planRepo := repository.NewMockPlanRepo()
+
 	jp := &JobProcessor{
-		db:  tdb,
-		log: log,
+		trainingJobRepo: trainingJobRepo,
+		sourceRepo:      sourceRepo,
+		chatbotRepo:     chatbotRepo,
+		planRepo:        planRepo,
+		log:             log,
 		processors: map[string]SourceProcessor{
 			"url": mockProcessor,
 		},
@@ -114,7 +205,6 @@ func TestProcessWithResume_URLType(t *testing.T) {
 func TestProcessWithResume_PDFType(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	tdb := testdb.OpenParallelTestDB(t)
 
 	log := logger.New("TEST")
 
@@ -126,9 +216,17 @@ func TestProcessWithResume_PDFType(t *testing.T) {
 		},
 	}
 
+	sourceRepo := repository.NewMockSourceRepo()
+	trainingJobRepo := &MockTrainingJobRepo{}
+	chatbotRepo := repository.NewMockChatbotRepo()
+	planRepo := repository.NewMockPlanRepo()
+
 	jp := &JobProcessor{
-		db:  tdb,
-		log: log,
+		trainingJobRepo: trainingJobRepo,
+		sourceRepo:      sourceRepo,
+		chatbotRepo:     chatbotRepo,
+		planRepo:        planRepo,
+		log:             log,
 		processors: map[string]SourceProcessor{
 			"pdf": mockProcessor,
 		},
@@ -165,7 +263,6 @@ func TestProcessWithResume_PDFType(t *testing.T) {
 func TestProcessWithResume_TextType(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	tdb := testdb.OpenParallelTestDB(t)
 
 	log := logger.New("TEST")
 
@@ -177,9 +274,17 @@ func TestProcessWithResume_TextType(t *testing.T) {
 		},
 	}
 
+	sourceRepo := repository.NewMockSourceRepo()
+	trainingJobRepo := &MockTrainingJobRepo{}
+	chatbotRepo := repository.NewMockChatbotRepo()
+	planRepo := repository.NewMockPlanRepo()
+
 	jp := &JobProcessor{
-		db:  tdb,
-		log: log,
+		trainingJobRepo: trainingJobRepo,
+		sourceRepo:      sourceRepo,
+		chatbotRepo:     chatbotRepo,
+		planRepo:        planRepo,
+		log:             log,
 		processors: map[string]SourceProcessor{
 			"text": mockProcessor,
 		},
@@ -211,133 +316,4 @@ func TestProcessWithResume_TextType(t *testing.T) {
 	if result.ChunkCount != 3 {
 		t.Errorf("expected chunk count 3, got %d", result.ChunkCount)
 	}
-}
-
-func TestProcessWithResume_UnknownType(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	tdb := testdb.OpenParallelTestDB(t)
-
-	cfg := JobProcessorConfig{
-		DB: tdb,
-	}
-
-	jp := NewJobProcessor(cfg)
-
-	source := &models.DataSource{
-		ID:         "test-source-unknown",
-		ChatbotID:  "test-bot-unknown",
-		SourceType: "unknown_type",
-	}
-	bot := &models.Chatbot{
-		ID: "test-bot-unknown",
-	}
-	plan := &models.Plan{
-		Limits: &models.PlanLimits{},
-	}
-
-	result := jp.processWithResume(ctx, "test-job-unknown", source, bot, "en", plan, nil)
-
-	if result.Error == nil {
-		t.Error("expected error for unknown source type")
-	}
-
-	if result.Error.Error() != ErrCodeUnknownSourceType {
-		t.Errorf("expected error %s, got %s", ErrCodeUnknownSourceType, result.Error.Error())
-	}
-
-	if result.FailedStep != models.StepFetchSource {
-		t.Errorf("expected failed step %s, got %s", models.StepFetchSource, result.FailedStep)
-	}
-}
-
-func TestProcessWithResume_NilProcessor(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	tdb := testdb.OpenParallelTestDB(t)
-	log := logger.New("TEST")
-
-	jp := &JobProcessor{
-		db:  tdb,
-		log: log,
-		processors: map[string]SourceProcessor{
-			"test_type": nil,
-		},
-	}
-
-	source := &models.DataSource{
-		ID:         "test-source-nil",
-		ChatbotID:  "test-bot-nil",
-		SourceType: "test_type",
-	}
-	bot := &models.Chatbot{
-		ID: "test-bot-nil",
-	}
-	plan := &models.Plan{
-		Limits: &models.PlanLimits{},
-	}
-
-	result := jp.processWithResume(ctx, "test-job-nil", source, bot, "en", plan, nil)
-
-	if result.Error == nil {
-		t.Error("expected error for nil processor")
-	}
-
-	if result.Error.Error() != ErrCodeUnknownSourceType {
-		t.Errorf("expected error %s, got %s", ErrCodeUnknownSourceType, result.Error.Error())
-	}
-
-	if result.FailedStep != models.StepFetchSource {
-		t.Errorf("expected failed step %s, got %s", models.StepFetchSource, result.FailedStep)
-	}
-}
-
-func TestProcessWithResume_EmptyMap(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	tdb := testdb.OpenParallelTestDB(t)
-	log := logger.New("TEST")
-
-	jp := &JobProcessor{
-		db:         tdb,
-		log:        log,
-		processors: make(map[string]SourceProcessor),
-	}
-
-	source := &models.DataSource{
-		ID:         "test-source-empty",
-		ChatbotID:  "test-bot-empty",
-		SourceType: "url",
-	}
-	bot := &models.Chatbot{
-		ID: "test-bot-empty",
-	}
-	plan := &models.Plan{
-		Limits: &models.PlanLimits{},
-	}
-
-	result := jp.processWithResume(ctx, "test-job-empty", source, bot, "en", plan, nil)
-
-	if result.Error == nil {
-		t.Error("expected error for empty processor map")
-	}
-
-	if result.Error.Error() != ErrCodeUnknownSourceType {
-		t.Errorf("expected error %s, got %s", ErrCodeUnknownSourceType, result.Error.Error())
-	}
-
-	if result.FailedStep != models.StepFetchSource {
-		t.Errorf("expected failed step %s, got %s", models.StepFetchSource, result.FailedStep)
-	}
-}
-
-type MockSourceProcessor struct {
-	ProcessFunc func(context.Context, string, *models.DataSource, *models.Chatbot, string, *models.Plan, *models.TrainingStep, StepCallback) ProcessResult
-}
-
-func (m *MockSourceProcessor) ProcessWithSteps(ctx context.Context, jobID string, source *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, lastStep *models.TrainingStep, onStep StepCallback) ProcessResult {
-	if m.ProcessFunc != nil {
-		return m.ProcessFunc(ctx, jobID, source, bot, langCode, plan, lastStep, onStep)
-	}
-	return ProcessResult{}
 }

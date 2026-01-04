@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 // TestSecureEmbed_DomainOnlyRestriction tests that domain restriction works without token

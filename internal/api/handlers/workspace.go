@@ -5,10 +5,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/httputil"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/httputil"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type WorkspaceHandlers struct {

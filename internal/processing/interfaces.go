@@ -3,7 +3,7 @@ package processing
 import (
 	"context"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 type SourceProcessor interface {

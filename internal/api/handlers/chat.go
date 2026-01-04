@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/workers"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/workers"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type ChatHandlers struct {
@@ -27,6 +27,8 @@ type ChatHandlers struct {
 	OrgService       *services.OrganizationService
 	WorkerPool       *workers.WorkerPool
 	Logger           *logger.Logger
+	AnalyticsRepo    repository.AnalyticsRepository
+	ChatbotRepo      repository.ChatbotRepository
 }
 
 type chatRequest struct {
@@ -51,7 +53,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cbot, _, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	cbot, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -125,7 +127,7 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chatbotID, oldThumbsUp, err := db.UpdateMessageFeedback(r.Context(), h.DB, msgID, req.ThumbsUp)
+	chatbotID, oldThumbsUp, err := h.AnalyticsRepo.UpdateMessageFeedback(r.Context(), msgID, req.ThumbsUp)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -137,7 +139,7 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Update Analytics
 	h.WorkerPool.Submit(func(ctx context.Context) {
-		if err := db.IncrementFeedback(ctx, h.DB, chatbotID, oldThumbsUp, req.ThumbsUp); err != nil {
+		if err := h.AnalyticsRepo.IncrementFeedback(ctx, chatbotID, &oldThumbsUp, req.ThumbsUp); err != nil {
 			h.Logger.Error("feedback_increment_failed", map[string]any{
 				"chatbot_id": chatbotID,
 				"error":      err.Error(),

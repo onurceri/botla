@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 type AdminErrorHandlers struct {
-	DB *sql.DB
+	AdminRepo repository.AdminRepository
 }
 
-func NewAdminErrorHandlers(database *sql.DB) *AdminErrorHandlers {
-	return &AdminErrorHandlers{DB: database}
+func NewAdminErrorHandlers(adminRepo repository.AdminRepository) *AdminErrorHandlers {
+	return &AdminErrorHandlers{AdminRepo: adminRepo}
 }
 
 // ListErrors returns a paginated list of system errors.
@@ -30,7 +30,7 @@ func (h *AdminErrorHandlers) ListErrors(w http.ResponseWriter, r *http.Request) 
 
 	severity := r.URL.Query().Get("severity")
 
-	logs, total, err := db.ListErrorLogs(r.Context(), h.DB, severity, limit, offset)
+	logs, total, err := h.AdminRepo.ListErrorLogs(r.Context(), severity, limit, offset)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -52,7 +52,7 @@ func (h *AdminErrorHandlers) GetError(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log, err := db.GetErrorLogByID(r.Context(), h.DB, id)
+	log, err := h.AdminRepo.GetErrorLogByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
@@ -67,7 +67,7 @@ func (h *AdminErrorHandlers) GetError(w http.ResponseWriter, r *http.Request) {
 
 // GetErrorStats returns summary statistics for recent errors.
 func (h *AdminErrorHandlers) GetErrorStats(w http.ResponseWriter, r *http.Request) {
-	stats, err := db.GetErrorStats(r.Context(), h.DB)
+	stats, err := h.AdminRepo.GetErrorStats(r.Context())
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return

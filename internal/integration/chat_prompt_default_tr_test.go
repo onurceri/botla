@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 func TestChat_DefaultTurkishPrompt(t *testing.T) {

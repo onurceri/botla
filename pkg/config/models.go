@@ -1,6 +1,6 @@
 package config
 
-import "github.com/onurceri/botla-co/pkg/policy"
+import "github.com/onurceri/botla-app/pkg/policy"
 
 // DefaultModelName is the fallback model when DEFAULT_CHATBOT_MODEL env var is not set.
 // This should match a model_name in the ai_models table.

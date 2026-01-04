@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/models"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/models"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // ModelService handles logic related to AI models

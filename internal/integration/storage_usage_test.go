@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 // R2-006: Storage used MB tracking
 func TestStorageUsageTracking(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -21,9 +21,10 @@ t.Parallel()
 	botID, _ := insertChatbot(t, te.DB, userID, "Storage Bot")
 
 	ctx := context.Background()
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
 
 	// Initial check: 0 MB
-	used, err := db.GetStorageUsedMBByUserID(ctx, te.DB, userID)
+	used, err := usageRepo.GetStorageUsedMBByUserID(ctx, userID)
 	if err != nil {
 		t.Fatalf("GetStorageUsedMBByUserID failed: %v", err)
 	}
@@ -39,7 +40,7 @@ t.Parallel()
 	}
 
 	// Check
-	used, _ = db.GetStorageUsedMBByUserID(ctx, te.DB, userID)
+	used, _ = usageRepo.GetStorageUsedMBByUserID(ctx, userID)
 	if used != 5 {
 		t.Errorf("expected 5 MB, got %d", used)
 	}
@@ -52,7 +53,7 @@ t.Parallel()
 		t.Fatalf("insert source 2 failed: %v", err)
 	}
 
-	used, _ = db.GetStorageUsedMBByUserID(ctx, te.DB, userID)
+	used, _ = usageRepo.GetStorageUsedMBByUserID(ctx, userID)
 	if used != 8 {
 		t.Errorf("expected 8 MB, got %d", used)
 	}
@@ -64,7 +65,7 @@ t.Parallel()
 	}
 
 	// Should be 3 MB (3.5 rounded down)
-	used, _ = db.GetStorageUsedMBByUserID(ctx, te.DB, userID)
+	used, _ = usageRepo.GetStorageUsedMBByUserID(ctx, userID)
 	if used != 3 {
 		t.Errorf("expected 3 MB, got %d", used)
 	}

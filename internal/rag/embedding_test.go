@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 // simulate OpenAI embeddings with first failure then success

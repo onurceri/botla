@@ -4,10 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // =============================================================================
@@ -16,7 +15,7 @@ import (
 
 // getOrCreateConversation retrieves or creates a conversation for this session.
 func (s *ChatService) getOrCreateConversation(ctx context.Context, cc *chatContext) error {
-	conv, err := db.GetOrCreateConversationBySessionID(ctx, s.DB, cc.Bot.ID, cc.Request.SessionID)
+	conv, err := s.ConversationRepo.GetOrCreateBySessionID(ctx, cc.Bot.ID, cc.Request.SessionID)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "get/create conversation")
 	}
@@ -38,11 +37,11 @@ func (s *ChatService) saveUserMessage(ctx context.Context, cc *chatContext) erro
 		TokensUsed:     0,
 	}
 
-	if _, err := db.CreateMessage(ctx, s.DB, msg); err != nil {
+	if _, err := s.ConversationRepo.CreateMessage(ctx, msg); err != nil {
 		return pkgerrors.Wrapf(err, "save user message")
 	}
 
-	_ = db.IncrementConversationMessageCount(ctx, s.DB, cc.Conversation.ID)
+	_ = s.ConversationRepo.IncrementMessageCount(ctx, cc.Conversation.ID)
 	return nil
 }
 
@@ -124,7 +123,7 @@ func (s *ChatService) buildMessages(ctx context.Context, cc *chatContext) {
 // appendConversationHistory adds recent messages to provide context.
 func (s *ChatService) appendConversationHistory(ctx context.Context, cc *chatContext) {
 	historyLimit := calculateHistoryLimit(cc.RAGConfig.MaxContextTokens)
-	historyMsgs, _ := db.ListRecentMessages(ctx, s.DB, cc.Conversation.ID, historyLimit)
+	historyMsgs, _ := s.ConversationRepo.ListRecentMessages(ctx, cc.Conversation.ID, historyLimit)
 
 	for _, m := range historyMsgs {
 		// Skip the current user message (will be added with context)
@@ -189,7 +188,7 @@ func (s *ChatService) executeAgenticLoop(ctx context.Context, cc *chatContext) e
 	}
 
 	// Execute agentic loop
-	executor := &rag.ToolExecutor{DB: s.DB, Log: s.Log}
+	executor := rag.NewToolExecutor(s.SourceRepo, s.HandoffRepo, s.ActionRepo, s.Log)
 	s.runAgenticLoop(ctx, cc, toolsClient, modelName, executor)
 
 	return nil
@@ -300,16 +299,16 @@ func (s *ChatService) saveAssistantMessage(ctx context.Context, cc *chatContext)
 		Type:           msgType,
 	}
 
-	messageID, err := db.CreateMessage(ctx, s.DB, msg)
+	messageID, err := s.ConversationRepo.CreateMessage(ctx, msg)
 	if err != nil {
 		return ""
 	}
 
-	_ = db.IncrementConversationMessageCount(ctx, s.DB, cc.Conversation.ID)
+	_ = s.ConversationRepo.IncrementMessageCount(ctx, cc.Conversation.ID)
 
 	// Save source usage
 	if len(cc.ChunkMetas) > 0 {
-		if err := db.SaveMessageSources(ctx, s.DB, messageID, cc.ChunkMetas); err != nil && s.Log != nil {
+		if err := s.ConversationRepo.SaveMessageSources(ctx, messageID, cc.ChunkMetas); err != nil && s.Log != nil {
 			s.Log.Warn("save_message_sources_error", map[string]any{"message_id": messageID, "error": err.Error()})
 		}
 	}

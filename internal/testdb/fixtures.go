@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/onurceri/botla-co/internal/auth"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/auth"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 // =============================================================================
@@ -154,9 +154,10 @@ func CreateOrganization(t *testing.T, dbConn *sql.DB, fixture ...OrganizationFix
 		owner = CreateUser(t, dbConn)
 		f.OwnerID = owner.ID
 	} else {
-		// Load existing user
+		// Load existing user using repository pattern
+		userRepo := repository.NewPostgresUserRepo(dbConn)
 		var err error
-		owner, err = db.GetUserByID(ctx, dbConn, f.OwnerID)
+		owner, err = userRepo.GetByID(ctx, f.OwnerID)
 		if err != nil {
 			t.Fatalf("testdb.CreateOrganization: failed to load owner %s: %v", f.OwnerID, err)
 		}
@@ -411,14 +412,15 @@ func CreateChatbot(t *testing.T, dbConn *sql.DB, fixture ...ChatbotFixture) *Cha
 		SuggestionsEnabled:   f.SuggestionsEnabled,
 	}
 
-	// Use the db package's CreateChatbot function
-	id, err := db.CreateChatbot(ctx, dbConn, bot)
+	// Use the repository's Create function
+	repo := repository.NewPostgresChatbotRepo(dbConn)
+	id, err := repo.Create(ctx, bot)
 	if err != nil {
 		t.Fatalf("testdb.CreateChatbot: failed to create chatbot: %v", err)
 	}
 
 	// Reload the created chatbot to get all fields
-	chatbot, err := db.GetChatbotByID(ctx, dbConn, id)
+	chatbot, err := repo.GetByID(ctx, id)
 	if err != nil {
 		t.Fatalf("testdb.CreateChatbot: failed to reload chatbot: %v", err)
 	}

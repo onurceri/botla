@@ -7,8 +7,8 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/onurceri/botla-co/pkg/config"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/config"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 func buildDSN(cfg *config.Config) string {

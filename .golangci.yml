@@ -33,7 +33,7 @@ linters:
         - .WithStack(
         - .Error(
       ignore-package-globs:
-        - github.com/onurceri/botla-co/*
+        - github.com/onurceri/botla-app/*
         - github.com/stretchr/testify/*
         - context
   exclusions:

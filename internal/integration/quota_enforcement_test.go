@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 // Helper to get user ID from email
@@ -85,7 +85,8 @@ func TestQuota_ChatTokensExceeded(t *testing.T) {
 	// We need 150 tokens to exceed 100 limit
 	// Use IncrementChatTokens to update usage_ingestions (authoritative source for quota)
 	userID := getUserIdFromToken(t, te.DB, "chatquota@example.com")
-	err = db.IncrementChatTokens(context.Background(), te.DB, userID, 150)
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+	err = usageRepo.IncrementChatTokens(context.Background(), userID, 150)
 	if err != nil {
 		t.Fatalf("failed to increment usage: %v", err)
 	}
@@ -128,7 +129,8 @@ func TestQuota_RefreshExceeded(t *testing.T) {
 	userID := getUserIdFromToken(t, te.DB, "refreshquota@example.com")
 
 	// Manually increment refresh count (manual refresh uses refresh_count column)
-	err = db.IncrementRefreshCount(context.Background(), te.DB, userID, time.Now())
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+	err = usageRepo.IncrementRefreshCount(context.Background(), userID, time.Now())
 	if err != nil {
 		t.Fatalf("failed to increment refresh: %v", err)
 	}
@@ -187,7 +189,8 @@ func TestQuota_IngestionExceeded(t *testing.T) {
 	userID := getUserIdFromToken(t, te.DB, "ingestionquota@example.com")
 
 	// Manually increment sources count
-	err = db.IncrementSuccessfulIngestion(context.Background(), te.DB, userID, time.Now(), 1)
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+	err = usageRepo.IncrementSuccessfulIngestion(context.Background(), userID, time.Now(), 1)
 	if err != nil {
 		t.Fatalf("failed to increment ingestion: %v", err)
 	}
@@ -282,7 +285,8 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 	}
 
 	// 4. Set Initial State: 900 used
-	err = db.IncrementChatTokens(context.Background(), te.DB, userID, 900)
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+	err = usageRepo.IncrementChatTokens(context.Background(), userID, 900)
 	if err != nil {
 		t.Fatalf("failed to set initial tokens: %v", err)
 	}

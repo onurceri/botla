@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/langconfig"
 )
 
 // =============================================================================

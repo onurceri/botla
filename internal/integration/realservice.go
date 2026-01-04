@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/config"
 	"github.com/redis/go-redis/v9"
 )
 

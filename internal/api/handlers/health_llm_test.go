@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
 )
 
 // mockLLMClient implements rag.LLMClient for testing

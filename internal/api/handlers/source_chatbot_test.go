@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/storage"
 )
 
 // TestChatbotSources_Unauthorized tests unauthenticated requests
@@ -81,7 +82,8 @@ func TestChatbotSources_MethodNotAllowed(t *testing.T) {
 		t.Fatalf("chatbot: %v", err)
 	}
 
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), ChatbotRepo: chatbotRepo}
 	ctx := context.WithValue(context.Background(), middleware.ContextKeyUserID, uid)
 
 	// Test unsupported methods

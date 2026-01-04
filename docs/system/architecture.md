@@ -1,4 +1,4 @@
-# Botla-co Architectural Review
+# botla-app Architectural Review
 
 > **Principal Architect's Review**
 > Last Updated: December 2024
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Botla-co is a **full-stack AI-powered chatbot platform** that enables businesses to embed intelligent conversational agents on their websites. The system follows a **Standard Go Project Layout** with a clear separation between backend services and frontend applications. 
+botla-app is a **full-stack AI-powered chatbot platform** that enables businesses to embed intelligent conversational agents on their websites. The system follows a **Standard Go Project Layout** with a clear separation between backend services and frontend applications. 
 
 The architecture implements a **RAG (Retrieval-Augmented Generation) pipeline** for knowledge-based responses, featuring web scraping for content ingestion, vector embeddings via Qdrant, and LLM-powered response generation through OpenAI/OpenRouter.
 
@@ -442,7 +442,7 @@ These files are **not referenced** in the current codebase's RAG pipeline or mai
 
 ## Conclusion
 
-Botla-co demonstrates **mature engineering practices** with a clean architecture, comprehensive testing, and production-ready infrastructure. The RAG pipeline implementation is particularly well-designed, enabling scalable knowledge-based conversations.
+botla-app demonstrates **mature engineering practices** with a clean architecture, comprehensive testing, and production-ready infrastructure. The RAG pipeline implementation is particularly well-designed, enabling scalable knowledge-based conversations.
 
 The main areas for improvement are operational (job queue reliability, caching) rather than architectural, indicating a solid foundation for continued growth.
 
@@ -450,4 +450,4 @@ The main areas for improvement are operational (job queue reliability, caching) 
 
 ---
 
-*Reviewed for: Botla-co @ December 2024*
+*Reviewed for: botla-app @ December 2024*

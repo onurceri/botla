@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // QueueManager handles the job queue lifecycle and worker management.

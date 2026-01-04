@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/storage"
 )
 
 // Build a minimal mux that uses R2 storage to exercise upload paths without hitting external endpoints

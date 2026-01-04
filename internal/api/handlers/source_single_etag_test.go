@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/storage"
 )
 
 func TestSources_ETag_Status(t *testing.T) {
@@ -26,8 +27,10 @@ func TestSources_ETag_Status(t *testing.T) {
 	if err := dbx.QueryRow(`INSERT INTO users (email, password_hash, plan_id) VALUES ($1,$2,$3) RETURNING id`, email, "x", freePlanID).Scan(&uid); err != nil {
 		t.Fatalf("user: %v", err)
 	}
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}

@@ -51,7 +51,7 @@ import (
     "database/sql"
     
     sq "github.com/Masterminds/squirrel"
-    "github.com/onurceri/botla-co/internal/models"
+    "github.com/onurceri/botla-app/internal/models"
 )
 
 var psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)

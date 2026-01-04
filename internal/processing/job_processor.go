@@ -2,30 +2,32 @@ package processing
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/scraper"
-	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	pkgErrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 )
 
 // JobProcessor handles the actual processing of training jobs.
 // It orchestrates URL, PDF, and Text processors with retry and resume support.
 type JobProcessor struct {
-	db           *sql.DB
-	storage      storage.StorageService
-	openaiClient rag.LLMClient
-	vectorClient rag.VectorClient
-	log          *logger.Logger
-	processors   map[string]SourceProcessor
+	trainingJobRepo repository.TrainingJobRepository
+	sourceRepo      repository.SourceRepository
+	chatbotRepo     repository.ChatbotRepository
+	planRepo        repository.PlanRepository
+	storage         storage.StorageService
+	openaiClient    rag.LLMClient
+	vectorClient    rag.VectorClient
+	log             *logger.Logger
+	processors      map[string]SourceProcessor
 
 	// Callback for re-enqueueing jobs with delay (for retries)
 	enqueueWithDelay func(jobID string, delay time.Duration)
@@ -34,7 +36,11 @@ type JobProcessor struct {
 
 // JobProcessorConfig contains the configuration for creating a JobProcessor.
 type JobProcessorConfig struct {
-	DB               *sql.DB
+	TrainingJobRepo  repository.TrainingJobRepository
+	SourceRepo       repository.SourceRepository
+	ChatbotRepo      repository.ChatbotRepository
+	PlanRepo         repository.PlanRepository
+	UsageRepo        repository.UsageRepository
 	Storage          storage.StorageService
 	OpenAIClient     rag.LLMClient
 	VectorClient     rag.VectorClient
@@ -50,13 +56,16 @@ func NewJobProcessor(cfg JobProcessorConfig) *JobProcessor {
 	processors := cfg.Processors
 	if processors == nil {
 		processors = map[string]SourceProcessor{
-			"url":  NewURLProcessor(cfg.DB, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Scraper, cfg.Loader),
-			"pdf":  NewPDFProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
-			"text": NewTextProcessor(cfg.DB, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
+			"url":  NewURLProcessor(cfg.SourceRepo, cfg.UsageRepo, cfg.PlanRepo, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Scraper, cfg.Loader),
+			"pdf":  NewPDFProcessor(cfg.SourceRepo, cfg.UsageRepo, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
+			"text": NewTextProcessor(cfg.SourceRepo, cfg.UsageRepo, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
 		}
 	}
 	return &JobProcessor{
-		db:               cfg.DB,
+		trainingJobRepo:  cfg.TrainingJobRepo,
+		sourceRepo:       cfg.SourceRepo,
+		chatbotRepo:      cfg.ChatbotRepo,
+		planRepo:         cfg.PlanRepo,
 		storage:          cfg.Storage,
 		openaiClient:     cfg.OpenAIClient,
 		vectorClient:     cfg.VectorClient,
@@ -77,7 +86,7 @@ func (p *JobProcessor) processJob(jobID string) {
 	ctx := context.Background()
 
 	// Load job
-	job, err := db.GetTrainingJob(ctx, p.db, jobID)
+	job, err := p.trainingJobRepo.GetByID(ctx, jobID)
 	if err != nil || job == nil {
 		if p.log != nil {
 			p.log.Error("job_not_found", map[string]any{"job_id": jobID, "error": err})
@@ -86,7 +95,7 @@ func (p *JobProcessor) processJob(jobID string) {
 	}
 
 	// Check if this is a retry
-	lastStep, _ := db.GetLastCompletedStep(ctx, p.db, jobID)
+	lastStep, _ := p.trainingJobRepo.GetLastCompletedStep(ctx, jobID)
 
 	// Update status to running
 	var startStep models.TrainingStep
@@ -96,12 +105,12 @@ func (p *JobProcessor) processJob(jobID string) {
 		startStep = models.StepFetchSource
 	}
 
-	_ = db.UpdateJobStatus(ctx, p.db, jobID, models.JobStatusRunning, &startStep)
+	_ = p.trainingJobRepo.UpdateJobStatus(ctx, jobID, models.JobStatusRunning, &startStep)
 
 	// Load source and dependencies
 	source, bot, langCode, plan, ok := p.loadSourceAndLang(job.SourceID)
 	if !ok {
-		_ = db.FailJob(ctx, p.db, jobID, models.StepFetchSource, "SOURCE_NOT_FOUND", "Source not found")
+		_ = p.trainingJobRepo.Fail(ctx, jobID, models.StepFetchSource, "SOURCE_NOT_FOUND", "Source not found")
 		return
 	}
 
@@ -125,7 +134,7 @@ func (p *JobProcessor) processJob(jobID string) {
 	if result.Error != nil {
 		// Check if we should retry
 		if job.RetryCount < MaxRetries && isRetryableError(result.Error) {
-			newCount, _ := db.IncrementRetryCount(ctx, p.db, jobID)
+			newCount, _ := p.trainingJobRepo.IncrementRetryCount(ctx, jobID)
 
 			backoff := p.calculateBackoff(newCount)
 
@@ -150,21 +159,21 @@ func (p *JobProcessor) processJob(jobID string) {
 		if failedStep == "" {
 			failedStep = models.StepFetchSource
 		}
-		_ = db.FailJob(ctx, p.db, jobID, failedStep, "MAX_RETRIES", result.Error.Error())
+		_ = p.trainingJobRepo.Fail(ctx, jobID, failedStep, "MAX_RETRIES", result.Error.Error())
 		p.fail(job.SourceID, result.Error.Error())
 		return
 	}
 
 	if result.Skipped {
 		completedStep := models.StepStoreVectors
-		_ = db.UpdateJobStatus(ctx, p.db, jobID, models.JobStatusCompleted, &completedStep)
+		_ = p.trainingJobRepo.UpdateJobStatus(ctx, jobID, models.JobStatusCompleted, &completedStep)
 		p.complete(job.SourceID, result.ChunkCount)
 		return
 	}
 
 	// Success
 	completedStep := models.StepStoreVectors
-	_ = db.UpdateJobStatus(ctx, p.db, jobID, models.JobStatusCompleted, &completedStep)
+	_ = p.trainingJobRepo.UpdateJobStatus(ctx, jobID, models.JobStatusCompleted, &completedStep)
 	p.complete(job.SourceID, result.ChunkCount)
 
 	// Return discovered sources (handled by orchestrator)
@@ -176,12 +185,12 @@ func (p *JobProcessor) processJob(jobID string) {
 func (p *JobProcessor) ProcessAndGetDiscoveredSources(jobID string) []string {
 	ctx := context.Background()
 
-	job, err := db.GetTrainingJob(ctx, p.db, jobID)
+	job, err := p.trainingJobRepo.GetByID(ctx, jobID)
 	if err != nil || job == nil {
 		return nil
 	}
 
-	lastStep, _ := db.GetLastCompletedStep(ctx, p.db, jobID)
+	lastStep, _ := p.trainingJobRepo.GetLastCompletedStep(ctx, jobID)
 	source, bot, langCode, plan, ok := p.loadSourceAndLang(job.SourceID)
 	if !ok {
 		return nil
@@ -203,7 +212,7 @@ func (p *JobProcessor) calculateBackoff(retryCount int) time.Duration {
 // processWithResume handles processing with step resume support.
 func (p *JobProcessor) processWithResume(ctx context.Context, jobID string, source *models.DataSource, bot *models.Chatbot, langCode string, plan *models.Plan, lastStep *models.TrainingStep) ProcessResult {
 	onStep := func(step models.TrainingStep) {
-		_ = db.UpdateJobStatus(ctx, p.db, jobID, models.JobStatusRunning, &step)
+		_ = p.trainingJobRepo.UpdateJobStatus(ctx, jobID, models.JobStatusRunning, &step)
 	}
 
 	processor, ok := p.processors[source.SourceType]
@@ -228,19 +237,19 @@ func (p *JobProcessor) processWithResume(ctx context.Context, jobID string, sour
 func (p *JobProcessor) loadSourceAndLang(sourceID string) (*models.DataSource, *models.Chatbot, string, *models.Plan, bool) {
 	ctx := context.Background()
 
-	s, err := db.GetSourceByID(ctx, p.db, sourceID)
+	s, err := p.sourceRepo.GetByID(ctx, sourceID)
 	if err != nil || s == nil {
 		p.fail(sourceID, "source_not_found")
 		return nil, nil, "", nil, false
 	}
 
-	bot, err := db.GetChatbotByID(ctx, p.db, s.ChatbotID)
+	bot, err := p.chatbotRepo.GetByID(ctx, s.ChatbotID)
 	if err != nil || bot == nil {
 		p.fail(sourceID, "chatbot_not_found")
 		return nil, nil, "", nil, false
 	}
 
-	plan, err := db.GetPlanByUserID(ctx, p.db, bot.UserID)
+	plan, err := p.planRepo.GetByUserID(ctx, bot.UserID)
 	if err != nil {
 		p.fail(sourceID, "plan_error")
 		return nil, nil, "", nil, false
@@ -261,10 +270,11 @@ func (p *JobProcessor) markProcessing(id string) {
 	}
 	ctx := context.Background()
 	chunkCount := 0
-	if err := p.db.QueryRowContext(ctx, `SELECT chunk_count FROM data_sources WHERE id=$1`, id).Scan(&chunkCount); err != nil {
-		chunkCount = 0
+	s, err := p.sourceRepo.GetByID(ctx, id)
+	if err == nil && s != nil {
+		chunkCount = s.ChunkCount
 	}
-	_ = db.UpdateSourceProcessing(ctx, p.db, id, "processing", nil, chunkCount, nil)
+	_ = p.sourceRepo.UpdateSourceProcessing(ctx, id, "processing", nil, chunkCount, nil)
 }
 
 // fail marks a source as failed.
@@ -272,7 +282,7 @@ func (p *JobProcessor) fail(id string, msg string) {
 	if p.log != nil {
 		p.log.Warn("source_processing_fail", map[string]any{"source_id": id, "reason": msg})
 	}
-	_ = db.UpdateSourceProcessing(context.Background(), p.db, id, "failed", &msg, 0, nil)
+	_ = p.sourceRepo.UpdateSourceProcessing(context.Background(), id, "failed", &msg, 0, nil)
 }
 
 // complete marks a source as completed.
@@ -281,7 +291,7 @@ func (p *JobProcessor) complete(id string, chunks int) {
 		p.log.Info("source_processing_complete", map[string]any{"source_id": id, "chunks": chunks})
 	}
 	now := time.Now()
-	_ = db.UpdateSourceProcessing(context.Background(), p.db, id, "completed", nil, chunks, &now)
+	_ = p.sourceRepo.UpdateSourceProcessing(context.Background(), id, "completed", nil, chunks, &now)
 }
 
 // isRetryableError determines if an error should trigger a retry.

@@ -3,8 +3,8 @@ package handlers
 import (
 	"context"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/services"
 )
 
 // checkChatbotAccess verifies if a user has access to a chatbot either by ownership or workspace membership

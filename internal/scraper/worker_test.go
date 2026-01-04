@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/urlutil"
+	"github.com/onurceri/botla-app/pkg/urlutil"
 )
 
 func TestScrapeURLVisibleText(t *testing.T) {

@@ -3,45 +3,44 @@ package services
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/storage"
 )
 
 type PrivacyService struct {
-	DB      *sql.DB
-	Log     *logger.Logger
-	Storage storage.StorageService
+	PrivacyRepo repository.PrivacyRepository
+	Log         *logger.Logger
+	Storage     storage.StorageService
 }
 
-func NewPrivacyService(db *sql.DB, log *logger.Logger, storage storage.StorageService) *PrivacyService {
+func NewPrivacyService(privacyRepo repository.PrivacyRepository, log *logger.Logger, storage storage.StorageService) *PrivacyService {
 	return &PrivacyService{
-		DB:      db,
-		Log:     log,
-		Storage: storage,
+		PrivacyRepo: privacyRepo,
+		Log:         log,
+		Storage:     storage,
 	}
 }
 
 // ExportUserData generates a JSON export of all user data
-func (s *PrivacyService) ExportUserData(ctx context.Context, userID string, requestedBy string) (*db.DataExport, error) {
+func (s *PrivacyService) ExportUserData(ctx context.Context, userID string, requestedBy string) (*repository.DataExport, error) {
 	if s.Storage == nil {
 		return nil, fmt.Errorf("storage not configured")
 	}
 
 	// 1. Create data_exports record (pending)
-	export := db.DataExport{
+	export := repository.DataExport{
 		UserID:      &userID,
 		RequestedBy: &requestedBy,
 		Format:      "json",
 		Status:      "processing",
 	}
-	createdExport, err := db.CreateDataExport(ctx, s.DB, export)
+	createdExport, err := s.PrivacyRepo.CreateDataExport(ctx, export)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "create data export")
 	}
@@ -61,12 +60,12 @@ func (s *PrivacyService) ExportUserData(ctx context.Context, userID string, requ
 
 			// Update status to failed
 			errMsg := err.Error()
-			failedExp := db.DataExport{
+			failedExp := repository.DataExport{
 				ID:           expID,
 				Status:       "failed",
 				ErrorMessage: &errMsg,
 			}
-			_ = db.UpdateDataExport(bgCtx, s.DB, failedExp)
+			_ = s.PrivacyRepo.UpdateDataExport(bgCtx, failedExp)
 		}
 	}(createdExport.ID)
 
@@ -78,8 +77,8 @@ func (s *PrivacyService) processExport(ctx context.Context, exportID, userID str
 		return "", time.Time{}, 0, fmt.Errorf("storage not configured")
 	}
 
-	// 1. Collect all user data using the DB helper
-	exportData, err := db.GetUserDataForExport(ctx, s.DB, userID)
+	// 1. Collect all user data using the repository helper
+	exportData, err := s.PrivacyRepo.GetUserDataForExport(ctx, userID)
 	if err != nil {
 		return "", time.Time{}, 0, pkgerrors.Wrapf(err, "get user data for export")
 	}
@@ -102,7 +101,7 @@ func (s *PrivacyService) processExport(ctx context.Context, exportID, userID str
 	expiresAt := now.Add(7 * 24 * time.Hour) // 7 days expiration
 	size := int64(len(jsonData))
 
-	update := db.DataExport{
+	update := repository.DataExport{
 		ID:            exportID,
 		Status:        "completed",
 		DownloadURL:   &fileURL,
@@ -111,7 +110,7 @@ func (s *PrivacyService) processExport(ctx context.Context, exportID, userID str
 		CompletedAt:   &now,
 	}
 
-	if err := db.UpdateDataExport(ctx, s.DB, update); err != nil {
+	if err := s.PrivacyRepo.UpdateDataExport(ctx, update); err != nil {
 		return "", time.Time{}, 0, pkgerrors.Wrapf(err, "update data export")
 	}
 
@@ -119,45 +118,45 @@ func (s *PrivacyService) processExport(ctx context.Context, exportID, userID str
 }
 
 // RequestDeletion initiates user data deletion process
-func (s *PrivacyService) RequestDeletion(ctx context.Context, userID, email, reason string) (*db.PrivacyRequest, error) {
-	req := db.PrivacyRequest{
+func (s *PrivacyService) RequestDeletion(ctx context.Context, userID, email, reason string) (*repository.PrivacyRequest, error) {
+	req := repository.PrivacyRequest{
 		UserID:      &userID,
 		UserEmail:   email,
 		RequestType: "deletion",
 		Status:      "pending",
 		Reason:      reason,
 	}
-	res, err := db.CreatePrivacyRequest(ctx, s.DB, req)
+	res, err := s.PrivacyRepo.CreatePrivacyRequest(ctx, req)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "create deletion request")
 	}
 	return res, nil
 }
 
-func (s *PrivacyService) RequestExport(ctx context.Context, userID, email, reason string) (*db.PrivacyRequest, error) {
-	req := db.PrivacyRequest{
+func (s *PrivacyService) RequestExport(ctx context.Context, userID, email, reason string) (*repository.PrivacyRequest, error) {
+	req := repository.PrivacyRequest{
 		UserID:      &userID,
 		UserEmail:   email,
 		RequestType: "export",
 		Status:      "pending",
 		Reason:      reason,
 	}
-	res, err := db.CreatePrivacyRequest(ctx, s.DB, req)
+	res, err := s.PrivacyRepo.CreatePrivacyRequest(ctx, req)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "create export request")
 	}
 	return res, nil
 }
 
-func (s *PrivacyService) RequestCorrection(ctx context.Context, userID, email, reason string) (*db.PrivacyRequest, error) {
-	req := db.PrivacyRequest{
+func (s *PrivacyService) RequestCorrection(ctx context.Context, userID, email, reason string) (*repository.PrivacyRequest, error) {
+	req := repository.PrivacyRequest{
 		UserID:      &userID,
 		UserEmail:   email,
 		RequestType: "correction",
 		Status:      "pending",
 		Reason:      reason,
 	}
-	res, err := db.CreatePrivacyRequest(ctx, s.DB, req)
+	res, err := s.PrivacyRepo.CreatePrivacyRequest(ctx, req)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "create correction request")
 	}
@@ -165,7 +164,7 @@ func (s *PrivacyService) RequestCorrection(ctx context.Context, userID, email, r
 }
 
 func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, adminID string) error {
-	req, err := db.GetPrivacyRequest(ctx, s.DB, requestID)
+	req, err := s.PrivacyRepo.GetPrivacyRequest(ctx, requestID)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "get privacy request")
 	}
@@ -177,7 +176,7 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 	}
 
 	if req.UserID == nil {
-		if errStatus := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); errStatus != nil {
+		if errStatus := s.PrivacyRepo.UpdatePrivacyRequestStatus(ctx, requestID, "completed", adminID, nil); errStatus != nil {
 			return pkgerrors.Wrapf(errStatus, "update privacy request status")
 		}
 		return nil
@@ -187,20 +186,20 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 		return fmt.Errorf("storage not configured")
 	}
 
-	if statusErr := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "processing", adminID, nil); statusErr != nil {
-		return pkgerrors.Wrapf(statusErr, "update privacy request status")
+	if statusErr := s.PrivacyRepo.UpdatePrivacyRequestStatus(ctx, requestID, "processing", adminID, nil); statusErr != nil {
+		return pkgerrors.Wrapf(err, "update privacy request status")
 	}
 
-	export := db.DataExport{
+	export := repository.DataExport{
 		UserID:      req.UserID,
 		RequestedBy: &adminID,
 		Format:      "json",
 		Status:      "processing",
 	}
-	createdExport, err := db.CreateDataExport(ctx, s.DB, export)
+	createdExport, err := s.PrivacyRepo.CreateDataExport(ctx, export)
 	if err != nil {
 		errMsg := err.Error()
-		_ = db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "denied", adminID, &errMsg)
+		_ = s.PrivacyRepo.UpdatePrivacyRequestStatus(ctx, requestID, "denied", adminID, &errMsg)
 		return pkgerrors.Wrapf(err, "create data export")
 	}
 
@@ -216,17 +215,17 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 			})
 
 			errMsg := err.Error()
-			failedExp := db.DataExport{
+			failedExp := repository.DataExport{
 				ID:           expID,
 				Status:       "failed",
 				ErrorMessage: &errMsg,
 			}
-			_ = db.UpdateDataExport(bgCtx, s.DB, failedExp)
-			_ = db.UpdatePrivacyRequestStatus(bgCtx, s.DB, prID, "denied", adminID, &errMsg)
+			_ = s.PrivacyRepo.UpdateDataExport(bgCtx, failedExp)
+			_ = s.PrivacyRepo.UpdatePrivacyRequestStatus(bgCtx, prID, "denied", adminID, &errMsg)
 			return
 		}
 
-		_ = db.CompletePrivacyExportRequest(bgCtx, s.DB, prID, adminID, downloadURL, expiresAt)
+		_ = s.PrivacyRepo.CompletePrivacyExportRequest(bgCtx, prID, adminID, downloadURL, expiresAt)
 	}(createdExport.ID, *req.UserID, requestID)
 
 	return nil
@@ -235,7 +234,7 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 // ProcessDeletion performs the actual deletion (admin-initiated)
 func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID string) error {
 	// 1. Get request
-	req, err := db.GetPrivacyRequest(ctx, s.DB, requestID)
+	req, err := s.PrivacyRepo.GetPrivacyRequest(ctx, requestID)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "get privacy request")
 	}
@@ -247,7 +246,7 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 	}
 
 	// 2. Cleanup user files from storage
-	files, err := db.GetUserFilesForDeletion(ctx, s.DB, *req.UserID)
+	files, err := s.PrivacyRepo.GetUserFilesForDeletion(ctx, *req.UserID)
 	switch {
 	case err != nil:
 		s.Log.Error("failed_to_get_user_files_for_deletion", map[string]any{
@@ -277,13 +276,13 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 	}
 
 	// 3. Anonymize/Delete user data
-	err = db.AnonymizeUserData(ctx, s.DB, *req.UserID)
+	err = s.PrivacyRepo.AnonymizeUserData(ctx, *req.UserID)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "anonymize user")
 	}
 
 	// 4. Update request status
-	if errStatus := db.UpdatePrivacyRequestStatus(ctx, s.DB, requestID, "completed", adminID, nil); errStatus != nil {
+	if errStatus := s.PrivacyRepo.UpdatePrivacyRequestStatus(ctx, requestID, "completed", adminID, nil); errStatus != nil {
 		return pkgerrors.Wrapf(errStatus, "update privacy request status")
 	}
 	return nil

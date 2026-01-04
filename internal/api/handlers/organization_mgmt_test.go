@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func setupTestDB(t *testing.T) *sql.DB {
@@ -38,7 +39,8 @@ func TestOrganizationManagement(t *testing.T) {
 
 	// Create service manually
 	svc := services.NewOrganizationService(db, logger.New("test"))
-	h := &OrganizationHandlers{OrgService: svc, DB: db}
+	userRepo := repository.NewPostgresUserRepo(db)
+	h := &OrganizationHandlers{OrgService: svc, UserRepo: userRepo}
 	wsSvc := services.NewWorkspaceService(db, logger.New("test"))
 	wh := &WorkspaceHandlers{WorkspaceService: wsSvc}
 

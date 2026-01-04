@@ -2,11 +2,10 @@ package validation
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 // =============================================================================
@@ -15,12 +14,12 @@ import (
 
 // ChatbotValidator validates chatbot update requests against plan restrictions.
 type ChatbotValidator struct {
-	DB *sql.DB
+	planRepo repository.PlanRepository
 }
 
 // NewChatbotValidator creates a new ChatbotValidator.
-func NewChatbotValidator(db *sql.DB) *ChatbotValidator {
-	return &ChatbotValidator{DB: db}
+func NewChatbotValidator(planRepo repository.PlanRepository) *ChatbotValidator {
+	return &ChatbotValidator{planRepo: planRepo}
 }
 
 // FeatureError represents a plan-based feature restriction error.
@@ -56,7 +55,7 @@ type ChatbotUpdateRequest struct {
 // It fetches the plan ONCE and validates all fields against it.
 func (v *ChatbotValidator) ValidateUpdate(ctx context.Context, req ChatbotUpdateRequest, userID string) *FeatureError {
 	// Fetch plan once for all validations
-	plan, err := db.GetPlanByUserID(ctx, v.DB, userID)
+	plan, err := v.planRepo.GetByUserID(ctx, userID)
 	if err != nil || plan == nil {
 		return &FeatureError{
 			Feature:         "plan",

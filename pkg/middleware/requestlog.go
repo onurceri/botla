@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type statusRecorder struct {

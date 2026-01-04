@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAdminQueues(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
@@ -61,7 +61,7 @@ t.Parallel()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var stats []db.QueueStats
+		var stats []repository.QueueStats
 		err = json.NewDecoder(resp.Body).Decode(&stats)
 		require.NoError(t, err)
 
@@ -92,7 +92,7 @@ t.Parallel()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var jobs []db.StuckJob
+		var jobs []repository.StuckJob
 		err = json.NewDecoder(resp.Body).Decode(&jobs)
 		require.NoError(t, err)
 

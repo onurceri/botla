@@ -3,12 +3,12 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api"
+	"github.com/onurceri/botla-app/internal/api"
 )
 
 // GetSourceChunks retrieves the chunks for a specific source.
 func (h *SourcesHandlers) GetSourceChunks(w http.ResponseWriter, r *http.Request) {
-	_, _, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, _, sourceID, ok := getSourceContext(w, r, h.SourceRepo, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}

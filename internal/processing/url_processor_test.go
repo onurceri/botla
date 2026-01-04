@@ -3,8 +3,9 @@ package processing
 import (
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 func TestURLProcessor_NewURLProcessor(t *testing.T) {
@@ -12,7 +13,7 @@ func TestURLProcessor_NewURLProcessor(t *testing.T) {
 
 	t.Run("creates processor with injected scraper", func(t *testing.T) {
 		ms := scraper.NewMockScraper()
-		p := NewURLProcessor(nil, nil, nil, nil, ms, nil)
+		p := NewURLProcessor(nil, nil, nil, nil, nil, nil, ms, nil)
 		if p == nil {
 			t.Error("expected non-nil processor")
 		}
@@ -24,7 +25,10 @@ func TestURLProcessor_NewURLProcessor(t *testing.T) {
 	t.Run("creates processor with custom logger", func(t *testing.T) {
 		log := logger.New("test")
 		ms := scraper.NewMockScraper()
-		p := NewURLProcessor(nil, nil, nil, log, ms, nil)
+		sourceRepo := repository.NewMockSourceRepo()
+		usageRepo := &MockUsageRepo{}
+		planRepo := repository.NewMockPlanRepo()
+		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, nil, nil, log, ms, nil)
 		if p == nil {
 			t.Error("expected non-nil processor")
 		}

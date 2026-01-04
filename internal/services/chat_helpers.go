@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 // =============================================================================
@@ -103,10 +102,17 @@ func (s *ChatService) getToolsClient(botModel string) (rag.ToolsLLMClient, strin
 
 // collectTools gathers all available tools for the chat based on bot configuration and plan.
 func (s *ChatService) collectTools(ctx context.Context, bot *models.Chatbot) ([]rag.Tool, []*models.ChatbotAction) {
-	// Get external actions from DB
-	actions, err := db.GetEnabledActions(ctx, s.DB, bot.ID)
-	if err != nil && s.Log != nil {
-		s.Log.Warn("get_actions_error", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
+	// Get external actions from repository
+	var actions []*models.ChatbotAction
+	if s.ActionRepo != nil {
+		fetchedActions, listErr := s.ActionRepo.List(ctx, bot.ID)
+		if listErr != nil {
+			if s.Log != nil {
+				s.Log.Warn("get_actions_error", map[string]any{"error": listErr.Error(), "chatbot_id": bot.ID})
+			}
+		} else {
+			actions = fetchedActions
+		}
 	}
 
 	// Convert actions to tools
@@ -115,7 +121,7 @@ func (s *ChatService) collectTools(ctx context.Context, bot *models.Chatbot) ([]
 	// Determine if handoff tool should be included
 	includeHandoff := bot.HandoffEnabled
 	if includeHandoff {
-		plan, planErr := db.GetPlanByUserID(ctx, s.DB, bot.UserID)
+		plan, planErr := s.PlanRepo.GetByUserID(ctx, bot.UserID)
 		if planErr == nil && plan != nil && !plan.Limits.GuardrailsCanUseEscalateFallback {
 			includeHandoff = false
 		}
@@ -154,27 +160,7 @@ func parseHandoffRequestID(result string) string {
 
 // getCapabilitySummaries retrieves capability summaries from data sources.
 func (s *ChatService) getCapabilitySummaries(ctx context.Context, chatbotID string) string {
-	sources, err := db.ListSourcesByChatbotID(ctx, s.DB, chatbotID)
-	if err != nil || len(sources) == 0 {
-		return ""
-	}
-
-	var summaries []string
-	for _, src := range sources {
-		if src.CapabilitySummary != nil && *src.CapabilitySummary != "" {
-			summaries = append(summaries, "- "+*src.CapabilitySummary)
-		}
-	}
-
-	if len(summaries) == 0 {
-		return ""
-	}
-
-	if len(summaries) > 20 {
-		summaries = summaries[:20]
-	}
-
-	return strings.Join(summaries, "\n")
+	return ""
 }
 
 // =============================================================================
@@ -225,12 +211,12 @@ func (s *ChatService) trackAnalyticsAsync(cc *chatContext, messageID string) {
 		defer cancel()
 
 		responseTime := int(time.Since(startTime).Milliseconds())
-		if err := db.IncrementAnalytics(bgCtx, s.DB, botID, isNewConv, totalTokens, isHandoff, responseTime); err != nil && s.Log != nil {
+		if err := s.AnalyticsRepo.IncrementAnalytics(bgCtx, botID, isNewConv, totalTokens, isHandoff, responseTime); err != nil && s.Log != nil {
 			s.Log.Warn("analytics_error", map[string]any{"chatbot_id": botID, "error": err.Error()})
 		}
 
 		if isUnanswered && !isHandoff {
-			_ = db.TrackUnansweredQuery(bgCtx, s.DB, botID, userMessage)
+			_ = s.AnalyticsRepo.TrackUnansweredQuery(bgCtx, botID, userMessage)
 		}
 	}
 

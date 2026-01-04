@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 // ContextTier represents the confidence level of search results

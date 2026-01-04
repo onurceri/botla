@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type WorkerPool struct {

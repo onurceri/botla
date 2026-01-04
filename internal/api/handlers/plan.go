@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 // PlanResponse represents the /me/plan endpoint response
@@ -59,7 +59,18 @@ type planInfo struct {
 
 // PlanHandlers handles plan-related endpoints
 type PlanHandlers struct {
-	DB *sql.DB
+	UserRepo repository.UserRepository
+	PlanRepo repository.PlanRepository
+	DB       *sql.DB // Kept for ModelService which still needs it
+}
+
+// NewPlanHandlers creates a new PlanHandlers instance
+func NewPlanHandlers(userRepo repository.UserRepository, planRepo repository.PlanRepository, db *sql.DB) *PlanHandlers {
+	return &PlanHandlers{
+		UserRepo: userRepo,
+		PlanRepo: planRepo,
+		DB:       db,
+	}
 }
 
 // GetPlan handles GET /me/plan endpoint
@@ -70,7 +81,7 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := db.GetUserByID(r.Context(), h.DB, uid)
+	u, err := h.UserRepo.GetByID(r.Context(), uid)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -83,6 +94,10 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 	plan, err := h.getPlanInfo(r.Context(), u)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if plan == nil {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
@@ -176,60 +191,32 @@ func (h *PlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 	api.WriteJSON(w, http.StatusOK, res)
 }
 
-// getPlanInfo retrieves plan details with translations
+// getPlanInfo retrieves plan details using repositories
 func (h *PlanHandlers) getPlanInfo(ctx context.Context, u *models.User) (*planInfo, error) {
 	if u.PlanID == nil || *u.PlanID == "" {
 		return nil, &planError{msg: "no plan assigned"}
 	}
 
-	langID := u.PreferredLanguageID
-	if langID == nil {
-		var defaultID string
-		_ = h.DB.QueryRow(`SELECT id FROM languages WHERE code='tr-TR'`).Scan(&defaultID)
-		if defaultID != "" {
-			langID = &defaultID
-		}
-	}
-
-	var planCode string
-	var name sql.NullString
-	var desc sql.NullString
-	var planPrice float64
-	var planCurrency string
-	var limits models.PlanLimits
-
-	// First get plan info
-	err := h.DB.QueryRowContext(ctx, `
-		SELECT p.code, pt.name, pt.description, p.price, p.currency
-		FROM plans p
-		LEFT JOIN plan_translations pt ON pt.plan_id=p.id AND pt.language_id=$2
-		WHERE p.id=$1
-	`, u.PlanID, langID).Scan(&planCode, &name, &desc, &planPrice, &planCurrency)
-
+	// Use GetPlanWithLimits to get complete plan with limits
+	plan, err := h.PlanRepo.GetPlanWithLimits(ctx, u.ID)
 	if err != nil {
-		// Fallback to free plan using typed constant
-		planCode = policy.PlanFree.String()
+		return nil, err
 	}
-
-	// Then get plan limits
-	limitsPtr, err := db.GetPlanLimitsByPlanID(ctx, h.DB, *u.PlanID)
-	if err != nil || limitsPtr == nil {
-		// Fallback to defaults
-		defaults := models.DefaultPlanLimits()
-		limitsPtr = &defaults
+	if plan == nil {
+		return nil, &planError{msg: "plan not found"}
 	}
 
 	// Apply config defaults
-	applyLimitsDefaults(limitsPtr, planCode)
+	applyLimitsDefaults(plan.Limits, plan.Code)
 
 	return &planInfo{
-		ID:          *u.PlanID,
-		Code:        planCode,
-		Name:        nullStringPtr(name),
-		Description: nullStringPtr(desc),
-		Price:       planPrice,
-		Currency:    planCurrency,
-		Limits:      &limits,
+		ID:          plan.ID,
+		Code:        plan.Code,
+		Name:        nil, // Name comes from translations, not available in Plan model
+		Description: nil, // Description comes from translations
+		Price:       plan.Price,
+		Currency:    plan.Currency,
+		Limits:      plan.Limits,
 	}, nil
 }
 
@@ -260,14 +247,6 @@ func applyLimitsDefaults(limits *models.PlanLimits, planCode string) {
 	if limits.ChatMaxResponseTokenLimit == 0 {
 		limits.ChatMaxResponseTokenLimit = 8192
 	}
-}
-
-// nullStringPtr converts sql.NullString to *string
-func nullStringPtr(ns sql.NullString) *string {
-	if ns.Valid {
-		return &ns.String
-	}
-	return nil
 }
 
 // planError represents a plan-related error

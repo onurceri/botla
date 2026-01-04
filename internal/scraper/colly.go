@@ -11,7 +11,7 @@ import (
 
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/queue"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type CollectorConfig struct {

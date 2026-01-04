@@ -6,27 +6,29 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type AdminHandlers struct {
-	DB           *sql.DB
-	AdminService *services.AdminService
+	AdminService     *services.AdminService
+	UserRepo         repository.UserRepository
+	OrganizationRepo repository.OrganizationRepository
 }
 
-func NewAdminHandlers(db *sql.DB, adminSvc *services.AdminService) *AdminHandlers {
+func NewAdminHandlers(adminSvc *services.AdminService, userRepo repository.UserRepository, orgRepo repository.OrganizationRepository) *AdminHandlers {
 	return &AdminHandlers{
-		DB:           db,
-		AdminService: adminSvc,
+		AdminService:     adminSvc,
+		UserRepo:         userRepo,
+		OrganizationRepo: orgRepo,
 	}
 }
 
 // GetOverviewStats returns high-level platform metrics.
 func (h *AdminHandlers) GetOverviewStats(w http.ResponseWriter, r *http.Request) {
-	stats, err := db.GetPlatformOverviewStats(r.Context(), h.DB)
+	stats, err := h.OrganizationRepo.GetPlatformOverviewStats(r.Context())
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -46,7 +48,7 @@ func (h *AdminHandlers) ListUsers(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 
-	filter := db.UserFilter{}
+	filter := repository.UserFilter{}
 	if email := r.URL.Query().Get("email"); email != "" {
 		filter.Email = &email
 	}
@@ -58,7 +60,7 @@ func (h *AdminHandlers) ListUsers(w http.ResponseWriter, r *http.Request) {
 		filter.PlanID = &planID
 	}
 
-	users, total, err := db.AdminListUsers(r.Context(), h.DB, filter, limit, offset)
+	users, total, err := h.UserRepo.AdminListUsers(r.Context(), filter, limit, offset)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -78,7 +80,7 @@ func (h *AdminHandlers) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := db.GetUserByID(r.Context(), h.DB, id)
+	user, err := h.UserRepo.GetByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
@@ -105,7 +107,7 @@ func (h *AdminHandlers) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := db.AdminUpdateUser(r.Context(), h.DB, id, updates)
+	err := h.UserRepo.AdminUpdateUser(r.Context(), id, updates)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -129,7 +131,7 @@ func (h *AdminHandlers) ListOrganizations(w http.ResponseWriter, r *http.Request
 		offset = 0
 	}
 
-	filter := db.OrganizationFilter{}
+	filter := repository.OrganizationFilter{}
 	if name := r.URL.Query().Get("name"); name != "" {
 		filter.Name = &name
 	}
@@ -137,7 +139,7 @@ func (h *AdminHandlers) ListOrganizations(w http.ResponseWriter, r *http.Request
 		filter.PlanID = &planID
 	}
 
-	orgs, total, err := db.AdminListOrganizations(r.Context(), h.DB, filter, limit, offset)
+	orgs, total, err := h.OrganizationRepo.AdminList(r.Context(), filter, limit, offset)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -157,7 +159,7 @@ func (h *AdminHandlers) GetOrganization(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	org, err := db.GetOrganizationByID(r.Context(), h.DB, id)
+	org, err := h.OrganizationRepo.GetByID(r.Context(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)

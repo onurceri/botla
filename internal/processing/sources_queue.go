@@ -2,18 +2,17 @@ package processing
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/scraper"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 )
 
 // MaxRetries is the maximum number of retry attempts for a failed job.
@@ -22,32 +21,32 @@ const MaxRetries = 3
 // SourceQueue orchestrates background processing of data sources.
 // It combines QueueManager for worker lifecycle and JobProcessor for business logic.
 type SourceQueue struct {
-	queue     *QueueManager
-	processor *JobProcessor
-	db        *sql.DB
-	log       *logger.Logger
-	loader    *tokenizer.Loader
+	queue           *QueueManager
+	processor       *JobProcessor
+	trainingJobRepo repository.TrainingJobRepository
+	log             *logger.Logger
+	loader          *tokenizer.Loader
 }
 
 // StartSourceQueue creates and starts a new source processing queue.
-func StartSourceQueue(dbpool *sql.DB, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, sc scraper.Scraper, loader *tokenizer.Loader, workerCount int) (*SourceQueue, error) {
+func StartSourceQueue(trainingJobRepo repository.TrainingJobRepository, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, sc scraper.Scraper, loader *tokenizer.Loader, workerCount int) (*SourceQueue, error) {
 	log := logger.New("INFO")
 
 	// Create the orchestrator first (needed for circular dependency with processor)
 	sq := &SourceQueue{
-		db:  dbpool,
-		log: log,
+		trainingJobRepo: trainingJobRepo,
+		log:             log,
 	}
 
 	// Create processor with enqueue callback
 	processor := NewJobProcessor(JobProcessorConfig{
-		DB:           dbpool,
-		Storage:      st,
-		OpenAIClient: oai,
-		VectorClient: vc,
-		Log:          log,
-		Scraper:      sc,
-		Loader:       loader,
+		TrainingJobRepo: trainingJobRepo,
+		Storage:         st,
+		OpenAIClient:    oai,
+		VectorClient:    vc,
+		Log:             log,
+		Scraper:         sc,
+		Loader:          loader,
 		EnqueueWithDelay: func(jobID string, delay time.Duration) {
 			sq.queue.EnqueueWithDelay(jobID, delay)
 		},
@@ -85,7 +84,7 @@ func (sq *SourceQueue) EnqueueSource(ctx context.Context, sourceID, chatbotID st
 	}
 
 	// Create training job record
-	job, err := db.CreateTrainingJob(ctx, sq.db, sourceID, chatbotID)
+	job, err := sq.trainingJobRepo.Create(ctx, sourceID, chatbotID)
 	if err != nil {
 		return "", pkgerrors.Wrapf(err, "create training job")
 	}
@@ -103,7 +102,7 @@ func (sq *SourceQueue) EnqueueSource(ctx context.Context, sourceID, chatbotID st
 
 	// Queue full, mark job as failed
 	failedStep := models.StepFetchSource
-	_ = db.FailJob(ctx, sq.db, job.ID, failedStep, "QUEUE_FULL", "Processing queue is full")
+	_ = sq.trainingJobRepo.Fail(ctx, job.ID, failedStep, "QUEUE_FULL", "Processing queue is full")
 	return "", fmt.Errorf("queue full")
 }
 
@@ -149,23 +148,15 @@ func (sq *SourceQueue) recoverPendingJobs() {
 		}
 	}()
 
-	if sq == nil || sq.db == nil {
+	if sq == nil || sq.trainingJobRepo == nil {
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Check if DB is reachable
-	if err := sq.db.PingContext(ctx); err != nil {
-		if sq.log != nil {
-			sq.log.Warn("recover_pending_jobs_db_unreachable", map[string]any{"error": err.Error()})
-		}
-		return
-	}
-
 	// Find jobs with pending status
-	jobs, err := db.GetPendingJobs(ctx, sq.db, 100)
+	jobs, err := sq.trainingJobRepo.GetPendingJobs(ctx, 100)
 	if err != nil {
 		if sq.log != nil {
 			sq.log.Warn("recover_pending_jobs_query_failed", map[string]any{"error": err.Error()})

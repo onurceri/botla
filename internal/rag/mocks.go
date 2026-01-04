@@ -3,7 +3,7 @@ package rag //nolint:wrapcheck
 import (
 	"context"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 	"github.com/stretchr/testify/mock"
 )
 

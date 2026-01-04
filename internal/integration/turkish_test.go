@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 // TRK-002: Turkish special chars in chatbot name
@@ -196,7 +196,8 @@ func TestTurkish_LocalizedError(t *testing.T) {
 	resC.Body.Close()
 
 	// Increment chat tokens to exceed limit (use proper quota function)
-	err = db.IncrementChatTokens(context.Background(), te.DB, userID, 500)
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+	err = usageRepo.IncrementChatTokens(context.Background(), userID, 500)
 	if err != nil {
 		t.Fatalf("failed to increment tokens: %v", err)
 	}

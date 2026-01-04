@@ -3,8 +3,8 @@ package router
 import (
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func ChatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {

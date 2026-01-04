@@ -5,12 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/validation"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/validation"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // ByID handles GET/PUT/DELETE for a specific chatbot
@@ -62,7 +61,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if err := db.UpdateChatbot(r.Context(), h.DB, c); err != nil {
+	if err := h.ChatbotRepo.Update(r.Context(), c); err != nil {
 		if h.Logger != nil {
 			h.Logger.Error("UpdateChatbot failed", map[string]any{"error": err, "chatbot_id": botID})
 		}
@@ -70,7 +69,7 @@ func (h *ChatbotHandlers) updateChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	c2, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	c2, err := h.ChatbotRepo.GetByID(r.Context(), botID)
 	if err != nil || c2 == nil {
 		if h.Logger != nil {
 			h.Logger.Error("GetChatbotByID after update failed", map[string]any{"error": err, "chatbot_id": botID, "result_nil": c2 == nil})
@@ -170,7 +169,7 @@ func (h *ChatbotHandlers) writeFeatureError(w http.ResponseWriter, err *validati
 
 // deleteChatbot handles DELETE request
 func (h *ChatbotHandlers) deleteChatbot(w http.ResponseWriter, r *http.Request, botID, userID string) {
-	sourceIDs, err := db.SoftDeleteChatbot(r.Context(), h.DB, botID, userID)
+	sourceIDs, err := h.ChatbotRepo.SoftDelete(r.Context(), botID, userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

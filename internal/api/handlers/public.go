@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/httputil"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/httputil"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type publicChatbot struct {
@@ -48,7 +48,7 @@ type publicChatbot struct {
 	HandoffEnabled       bool                   `json:"handoff_enabled"`
 }
 
-func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
+func PublicChatbotConfig(chatbotRepo repository.ChatbotRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const prefix = "/api/v1/public/chatbots/"
 		path := r.URL.Path
@@ -67,7 +67,7 @@ func PublicChatbotConfig(dbpool *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		c, err := db.GetChatbotByID(r.Context(), dbpool, botID)
+		c, err := chatbotRepo.GetByID(r.Context(), botID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -158,9 +158,12 @@ type publicChatResponse struct {
 
 // PublicHandlers contains handlers for public (unauthenticated) endpoints
 type PublicHandlers struct {
-	DB          *sql.DB
-	ChatService *services.ChatService
-	Log         *logger.Logger
+	ChatService   *services.ChatService
+	Log           *logger.Logger
+	ChatbotRepo   repository.ChatbotRepository
+	PlanRepo      repository.PlanRepository
+	UsageRepo     repository.UsageRepository
+	AnalyticsRepo repository.AnalyticsRepository
 }
 
 // PublicChat handles public chat requests using the ChatService
@@ -181,7 +184,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return
 	}
-	cbot, err := db.GetChatbotByID(r.Context(), h.DB, botID)
+	cbot, err := h.ChatbotRepo.GetByID(r.Context(), botID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -262,7 +265,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Plan and limits
-	plan, err := db.GetPlanByUserID(r.Context(), h.DB, cbot.UserID)
+	plan, err := h.PlanRepo.GetPlanWithLimits(r.Context(), cbot.UserID)
 	var ragConfig models.RAGConfig
 	var maxMonthlyTokens int
 	var estimatedTokens int
@@ -300,8 +303,8 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		if estimatedTokens <= 0 {
 			estimatedTokens = 512 // Default
 		}
-		err = db.ReserveChatTokens(r.Context(), h.DB, cbot.UserID, estimatedTokens, maxMonthlyTokens)
-		if errors.Is(err, db.ErrTokenQuotaExceeded) {
+		err = h.UsageRepo.ReserveChatTokens(r.Context(), cbot.UserID, estimatedTokens, maxMonthlyTokens)
+		if errors.Is(err, repository.ErrTokenQuotaExceeded) {
 			api.WriteErrorCode(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded)
 			return
 		}
@@ -325,7 +328,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// On error, refund the reserved tokens
 		if maxMonthlyTokens > 0 && estimatedTokens > 0 {
-			_ = db.AdjustChatTokens(context.Background(), h.DB, cbot.UserID, -estimatedTokens)
+			_ = h.UsageRepo.AdjustChatTokens(context.Background(), cbot.UserID, -estimatedTokens)
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -335,7 +338,7 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 	if maxMonthlyTokens > 0 && estimatedTokens > 0 {
 		delta := result.TokensUsed - estimatedTokens
 		if delta != 0 {
-			_ = db.AdjustChatTokens(context.Background(), h.DB, cbot.UserID, delta)
+			_ = h.UsageRepo.AdjustChatTokens(context.Background(), cbot.UserID, delta)
 		}
 	}
 
@@ -392,7 +395,7 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	// Verify message belongs to bot (optional but good)
 	// For now, simpler: UpdateMessageFeedback checks ID.
 	// We need to return the chatbotID for analytics increment, but UpdateMessageFeedback returns it.
-	chatbotID, oldThumbsUp, err := db.UpdateMessageFeedback(r.Context(), h.DB, req.MessageID, req.ThumbsUp)
+	chatbotID, oldThumbsUp, err := h.AnalyticsRepo.UpdateMessageFeedback(r.Context(), req.MessageID, req.ThumbsUp)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -421,7 +424,8 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = db.IncrementFeedback(bgCtx, h.DB, chatbotID, oldThumbsUp, req.ThumbsUp)
+		oldThumbsUpPtr := oldThumbsUp
+		_ = h.AnalyticsRepo.IncrementFeedback(bgCtx, chatbotID, &oldThumbsUpPtr, req.ThumbsUp)
 	}()
 
 	w.WriteHeader(http.StatusOK)

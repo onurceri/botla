@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 func TestRequestLogger_DefaultStatusOnWrite(t *testing.T) {

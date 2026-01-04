@@ -3,21 +3,37 @@ package rag
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type ToolExecutor struct {
-	DB  *sql.DB
-	Log *logger.Logger
+	sourceRepo  repository.SourceRepository
+	handoffRepo repository.HandoffRepository
+	actionRepo  repository.ActionRepository
+	log         *logger.Logger
+}
+
+// NewToolExecutor creates a new ToolExecutor with the given repositories and logger.
+func NewToolExecutor(
+	sourceRepo repository.SourceRepository,
+	handoffRepo repository.HandoffRepository,
+	actionRepo repository.ActionRepository,
+	log *logger.Logger,
+) *ToolExecutor {
+	return &ToolExecutor{
+		sourceRepo:  sourceRepo,
+		handoffRepo: handoffRepo,
+		actionRepo:  actionRepo,
+		log:         log,
+	}
 }
 
 type ToolResult struct {
@@ -44,7 +60,7 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 
 	defer func() {
 		// Only log if we have a valid action (skip builtin tools that are not in DB)
-		if action == nil || e.DB == nil {
+		if action == nil || e.actionRepo == nil {
 			return
 		}
 
@@ -98,14 +114,14 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 		go func() {
 			// Recover from panics to prevent server crash
 			defer func() {
-				if r := recover(); r != nil && e.Log != nil {
-					e.Log.Error("action_log_panic", map[string]any{"panic": r})
+				if r := recover(); r != nil && e.log != nil {
+					e.log.Error("action_log_panic", map[string]any{"panic": r})
 				}
 			}()
 			logCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			if logErr := db.CreateActionLog(logCtx, e.DB, logEntry); logErr != nil {
-				l := e.Log
+			if logErr := e.actionRepo.CreateLog(logCtx, logEntry); logErr != nil {
+				l := e.log
 				if l == nil {
 					l = logger.New("ERROR")
 				}
@@ -143,7 +159,7 @@ func (e *ToolExecutor) Execute(ctx context.Context, toolCall ToolCall, action *m
 func (e *ToolExecutor) executeBuiltin(ctx context.Context, toolCall ToolCall, chatbotID string) (*ToolResult, error) {
 	switch toolCall.Function.Name {
 	case "list_sources":
-		if e == nil || e.DB == nil {
+		if e == nil || e.sourceRepo == nil {
 			return &ToolResult{
 				ToolCallID: toolCall.ID,
 				Result:     `{"sources": []}`,
@@ -155,7 +171,7 @@ func (e *ToolExecutor) executeBuiltin(ctx context.Context, toolCall ToolCall, ch
 				Result:     `{"sources": []}`,
 			}, nil
 		}
-		sources, err := db.ListSourcesByChatbotID(ctx, e.DB, chatbotID)
+		sources, err := e.sourceRepo.GetByChatbot(ctx, chatbotID)
 		if err != nil {
 			return nil, fmt.Errorf("list_sources query failed: %w", err)
 		}
@@ -211,7 +227,7 @@ func (e *ToolExecutor) executeBuiltin(ctx context.Context, toolCall ToolCall, ch
 
 func (e *ToolExecutor) executeHandoff(ctx context.Context, toolCall ToolCall, chatbotID, conversationID string) (*ToolResult, error) {
 	// Check for existing active request
-	exists, err := db.HasActiveHandoffRequest(ctx, e.DB, conversationID)
+	exists, err := e.handoffRepo.HasActiveHandoffRequest(ctx, conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing handoff: %w", err)
 	}
@@ -230,7 +246,7 @@ func (e *ToolExecutor) executeHandoff(ctx context.Context, toolCall ToolCall, ch
 		Notes:          nil, // No notes from tool for now, or could parse from args
 	}
 
-	requestID, err := db.CreateHandoffRequest(ctx, e.DB, req)
+	requestID, err := e.handoffRepo.CreateHandoffRequest(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handoff request: %w", err)
 	}

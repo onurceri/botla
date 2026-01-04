@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/storage"
 )
 
 // TestRefreshSource_Unauthorized tests unauthenticated refresh

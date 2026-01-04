@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration"
-	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-app/internal/integration"
+	"github.com/onurceri/botla-app/internal/testdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

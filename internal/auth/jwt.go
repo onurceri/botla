@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	JWTIssuer   = "botla-co"
+	JWTIssuer   = "botla-app"
 	JWTAudience = "botla-api"
 )
 

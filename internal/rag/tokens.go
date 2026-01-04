@@ -4,7 +4,7 @@ import (
 	"math"
 	"unicode/utf8"
 
-	"github.com/onurceri/botla-co/pkg/langconfig"
+	"github.com/onurceri/botla-app/pkg/langconfig"
 )
 
 // CountTokens estimates token count for a text with language-specific multiplier.

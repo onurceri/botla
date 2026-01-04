@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestCORS_PublicEndpoints(t *testing.T) {

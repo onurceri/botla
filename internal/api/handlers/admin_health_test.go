@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/config"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/config"
 )
 
 func TestAdminHealthHandlers_GetDetailedHealth(t *testing.T) {

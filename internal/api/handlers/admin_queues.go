@@ -1,31 +1,32 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type AdminQueueHandlers struct {
-	DB           *sql.DB
 	AdminService *services.AdminService
+	QueueRepo    repository.QueueRepository
+	SourceRepo   repository.SourceRepository
 }
 
-func NewAdminQueueHandlers(database *sql.DB, adminSvc *services.AdminService) *AdminQueueHandlers {
+func NewAdminQueueHandlers(adminSvc *services.AdminService, queueRepo repository.QueueRepository, sourceRepo repository.SourceRepository) *AdminQueueHandlers {
 	return &AdminQueueHandlers{
-		DB:           database,
 		AdminService: adminSvc,
+		QueueRepo:    queueRepo,
+		SourceRepo:   sourceRepo,
 	}
 }
 
 // GetQueues returns statistics for processing queues.
 func (h *AdminQueueHandlers) GetQueues(w http.ResponseWriter, r *http.Request) {
-	stats, err := db.GetQueueStats(r.Context(), h.DB)
+	stats, err := h.QueueRepo.GetQueueStats(r.Context())
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -42,7 +43,7 @@ func (h *AdminQueueHandlers) GetStuckJobs(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	jobs, err := db.GetStuckJobs(r.Context(), h.DB, threshold)
+	jobs, err := h.QueueRepo.GetStuckJobs(r.Context(), threshold)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -58,12 +59,7 @@ func (h *AdminQueueHandlers) RetryJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Currently retrying means resetting data_source status to pending
-	_, err := h.DB.ExecContext(r.Context(), `
-		UPDATE data_sources 
-		SET status = 'pending', error_message = NULL, last_refreshed_at = NOW()
-		WHERE id = $1 AND status IN ('processing', 'error')
-	`, id)
+	err := h.SourceRepo.UpdateForRefresh(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -84,7 +80,7 @@ func (h *AdminQueueHandlers) DeleteJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.DB.ExecContext(r.Context(), `DELETE FROM data_sources WHERE id = $1`, id)
+	err := h.SourceRepo.Delete(r.Context(), id)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return

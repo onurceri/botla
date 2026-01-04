@@ -3,7 +3,7 @@ package guards
 import (
 	"net/http"
 
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // RequirePlatformAdmin ensures the request is from a platform admin.

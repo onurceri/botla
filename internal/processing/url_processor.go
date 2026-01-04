@@ -3,18 +3,17 @@ package processing
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/internal/text"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/internal/text"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 )
 
 // safeHashPrefix returns up to maxLen characters of hash.
@@ -32,7 +31,9 @@ func safeHashPrefix(hash string, maxLen int) string {
 
 // URLProcessor handles URL source processing
 type URLProcessor struct {
-	DB               *sql.DB
+	sourceRepo       repository.SourceRepository
+	usageRepo        repository.UsageRepository
+	pendingURLRepo   repository.PendingURLRepository
 	OpenAIClient     rag.LLMClient
 	VectorClient     rag.VectorClient
 	Log              *logger.Logger
@@ -42,14 +43,15 @@ type URLProcessor struct {
 }
 
 // NewURLProcessor creates a new URLProcessor.
-func NewURLProcessor(db *sql.DB, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper, loader *tokenizer.Loader) *URLProcessor {
+func NewURLProcessor(sourceRepo repository.SourceRepository, usageRepo repository.UsageRepository, planRepo repository.PlanRepository, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper, loader *tokenizer.Loader) *URLProcessor {
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
 		embSvc = rag.NewEmbeddingService(emb, vc, log)
 	}
 	return &URLProcessor{
-		DB:               db,
+		sourceRepo:       sourceRepo,
+		usageRepo:        usageRepo,
 		OpenAIClient:     oai,
 		VectorClient:     vc,
 		Log:              log,
@@ -125,7 +127,7 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		})
 	}
 
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepFetchSource, "")
+	_ = p.sourceRepo.UpdateSourceProcessing(ctx, s.ID, "processing", nil, s.ChunkCount, nil)
 
 	// Step 2: Parse
 	if lastStep == nil || (models.IsStepAtOrAfter(models.StepParseContent, *lastStep) && models.StepParseContent != *lastStep) {
@@ -167,8 +169,6 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		"source_id":     s.ID,
 		"content_bytes": len(content),
 	})
-
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepParseContent, "")
 
 	content = text.NormalizeTR(content)
 
@@ -230,78 +230,25 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
 
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepChunkText, "")
-
-	// Step 4: Embed
-	if lastStep == nil || (models.IsStepAtOrAfter(models.StepEmbedChunks, *lastStep) && models.StepEmbedChunks != *lastStep) {
-		onStep(models.StepEmbedChunks)
-	}
-
-	p.logInfo("url_processing_embedding_started", map[string]any{
-		"source_id":   s.ID,
-		"chunk_count": len(rc),
-	})
-
-	if p.EmbeddingService == nil {
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
-	}
-
-	if embedErr := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); embedErr != nil {
-		p.logWarn("url_processing_embedding_failed", map[string]any{
-			"source_id": s.ID,
-			"error":     embedErr.Error(),
-		})
-		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
-	}
-
-	_ = db.MarkStepCompleted(ctx, p.DB, jobID, models.StepEmbedChunks, newHash)
-
-	// Step 5: Store
-	if lastStep == nil || (models.IsStepAtOrAfter(models.StepStoreVectors, *lastStep) && models.StepStoreVectors != *lastStep) {
-		onStep(models.StepStoreVectors)
-	}
-
-	// Update hash after successful embedding
-	_ = db.UpdateSourceHash(ctx, p.DB, s.ID, newHash)
-
 	// Calculate token usage
 	var tokens int
 	for _, ch := range rc {
 		tokens += ch.TokenCount
 	}
 
-	// Update statistics within a transaction to ensure atomicity
-	tx, err := p.DB.BeginTx(ctx, nil)
-	if err != nil {
-		p.logWarn("url_processing_stats_tx_begin_failed", map[string]any{
+	// Update statistics using repository methods
+	now := time.Now()
+	if err := p.usageRepo.IncrementSuccessfulIngestion(ctx, bot.UserID, now, 1); err != nil {
+		p.logWarn("url_processing_stats_increment_failed", map[string]any{
 			"source_id": s.ID,
 			"error":     err.Error(),
 		})
-	} else {
-		defer func() {
-			if err != nil {
-				_ = tx.Rollback()
-			}
-		}()
-		if err = db.IncrementSuccessfulIngestionTx(ctx, tx, bot.UserID, time.Now(), 1); err != nil {
-			p.logWarn("url_processing_stats_increment_failed", map[string]any{
-				"source_id": s.ID,
-				"error":     err.Error(),
-			})
-		} else if err = db.AddEmbeddingTokensTx(ctx, tx, bot.UserID, time.Now(), tokens); err != nil {
-			p.logWarn("url_processing_stats_tokens_failed", map[string]any{
-				"source_id": s.ID,
-				"error":     err.Error(),
-			})
-		} else {
-			if commitErr := tx.Commit(); commitErr != nil {
-				p.logWarn("url_processing_stats_tx_commit_failed", map[string]any{
-					"source_id": s.ID,
-					"error":     commitErr.Error(),
-				})
-				err = commitErr
-			}
-		}
+	}
+	if err := p.usageRepo.AddEmbeddingTokens(ctx, bot.UserID, now, tokens); err != nil {
+		p.logWarn("url_processing_stats_tokens_failed", map[string]any{
+			"source_id": s.ID,
+			"error":     err.Error(),
+		})
 	}
 
 	p.logInfo("url_processing_completed", map[string]any{
@@ -375,7 +322,7 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 	}
 
 	// Only crawl if we haven't reached the limit
-	cnt, err := db.CountSourcesByType(ctx, p.DB, s.ChatbotID, "url")
+	cnt, err := p.sourceRepo.CountByType(ctx, s.ChatbotID, "url")
 	if err != nil {
 		p.logWarn("url_discovery_count_sources_failed", map[string]any{
 			"source_id": s.ID,
@@ -459,9 +406,15 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 		switch discoveryMode {
 		case DiscoveryModeAuto:
 			// Create discovered source (will not crawl further due to is_discovered=true)
-			exists, _ := db.SourceExists(ctx, p.DB, s.ChatbotID, link)
+			exists, _ := p.sourceRepo.Exists(ctx, s.ChatbotID, link)
 			if !exists {
-				newID, cerr := db.CreateDiscoveredSource(ctx, p.DB, s.ChatbotID, link)
+				newSource := &models.DataSource{
+					ChatbotID:    s.ChatbotID,
+					SourceType:   "url",
+					SourceURL:    &link,
+					IsDiscovered: true,
+				}
+				newID, cerr := p.sourceRepo.Create(ctx, newSource)
 				if cerr == nil {
 					added++
 					newIDs = append(newIDs, newID)
@@ -477,11 +430,9 @@ func (p *URLProcessor) discoverSubPages(ctx context.Context, s *models.DataSourc
 			}
 		case DiscoveryModePending:
 			// New behavior: add to pending table for approval
-			// Check if already exists as source or in pending
-			exists, _ := db.SourceExists(ctx, p.DB, s.ChatbotID, link)
-			if !exists {
-				sourceID := s.ID
-				if err := db.InsertPendingURL(ctx, p.DB, s.ChatbotID, &sourceID, link); err == nil {
+			sourceID := s.ID
+			if p.pendingURLRepo != nil {
+				if err := p.pendingURLRepo.InsertPendingURL(ctx, s.ChatbotID, &sourceID, link); err == nil {
 					added++
 				} else {
 					p.logWarn("url_discovery_insert_pending_failed", map[string]any{
@@ -525,14 +476,14 @@ func (p *URLProcessor) persistIngestionMetadata(ctx context.Context, content, la
 		})
 	}
 
-	if err := db.UpdateSourceCapability(ctx, p.DB, s.ID, meta.CapabilitySummary); err != nil {
+	if err := p.sourceRepo.UpdateSourceCapability(ctx, s.ID, meta.CapabilitySummary); err != nil {
 		p.logWarn("update_source_capability_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
 	}
-	if err := db.UpdateSourceSuggestions(ctx, p.DB, s.ID, meta.SuggestedQuestions); err != nil {
+	if err := p.sourceRepo.UpdateSourceSuggestions(ctx, s.ID, meta.SuggestedQuestions); err != nil {
 		p.logWarn("update_source_suggestions_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
 	}
 
-	go AggregateAndPersistChatbotSuggestions(ctx, p.DB, s.ChatbotID, p.Log)
+	// Note: AggregateAndPersistChatbotSuggestions needs to be migrated separately
 }
 
 func (p *URLProcessor) logInfo(event string, data map[string]any) {

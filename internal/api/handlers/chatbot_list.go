@@ -5,12 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/langconfig"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/langconfig"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // ListOrCreate handles GET (list) and POST (create) for chatbots
@@ -50,10 +49,10 @@ func (h *ChatbotHandlers) listChatbots(w http.ResponseWriter, r *http.Request, u
 			return
 		}
 
-		bots, err = db.GetChatbotsByWorkspace(r.Context(), h.DB, wsID)
+		bots, err = h.ChatbotRepo.GetByWorkspace(r.Context(), wsID)
 	} else {
 		// Fallback to user-based query
-		bots, err = db.GetChatbotsByUserID(r.Context(), h.DB, userID)
+		bots, err = h.ChatbotRepo.GetByUserID(r.Context(), userID)
 	}
 
 	if err != nil {
@@ -82,14 +81,14 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 	langCfg := langconfig.Get(baseLang)
 
 	// Check plan limits
-	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
+	plan, err := h.PlanRepo.GetByUserID(r.Context(), userID)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, "get_plan_error: "+err.Error())
 		return
 	}
 
 	if plan != nil && plan.Limits.MaxChatbots > 0 {
-		count, countErr := db.CountChatbotsByUserID(r.Context(), h.DB, userID)
+		count, countErr := h.ChatbotRepo.CountByUserID(r.Context(), userID)
 		if countErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -136,13 +135,13 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 
 	bot := h.buildNewChatbot(userID, wsID, orgID, req, langCodeBCP, langCfg)
 
-	newID, err := db.CreateChatbot(r.Context(), h.DB, bot)
+	newID, err := h.ChatbotRepo.Create(r.Context(), bot)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, "create_bot_error: "+err.Error())
 		return
 	}
 
-	c, err := db.GetChatbotByID(r.Context(), h.DB, newID)
+	c, err := h.ChatbotRepo.GetByID(r.Context(), newID)
 	if err != nil || c == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

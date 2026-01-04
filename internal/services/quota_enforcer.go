@@ -2,20 +2,19 @@ package services
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/db"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // QuotaEnforcer handles token quota reservation and adjustment for chat operations.
 type QuotaEnforcer struct {
-	DB *sql.DB
+	usageRepo repository.UsageRepository
 }
 
 // NewQuotaEnforcer creates a new QuotaEnforcer.
-func NewQuotaEnforcer(db *sql.DB) *QuotaEnforcer {
-	return &QuotaEnforcer{DB: db}
+func NewQuotaEnforcer(usageRepo repository.UsageRepository) *QuotaEnforcer {
+	return &QuotaEnforcer{usageRepo: usageRepo}
 }
 
 // ReservationResult holds the result of a token reservation.
@@ -29,13 +28,13 @@ type ReservationResult struct {
 // Returns nil if no quota enforcement is needed (maxMonthlyTokens <= 0).
 func (q *QuotaEnforcer) ReserveTokens(ctx context.Context, userID string, estimatedTokens, maxMonthlyTokens int) error {
 	if maxMonthlyTokens <= 0 {
-		return nil // No quota enforcement
+		return nil
 	}
-	err := db.ReserveChatTokens(ctx, q.DB, userID, estimatedTokens, maxMonthlyTokens)
+	if q.usageRepo == nil {
+		return nil
+	}
+	err := q.usageRepo.ReserveChatTokens(ctx, userID, estimatedTokens, maxMonthlyTokens)
 	if err != nil {
-		if err == db.ErrTokenQuotaExceeded {
-			return ErrTokenQuotaExceeded
-		}
 		return pkgerrors.Wrapf(err, "reserve tokens")
 	}
 	return nil
@@ -43,21 +42,21 @@ func (q *QuotaEnforcer) ReserveTokens(ctx context.Context, userID string, estima
 
 // AdjustTokens adjusts token usage after chat completion.
 func (q *QuotaEnforcer) AdjustTokens(ctx context.Context, userID string, estimatedTokens, actualTokens int) {
-	if q.DB == nil {
+	if q.usageRepo == nil {
 		return
 	}
 	delta := actualTokens - estimatedTokens
 	if delta != 0 {
-		_ = db.AdjustChatTokens(ctx, q.DB, userID, delta)
+		_ = q.usageRepo.AdjustChatTokens(ctx, userID, delta)
 	}
 }
 
 // RefundTokens refunds reserved tokens on error.
 func (q *QuotaEnforcer) RefundTokens(ctx context.Context, userID string, tokens int) {
-	if q.DB == nil {
+	if q.usageRepo == nil {
 		return
 	}
-	_ = db.AdjustChatTokens(ctx, q.DB, userID, -tokens)
+	_ = q.usageRepo.AdjustChatTokens(ctx, userID, -tokens)
 }
 
 // GetDefaultTokenEstimate returns a default token estimate when not specified.

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/pkg/storage"
 	"github.com/stretchr/testify/mock"
 )
 

@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 const (
@@ -169,6 +170,14 @@ func (r *mockChatbotRepo) CountByWorkspace(ctx context.Context, workspaceID stri
 }
 
 func (r *mockChatbotRepo) UpdateSuggestedQuestions(ctx context.Context, id string, suggestions []string) error {
+	return nil
+}
+
+func (r *mockChatbotRepo) GetDueForRefresh(ctx context.Context, now time.Time) ([]models.Chatbot, error) {
+	return nil, nil
+}
+
+func (r *mockChatbotRepo) UpdateRefreshTimes(ctx context.Context, botID string, nextRefresh, lastRefresh time.Time) error {
 	return nil
 }
 

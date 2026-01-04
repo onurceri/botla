@@ -1,15 +1,15 @@
 package router
 
 import (
-	"database/sql"
 	"net/http"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
-func registerPublicRoutes(mux *http.ServeMux, secret string, hoh *handlers.HandoffHandlers, ph *handlers.PublicHandlers, pool *sql.DB) {
+func registerPublicRoutes(mux *http.ServeMux, secret string, hoh *handlers.HandoffHandlers, ph *handlers.PublicHandlers, chatbotRepo repository.ChatbotRepository) {
 	mux.Handle("/api/v1/public/chatbots/", middleware.OptionalAuthMiddleware(secret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
 		path := r.URL.Path
@@ -35,6 +35,6 @@ func registerPublicRoutes(mux *http.ServeMux, secret string, hoh *handlers.Hando
 			return
 		}
 		// Config
-		handlers.PublicChatbotConfig(pool)(w, r)
+		handlers.PublicChatbotConfig(chatbotRepo)(w, r)
 	})))
 }

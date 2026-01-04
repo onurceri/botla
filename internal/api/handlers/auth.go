@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/auth"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/langconfig"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/auth"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/langconfig"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 // hashToken creates a SHA-256 hash of the token for secure storage

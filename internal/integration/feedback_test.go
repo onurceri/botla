@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 func TestFeedback_Protected_Unauthorized(t *testing.T) {

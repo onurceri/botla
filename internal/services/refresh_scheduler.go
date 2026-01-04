@@ -2,15 +2,14 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"sync"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/processing"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // RefreshPolicy constants
@@ -28,35 +27,44 @@ const (
 
 // RefreshScheduler handles automatic refresh of URL sources
 type RefreshScheduler struct {
-	DB       *sql.DB
-	Queue    *processing.SourceQueue
-	Log      *logger.Logger
-	interval time.Duration
-	stopChan chan struct{}
-	wg       sync.WaitGroup
-	running  bool
-	mu       sync.Mutex
+	ChatbotRepo   repository.ChatbotRepository
+	SourceRepo    repository.SourceRepository
+	PlanRepo      repository.PlanRepository
+	AnalyticsRepo repository.AnalyticsRepository
+	Queue         *processing.SourceQueue
+	Log           *logger.Logger
+	interval      time.Duration
+	stopChan      chan struct{}
+	wg            sync.WaitGroup
+	running       bool
+	mu            sync.Mutex
 }
 
 // NewRefreshScheduler creates a new RefreshScheduler
-func NewRefreshScheduler(db *sql.DB, queue *processing.SourceQueue, log *logger.Logger) *RefreshScheduler {
+func NewRefreshScheduler(chatbotRepo repository.ChatbotRepository, sourceRepo repository.SourceRepository, planRepo repository.PlanRepository, analyticsRepo repository.AnalyticsRepository, queue *processing.SourceQueue, log *logger.Logger) *RefreshScheduler {
 	return &RefreshScheduler{
-		DB:       db,
-		Queue:    queue,
-		Log:      log,
-		interval: 5 * time.Minute, // Check every 5 minutes
-		stopChan: make(chan struct{}),
+		ChatbotRepo:   chatbotRepo,
+		SourceRepo:    sourceRepo,
+		PlanRepo:      planRepo,
+		AnalyticsRepo: analyticsRepo,
+		Queue:         queue,
+		Log:           log,
+		interval:      5 * time.Minute, // Check every 5 minutes
+		stopChan:      make(chan struct{}),
 	}
 }
 
 // NewRefreshSchedulerWithInterval creates a new RefreshScheduler with a custom check interval
-func NewRefreshSchedulerWithInterval(db *sql.DB, queue *processing.SourceQueue, log *logger.Logger, interval time.Duration) *RefreshScheduler {
+func NewRefreshSchedulerWithInterval(chatbotRepo repository.ChatbotRepository, sourceRepo repository.SourceRepository, planRepo repository.PlanRepository, analyticsRepo repository.AnalyticsRepository, queue *processing.SourceQueue, log *logger.Logger, interval time.Duration) *RefreshScheduler {
 	return &RefreshScheduler{
-		DB:       db,
-		Queue:    queue,
-		Log:      log,
-		interval: interval,
-		stopChan: make(chan struct{}),
+		ChatbotRepo:   chatbotRepo,
+		SourceRepo:    sourceRepo,
+		PlanRepo:      planRepo,
+		AnalyticsRepo: analyticsRepo,
+		Queue:         queue,
+		Log:           log,
+		interval:      interval,
+		stopChan:      make(chan struct{}),
 	}
 }
 
@@ -159,7 +167,7 @@ func (s *RefreshScheduler) processDueChatbots(ctx context.Context) {
 		nextRefresh := CalculateNextRefresh(frequency, now)
 
 		// Update refresh times
-		if err := db.UpdateChatbotRefreshTimes(ctx, s.DB, bot.ID, nextRefresh, now); err != nil {
+		if err := s.ChatbotRepo.UpdateRefreshTimes(ctx, bot.ID, nextRefresh, now); err != nil {
 			s.logWarn("update_refresh_times_error", map[string]any{"bot_id": bot.ID, "error": err.Error()})
 		}
 
@@ -172,7 +180,7 @@ func (s *RefreshScheduler) processDueChatbots(ctx context.Context) {
 
 // FindDueForRefresh finds chatbots with auto refresh enabled that are due
 func (s *RefreshScheduler) FindDueForRefresh(ctx context.Context, now time.Time) ([]models.Chatbot, error) {
-	bots, err := db.GetChatbotsDueForRefresh(ctx, s.DB, now)
+	bots, err := s.ChatbotRepo.GetDueForRefresh(ctx, now)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "getting due chatbots")
 	}
@@ -182,7 +190,7 @@ func (s *RefreshScheduler) FindDueForRefresh(ctx context.Context, now time.Time)
 // QueueRefreshForChatbot queues all URL sources for a chatbot for refresh
 func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *models.Chatbot) error {
 	// Get user's plan to check limits
-	plan, err := db.GetPlanByUserID(ctx, s.DB, bot.UserID)
+	plan, err := s.PlanRepo.GetByUserID(ctx, bot.UserID)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "getting user plan")
 	}
@@ -193,7 +201,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 
 	// Check monthly auto-refresh limit
 	now := time.Now()
-	usage, err := db.GetAutoRefreshCountForMonth(ctx, s.DB, bot.UserID, now)
+	usage, err := s.AnalyticsRepo.GetAutoRefreshCountForMonth(ctx, bot.UserID, now)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "getting auto refresh count")
 	}
@@ -210,7 +218,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	}
 
 	// Get URL sources for this chatbot
-	sources, err := db.GetURLSourcesForChatbot(ctx, s.DB, bot.ID)
+	sources, err := s.SourceRepo.GetURLSources(ctx, bot.ID)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "getting url sources")
 	}
@@ -224,7 +232,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 	refreshedCount := 0
 	for _, src := range sources {
 		// Update source for refresh (sets status to pending)
-		if err := db.UpdateSourceForRefresh(ctx, s.DB, src.ID); err != nil {
+		if err := s.SourceRepo.UpdateForRefresh(ctx, src.ID); err != nil {
 			s.logWarn("update_source_for_refresh_error", map[string]any{
 				"source_id": src.ID,
 				"error":     err.Error(),
@@ -241,7 +249,7 @@ func (s *RefreshScheduler) QueueRefreshForChatbot(ctx context.Context, bot *mode
 
 	if refreshedCount > 0 {
 		// Increment auto-refresh count
-		if err := db.IncrementAutoRefreshCount(ctx, s.DB, bot.UserID, now, 1); err != nil {
+		if err := s.AnalyticsRepo.IncrementAutoRefreshCount(ctx, bot.UserID, now, 1); err != nil {
 			s.logWarn("increment_auto_refresh_count_error", map[string]any{
 				"user_id": bot.UserID,
 				"error":   err.Error(),

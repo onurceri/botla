@@ -5,21 +5,21 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/internal/api/router"
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/repository"
-	"github.com/onurceri/botla-co/internal/scraper"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/workers"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/ratelimit"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
-	"github.com/onurceri/botla-co/pkg/urlutil"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/internal/api/router"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/workers"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/ratelimit"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
+	"github.com/onurceri/botla-app/pkg/urlutil"
 )
 
 func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm rag.LLMClient, vc rag.VectorClient) (http.Handler, *processing.SourceQueue, *middleware.RateLimiter, *workers.WorkerPool, *handlers.SourcesHandlers, *scraper.MockScraper) {
@@ -46,10 +46,27 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg}
 	mux.Handle("/health", middleware.RateLimitMiddleware(rl)(http.HandlerFunc(hh.Health)))
 
+	// Repositories
+	actionRepo := repository.NewPostgresActionRepo(pool)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	adminChatbotRepo := repository.NewPostgresAdminChatbotRepo(pool)
+	adminRepo := repository.NewPostgresAdminRepo(pool)
+	planRepo := repository.NewPostgresPlanRepo(pool, nil) // nil Redis for tests
+	conversationRepo := repository.NewPostgresConversationRepo(pool)
+	analyticsRepo := repository.NewPostgresAnalyticsRepo(pool)
+	privacyRepo := repository.NewPostgresPrivacyRepo(pool)
+	handoffRepo := repository.NewPostgresHandoffRepo(pool)
+	userRepo := repository.NewPostgresUserRepo(pool)
+	queueRepo := repository.NewPostgresQueueRepo(pool)
+	organizationRepo := repository.NewPostgresOrganizationRepo(pool)
+	sourceRepo := repository.NewPostgresSourceRepo(pool)
+	trainingJobRepo := repository.NewPostgresTrainingJobRepo(pool)
+	usageRepo := repository.NewPostgresUsageRepo(pool)
+
 	// Services
 	orgSvc := services.NewOrganizationService(pool, log)
 	workspaceSvc := services.NewWorkspaceService(pool, log)
-	analyticsSvc := services.NewAnalyticsService(pool, log)
+	analyticsSvc := services.NewAnalyticsService(analyticsRepo, log)
 
 	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, OrgService: orgSvc, WorkspaceService: workspaceSvc}
 	mux.HandleFunc("/api/v1/auth/register", ah.RegisterHandler)
@@ -58,14 +75,14 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.HandleFunc("/api/v1/auth/logout", ah.LogoutHandler)
 	mux.Handle("/api/v1/protected", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(handlers.ProtectedHandler)))
 
-	mh := &handlers.MeHandlers{DB: pool}
-	ph := &handlers.PlanHandlers{DB: pool}
+	mh := handlers.NewMeHandlers(userRepo, orgSvc)
+	ph := handlers.NewPlanHandlers(userRepo, planRepo, pool)
 	onbh := &handlers.OnboardingHandlers{DB: pool}
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ph.GetPlan)))
 
 	// PlanService with caching for public plan endpoints
-	planSvc := services.NewPlanService(pool, nil) // nil Redis for tests
+	planSvc := services.NewPlanService(planRepo, nil) // nil Redis for tests
 	plansH := handlers.NewPlansHandlers(planSvc)
 	mux.HandleFunc("GET /api/v1/plans", plansH.GetAllPlans)
 	mux.HandleFunc("GET /api/v1/plans/{code}", plansH.GetPlanByCode)
@@ -76,15 +93,15 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.Handle("POST /api/v1/me/onboarding/skip", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.SkipOnboarding)))
 	mux.Handle("POST /api/v1/me/onboarding/complete", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.CompleteOnboarding)))
 
-	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc}
+	anh := &handlers.AnalyticsHandlers{AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc, AnalyticsRepo: analyticsRepo, ChatbotRepo: chatbotRepo}
 	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(anh.GetAnalytics)))
 
 	// Organization routes
-	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
+	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, UserRepo: userRepo}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
 
 	auth := middleware.AuthMiddleware(cfg.JWT_SECRET)
-	planLoader := middleware.PlanLoaderMiddleware(pool, log)
+	planLoader := middleware.PlanLoaderMiddleware(planRepo, log)
 	rateLimit := middleware.RateLimitMiddleware(rl)
 
 	// Protected middleware chain
@@ -115,7 +132,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	ch := &handlers.ChatbotHandlers{
 		DB:               pool,
 		VectorStore:      vs,
-		ChatbotService:   services.NewChatbotService(pool, log),
+		ChatbotService:   services.NewChatbotService(chatbotRepo, planRepo, log),
 		OrgService:       orgSvc,
 		WorkspaceService: workspaceSvc,
 		Logger:           log,
@@ -140,7 +157,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// Initialize tokenizer loader for tests (mock storage)
 	tokLoader := tokenizer.NewLoader(memStore)
 
-	q, err := processing.StartSourceQueue(pool, memStore, actualLLM, actualVC, ms, tokLoader, 2)
+	q, err := processing.StartSourceQueue(trainingJobRepo, memStore, actualLLM, actualVC, ms, tokLoader, 2)
 	if err != nil {
 		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
 	}
@@ -153,14 +170,14 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		OrgService:       orgSvc,
 		SSRFValidator:    urlutil.NewSSRFValidator(true),
 	}
-	tjh := &handlers.TrainingJobHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q}
+	tjh := &handlers.TrainingJobHandlers{Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q, TrainingJobRepo: trainingJobRepo, SourceRepo: sourceRepo, ChatbotRepo: chatbotRepo}
 	factory := rag.NewClientFactory(cfg)
 	// Register the actual LLM client (either passed in or created from config)
 	if actualLLM != nil {
 		factory.RegisterClient("openai", actualLLM)
 		factory.RegisterClient("openrouter", actualLLM)
 	}
-	chatSvc := services.NewChatService(pool, factory, nil, actualVC, log)
+	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, nil, actualVC, log)
 	chatSvc.SyncAnalytics = true
 	if llmEmbed, ok := actualLLM.(rag.EmbeddingClient); ok {
 		chatSvc.Embedder = llmEmbed
@@ -171,13 +188,12 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// Create mock tool name generator for tests
 	mockClient := &MockToolsClient{}
 	tng := rag.NewToolNameGenerator(mockClient)
-	actionRepo := repository.NewPostgresActionRepo(pool)
-	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
 	actionService := services.NewActionService(actionRepo, tng)
 	acth := &handlers.ActionHandlers{ActionService: actionService, ChatbotRepo: chatbotRepo, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	puh := &handlers.PendingURLsHandlers{DB: pool, Log: log, Queue: q, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	handoffSvc := services.NewHandoffService(handoffRepo, conversationRepo, analyticsRepo, log)
+	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, HandoffService: handoffSvc}
+	puh := &handlers.PendingURLsHandlers{Log: log, Queue: q, WorkspaceService: workspaceSvc, OrgService: orgSvc, PendingURLRepo: repository.NewPostgresPendingURLRepo(pool), SourceRepo: sourceRepo, ChatbotRepo: chatbotRepo}
+	sugh := &handlers.SuggestionsHandlers{Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, SuggestionJobRepo: repository.NewPostgresSuggestionJobRepo(pool), ChatbotRepo: chatbotRepo}
 
 	// Actions routes
 	// Note: Actions routes are now handled by ChatbotsDispatchHandler
@@ -199,15 +215,15 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/chat") {
-			ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc}
+			ph := &handlers.PublicHandlers{ChatService: chatSvc, ChatbotRepo: chatbotRepo, PlanRepo: planRepo, UsageRepo: usageRepo, AnalyticsRepo: analyticsRepo}
 			ph.PublicChat(w, r)
 			return
 		}
-		handlers.PublicChatbotConfig(pool)(w, r)
+		handlers.PublicChatbotConfig(chatbotRepo)(w, r)
 	}))
 	// Admin
-	adminSvc := services.NewAdminService(pool, log)
-	privacySvc := services.NewPrivacyService(pool, log, memStore)
+	adminSvc := services.NewAdminService(adminRepo, log)
+	privacySvc := services.NewPrivacyService(privacyRepo, log, memStore)
 
 	// User Privacy
 	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc}
@@ -220,11 +236,11 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyPrivacyExport)))
 	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyDataExport)))
 
-	adh := handlers.NewAdminHandlers(pool, adminSvc)
+	adh := handlers.NewAdminHandlers(adminSvc, userRepo, organizationRepo)
 	adhh := handlers.NewAdminHealthHandlers(pool, nil, cfg) // nil Redis client for tests
-	aqh := handlers.NewAdminQueueHandlers(pool, adminSvc)
-	aeh := handlers.NewAdminErrorHandlers(pool)
-	aah := handlers.NewAdminAuditHandlers(pool)
+	aqh := handlers.NewAdminQueueHandlers(adminSvc, queueRepo, sourceRepo)
+	aeh := handlers.NewAdminErrorHandlers(adminRepo)
+	aah := handlers.NewAdminAuditHandlers(adminRepo)
 	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
 
 	// RAG service and queue wrapper for admin chatbot/source handlers
@@ -237,9 +253,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	ragSubsystem := rag.NewRAGSubsystem(embedder, actualVC, actualLLM)
 	ragSvc := services.NewRAGService(pool, ragSubsystem, log)
 	queueWrapper := &services.Queue{SourceQueue: q}
-	adminChatbotRepo := repository.NewPostgresAdminChatbotRepo(pool)
 	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
-	ash := handlers.NewAdminSourceHandlers(pool, adminSvc, ragSvc, queueWrapper)
+	ash := handlers.NewAdminSourceHandlers(adminRepo, adminSvc, ragSvc, queueWrapper)
 	router.RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)
 
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")

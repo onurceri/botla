@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 func RecoveryMiddleware(log *logger.Logger, goEnv string) func(http.Handler) http.Handler {

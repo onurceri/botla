@@ -2,16 +2,15 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"html"
 	"net/http"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // MeResponse represents the /me endpoint response
@@ -33,7 +32,16 @@ type Organization struct {
 
 // MeHandlers handles user profile endpoints
 type MeHandlers struct {
-	DB *sql.DB
+	UserRepo   repository.UserRepository
+	OrgService *services.OrganizationService
+}
+
+// NewMeHandlers creates a new MeHandlers instance
+func NewMeHandlers(userRepo repository.UserRepository, orgService *services.OrganizationService) *MeHandlers {
+	return &MeHandlers{
+		UserRepo:   userRepo,
+		OrgService: orgService,
+	}
 }
 
 // Me handles GET /me endpoint
@@ -44,7 +52,7 @@ func (h *MeHandlers) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := db.GetUserByID(r.Context(), h.DB, uid)
+	u, err := h.UserRepo.GetByID(r.Context(), uid)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -70,30 +78,20 @@ func (h *MeHandlers) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MeHandlers) getUserOrganizations(ctx context.Context, userID string) ([]Organization, error) {
-	rows, err := h.DB.QueryContext(ctx, `
-		SELECT o.id, o.name, m.role
-		FROM organizations o
-		JOIN memberships m ON o.id = m.organization_id
-		WHERE m.user_id = $1
-		ORDER BY o.created_at
-	`, userID)
+	orgs, err := h.OrgService.GetUserOrganizations(ctx, userID)
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "query user organizations")
+		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
 
-	var orgs []Organization
-	for rows.Next() {
-		var org Organization
-		if err = rows.Scan(&org.ID, &org.Name, &org.Role); err != nil {
-			return nil, pkgerrors.Wrapf(err, "scan user organization")
+	result := make([]Organization, len(orgs))
+	for i, org := range orgs {
+		result[i] = Organization{
+			ID:   org.ID,
+			Name: org.Name,
+			Role: org.Role,
 		}
-		orgs = append(orgs, org)
 	}
-	if err = rows.Err(); err != nil {
-		return nil, pkgerrors.Wrapf(err, "user organizations rows err")
-	}
-	return orgs, nil
+	return result, nil
 }
 
 // buildMeResponse constructs the response from user and orgs data

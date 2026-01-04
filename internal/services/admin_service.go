@@ -2,24 +2,23 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"net"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/db"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type AdminService struct {
-	DB  *sql.DB
-	Log *logger.Logger
+	adminRepo repository.AdminRepository
+	Log       *logger.Logger
 }
 
-func NewAdminService(db *sql.DB, log *logger.Logger) *AdminService {
+func NewAdminService(adminRepo repository.AdminRepository, log *logger.Logger) *AdminService {
 	return &AdminService{
-		DB:  db,
-		Log: log,
+		adminRepo: adminRepo,
+		Log:       log,
 	}
 }
 
@@ -30,7 +29,7 @@ func (s *AdminService) LogAction(ctx context.Context, adminID, action, targetTyp
 		ip = host
 	}
 
-	entry := db.AuditLogEntry{
+	entry := repository.AuditLogEntry{
 		AdminUserID: adminID,
 		Action:      action,
 		TargetType:  targetType,
@@ -40,7 +39,7 @@ func (s *AdminService) LogAction(ctx context.Context, adminID, action, targetTyp
 		UserAgent:   r.Header.Get("User-Agent"),
 	}
 
-	if err := db.InsertAuditLog(ctx, s.DB, entry); err != nil {
+	if err := s.adminRepo.InsertAuditLog(ctx, entry); err != nil {
 		s.Log.Error("failed to log admin action", map[string]any{
 			"admin_id": adminID,
 			"action":   action,

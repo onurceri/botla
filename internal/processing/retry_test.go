@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/models"
-	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/models"
+	pkgErrors "github.com/onurceri/botla-app/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 

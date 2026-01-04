@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/pkg/config"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/pkg/config"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 type HealthHandlers struct {

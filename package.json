@@ -1,5 +1,5 @@
 {
-    "name": "botla-co",
+    "name": "botla-app",
     "private": true,
     "workspaces": [
         "packages/*",

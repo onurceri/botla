@@ -1,20 +1,19 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 type OrganizationHandlers struct {
 	OrgService *services.OrganizationService
-	DB         *sql.DB // Added DB to look up users
+	UserRepo   repository.UserRepository
 }
 
 type createOrgRequest struct {
@@ -194,7 +193,7 @@ func (h *OrganizationHandlers) AddMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Look up user by email
-	user, err := db.GetUserByEmail(r.Context(), h.DB, req.Email)
+	user, err := h.UserRepo.GetByEmail(r.Context(), req.Email)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

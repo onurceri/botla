@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/repository"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 // mockAdminChatbotRepo is a mock implementation of AdminChatbotRepository for handler tests.

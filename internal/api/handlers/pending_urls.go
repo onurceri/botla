@@ -1,25 +1,28 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // PendingURLsHandlers handles pending URL operations
 type PendingURLsHandlers struct {
-	DB               *sql.DB
-	Queue            *processing.SourceQueue
 	Log              *logger.Logger
 	WorkspaceService *services.WorkspaceService
 	OrgService       *services.OrganizationService
+	PendingURLRepo   repository.PendingURLRepository
+	SourceRepo       repository.SourceRepository
+	ChatbotRepo      repository.ChatbotRepository
+	Queue            interface {
+		Enqueue(jobID string)
+	}
 }
 
 // PendingURLResponse represents a pending URL in the response
@@ -65,7 +68,7 @@ func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -86,7 +89,7 @@ func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Req
 	offset := (page - 1) * perPage
 
 	// Get pending URLs
-	urls, err := db.ListPendingURLs(r.Context(), h.DB, chatbotID, perPage, offset)
+	urls, err := h.PendingURLRepo.ListPendingURLs(r.Context(), chatbotID, perPage, offset)
 	if err != nil {
 		h.logError("list_pending_urls_failed", err)
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
@@ -94,7 +97,7 @@ func (h *PendingURLsHandlers) ListPendingURLs(w http.ResponseWriter, r *http.Req
 	}
 
 	// Get total count
-	total, err := db.CountPendingURLs(r.Context(), h.DB, chatbotID)
+	total, err := h.PendingURLRepo.CountPendingURLs(r.Context(), chatbotID)
 	if err != nil {
 		h.logError("count_pending_urls_failed", err)
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
@@ -126,7 +129,7 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 		return
 	}
 
-	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -144,7 +147,7 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	}
 
 	// Get the pending URLs to create sources
-	pendingURLs, err := db.GetPendingURLsByIDs(r.Context(), h.DB, chatbotID, req.URLIDs)
+	pendingURLs, err := h.PendingURLRepo.GetPendingURLsByIDs(r.Context(), chatbotID, req.URLIDs)
 	if err != nil {
 		h.logError("get_pending_urls_failed", err)
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
@@ -155,7 +158,12 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	// Use CreateDiscoveredSource so these URLs won't crawl further (1-level depth)
 	sourcesCreated := 0
 	for _, pu := range pendingURLs {
-		newID, err2 := db.CreateDiscoveredSource(r.Context(), h.DB, chatbotID, pu.URL)
+		newID, err2 := h.SourceRepo.Create(r.Context(), &models.DataSource{
+			ChatbotID:  chatbotID,
+			SourceType: "url",
+			Status:     "pending",
+			SourceURL:  &pu.URL,
+		})
 		if err2 == nil {
 			sourcesCreated++
 			// Enqueue for processing
@@ -168,7 +176,7 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	}
 
 	// Update status to selected
-	approvedCount, err := db.UpdatePendingURLStatus(r.Context(), h.DB, chatbotID, req.URLIDs, "selected")
+	approvedCount, err := h.PendingURLRepo.UpdatePendingURLStatus(r.Context(), chatbotID, req.URLIDs, "selected")
 	if err != nil {
 		h.logError("update_pending_urls_status_failed", err)
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
@@ -188,7 +196,7 @@ func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -206,7 +214,7 @@ func (h *PendingURLsHandlers) RejectPendingURLs(w http.ResponseWriter, r *http.R
 	}
 
 	// Update status to rejected
-	rejectedCount, err := db.UpdatePendingURLStatus(r.Context(), h.DB, chatbotID, req.URLIDs, "rejected")
+	rejectedCount, err := h.PendingURLRepo.UpdatePendingURLStatus(r.Context(), chatbotID, req.URLIDs, "rejected")
 	if err != nil {
 		h.logError("update_pending_urls_status_failed", err)
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
@@ -225,13 +233,13 @@ func (h *PendingURLsHandlers) ClearPendingURLs(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
 	// Delete all pending URLs
-	clearedCount, err := db.DeletePendingURLsByChatbot(r.Context(), h.DB, chatbotID)
+	clearedCount, err := h.PendingURLRepo.DeletePendingURLsByChatbot(r.Context(), chatbotID)
 	if err != nil {
 		h.logError("clear_pending_urls_failed", err)
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})

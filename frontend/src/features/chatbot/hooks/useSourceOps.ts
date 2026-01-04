@@ -21,7 +21,7 @@ export function useSourceOps(id: string | undefined, isNew: boolean) {
   const refreshSources = useCallback(() => {
     if (!isNew && id) {
       listSources(id)
-        .then(setSources)
+        .then((data) => setSources(data || []))
         .catch(() => {})
     }
   }, [id, isNew])

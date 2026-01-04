@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/policy"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/policy"
 )
 
 type chatbotBranding struct {
@@ -245,7 +245,8 @@ func TestFreePlan_DynamicScraping_Disabled_StaticOnly(t *testing.T) {
 
 	waitForProcessing(t, te, token, sourceID)
 
-	src, err := db.GetSourceByID(context.Background(), te.DB, sourceID)
+	sourceRepo := repository.NewPostgresSourceRepo(te.DB)
+	src, err := sourceRepo.GetByID(context.Background(), sourceID)
 	if err != nil {
 		t.Fatalf("failed to load source: %v", err)
 	}
@@ -336,7 +337,8 @@ func TestFreePlan_DiscoveryMode_Disabled_OnZeroCrawlLimit(t *testing.T) {
 	waitForProcessing(t, te, token, rootSourceID)
 	time.Sleep(200 * time.Millisecond)
 
-	sources, err := db.ListSourcesByChatbotID(context.Background(), te.DB, bot.ID)
+	sourceRepo := repository.NewPostgresSourceRepo(te.DB)
+	sources, err := sourceRepo.GetByChatbot(context.Background(), bot.ID)
 	if err != nil {
 		t.Fatalf("failed to list sources: %v", err)
 	}

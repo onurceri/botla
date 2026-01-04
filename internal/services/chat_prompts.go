@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 // =============================================================================

@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api/handlers"
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/rag"
-	"github.com/onurceri/botla-co/internal/repository"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/workers"
-	"github.com/onurceri/botla-co/pkg/config"
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/workers"
+	"github.com/onurceri/botla-app/pkg/config"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/storage"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -21,13 +21,31 @@ import (
 func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.SourceQueue, storageService storage.StorageService, qdClient *rag.QdrantClient, redisClient *redis.Client, workerPool *workers.WorkerPool) *http.ServeMux {
 	mux := http.NewServeMux()
 
+	// Repositories
+	actionRepo := repository.NewPostgresActionRepo(pool)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	adminChatbotRepo := repository.NewPostgresAdminChatbotRepo(pool)
+	planRepo := repository.NewPostgresPlanRepo(pool, redisClient)
+	conversationRepo := repository.NewPostgresConversationRepo(pool)
+	analyticsRepo := repository.NewPostgresAnalyticsRepo(pool)
+	privacyRepo := repository.NewPostgresPrivacyRepo(pool)
+	handoffRepo := repository.NewPostgresHandoffRepo(pool)
+	sourceRepo := repository.NewPostgresSourceRepo(pool)
+	userRepo := repository.NewPostgresUserRepo(pool)
+	usageRepo := repository.NewPostgresUsageRepo(pool)
+	queueRepo := repository.NewPostgresQueueRepo(pool)
+	trainingJobRepo := repository.NewPostgresTrainingJobRepo(pool)
+	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(pool)
+	organizationRepo := repository.NewPostgresOrganizationRepo(pool)
+	adminRepo := repository.NewPostgresAdminRepo(pool)
+
 	// Services
 	orgSvc := services.NewOrganizationService(pool, log)
 	workspaceSvc := services.NewWorkspaceService(pool, log)
-	analyticsSvc := services.NewAnalyticsService(pool, log)
-	chatbotSvc := services.NewChatbotService(pool, log)
-	adminSvc := services.NewAdminService(pool, log)
-	privacySvc := services.NewPrivacyService(pool, log, storageService)
+	analyticsSvc := services.NewAnalyticsService(analyticsRepo, log)
+	chatbotSvc := services.NewChatbotService(chatbotRepo, planRepo, log)
+	adminSvc := services.NewAdminService(adminRepo, log)
+	privacySvc := services.NewPrivacyService(privacyRepo, log, storageService)
 
 	factory := rag.NewClientFactory(cfg)
 	// Initialize circuit breakers for LLM fault tolerance
@@ -35,51 +53,84 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 
 	oaiClient, _ := rag.NewOpenAIClient(cfg)
 	// qdClient is passed in
-	chatSvc := services.NewChatService(pool, factory, oaiClient, qdClient, log)
+	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, oaiClient, qdClient, log)
 	toolNameGenerator := rag.NewToolNameGenerator(oaiClient)
-
-	// Repositories
-	actionRepo := repository.NewPostgresActionRepo(pool)
-	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
-	adminChatbotRepo := repository.NewPostgresAdminChatbotRepo(pool)
 
 	// Handlers
 	hh := &handlers.HealthHandlers{DB: pool, Cfg: cfg, Queue: q, LLMFactory: factory}
 	ah := &handlers.AuthHandlers{DB: pool, Secret: cfg.JWT_SECRET, CookieSecure: cfg.CookieSecure, OrgService: orgSvc, WorkspaceService: workspaceSvc}
-	mh := &handlers.MeHandlers{DB: pool}
-	plh := &handlers.PlanHandlers{DB: pool}
-	uh := &handlers.UsageHandlers{DB: pool}
-	onbh := &handlers.OnboardingHandlers{DB: pool}
+	mh := handlers.NewMeHandlers(userRepo, orgSvc)
+	plh := handlers.NewPlanHandlers(userRepo, planRepo, pool)
+	uh := &handlers.UsageHandlers{
+		UserRepo:    userRepo,
+		ChatbotRepo: chatbotRepo,
+		UsageRepo:   usageRepo,
+	}
+	onbh := &handlers.OnboardingHandlers{DB: pool, UserRepo: userRepo}
 	ch := &handlers.ChatbotHandlers{
 		DB:               pool,
 		Cfg:              cfg,
 		ChatbotService:   chatbotSvc,
+		ChatbotRepo:      chatbotRepo,
+		PlanRepo:         planRepo,
 		OrgService:       orgSvc,
 		WorkspaceService: workspaceSvc,
 		Logger:           log,
 	}
-	sh := &handlers.SourcesHandlers{DB: pool, Queue: q, Storage: storageService, QdrantClient: qdClient, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	tjh := &handlers.TrainingJobHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q}
-	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
-	puh := &handlers.PendingURLsHandlers{DB: pool, Queue: q, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
+	sh := &handlers.SourcesHandlers{
+		DB:               pool,
+		Queue:            q,
+		Storage:          storageService,
+		QdrantClient:     qdClient,
+		Log:              log,
+		WorkspaceService: workspaceSvc,
+		OrgService:       orgSvc,
+		PlanRepo:         planRepo,
+		SourceRepo:       repository.NewPostgresSourceRepo(pool),
+		UsageRepo:        usageRepo,
+		ChatbotRepo:      chatbotRepo,
+	}
+	tjh := &handlers.TrainingJobHandlers{
+		Log:              log,
+		WorkspaceService: workspaceSvc,
+		OrgService:       orgSvc,
+		Queue:            q,
+		TrainingJobRepo:  trainingJobRepo,
+		SourceRepo:       repository.NewPostgresSourceRepo(pool),
+		ChatbotRepo:      chatbotRepo,
+	}
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log, AnalyticsRepo: analyticsRepo, ChatbotRepo: chatbotRepo}
+	puh := &handlers.PendingURLsHandlers{Queue: q, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, PendingURLRepo: repository.NewPostgresPendingURLRepo(pool), SourceRepo: sourceRepo, ChatbotRepo: chatbotRepo}
 	actionService := services.NewActionService(actionRepo, toolNameGenerator)
 	acth := &handlers.ActionHandlers{ActionService: actionService, ChatbotRepo: chatbotRepo, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	anh := &handlers.AnalyticsHandlers{DB: pool, AnalyticsService: analyticsSvc, OrgService: orgSvc, WorkspaceService: workspaceSvc}
-	sugh := &handlers.SuggestionsHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc}
-	ph := &handlers.PublicHandlers{DB: pool, ChatService: chatSvc, Log: log}
-	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, DB: pool}
+	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, HandoffService: services.NewHandoffService(handoffRepo, conversationRepo, analyticsRepo, log), ChatbotRepo: chatbotRepo, ConversationRepo: conversationRepo, HandoffRepo: handoffRepo}
+	anh := &handlers.AnalyticsHandlers{
+		AnalyticsService: analyticsSvc,
+		OrgService:       orgSvc,
+		WorkspaceService: workspaceSvc,
+		AnalyticsRepo:    analyticsRepo,
+		ChatbotRepo:      chatbotRepo,
+	}
+	sugh := &handlers.SuggestionsHandlers{
+		Log:               log,
+		WorkspaceService:  workspaceSvc,
+		OrgService:        orgSvc,
+		SuggestionJobRepo: suggestionJobRepo,
+		ChatbotRepo:       chatbotRepo,
+	}
+	ph := &handlers.PublicHandlers{ChatService: chatSvc, Log: log, ChatbotRepo: chatbotRepo, PlanRepo: planRepo, UsageRepo: usageRepo, AnalyticsRepo: analyticsRepo}
+	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, UserRepo: userRepo}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
-	adh := handlers.NewAdminHandlers(pool, adminSvc)
+	adh := handlers.NewAdminHandlers(adminSvc, userRepo, organizationRepo)
 	adhh := handlers.NewAdminHealthHandlers(pool, redisClient, cfg)
-	aqh := handlers.NewAdminQueueHandlers(pool, adminSvc)
-	aeh := handlers.NewAdminErrorHandlers(pool)
-	aah := handlers.NewAdminAuditHandlers(pool)
-	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
-	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc}
+	aqh := handlers.NewAdminQueueHandlers(adminSvc, queueRepo, repository.NewPostgresSourceRepo(pool))
+	aeh := handlers.NewAdminErrorHandlers(adminRepo)
+	aah := handlers.NewAdminAuditHandlers(adminRepo)
+	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc, PrivacyRepo: privacyRepo}
+	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc, UserRepo: userRepo, PrivacyRepo: privacyRepo}
 
 	// PlanService with Redis caching for all plan operations
-	planSvc := services.NewPlanService(pool, redisClient)
+	planSvc := services.NewPlanService(planRepo, redisClient)
 	plansH := handlers.NewPlansHandlers(planSvc)
 
 	// RAG service for admin operations (vector deletion)
@@ -88,7 +139,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	// Queue wrapper for source processing
 	queueWrapper := &services.Queue{SourceQueue: q}
 	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
-	ash := handlers.NewAdminSourceHandlers(pool, adminSvc, ragSvc, queueWrapper)
+	ash := handlers.NewAdminSourceHandlers(adminRepo, adminSvc, ragSvc, queueWrapper)
 
 	// Health
 	mux.HandleFunc("/health", hh.Health)
@@ -124,7 +175,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	mux.Handle("/api/v1/chatbots/", ChatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anh, sugh))
 
 	// Public Routes
-	registerPublicRoutes(mux, cfg.JWT_SECRET, hoh, ph, pool)
+	registerPublicRoutes(mux, cfg.JWT_SECRET, hoh, ph, chatbotRepo)
 
 	// Public Plan Routes (no auth required)
 	mux.HandleFunc("GET /api/v1/plans", plansH.GetAllPlans)

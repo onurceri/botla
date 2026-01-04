@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
 )
 
 func authTokenForSuggestionJob(t *testing.T, base string, email string) string {
@@ -33,7 +33,7 @@ func authTokenForSuggestionJob(t *testing.T, base string, email string) string {
 }
 
 func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -98,7 +98,10 @@ t.Parallel()
 		t.Fatal("expected job_id in response")
 	}
 
-	job, err := db.GetSuggestionJob(ctx, te.DB, regenerateBody.JobID)
+	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(te.DB)
+	chatbotRepo := repository.NewPostgresChatbotRepo(te.DB)
+
+	job, err := suggestionJobRepo.GetByID(ctx, regenerateBody.JobID)
 	if err != nil {
 		t.Fatalf("failed to get job: %v", err)
 	}
@@ -136,7 +139,7 @@ t.Parallel()
 		t.Errorf("unexpected status: %s", statusBody.Status)
 	}
 
-	updatedChatbot, err := db.GetChatbotByID(ctx, te.DB, chatbotID)
+	updatedChatbot, err := chatbotRepo.GetByID(ctx, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to get chatbot: %v", err)
 	}
@@ -147,7 +150,7 @@ t.Parallel()
 }
 
 func TestSuggestionRegeneration_ConcurrentRequests(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -203,8 +206,9 @@ t.Parallel()
 	}
 
 	ctx := context.Background()
+	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(te.DB)
 	for jobID := range jobIDs {
-		job, err := db.GetSuggestionJob(ctx, te.DB, jobID)
+		job, err := suggestionJobRepo.GetByID(ctx, jobID)
 		if err != nil {
 			t.Fatalf("failed to get job %s: %v", jobID, err)
 		}
@@ -215,7 +219,7 @@ t.Parallel()
 }
 
 func TestSuggestionRegeneration_GetLatestJob(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -239,8 +243,9 @@ t.Parallel()
 	}
 
 	ctx := context.Background()
+	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(te.DB)
 
-	job1, err := db.CreateSuggestionJob(ctx, te.DB, chatbotID)
+	job1, err := suggestionJobRepo.Create(ctx, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create job 1: %v", err)
 	}
@@ -248,7 +253,7 @@ t.Parallel()
 
 	time.Sleep(10 * time.Millisecond)
 
-	job2, err := db.CreateSuggestionJob(ctx, te.DB, chatbotID)
+	job2, err := suggestionJobRepo.Create(ctx, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create job 2: %v", err)
 	}
@@ -276,7 +281,7 @@ t.Parallel()
 }
 
 func TestSuggestionRegeneration_JobCompletion(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -288,13 +293,15 @@ t.Parallel()
 	result := testdb.CreateChatbot(t, te.DB)
 	chatbotID := result.Chatbot.ID
 
-	job, err := db.CreateSuggestionJob(ctx, te.DB, chatbotID)
+	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(te.DB)
+
+	job, err := suggestionJobRepo.Create(ctx, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create job: %v", err)
 	}
 
 	suggestions := []string{"Generated Q1", "Generated Q2", "Generated Q3"}
-	err = db.CompleteSuggestionJob(ctx, te.DB, job.ID, suggestions)
+	err = suggestionJobRepo.Complete(ctx, job.ID, suggestions)
 	if err != nil {
 		t.Fatalf("failed to complete job: %v", err)
 	}
@@ -339,7 +346,7 @@ t.Parallel()
 }
 
 func TestSuggestionRegeneration_JobFailure(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -351,15 +358,15 @@ t.Parallel()
 	result := testdb.CreateChatbot(t, te.DB)
 	chatbotID := result.Chatbot.ID
 
+	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(te.DB)
 
-
-	job, err := db.CreateSuggestionJob(ctx, te.DB, chatbotID)
+	job, err := suggestionJobRepo.Create(ctx, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create job: %v", err)
 	}
 
 	errMsg := "database connection failed"
-	err = db.FailSuggestionJob(ctx, te.DB, job.ID, errMsg)
+	err = suggestionJobRepo.Fail(ctx, job.ID, errMsg)
 	if err != nil {
 		t.Fatalf("failed to fail job: %v", err)
 	}
@@ -370,8 +377,6 @@ t.Parallel()
 	var userID string
 	_ = te.DB.QueryRow("SELECT id FROM users WHERE email = $1", "job_failure@example.com").Scan(&userID)
 	_, _ = te.DB.Exec("UPDATE chatbots SET user_id = $1 WHERE id = $2", userID, chatbotID)
-
-
 
 	statusReq, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
 	statusReq.Header.Set("Authorization", "Bearer "+token)
@@ -401,7 +406,7 @@ t.Parallel()
 }
 
 func TestSuggestionRegeneration_JobWithRunningStatus(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -413,12 +418,14 @@ t.Parallel()
 	result := testdb.CreateChatbot(t, te.DB)
 	chatbotID := result.Chatbot.ID
 
-	job, err := db.CreateSuggestionJob(ctx, te.DB, chatbotID)
+	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(te.DB)
+
+	job, err := suggestionJobRepo.Create(ctx, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create job: %v", err)
 	}
 
-	err = db.UpdateSuggestionJobStatus(ctx, te.DB, job.ID, models.SuggestionJobStatusRunning)
+	err = suggestionJobRepo.UpdateStatus(ctx, job.ID, models.SuggestionJobStatusRunning)
 	if err != nil {
 		t.Fatalf("failed to update job status: %v", err)
 	}

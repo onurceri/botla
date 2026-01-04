@@ -2,16 +2,16 @@ package handlers
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/storage"
-	"github.com/onurceri/botla-co/pkg/urlutil"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/urlutil"
 )
 
 func (h *SourcesHandlers) validator() *urlutil.SSRFValidator {
@@ -23,7 +23,7 @@ func (h *SourcesHandlers) validator() *urlutil.SSRFValidator {
 
 // createSource handles POST request to create a new source
 func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, userID string) {
-	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
+	plan, err := h.PlanRepo.GetByUserID(r.Context(), userID)
 	if err != nil || plan == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -60,7 +60,7 @@ func (h *SourcesHandlers) createSource(w http.ResponseWriter, r *http.Request, b
 // handlePDFUpload handles PDF file upload
 func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request, bot *models.Chatbot, plan *models.Plan) {
 	// Check file count limit
-	cnt, err := db.CountSourcesByType(r.Context(), h.DB, bot.ID, "pdf")
+	cnt, err := h.SourceRepo.CountByType(r.Context(), bot.ID, "pdf")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -120,7 +120,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 	hval := computeHash(buf.Bytes())
 
 	// Check for duplicate content
-	exists, err := db.SourceExistsByHash(r.Context(), h.DB, bot.ID, hval)
+	exists, err := h.SourceRepo.ExistsByHash(r.Context(), bot.ID, hval)
 	if err != nil {
 		h.logError("hash_check_failed", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
 		w.WriteHeader(http.StatusInternalServerError)
@@ -154,7 +154,7 @@ func (h *SourcesHandlers) handlePDFUpload(w http.ResponseWriter, r *http.Request
 // handleURLSource handles URL source creation
 func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request, chatbotID string, plan *models.Plan) {
 	// Check URL count limit
-	cnt, err := db.CountSourcesByType(r.Context(), h.DB, chatbotID, "url")
+	cnt, err := h.SourceRepo.CountByType(r.Context(), chatbotID, "url")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -192,8 +192,13 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 	}
 
 	// Check cooldown after delete
-	lastDel, _ := db.GetLastDeletedAtForURL(r.Context(), h.DB, chatbotID, url)
-	if lastDel.Valid {
+	lastDelTime, lastDelValid, err := h.SourceRepo.GetLastDeletedAtForURL(r.Context(), chatbotID, url)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if lastDelValid {
+		lastDel := sql.NullTime{Time: lastDelTime, Valid: true}
 		if remaining, ok := h.checkCooldown(r, &lastDel.Time, plan); !ok {
 			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", remaining.Seconds()))
 			api.WriteErrorCode(w, http.StatusTooManyRequests, api.ErrReaddCooldownActive)
@@ -201,7 +206,7 @@ func (h *SourcesHandlers) handleURLSource(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if exists, _ := db.SourceExists(r.Context(), h.DB, chatbotID, url); exists {
+	if exists, _ := h.SourceRepo.Exists(r.Context(), chatbotID, url); exists {
 		api.WriteErrorCode(w, http.StatusConflict, api.ErrDuplicateURL)
 		return
 	}
@@ -248,7 +253,7 @@ func (h *SourcesHandlers) handleTextSource(w http.ResponseWriter, r *http.Reques
 	hval := computeHash([]byte(text))
 
 	// Check for duplicate content
-	exists, err := db.SourceExistsByHash(r.Context(), h.DB, bot.ID, hval)
+	exists, err := h.SourceRepo.ExistsByHash(r.Context(), bot.ID, hval)
 	if err != nil {
 		h.logError("hash_check_failed", map[string]any{"error": err.Error(), "chatbot_id": bot.ID})
 		w.WriteHeader(http.StatusInternalServerError)

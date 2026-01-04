@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
-	"github.com/onurceri/botla-co/pkg/storage"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/storage"
 )
 
 // TestSources_TextCreation tests text source creation end-to-end
@@ -23,8 +24,10 @@ func TestSources_TextCreation(t *testing.T) {
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
 
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -73,8 +76,10 @@ func TestSources_URLCreation(t *testing.T) {
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
 
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -120,8 +125,10 @@ func TestSources_EmptyText_BadRequest(t *testing.T) {
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
 
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -161,8 +168,10 @@ func TestSources_EmptyURL_BadRequest(t *testing.T) {
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
 
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -202,8 +211,10 @@ func TestSources_DuplicateURL_Conflict(t *testing.T) {
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
 
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -262,8 +273,10 @@ func TestSources_InvalidSourceType_BadRequest(t *testing.T) {
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
 
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}
@@ -302,8 +315,10 @@ func TestSources_DuplicateURL_TrailingSlash_Conflict(t *testing.T) {
 	user := testdb.CreateUser(t, dbx)
 	uid := user.ID
 
-	ch := &ChatbotHandlers{DB: dbx}
-	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage()}
+	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	planRepo := repository.NewPostgresPlanRepo(dbx, nil)
+	ch := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
+	sh := &SourcesHandlers{DB: dbx, Storage: storage.NewMemoryStorage(), SourceRepo: repository.NewPostgresSourceRepo(dbx), ChatbotRepo: chatbotRepo, UsageRepo: repository.NewPostgresUsageRepo(dbx), PlanRepo: planRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))
 	}

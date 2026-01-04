@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/repository"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 var (

@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/config"
-	pkgErrors "github.com/onurceri/botla-co/pkg/errors"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/config"
+	pkgErrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // TestCreateEmbedding_RateLimitError tests that HTTP 429 returns ErrRateLimit

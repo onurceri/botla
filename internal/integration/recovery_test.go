@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/onurceri/botla-co/pkg/logger"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestRecovery_Prod(t *testing.T) {

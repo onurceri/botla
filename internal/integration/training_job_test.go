@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
 )
 
 func TestJobStatusEndpoint_NoJob(t *testing.T) {
@@ -104,14 +104,15 @@ func TestJobStatusEndpoint_WithJob(t *testing.T) {
 	sourceID := createTextSource(t, te.Server.URL, token, chatbotID, "Content for job test")
 
 	// Directly create a training job in the database
-	job, err := db.CreateTrainingJob(context.Background(), te.DB, sourceID, chatbotID)
+	trainingJobRepo := repository.NewPostgresTrainingJobRepo(te.DB)
+	job, err := trainingJobRepo.Create(context.Background(), sourceID, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create training job: %v", err)
 	}
 
 	// Update job status to running with a step
 	step := models.StepChunkText
-	if err := db.UpdateJobStatus(context.Background(), te.DB, job.ID, models.JobStatusRunning, &step); err != nil {
+	if err := trainingJobRepo.UpdateJobStatus(context.Background(), job.ID, models.JobStatusRunning, &step); err != nil {
 		t.Fatalf("failed to update job status: %v", err)
 	}
 
@@ -174,13 +175,14 @@ func TestJobStatusEndpoint_FailedJob(t *testing.T) {
 	sourceID := createTextSource(t, te.Server.URL, token, chatbotID, "Content for failed job test")
 
 	// Create a training job and fail it
-	job, err := db.CreateTrainingJob(context.Background(), te.DB, sourceID, chatbotID)
+	trainingJobRepo := repository.NewPostgresTrainingJobRepo(te.DB)
+	job, err := trainingJobRepo.Create(context.Background(), sourceID, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create training job: %v", err)
 	}
 
 	// Fail the job
-	if err := db.FailJob(context.Background(), te.DB, job.ID, models.StepFetchSource, "FETCH_ERROR", "Could not fetch source"); err != nil {
+	if err := trainingJobRepo.Fail(context.Background(), job.ID, models.StepFetchSource, "FETCH_ERROR", "Could not fetch source"); err != nil {
 		t.Fatalf("failed to fail job: %v", err)
 	}
 
@@ -348,13 +350,14 @@ func TestJobStatusEndpoint_CompletedJob(t *testing.T) {
 	sourceID := createTextSource(t, te.Server.URL, token, chatbotID, "Content for completed job test")
 
 	// Create a training job and complete it
-	job, err := db.CreateTrainingJob(context.Background(), te.DB, sourceID, chatbotID)
+	trainingJobRepo := repository.NewPostgresTrainingJobRepo(te.DB)
+	job, err := trainingJobRepo.Create(context.Background(), sourceID, chatbotID)
 	if err != nil {
 		t.Fatalf("failed to create training job: %v", err)
 	}
 
 	// Complete the job
-	if err := db.CompleteJob(context.Background(), te.DB, job.ID); err != nil {
+	if err := trainingJobRepo.Complete(context.Background(), job.ID); err != nil {
 		t.Fatalf("failed to complete job: %v", err)
 	}
 

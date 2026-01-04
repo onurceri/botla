@@ -9,9 +9,9 @@ import (
 
 	"github.com/neurosnap/sentences"
 	"github.com/neurosnap/sentences/english"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/langconfig"
-	"github.com/onurceri/botla-co/pkg/tokenizer"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/langconfig"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 )
 
 // ChunkText splits raw text into token-aware chunks preserving paragraph and sentence boundaries.

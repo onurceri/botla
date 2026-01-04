@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
-	"github.com/onurceri/botla-co/internal/testdb"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/internal/testdb"
+	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 func TestUpdateAppearance_NewFields(t *testing.T) {
@@ -39,14 +40,16 @@ func TestUpdateAppearance_NewFields(t *testing.T) {
 		LanguageCode: "tr-TR",
 		Model:        "gpt-4o-mini",
 	}
-	botID, err := db.CreateChatbot(context.Background(), pool, bot)
+	botID, err := repository.NewPostgresChatbotRepo(pool).Create(context.Background(), bot)
 	if err != nil {
 		t.Fatalf("create chatbot: %v", err)
 	}
 
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
 	h := &ChatbotHandlers{
 		DB:             pool,
-		ChatbotService: services.NewChatbotService(pool, nil),
+		ChatbotService: services.NewChatbotService(chatbotRepo, repository.NewPostgresPlanRepo(pool, nil), logger.New("info")),
+		ChatbotRepo:    chatbotRepo,
 	}
 
 	// Update new fields
@@ -90,7 +93,7 @@ func TestUpdateAppearance_NewFields(t *testing.T) {
 	}
 
 	// Verify persistence
-	persisted, err := db.GetChatbotByID(context.Background(), pool, botID)
+	persisted, err := repository.NewPostgresChatbotRepo(pool).GetByID(context.Background(), botID)
 	if err != nil {
 		t.Fatalf("get chatbot: %v", err)
 	}
@@ -125,7 +128,7 @@ func TestPublicChatbotConfig_NewFields(t *testing.T) {
 		InputTextColor:       "#123456",
 		SendButtonColor:      "#654321",
 	}
-	botID, err := db.CreateChatbot(context.Background(), pool, bot)
+	botID, err := repository.NewPostgresChatbotRepo(pool).Create(context.Background(), bot)
 	if err != nil {
 		t.Fatalf("create chatbot: %v", err)
 	}
@@ -135,7 +138,8 @@ func TestPublicChatbotConfig_NewFields(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Handler under test
-	handler := PublicChatbotConfig(pool)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	handler := PublicChatbotConfig(chatbotRepo)
 	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {

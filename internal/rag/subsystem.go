@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/onurceri/botla-co/internal/models"
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 var (

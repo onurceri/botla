@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/onurceri/botla-co/pkg/requestid"
+	"github.com/onurceri/botla-app/pkg/requestid"
 )
 
 // RequestIDHeader is the header name for request ID

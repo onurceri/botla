@@ -5,9 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // RefreshSource handles POST /api/v1/sources/:id/refresh
@@ -17,7 +16,7 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	s, _, sourceID, ok := getSourceContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	s, _, sourceID, ok := getSourceContext(w, r, h.SourceRepo, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -34,7 +33,7 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
+	plan, err := h.PlanRepo.GetPlanWithLimits(r.Context(), userID)
 	if err != nil || plan == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -47,7 +46,7 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check monthly refresh quota
-	usedRefreshes, _ := db.GetMonthlyRefreshCount(r.Context(), h.DB, userID, time.Now())
+	usedRefreshes, _ := h.UsageRepo.GetMonthlyRefreshCount(r.Context(), userID, time.Now())
 	if plan.Limits.RefreshMaxMonthly > 0 && usedRefreshes >= plan.Limits.RefreshMaxMonthly {
 		api.WriteErrorCode(w, http.StatusPaymentRequired, api.ErrMonthlyRefreshExceeded)
 		return
@@ -71,13 +70,13 @@ func (h *SourcesHandlers) RefreshSource(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Update source for refresh
-	if err = db.UpdateSourceForRefresh(r.Context(), h.DB, sourceID); err != nil {
+	if err = h.SourceRepo.UpdateForRefresh(r.Context(), sourceID); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// Increment refresh count
-	_ = db.IncrementRefreshCount(r.Context(), h.DB, userID, time.Now())
+	_ = h.UsageRepo.IncrementRefreshCount(r.Context(), userID, time.Now())
 
 	api.WriteJSON(w, http.StatusAccepted, map[string]string{"id": sourceID})
 }

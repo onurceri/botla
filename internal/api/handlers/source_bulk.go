@@ -5,10 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/pkg/middleware"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
 // BulkCreateSources handles POST /api/v1/chatbots/:id/sources/bulk
@@ -19,14 +18,14 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	_, chatbotID, ok := getChatbotContext(w, r, h.DB, h.WorkspaceService, h.OrgService)
+	_, chatbotID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 	userID, _ := middleware.UserIDFromContext(r.Context())
 
 	// Get plan for quota checks
-	plan, err := db.GetPlanByUserID(r.Context(), h.DB, userID)
+	plan, err := h.PlanRepo.GetPlanWithLimits(r.Context(), userID)
 	if err != nil || plan == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -47,7 +46,7 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Check current URL count and limits
-	currentCount, err := db.CountSourcesByType(r.Context(), h.DB, chatbotID, "url")
+	currentCount, err := h.SourceRepo.CountByType(r.Context(), chatbotID, "url")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -93,7 +92,7 @@ func (h *SourcesHandlers) BulkCreateSources(w http.ResponseWriter, r *http.Reque
 		}
 
 		// Check for duplicates
-		exists, _ := db.SourceExists(r.Context(), h.DB, chatbotID, url)
+		exists, _ := h.SourceRepo.Exists(r.Context(), chatbotID, url)
 		if exists {
 			skippedCount++
 			continue

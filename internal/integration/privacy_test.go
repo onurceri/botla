@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPrivacyFlow(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	require.NoError(t, err)
 	defer fixtures.TeardownTestEnv(te)
@@ -88,7 +88,7 @@ t.Parallel()
 		// It might return 200 OK or 201 Created
 		assert.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.StatusCode)
 
-		var pr db.PrivacyRequest
+		var pr repository.PrivacyRequest
 		err = json.NewDecoder(resp.Body).Decode(&pr)
 		require.NoError(t, err)
 		require.NotEmpty(t, pr.ID)
@@ -128,7 +128,7 @@ t.Parallel()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		var pr db.PrivacyRequest
+		var pr repository.PrivacyRequest
 		err = json.NewDecoder(resp.Body).Decode(&pr)
 		require.NoError(t, err)
 		assert.Equal(t, "correction", pr.RequestType)
@@ -146,7 +146,7 @@ t.Parallel()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var result struct {
-			Data []db.PrivacyRequest `json:"data"`
+			Data []repository.PrivacyRequest `json:"data"`
 		}
 		err = json.NewDecoder(resp.Body).Decode(&result)
 		require.NoError(t, err)
@@ -226,7 +226,7 @@ t.Parallel()
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/export", bytes.NewReader(b))
 		req.Header.Set("Authorization", "Bearer "+userToken)
 		resp, _ := testHTTPClient().Do(req)
-		var pr db.PrivacyRequest
+		var pr repository.PrivacyRequest
 		json.NewDecoder(resp.Body).Decode(&pr)
 		drainBody(resp)
 

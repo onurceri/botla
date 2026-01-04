@@ -5,13 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/testdb"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/testdb"
 )
 
 func TestPlanService_ValidateAllPlans_EmptyDatabase(t *testing.T) {
 	db := testdb.OpenParallelTestDB(t)
-	svc := NewPlanService(db, nil)
+	planRepo := repository.NewPostgresPlanRepo(db, nil)
+	svc := NewPlanService(planRepo, nil)
 	ctx := context.Background()
 
 	plans, err := svc.GetAllPlans(ctx)
@@ -88,7 +90,8 @@ func insertTestPlanWithLimits(ctx context.Context, t *testing.T, db interface {
 
 func TestPlanService_ValidateAllPlans_AllPlansValid(t *testing.T) {
 	db := testdb.OpenParallelTestDB(t)
-	svc := NewPlanService(db, nil)
+	planRepo := repository.NewPostgresPlanRepo(db, nil)
+	svc := NewPlanService(planRepo, nil)
 	ctx := context.Background()
 
 	// Fetch existing plans and validate they are all valid
@@ -116,7 +119,7 @@ func TestPlanService_ValidateAllPlans_AllPlansValid(t *testing.T) {
 
 func TestPlanService_ValidateAllPlans_InvalidPlanLimits(t *testing.T) {
 	// Skip this test - DB CHECK constraints now enforce validation at the database level.
-	// We cannot insert invalid data (e.g., min_response > max_response) due to 
+	// We cannot insert invalid data (e.g., min_response > max_response) due to
 	// chk_chat_max_response_token_limit constraint.
 	// This is actually better protection than application-level validation alone.
 	t.Skip("Skipping: DB CHECK constraints prevent inserting invalid plan limits")
@@ -124,7 +127,8 @@ func TestPlanService_ValidateAllPlans_InvalidPlanLimits(t *testing.T) {
 
 func TestPlanService_ValidateAllPlans_MissingLimits(t *testing.T) {
 	db := testdb.OpenParallelTestDB(t)
-	svc := NewPlanService(db, nil)
+	planRepo := repository.NewPostgresPlanRepo(db, nil)
+	svc := NewPlanService(planRepo, nil)
 	ctx := context.Background()
 
 	// Create a plan without corresponding plan_limits entry
@@ -154,7 +158,8 @@ func TestPlanService_ValidateAllPlans_MissingLimits(t *testing.T) {
 
 func TestPlanService_ValidateAllPlans_DatabaseError(t *testing.T) {
 	db := testdb.OpenParallelTestDB(t)
-	svc := NewPlanService(db, nil)
+	planRepo := repository.NewPostgresPlanRepo(db, nil)
+	svc := NewPlanService(planRepo, nil)
 	ctx := context.Background()
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Nanosecond)

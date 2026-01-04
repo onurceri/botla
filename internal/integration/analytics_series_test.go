@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/onurceri/botla-co/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/integration/fixtures"
 )
 
 func TestAnalytics_SeriesLength30(t *testing.T) {

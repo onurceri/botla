@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/onurceri/botla-co/internal/processing"
-	"github.com/onurceri/botla-co/internal/rag"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/processing"
+	"github.com/onurceri/botla-app/internal/rag"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 type RAGService struct {

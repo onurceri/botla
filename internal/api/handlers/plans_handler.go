@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/onurceri/botla-co/internal/api"
-	"github.com/onurceri/botla-co/internal/models"
-	"github.com/onurceri/botla-co/internal/services"
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/services"
 )
 
 // PublicPlanResponse represents a plan for public API endpoints

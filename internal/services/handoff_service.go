@@ -8,24 +8,28 @@ import (
 	"strings"
 	"time"
 
-	"github.com/onurceri/botla-co/internal/db"
-	"github.com/onurceri/botla-co/internal/models"
-	pkgerrors "github.com/onurceri/botla-co/pkg/errors"
-	"github.com/onurceri/botla-co/pkg/langconfig"
-	"github.com/onurceri/botla-co/pkg/logger"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/langconfig"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // HandoffService handles human agent handoff logic
 type HandoffService struct {
-	DB  *sql.DB
-	Log *logger.Logger
+	HandoffRepo      repository.HandoffRepository
+	ConversationRepo repository.ConversationRepository
+	AnalyticsRepo    repository.AnalyticsRepository
+	Log              *logger.Logger
 }
 
 // NewHandoffService creates a new HandoffService instance
-func NewHandoffService(dbPool *sql.DB, log *logger.Logger) *HandoffService {
+func NewHandoffService(handoffRepo repository.HandoffRepository, conversationRepo repository.ConversationRepository, analyticsRepo repository.AnalyticsRepository, log *logger.Logger) *HandoffService {
 	return &HandoffService{
-		DB:  dbPool,
-		Log: log,
+		HandoffRepo:      handoffRepo,
+		ConversationRepo: conversationRepo,
+		AnalyticsRepo:    analyticsRepo,
+		Log:              log,
 	}
 }
 
@@ -61,7 +65,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 
 	// Create handoff request in database
 	// Check for existing active handoff request
-	exists, err := db.HasActiveHandoffRequest(ctx, s.DB, conversationID)
+	exists, err := s.HandoffRepo.HasActiveHandoffRequest(ctx, conversationID)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "failed to check existing handoff")
 	}
@@ -75,7 +79,7 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 		Notes:          &notes,
 	}
 
-	requestID, err := db.CreateHandoffRequest(ctx, s.DB, req)
+	requestID, err := s.HandoffRepo.CreateHandoffRequest(ctx, req)
 	if err != nil {
 		msg := cfg.UserMessages.Errors["HANDOFF_CREATE_FAILED"]
 		if msg == "" {
@@ -139,7 +143,7 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 	}
 
 	// Load conversation messages (last 50 messages should be enough for handoff)
-	messages, err := db.ListRecentMessages(ctx, s.DB, conversationID, 50)
+	messages, err := s.ConversationRepo.ListRecentMessages(ctx, conversationID, 50)
 	if err != nil {
 		msg := cfg.UserMessages.Errors["HANDOFF_CONVERSATION_LOAD_FAILED"]
 		if msg == "" {
@@ -184,7 +188,7 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		// isHandoff=true, tokens=0, responseTime=0 (not applicable for handoff event itself)
-		if err := db.IncrementAnalytics(bgCtx, s.DB, bot.ID, false, 0, true, 0); err != nil {
+		if err := s.AnalyticsRepo.IncrementAnalytics(bgCtx, bot.ID, false, 0, true, 0); err != nil {
 			if s.Log != nil {
 				s.Log.Error("handoff_analytics_failed", map[string]any{"error": err.Error()})
 			}
@@ -229,7 +233,7 @@ func (s *HandoffService) buildHandoffEmailBody(botName, requestID string, messag
 
 // GetHandoffRequests returns all handoff requests for a chatbot
 func (s *HandoffService) GetHandoffRequests(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error) {
-	requests, err := db.GetHandoffRequestsByBotID(ctx, s.DB, chatbotID)
+	requests, err := s.HandoffRepo.GetHandoffRequestsByBotID(ctx, chatbotID)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get handoff requests")
 	}
@@ -248,7 +252,7 @@ func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, sta
 		return InvalidHandoffStatusError{Status: status}
 	}
 
-	if err := db.UpdateHandoffRequestStatus(ctx, s.DB, requestID, status, assignedTo); err != nil {
+	if err := s.HandoffRepo.UpdateHandoffRequestStatus(ctx, requestID, status, assignedTo); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrHandoffNotFound
 		}
