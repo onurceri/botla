@@ -1,5 +1,22 @@
 import { test, expect } from '@playwright/test'
 
+/**
+ * Chunk Inspector E2E Tests
+ * 
+ * Tests cover:
+ * - Login flow
+ * - Chatbot creation
+ * - Source addition
+ * - Chunk inspection functionality
+ * - Search within chunks
+ * 
+ * Element Selection Strategy:
+ * - Primary: data-testid attributes from SELECTORS
+ * - Fallback: Semantic selectors (getByLabel, getByRole)
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test('Chunk Inspector Flow: Login -> Create Bot -> Add Source -> Inspect Chunks', async ({
   page,
 }) => {

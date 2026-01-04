@@ -1,6 +1,23 @@
 import { test, expect } from '@playwright/test'
 import { TEST_IDS, TURKISH } from './test-constants'
 
+/**
+ * E2E Smoke Tests
+ * 
+ * Comprehensive end-to-end test that verifies the complete user journey:
+ * - User registration
+ * - User login
+ * - Chatbot creation
+ * - Adding text source
+ * - Chat interaction
+ * 
+ * Element Selection Strategy:
+ * - Primary: data-testid attributes from SELECTORS
+ * - Fallback: Semantic selectors (getByLabel, getByRole)
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test.describe('E2E Smoke', () => {
   const isReal = !!process.env.E2E_API_BASE
   test.skip(!isReal, 'Skipped on stubbed backend to avoid flakiness')

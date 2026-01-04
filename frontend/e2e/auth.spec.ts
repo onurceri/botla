@@ -2,6 +2,22 @@ import { test, expect } from '@playwright/test'
 import { setupAuthMocks, setupOrgMocks, setupAnalyticsMocks } from './helpers'
 import { TEST_IDS, TURKISH } from './test-constants'
 
+/**
+ * Authentication E2E Tests
+ * 
+ * Tests cover:
+ * - User registration flow
+ * - User login flow
+ * - User logout flow
+ * - Protected route handling
+ * 
+ * Element Selection Strategy:
+ * - Primary: data-testid attributes from SELECTORS
+ * - Fallback: Semantic selectors (getByLabel, getByRole)
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test.describe('Authentication', () => {
   test.describe('Registration', () => {
     test('user can register successfully', async ({ page }) => {

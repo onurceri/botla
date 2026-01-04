@@ -3,6 +3,21 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 import path from 'path'
 
+/**
+ * Widget Branding E2E Tests
+ * 
+ * Tests cover:
+ * - Custom branding configuration
+ * - Logo display
+ * - Branding text visibility
+ * 
+ * Element Selection Strategy:
+ * - Primary: CSS selectors for widget shadow DOM
+ * - Fallback: Direct element access
+ * 
+ * @see TESTING_STANDARDS.md for naming conventions
+ * @see selectors.ts for element ID constants
+ */
 test('Widget branding options', async ({ page }) => {
   // Mock API with custom branding
   await page.route('http://api.test/api/v1/public/chatbots/bot1', async (route) => {
