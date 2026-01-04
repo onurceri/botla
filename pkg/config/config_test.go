@@ -27,7 +27,7 @@ func TestLoadConfig_Success_DefaultCORS(t *testing.T) {
 }
 
 // Override fatalf in tests to avoid os.Exit and capture calls.
-func setFatalCapture(calls *int) { fatalf = func(msg string) { *calls++ } }
+func setFatalCapture(calls *int) { fatalf = func(_ string) { *calls++ } }
 
 func TestLoadConfig_DBEnvMissing_Exit(t *testing.T) {
 	env := []string{
