@@ -23,6 +23,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     storageState: {
+      cookies: [],
       origins: [
         {
           origin: 'http://localhost:5173',
