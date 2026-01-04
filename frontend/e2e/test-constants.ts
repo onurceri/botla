@@ -68,6 +68,7 @@ export const TEST_IDS = {
   LOGIN_FORGOT_PASSWORD_LINK: 'login-page-forgot-password-link',
   LOGIN_ERROR_MESSAGE: 'login-page-error-message',
   LOGIN_TITLE: 'login-page-title',
+  LOGIN_REMEMBER_ME_CHECKBOX: 'login-page-remember-me-checkbox',
 
   // Register Page
   REGISTER_PAGE: 'register-page',

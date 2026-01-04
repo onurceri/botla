@@ -1,29 +1,100 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 /**
  * Chunk Inspector E2E Tests
- * 
+ *
  * Tests cover:
  * - Login flow
  * - Chatbot creation
  * - Source addition
  * - Chunk inspection functionality
  * - Search within chunks
- * 
+ *
  * Element Selection Strategy:
- * - Primary: data-testid attributes from SELECTORS
- * - Fallback: Semantic selectors (getByLabel, getByRole)
- * 
+ * - Primary: Semantic selectors (getByLabel, getByRole, getByPlaceholder)
+ * - Fallback: data-testid attributes when available
+ * - Uses consistent test.describe() grouping for logical organization
+ *
  * @see TESTING_STANDARDS.md for naming conventions
  * @see selectors.ts for element ID constants
  */
-test('Chunk Inspector Flow: Login -> Create Bot -> Add Source -> Inspect Chunks', async ({
-  page,
-}) => {
+test.describe('Chunk Inspector', () => {
   const isReal = !!process.env.E2E_API_BASE
 
+  test.beforeEach(async ({ page }) => {
+    // Setup common mocks for chunk inspector tests
+    await setupChunkInspectorMocks(page, isReal)
+  })
+
+  test.describe('Authentication Flow', () => {
+    test('should register and login successfully', async ({ page }) => {
+      // Registration
+      const email = `test-${Date.now()}@example.com`
+      await page.goto('/register')
+      await page.getByLabel('Ad Soyad').fill('Test User')
+      await page.getByLabel('Email').fill(email)
+      await page.getByLabel('Şifre').fill('password')
+      await page.getByRole('button', { name: 'Kayıt Ol' }).click()
+      await expect(page).toHaveURL(/.*onboarding|.*login/, { timeout: 10000 })
+
+      // Handle onboarding redirect to login
+      if (page.url().includes('onboarding')) {
+        await page.goto('/login')
+      }
+
+      // Login
+      await page.getByLabel('Email').fill(email)
+      await page.getByLabel('Şifre').fill('password')
+      await page.getByRole('button', { name: 'Giriş Yap' }).click()
+      await expect(page).toHaveURL(/.*dashboard|.*\//, { timeout: 10000 })
+    })
+  })
+
+  test.describe('Chatbot and Source Creation', () => {
+    test('should create chatbot and add source', async ({ page }) => {
+      // Create Bot
+      const createBtn = page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first()
+      await createBtn.click()
+      await page.getByPlaceholder('Örn: Müşteri Temsilcisi').fill('Test Bot')
+      await page.getByRole('button', { name: 'Oluştur' }).click()
+      await expect(page).toHaveURL(/\/chatbots\/[a-zA-Z0-9_-]+$/, { timeout: 10000 })
+
+      // Go to Sources
+      await page.getByRole('link', { name: 'Kaynaklar' }).click()
+
+      // Wait for sources list to load
+      await expect(page.getByRole('heading', { name: 'test-source.txt' })).toBeVisible()
+    })
+  })
+
+  test.describe('Chunk Inspection', () => {
+    test('should inspect and search chunks', async ({ page }) => {
+      // Navigate to sources
+      await page.getByRole('link', { name: 'Kaynaklar' }).click()
+
+      // Find and click "Inspect Chunks" button
+      const inspectBtn = page.getByRole('button', { name: 'Parçaları İncele' }).first()
+      await inspectBtn.click()
+
+      // Verify inspector content
+      await expect(page.getByText('Kaynak Parçaları')).toBeVisible()
+      await expect(page.getByText('Chunk content 0 for inspection.')).toBeVisible()
+
+      // Test search functionality
+      const searchInput = page.getByPlaceholder('Yüklenen parçalarda ara...')
+      await searchInput.fill('Chunk content 2')
+      await expect(page.getByText('Chunk content 2 for inspection.')).toBeVisible()
+      await expect(page.getByText('Chunk content 0 for inspection.')).not.toBeVisible()
+    })
+  })
+})
+
+/**
+ * Sets up API mocks for chunk inspector tests
+ */
+async function setupChunkInspectorMocks(page: Page, isReal: boolean) {
   if (!isReal) {
-    // Generic fallback for unhandled GETs (add first so it's checked last)
+    // Generic fallback for unhandled GETs
     await page.route('**/api/v1/**', async (r) => {
       if (
         r.request().method() === 'GET' &&
@@ -135,52 +206,4 @@ test('Chunk Inspector Flow: Login -> Create Bot -> Add Source -> Inspect Chunks'
       })
     })
   }
-
-  // 1. Login
-  const email = `test-${Date.now()}@example.com`
-  await page.goto('/register')
-  await page.getByLabel('Ad Soyad').fill('Test User')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Şifre').fill('password')
-  await page.getByRole('button', { name: 'Kayıt Ol' }).click()
-  await expect(page).toHaveURL(/.*onboarding|.*login/, { timeout: 10000 })
-
-  if (page.url().includes('onboarding')) {
-    await page.goto('/login')
-  }
-
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Şifre').fill('password')
-  await page.getByRole('button', { name: 'Giriş Yap' }).click()
-
-  await expect(page).toHaveURL(/.*dashboard|.*\//, { timeout: 10000 })
-
-  // 2. Create Bot
-  const createBtn = page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first()
-  await createBtn.click()
-  await page.getByPlaceholder('Örn: Müşteri Temsilcisi').fill('Test Bot')
-  await page.getByRole('button', { name: 'Oluştur' }).click()
-  await expect(page).toHaveURL(/\/chatbots\/[a-zA-Z0-9_-]+$/, { timeout: 10000 })
-
-  // 3. Go to Sources
-  await page.getByRole('link', { name: 'Kaynaklar' }).click()
-
-  // 4. Verify List & Open Inspector
-  // If mocked, the list should show 'src-1' immediately.
-  // We need to wait for the list to load.
-  await expect(page.getByRole('heading', { name: 'test-source.txt' })).toBeVisible()
-
-  // Find "View Chunks" button (Desktop or Mobile).
-  const inspectBtn = page.getByRole('button', { name: 'Parçaları İncele' }).first()
-  await inspectBtn.click()
-
-  // 5. Verify Inspector Content
-  await expect(page.getByText('Kaynak Parçaları')).toBeVisible()
-  await expect(page.getByText('Chunk content 0 for inspection.')).toBeVisible()
-
-  // 6. Test Search
-  const searchInput = page.getByPlaceholder('Yüklenen parçalarda ara...')
-  await searchInput.fill('Chunk content 2')
-  await expect(page.getByText('Chunk content 2 for inspection.')).toBeVisible()
-  await expect(page.getByText('Chunk content 0 for inspection.')).not.toBeVisible()
-})
+}
