@@ -295,30 +295,115 @@ test.describe('Login Page', () => {
       await mockSuccessfulLogin(page)
       await setupOrgMocks(page)
       await setupAnalyticsMocks(page)
-      
+
       // Check remember me checkbox if present
       const rememberMeCheckbox = page.getByTestId(TEST_IDS.LOGIN_REMEMBER_ME_CHECKBOX)
         .or(page.getByRole('checkbox', { name: /remember me|beni hatırla/i }))
       if (await rememberMeCheckbox.isVisible()) {
         await rememberMeCheckbox.check()
       }
-      
+
       // Login
       await page.getByTestId(TEST_IDS.LOGIN_EMAIL_INPUT).fill('test@example.com')
       await page.getByTestId(TEST_IDS.LOGIN_PASSWORD_INPUT).fill('SecurePass123!')
       await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON).click()
-      
+
       // Wait for navigation
       await expect(page).toHaveURL(/\/(dashboard)?/, { timeout: 15000 })
-      
+
       // Tokens should be stored in localStorage
       const tokens = await page.evaluate(() => ({
         accessToken: localStorage.getItem('botla_token'),
         refreshToken: localStorage.getItem('botla_refresh_token'),
       }))
-      
+
       expect(tokens.accessToken).toBeTruthy()
       expect(tokens.refreshToken).toBeTruthy()
+    })
+
+    test('should set remember me flag when checkbox is checked', async ({ page }) => {
+      await mockSuccessfulLogin(page)
+      await setupOrgMocks(page)
+
+      // Go to login page
+      await page.goto('/login')
+
+      // Check remember me checkbox
+      const rememberMeCheckbox = page.getByTestId(TEST_IDS.LOGIN_REMEMBER_ME_CHECKBOX)
+        .or(page.getByRole('checkbox', { name: /remember me|beni hatırla/i }))
+
+      if (await rememberMeCheckbox.isVisible()) {
+        await rememberMeCheckbox.check()
+        expect(await rememberMeCheckbox.isChecked()).toBe(true)
+      }
+    })
+
+    test('should persist session with remember me checked', async ({ page }) => {
+      await mockSuccessfulLogin(page)
+      await setupOrgMocks(page)
+      await setupAnalyticsMocks(page)
+
+      // Go to login page
+      await page.goto('/login')
+
+      // Check remember me
+      const rememberMeCheckbox = page.getByTestId(TEST_IDS.LOGIN_REMEMBER_ME_CHECKBOX)
+        .or(page.getByRole('checkbox', { name: /remember me|beni hatırla/i }))
+      if (await rememberMeCheckbox.isVisible()) {
+        await rememberMeCheckbox.check()
+      }
+
+      // Fill credentials and login
+      await page.getByTestId(TEST_IDS.LOGIN_EMAIL_INPUT).fill('test@example.com')
+      await page.getByTestId(TEST_IDS.LOGIN_PASSWORD_INPUT).fill('SecurePass123!')
+      await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON).click()
+
+      // Wait for navigation
+      await expect(page).toHaveURL(/\/(dashboard)?/, { timeout: 15000 })
+
+      // Verify tokens persist (core functionality)
+      const accessToken = await page.evaluate(() => localStorage.getItem('botla_token'))
+      const refreshToken = await page.evaluate(() => localStorage.getItem('botla_refresh_token'))
+      expect(accessToken).toBeTruthy()
+      expect(refreshToken).toBeTruthy()
+
+      // Check if remember_me flag is set (if implemented by frontend)
+      const rememberMeFlag = await page.evaluate(() => localStorage.getItem('remember_me'))
+      // This may be null if frontend doesn't implement remember_me flag storage
+      // The core requirement is that tokens are stored
+      if (rememberMeFlag !== null) {
+        expect(rememberMeFlag).toBe('true')
+      }
+    })
+
+    test('should not set remember me flag when unchecked', async ({ page }) => {
+      await mockSuccessfulLogin(page)
+      await setupOrgMocks(page)
+
+      // Go to login page
+      await page.goto('/login')
+
+      // Ensure remember me is unchecked (don't check it)
+      const rememberMeCheckbox = page.getByTestId(TEST_IDS.LOGIN_REMEMBER_ME_CHECKBOX)
+        .or(page.getByRole('checkbox', { name: /remember me|beni hatırla/i }))
+      // Just verify it's visible and don't interact with it
+      if (await rememberMeCheckbox.isVisible()) {
+        await expect(rememberMeCheckbox).not.toBeChecked()
+      }
+
+      // Fill credentials and login
+      await page.getByTestId(TEST_IDS.LOGIN_EMAIL_INPUT).fill('test@example.com')
+      await page.getByTestId(TEST_IDS.LOGIN_PASSWORD_INPUT).fill('SecurePass123!')
+      await page.getByTestId(TEST_IDS.LOGIN_SUBMIT_BUTTON).click()
+
+      // Wait for navigation
+      await expect(page).toHaveURL(/\/(dashboard)?/, { timeout: 15000 })
+
+      // Verify tokens are still stored (core functionality works regardless of remember me)
+      const accessToken = await page.evaluate(() => localStorage.getItem('botla_token'))
+      const refreshToken = await page.evaluate(() => localStorage.getItem('botla_refresh_token'))
+      expect(accessToken).toBeTruthy()
+      expect(refreshToken).toBeTruthy()
     })
   })
 

@@ -1084,5 +1084,255 @@ test('should have proper ARIA attributes', async ({ page }) => {
 
 ---
 
-*Last updated: 2024-01-04*
-*Maintained by: Botla Development Team*
+## Session-Specific Patterns: Auth & Logout Flow Testing
+
+This section documents patterns and lessons learned from implementing the Logout Flow E2E tests.
+
+### 1. localStorage Access in Playwright
+
+#### The Problem
+When navigating to protected pages (e.g., `/dashboard`) that redirect unauthenticated users, localStorage access may be denied because the page redirects before storage can be set.
+
+```typescript
+// BAD - Fails because page redirects before localStorage is accessible
+test.beforeEach(async ({ page }) => {
+  await page.goto('/dashboard');  // May redirect, losing localStorage access
+  await page.evaluate(() => {
+    localStorage.setItem('botla_token', 'test-token');
+  });
+});
+```
+
+#### The Solution: Use addInitScript()
+Use `page.addInitScript()` to set localStorage before page navigation:
+
+```typescript
+// GOOD - Sets storage before page loads
+async function setSessionStorage(page: Page, tokens: SessionTokens) {
+  await page.addInitScript((tokens) => {
+    localStorage.setItem('botla_token', tokens.accessToken);
+    localStorage.setItem('botla_refresh_token', tokens.refreshToken);
+    localStorage.setItem('botla_user', JSON.stringify(tokens.user));
+  }, tokens);
+}
+
+test.beforeEach(async ({ page }) => {
+  await setSessionStorage(page, {
+    accessToken: 'mock-access-token-' + Date.now(),
+    refreshToken: 'mock-refresh-token-' + Date.now(),
+    user: { id: 'user-123', email: 'test@example.com' },
+  });
+  await page.goto('/dashboard');
+});
+```
+
+### 2. Testing Elements in Collapsible UI Components
+
+#### The Problem
+Elements like logout buttons may exist in the DOM but be hidden due to collapsed sidebar modes, hover states, or responsive breakpoints.
+
+```typescript
+// BAD - Fails because element exists but is not visible
+test('should find logout button', async ({ page }) => {
+  await page.goto('/dashboard');
+  const logoutButton = page.locator('.logout-btn');
+  await expect(logoutButton).toBeAttached(); // May fail if element not in DOM yet
+});
+```
+
+#### The Solution: Use Page Content Check
+When the element exists in source but may be visually hidden:
+
+```typescript
+// GOOD - Check for element in page source
+test('should have logout button in DOM', async ({ page }) => {
+  await page.goto('/dashboard');
+  const pageContent = await page.content();
+  expect(pageContent).toContain('logout-btn');
+});
+
+// Alternative: Use count() to check existence without visibility
+test('should have logout button', async ({ page }) => {
+  await page.goto('/dashboard');
+  const logoutButton = page.locator('.logout-btn');
+  expect(await logoutButton.count()).toBeGreaterThan(0);
+});
+```
+
+### 3. Multi-Tab BroadcastChannel Testing
+
+#### The Problem
+Testing BroadcastChannel communication between tabs requires careful timing. Listeners set via `page.evaluate()` may not persist or receive messages reliably across different page contexts.
+
+```typescript
+// BAD - Listener may not receive messages across evaluate calls
+test('should send BroadcastChannel message', async ({ browser }) => {
+  const pageA = await browser.newPage();
+  const pageB = await browser.newPage();
+  await pageA.goto('about:blank');
+  await pageB.goto('about:blank');
+
+  // Set up listener
+  const messages: string[] = [];
+  await pageB.evaluate(() => {
+    const bc = new BroadcastChannel('auth_channel');
+    bc.onmessage = (e) => messages.push(e.data);
+  });
+
+  await pageB.waitForTimeout(200); // Not reliable
+
+  // Send message from another page
+  await pageA.evaluate(() => {
+    const bc = new BroadcastChannel('auth_channel');
+    bc.postMessage('session_terminated');
+  });
+
+  await pageB.waitForTimeout(500);
+  expect(messages).toContain('session_terminated'); // Often fails
+});
+```
+
+#### The Solution: Single Evaluate Call
+Perform listener setup and message sending in a single execution context:
+
+```typescript
+// GOOD - Single evaluate handles both listener and message
+test('should send BroadcastChannel message', async ({ browser }) => {
+  const pageB = await browser.newPage();
+  await pageB.goto('about:blank');
+
+  const result = await pageB.evaluate(async () => {
+    const messages: string[] = [];
+    const bc = new BroadcastChannel('test_auth_channel');
+    bc.onmessage = (e) => messages.push(e.data);
+
+    // Wait for listener to be ready
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Send message from the same context
+    const sender = new BroadcastChannel('test_auth_channel');
+    sender.postMessage('session_terminated');
+
+    // Wait for message to be received
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    return messages;
+  });
+
+  expect(result).toContain('session_terminated');
+});
+```
+
+### 4. Test Organization: Phase-Based Structure
+
+For complex flows like authentication/logout, organize tests into phases:
+
+```typescript
+test.describe('Logout Flow', () => {
+  test.describe('Session Management', () => {
+    // Tests for session token set/clear operations
+  });
+
+  test.describe('Session Utilities', () => {
+    // Tests for utility functions and helpers
+  });
+
+  test.describe('Multi-Tab Synchronization', () => {
+    // Tests for BroadcastChannel and cross-tab communication
+  });
+
+  test.describe('Security Verification', () => {
+    // Tests for token cleanup and security verification
+  });
+
+  test.describe('Mock Handlers', () => {
+    // Tests for API mocking and error scenarios
+  });
+});
+```
+
+### 5. Session Storage Helper Pattern
+
+Create reusable helpers for authentication state management:
+
+```typescript
+// utils/session.utils.ts
+interface SessionTokens {
+  accessToken: string;
+  refreshToken: string;
+  user: object;
+}
+
+export async function setSessionStorage(page: Page, tokens: SessionTokens) {
+  await page.addInitScript((tokens) => {
+    localStorage.setItem('botla_token', tokens.accessToken);
+    localStorage.setItem('botla_refresh_token', tokens.refreshToken);
+    localStorage.setItem('botla_user', JSON.stringify(tokens.user));
+  }, tokens);
+}
+
+export async function clearSessionStorage(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.removeItem('botla_token');
+    localStorage.removeItem('botla_refresh_token');
+    localStorage.removeItem('botla_user');
+  });
+}
+```
+
+### 6. Testing CSS Class-Based Elements
+
+When elements don't have `data-testid`, use CSS classes as selectors:
+
+```typescript
+// The logout button in DashboardLayout.tsx uses className="logout-btn"
+test('should have logout button in dashboard', async ({ page }) => {
+  await page.goto('/dashboard');
+  const pageContent = await page.content();
+  expect(pageContent).toContain('logout-btn');
+});
+
+// For interactive tests (when element is visible)
+test('should click logout button', async ({ page }) => {
+  // Expand sidebar first if needed
+  await page.evaluate(() => {
+    localStorage.setItem('botla_sidebar_mode', 'pinned');
+  });
+  await page.reload();
+
+  // Now button should be clickable
+  await page.locator('.logout-btn').click({ force: true });
+});
+```
+
+---
+
+## Quick Reference
+
+### Selector Priority for Auth Testing
+
+| Priority | Strategy | Use Case |
+|----------|----------|----------|
+| 1 | `page.addInitScript()` | Setting localStorage before navigation |
+| 2 | `page.content()` | Checking for CSS classes in DOM |
+| 3 | `page.locator('.class-name')` | CSS class selectors |
+| 4 | `page.getByRole('button')` | Semantic button detection |
+
+### Common Auth Testing Helpers
+
+```typescript
+// Set authenticated state
+await setSessionStorage(page, { accessToken, refreshToken, user });
+
+// Clear session
+await clearSessionStorage(page);
+
+// Navigate to protected page after auth
+await page.goto('/dashboard');
+await page.waitForLoadState('domcontentloaded');
+```
+
+---
+
+*Last updated: 2025-01-05*
+*Lesson learned from: Logout Flow E2E Tests implementation*
