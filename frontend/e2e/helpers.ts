@@ -249,6 +249,96 @@ export async function setupAllMocks(page: Page, botId: string = 'bot-1') {
 }
 
 /**
+ * Sets up session-related API mocks for token refresh and session management tests.
+ * Includes mocks for:
+ * - Token refresh endpoint
+ * - Session status endpoint
+ * - User info endpoint
+ */
+export async function setupSessionMocks(page: Page) {
+  await page.route('**/api/v1/auth/refresh', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          access_token: 'mock-refreshed-token-' + Date.now(),
+          refresh_token: 'mock-refreshed-refresh-' + Date.now(),
+          expires_in: 3600,
+          token_type: 'Bearer',
+        }),
+      })
+    }
+  })
+
+  await page.route('**/api/v1/auth/session', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        active: true,
+        user: {
+          id: 'user-123',
+          email: 'test@example.com',
+          name: 'Test User',
+          plan: 'pro',
+        },
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+      }),
+    })
+  })
+
+  await page.route('**/api/v1/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+        plan: 'pro',
+      }),
+    })
+  })
+}
+
+/**
+ * Sets up session mocks with expired token handling.
+ * Used for testing token refresh flows.
+ */
+export async function setupSessionMocksWithExpiry(page: Page) {
+  await page.route('**/api/v1/auth/refresh', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          access_token: 'mock-refreshed-token-' + Date.now(),
+          expires_in: 3600,
+          token_type: 'Bearer',
+        }),
+      })
+    }
+  })
+
+  await page.route('**/api/v1/**', async (route) => {
+    const url = route.request().url()
+    if (url.includes('/api/v1/') && !url.includes('/auth/')) {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: 'TOKEN_EXPIRED',
+          message: 'Session has expired',
+          code: 'TOKEN_EXPIRED',
+          requiresRelogin: true,
+        }),
+      })
+    }
+  })
+}
+
+/**
  * Performs login via the login page.
  * If mocks are not set up, will attempt real login.
  */

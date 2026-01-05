@@ -53,6 +53,27 @@ export const TURKISH = {
 
   // Recent bots
   RECENT_BOTS: 'Son Botlarınız',
+
+  // Session Expired
+  SESSION_EXPIRED: 'Oturumunuz süresi doldu',
+  SESSION_EXPIRED_MESSAGE: 'Tekrar giriş yapmanız gerekiyor.',
+  RELOGIN: 'Tekrar Giriş Yap',
+  CANCEL: 'Vazgeç',
+}
+
+export const ENGLISH = {
+  // Auth
+  WELCOME: 'Welcome',
+  LOGIN: 'Login',
+  LOGOUT: 'Logout',
+  REGISTER: 'Register',
+  FORGOT_PASSWORD: 'Forgot password?',
+
+  // Session Expired
+  SESSION_EXPIRED: 'Your session has expired',
+  SESSION_EXPIRED_MESSAGE: 'Please login again to continue.',
+  RELOGIN: 'Login Again',
+  CANCEL: 'Cancel',
 }
 
 /**
@@ -109,6 +130,42 @@ export const TEST_IDS = {
   ERROR_MESSAGE: 'error-message',
   SUCCESS_MESSAGE: 'success-message',
   USER_MENU: 'user-menu',
+
+  // User Menu & Dropdown
+  USER_AVATAR: 'user-avatar',
+  USER_MENU_AVATAR: 'user-menu-avatar',
+  USER_MENU_DROPDOWN: 'user-menu-dropdown',
+  DROPDOWN_USER_MENU: 'dropdown-user-menu',
+
+  // Menu Items
+  MENU_ITEM_PROFILE: 'menu-item-profile',
+  MENU_ITEM_SETTINGS: 'menu-item-settings',
+  MENU_ITEM_HELP: 'menu-item-help',
+  MENU_ITEM_LOGOUT: 'menu-item-logout',
+
+  // Session Expired Modal
+  MODAL_SESSION_EXPIRED: 'modal-session-expired',
+  SESSION_EXPIRED_TITLE: 'session-expired-title',
+  SESSION_EXPIRED_MESSAGE: 'session-expired-message',
+  BTN_RELOGIN: 'btn-relogin',
+  BTN_SESSION_CANCEL: 'btn-session-cancel',
+
+  // Token Refresh Indicators
+  TOKEN_REFRESHING: 'token-refreshing',
+  TOKEN_REFRESH_SUCCESS: 'token-refresh-success',
+  TOKEN_REFRESH_ERROR: 'token-refresh-error',
+
+  // Session Status
+  SESSION_STATUS: 'session-status',
+  SESSION_EXPIRY_TIME: 'session-expiry-time',
+  SESSION_INFO_TOOLTIP: 'session-info-tooltip',
+
+  // Remember Me
+  REMEMBER_ME_CHECKBOX: 'remember-me-checkbox',
+  REMEMBER_ME_LABEL: 'remember-me-label',
+
+  // Dashboard Page
+  PAGE_DASHBOARD: 'page-dashboard',
 }
 
 /**
@@ -120,6 +177,7 @@ export const PAGE_URLS = {
   DASHBOARD: '/dashboard',
   CHATBOTS: '/dashboard/chatbots',
   CHATBOT_DETAIL_REGEX: /\/dashboard\/chatbots\/[a-zA-Z0-9_-]+$/,
+  LOGIN_REGEX: /\/login(\/)?$/,
 }
 
 /**
