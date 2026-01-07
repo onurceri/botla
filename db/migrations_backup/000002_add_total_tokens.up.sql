@@ -1,5 +1,0 @@
-BEGIN;
-
-ALTER TABLE analytics ADD COLUMN total_tokens_used INTEGER DEFAULT 0;
-
-COMMIT;

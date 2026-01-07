@@ -87,3 +87,7 @@ mem.prof
 
 # Tokenizer data (loaded from R2 in production)
 data/sentences/
+
+.sisyphus/
+
+conductor
