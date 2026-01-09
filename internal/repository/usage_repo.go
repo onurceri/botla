@@ -204,8 +204,12 @@ func (r *PostgresUsageRepo) GetMonthlyRefreshCount(ctx context.Context, userID s
 		WHERE user_id=$1 AND period_month=$2
 	`
 	var count int
-	if err := r.pool.QueryRowContext(ctx, query, userID, periodMonth).Scan(&count); err != nil {
-		return count, pkgerrors.Wrapf(err, "get monthly refresh count")
+	err := r.pool.QueryRowContext(ctx, query, userID, periodMonth).Scan(&count)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, pkgerrors.Wrapf(err, "get monthly refresh count")
 	}
 	return count, nil
 }
