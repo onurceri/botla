@@ -48,6 +48,7 @@ type Config struct {
 	SCRAPER_BROWSER_POOL_SIZE int
 	SCRAPER_DYNAMIC_IDLE_SECS int
 	SCRAPER_NAV_TIMEOUT_MS int
+	SCRAPER_BROWSER_PATH string
 
 	// RAG Configuration
 	RAG_TOPK               int
@@ -180,6 +181,13 @@ func LoadConfig() *Config {
 		SCRAPER_BROWSER_POOL_SIZE: parseIntEnv("SCRAPER_BROWSER_POOL_SIZE", 2),
 		SCRAPER_DYNAMIC_IDLE_SECS: parseIntEnv("SCRAPER_DYNAMIC_IDLE_SECS", 60),
 		SCRAPER_NAV_TIMEOUT_MS:    parseIntEnv("SCRAPER_NAV_TIMEOUT_MS", 10000),
+		SCRAPER_BROWSER_PATH: func() string {
+			v := os.Getenv("SCRAPER_BROWSER_PATH")
+			if v == "" {
+				return "/usr/bin/chromium"
+			}
+			return v
+		}(),
 		RAG_TOPK:               parseIntEnv("RAG_TOPK", 5),
 		RAG_MAX_CONTEXT_TOKENS: parseIntEnv("RAG_MAX_CONTEXT_TOKENS", 2000),
 		CHAT_TIMEOUT_MS:        parseIntEnv("CHAT_TIMEOUT_MS", 60000),

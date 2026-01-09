@@ -17,28 +17,30 @@ import (
 )
 
 type BrowserPool struct {
-	browsers []*rod.Browser
-	mu       sync.Mutex
-	idx      int
-	sem      chan struct{}
-	idleTTL  time.Duration
-	lastUse  time.Time
-	stop     chan struct{}
-	wg       sync.WaitGroup
+	browsers    []*rod.Browser
+	mu          sync.Mutex
+	idx         int
+	sem         chan struct{}
+	idleTTL     time.Duration
+	lastUse     time.Time
+	stop        chan struct{}
+	wg          sync.WaitGroup
+	browserPath string
 }
 
-func NewBrowserPool(size int, idleTTL time.Duration) (*BrowserPool, error) {
+func NewBrowserPool(size int, idleTTL time.Duration, browserPath string) (*BrowserPool, error) {
 	if size <= 0 {
 		size = 2
 	}
 	bp := &BrowserPool{
-		sem:     make(chan struct{}, size),
-		idleTTL: idleTTL,
-		stop:    make(chan struct{}),
-		lastUse: time.Now(),
+		sem:         make(chan struct{}, size),
+		idleTTL:     idleTTL,
+		stop:        make(chan struct{}),
+		lastUse:     time.Now(),
+		browserPath: browserPath,
 	}
 	for i := 0; i < size; i++ {
-		u := launcher.New().Headless(true).MustLaunch()
+		u := launcher.New().Bin(browserPath).Headless(true).MustLaunch()
 		b := rod.New().ControlURL(u).MustConnect()
 		bp.browsers = append(bp.browsers, b)
 	}
@@ -100,7 +102,7 @@ func (bp *BrowserPool) nextBrowser() *rod.Browser {
 	defer bp.mu.Unlock()
 	bp.lastUse = time.Now()
 	if len(bp.browsers) == 0 {
-		u := launcher.New().Headless(true).MustLaunch()
+		u := launcher.New().Bin(bp.browserPath).Headless(true).MustLaunch()
 		b := rod.New().ControlURL(u).MustConnect()
 		bp.browsers = append(bp.browsers, b)
 		bp.idx = 0
@@ -112,10 +114,11 @@ func (bp *BrowserPool) nextBrowser() *rod.Browser {
 }
 
 type DynamicConfig struct {
-	PoolSize   int
-	IdleTTL    time.Duration
-	NavTimeout time.Duration
-	Allowed    []string
+	PoolSize    int
+	IdleTTL     time.Duration
+	NavTimeout  time.Duration
+	Allowed     []string
+	BrowserPath string
 }
 
 // BrowserScraper handles dynamic web scraping using a browser pool.
@@ -125,7 +128,7 @@ type BrowserScraper struct {
 }
 
 func NewBrowserScraper(cfg DynamicConfig) (*BrowserScraper, error) {
-	pool, err := NewBrowserPool(cfg.PoolSize, cfg.IdleTTL)
+	pool, err := NewBrowserPool(cfg.PoolSize, cfg.IdleTTL, cfg.BrowserPath)
 	if err != nil {
 		return nil, err
 	}
