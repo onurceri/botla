@@ -135,12 +135,6 @@ const handleSessionExpired = () => {
     window.dispatchEvent(new CustomEvent('session-expired'))
   }
 
-  // Skip redirect only in E2E mode
-  const isE2E = import.meta.env.VITE_E2E === '1' || import.meta.env.VITE_E2E === 'true'
-  if (isE2E) {
-    return
-  }
-
   // Small delay to allow toast to show before redirect
   setTimeout(() => {
     redirectService.redirect()

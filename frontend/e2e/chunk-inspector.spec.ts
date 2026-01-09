@@ -30,7 +30,7 @@ test.describe('Chunk Inspector', () => {
     test('should register and login successfully', async ({ page }) => {
       // Registration
       const email = `test-${Date.now()}@example.com`
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
       await page.getByLabel('Ad Soyad').fill('Test User')
       await page.getByLabel('Email').fill(email)
       await page.getByLabel('Şifre').fill('password')
@@ -39,7 +39,7 @@ test.describe('Chunk Inspector', () => {
 
       // Handle onboarding redirect to login
       if (page.url().includes('onboarding')) {
-        await page.goto('/login')
+        await page.goto('http://localhost:5173/login')
       }
 
       // Login
@@ -52,8 +52,20 @@ test.describe('Chunk Inspector', () => {
 
   test.describe('Chatbot and Source Creation', () => {
     test('should create chatbot and add source', async ({ page }) => {
+      // Login first
+      await page.goto('http://localhost:5173/login')
+      await page.getByLabel('Email').fill('test@example.com')
+      await page.getByLabel('Şifre').fill('password')
+      await page.getByRole('button', { name: 'Giriş Yap' }).click()
+      await expect(page).toHaveURL(/.*dashboard|.*\//, { timeout: 10000 })
+
+      // Navigate to dashboard
+      await page.goto('/dashboard')
+      await page.waitForLoadState('domcontentloaded')
+
       // Create Bot
       const createBtn = page.getByRole('button', { name: /Yeni Chatbot|Yeni Oluştur/ }).first()
+      await createBtn.waitFor({ state: 'visible', timeout: 10000 })
       await createBtn.click()
       await page.getByPlaceholder('Örn: Müşteri Temsilcisi').fill('Test Bot')
       await page.getByRole('button', { name: 'Oluştur' }).click()
@@ -69,6 +81,17 @@ test.describe('Chunk Inspector', () => {
 
   test.describe('Chunk Inspection', () => {
     test('should inspect and search chunks', async ({ page }) => {
+      // Login first
+      await page.goto('http://localhost:5173/login')
+      await page.getByLabel('Email').fill('test@example.com')
+      await page.getByLabel('Şifre').fill('password')
+      await page.getByRole('button', { name: 'Giriş Yap' }).click()
+      await expect(page).toHaveURL(/.*dashboard|.*\//, { timeout: 10000 })
+
+      // Navigate to chatbot sources page
+      await page.goto('/dashboard/chatbots/bot-1/sources')
+      await page.waitForLoadState('domcontentloaded')
+
       // Navigate to sources
       await page.getByRole('link', { name: 'Kaynaklar' }).click()
 

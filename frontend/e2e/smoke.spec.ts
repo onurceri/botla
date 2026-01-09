@@ -110,7 +110,7 @@ test.describe('E2E Smoke', () => {
 
     // Registration
     const email = `e2e-${Date.now()}@example.com`
-    await page.goto('/register')
+    await page.goto('http://localhost:5173/register')
 
     // Fill registration form using data-testid
     await page.getByTestId(TEST_IDS.REGISTER_NAME_INPUT)
@@ -207,7 +207,7 @@ test.describe('E2E Smoke', () => {
         page.locator('.cbw-msg.assistant').filter({ hasText: /Merhaba|hata|bilgi/i }),
       ).toBeVisible({ timeout: 10000 })
       // Navigate to Dashboard and confirm the bot appears in "Son Botlarınız"
-      await page.goto('/')
+      await page.goto('http://localhost:5173/')
 
       // Check if the bot appears in "Son Botlarınız" list using data-testid
       const recentBotsCard = page.getByTestId(TEST_IDS.CHATBOTS_LIST)

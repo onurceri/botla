@@ -1,4 +1,5 @@
 import { Page } from '@playwright/test'
+import { COOKIE_NAMES } from '../utils/cookie-auth'
 
 /**
  * Token refresh success response interface
@@ -100,6 +101,12 @@ export async function mockSuccessfulTokenRefresh(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: {
+          'Set-Cookie': [
+            `${COOKIE_NAMES.ACCESS_TOKEN}=${accessToken}; Path=/; HttpOnly; SameSite=Strict`,
+            `${COOKIE_NAMES.REFRESH_TOKEN}=${refreshToken}; Path=/; HttpOnly; SameSite=Strict`,
+          ].join(', '),
+        },
         body: JSON.stringify({
           access_token: accessToken,
           refresh_token: refreshToken,
@@ -125,6 +132,9 @@ export async function mockTokenRefreshAccessTokenOnly(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: {
+          'Set-Cookie': `${COOKIE_NAMES.ACCESS_TOKEN}=${accessToken}; Path=/; HttpOnly; SameSite=Strict`,
+        },
         body: JSON.stringify({
           access_token: accessToken,
           expires_in: 3600,
@@ -382,12 +392,21 @@ export async function mockConcurrentRefreshRequests(page: Page): Promise<void> {
     if (route.request().method() === 'POST') {
       requestCount++
 
+      const accessToken = `mock-refreshed-token-${requestCount}-${Date.now()}`
+      const refreshToken = `mock-refreshed-refresh-${requestCount}-${Date.now()}`
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: {
+          'Set-Cookie': [
+            `${COOKIE_NAMES.ACCESS_TOKEN}=${accessToken}; Path=/; HttpOnly; SameSite=Strict`,
+            `${COOKIE_NAMES.REFRESH_TOKEN}=${refreshToken}; Path=/; HttpOnly; SameSite=Strict`,
+          ].join(', '),
+        },
         body: JSON.stringify({
-          access_token: `mock-refreshed-token-${requestCount}-${Date.now()}`,
-          refresh_token: `mock-refreshed-refresh-${requestCount}-${Date.now()}`,
+          access_token: accessToken,
+          refresh_token: refreshToken,
           expires_in: 3600,
           token_type: 'Bearer',
         }),
@@ -408,12 +427,21 @@ export async function mockDelayedTokenRefresh(
       // Delay the response
       await new Promise(resolve => setTimeout(resolve, delayMs))
 
+      const accessToken = 'mock-delayed-refresh-token-' + Date.now()
+      const refreshToken = 'mock-delayed-refresh-refresh-' + Date.now()
+      
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: {
+          'Set-Cookie': [
+            `${COOKIE_NAMES.ACCESS_TOKEN}=${accessToken}; Path=/; HttpOnly; SameSite=Strict`,
+            `${COOKIE_NAMES.REFRESH_TOKEN}=${refreshToken}; Path=/; HttpOnly; SameSite=Strict`,
+          ].join(', '),
+        },
         body: JSON.stringify({
-          access_token: 'mock-delayed-refresh-token-' + Date.now(),
-          refresh_token: 'mock-delayed-refresh-refresh-' + Date.now(),
+          access_token: accessToken,
+          refresh_token: refreshToken,
           expires_in: 3600,
           token_type: 'Bearer',
         }),
@@ -429,16 +457,27 @@ export async function mockUserInfo(
   page: Page,
   userData?: { id?: string; email?: string; name?: string; plan?: string }
 ): Promise<void> {
+  const response = {
+    id: userData?.id || 'user-123',
+    email: userData?.email || 'test@example.com',
+    name: userData?.name || 'Test User',
+    plan: userData?.plan || 'pro',
+  }
+
+  // Mock both endpoints to be safe
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        id: userData?.id || 'user-123',
-        email: userData?.email || 'test@example.com',
-        name: userData?.name || 'Test User',
-        plan: userData?.plan || 'pro',
-      }),
+      body: JSON.stringify(response),
+    })
+  })
+
+  await page.route('**/api/v1/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response),
     })
   })
 }
@@ -447,15 +486,25 @@ export async function mockUserInfo(
  * Mock user info endpoint with 401
  */
 export async function mockUserInfoUnauthorized(page: Page): Promise<void> {
+  const response = {
+    error: 'UNAUTHORIZED',
+    message: 'Session expired',
+    code: 'TOKEN_EXPIRED',
+  }
+
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({
       status: 401,
       contentType: 'application/json',
-      body: JSON.stringify({
-        error: 'UNAUTHORIZED',
-        message: 'Session expired',
-        code: 'TOKEN_EXPIRED',
-      }),
+      body: JSON.stringify(response),
+    })
+  })
+
+  await page.route('**/api/v1/me', async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify(response),
     })
   })
 }

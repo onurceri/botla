@@ -1,4 +1,5 @@
 import { Page } from '@playwright/test'
+import { setAuthCookies, clearAuthCookies, COOKIE_NAMES } from './cookie-auth'
 
 /**
  * JWT Token structure for testing purposes
@@ -194,18 +195,31 @@ export async function setSessionStorage(
   page: Page,
   tokens: SessionTokens
 ): Promise<void> {
-  await page.addInitScript(
-    ({ accessToken, refreshToken, user }) => {
-      localStorage.setItem('botla_token', accessToken)
-      localStorage.setItem('botla_refresh_token', refreshToken)
+  await setAuthCookies(page.context(), {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    user: tokens.user,
+  })
+  
+  // Handle user data storage in localStorage
+  // If page is about:blank, we must use addInitScript for the next navigation
+  // If page is already loaded, we use evaluate
+  if (page.url() === 'about:blank') {
+    await page.addInitScript((user) => {
       localStorage.setItem('botla_user', JSON.stringify(user))
-    },
-    {
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      user: tokens.user,
+    }, tokens.user)
+  } else {
+    try {
+      await page.evaluate((user) => {
+        localStorage.setItem('botla_user', JSON.stringify(user))
+      }, tokens.user)
+    } catch {
+      // Fallback if evaluate fails (e.g. context destroyed or not ready)
+      await page.addInitScript((user) => {
+        localStorage.setItem('botla_user', JSON.stringify(user))
+      }, tokens.user)
     }
-  )
+  }
 }
 
 /**
@@ -288,13 +302,26 @@ export async function setExpiringSession(
  * Clear all session-related storage
  */
 export async function clearSessionStorage(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    localStorage.removeItem('botla_token')
-    localStorage.removeItem('botla_refresh_token')
+  await clearStorage(page)
+}
+
+async function clearStorage(page: Page): Promise<void> {
+  await clearAuthCookies(page.context())
+  
+  const clearLocalStorage = () => {
     localStorage.removeItem('botla_user')
     localStorage.removeItem('remember_me')
+    // Legacy cleanup
+    localStorage.removeItem('botla_token')
+    localStorage.removeItem('botla_refresh_token')
     sessionStorage.clear()
-  })
+  }
+
+  try {
+    await page.evaluate(clearLocalStorage)
+  } catch {
+    await page.addInitScript(clearLocalStorage)
+  }
 }
 
 /**
@@ -311,14 +338,16 @@ export async function clearAuthTokens(page: Page): Promise<void> {
  * Get access token from localStorage
  */
 export async function getAccessToken(page: Page): Promise<string | null> {
-  return await page.evaluate(() => localStorage.getItem('botla_token'))
+  const cookies = await page.context().cookies()
+  return cookies.find(c => c.name === COOKIE_NAMES.ACCESS_TOKEN)?.value || null
 }
 
 /**
  * Get refresh token from localStorage
  */
 export async function getRefreshToken(page: Page): Promise<string | null> {
-  return await page.evaluate(() => localStorage.getItem('botla_refresh_token'))
+  const cookies = await page.context().cookies()
+  return cookies.find(c => c.name === COOKIE_NAMES.REFRESH_TOKEN)?.value || null
 }
 
 /**

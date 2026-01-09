@@ -205,10 +205,48 @@ Using Recharts for data visualization with responsive containers.
 
 ## Security Considerations
 
-- Auth tokens stored in memory/localStorage
-- Protected routes via `PrivateRoute` component
-- API calls include auth headers automatically
-- XSS prevention via React's built-in escaping
+### Authentication Architecture (Cookie-Based)
+
+The application uses **HttpOnly cookie-based authentication**:
+
+1. **Backend** sets `botla_token` and `botla_refresh_token` as HttpOnly, Secure cookies
+2. **Frontend** axios client uses `withCredentials: true`
+3. **Auth State** is determined by calling `/api/v1/me` via `AuthContext`
+
+This provides XSS protection because:
+- Tokens cannot be accessed by JavaScript (HttpOnly)
+- Server is the single source of truth for auth state
+- No tokens stored in localStorage (legacy keys should be ignored)
+
+### Key Components
+
+- `src/contexts/AuthContext.tsx` - Provides `useAuth()` hook
+- `src/App.tsx` - `PrivateRoute` uses `useAuth()` for protection
+- `src/api/client.ts` - Axios with `withCredentials: true`
+
+### Protected Routes
+
+```tsx
+// PrivateRoute shows loading state while checking auth
+function PrivateRoute({ children }) {
+  const { isAuthenticated, isLoading } = useAuth()
+  
+  if (isLoading) return <LoadingSpinner />
+  if (!isAuthenticated) return <Navigate to="/login" />
+  
+  return children
+}
+```
+
+### localStorage Usage (Non-Auth)
+
+| Key | Purpose |
+|-----|---------|
+| `botla_user` | Cached user profile (UI display) |
+| `botla_last_org_id` | Last selected organization |
+| `botla_sidebar_mode` | Sidebar state preference |
+
+**Note**: `botla_token` in localStorage is LEGACY. Auth now uses HttpOnly cookies only.
 
 ## PR Instructions
 
@@ -217,3 +255,120 @@ Using Recharts for data visualization with responsive containers.
 - No TypeScript errors
 - No ESLint warnings
 - Follow existing code patterns and naming conventions
+
+---
+
+## E2E Testing
+
+> ⚠️ **CRITICAL**: The application uses **HttpOnly cookie-based authentication**, NOT localStorage. See details below.
+
+### Quick Start
+
+```bash
+# Run all E2E tests
+npm run e2e
+
+# Run in headed mode (visible browser)
+npm run e2e:headed
+
+# Run specific test file
+npm run e2e -- auth.spec.ts
+
+# Run single test by name
+npm run e2e -- -g "should login successfully"
+```
+
+### Test Structure
+
+```
+frontend/e2e/
+├── TESTING_STANDARDS.md      # Complete testing standards (READ THIS FIRST)
+├── learnings.md              # Lessons learned & quick reference
+├── utils/
+│   └── cookie-auth.ts        # ⭐ PRIMARY AUTH UTILITY - Use this!
+├── pages/                    # Page Object Models
+├── mocks/                    # API mock handlers
+├── fixtures/                 # Playwright fixtures
+└── *.spec.ts                 # Test files
+```
+
+### Authentication Setup (IMPORTANT)
+
+The Botla application uses **HttpOnly cookies** for authentication:
+
+- Backend sets `botla_token` and `botla_refresh_token` as HttpOnly cookies
+- Frontend uses `axios` with `withCredentials: true`
+- Cookies **cannot be accessed via JavaScript** (security feature)
+
+**For authenticated tests, use the cookie-auth utility:**
+
+```typescript
+import { setupAuthenticatedSession } from './utils/cookie-auth'
+
+test.describe('Dashboard Tests', () => {
+  test.beforeEach(async ({ page, context }) => {
+    // Sets cookies AND mocks all auth-related endpoints
+    await setupAuthenticatedSession(page, context)
+  })
+
+  test('should display dashboard', async ({ page }) => {
+    await page.goto('/dashboard')
+    await expect(page.getByTestId('dashboard')).toBeVisible()
+  })
+})
+```
+
+**For login flow tests:**
+
+```typescript
+import { setupLoginMock, setupAuthenticatedMocks } from './utils/cookie-auth'
+
+test('should login successfully', async ({ page }) => {
+  await setupLoginMock(page)
+  await setupAuthenticatedMocks(page)
+
+  await page.goto('/login')
+  await page.getByTestId('login-page-email-input').fill('test@example.com')
+  await page.getByTestId('login-page-password-input').fill('SecurePass123!')
+  await page.getByTestId('login-page-submit-button').click()
+
+  await expect(page).toHaveURL(/\/dashboard/)
+})
+```
+
+### LocalStorage Keys (Non-Auth)
+
+While auth uses cookies, these localStorage keys exist for UI purposes:
+
+- `botla_user` - User profile JSON (for display)
+- `botla_last_org_id` - Last selected organization
+- `botla_last_ws_id_${orgId}` - Workspace per org
+- `botla_sidebar_mode` - 'pinned' | 'hover'
+
+### Component Selectors
+
+Dashboard components use CSS classes instead of `data-testid`:
+
+- Sidebar: `.sidebar-glass`, `.sidebar-nav-item`, `.logo-glow`
+- User: `.avatar-ring`, `.user-profile-card`, `.logout-btn`
+- Organization: `[data-testid="org-switcher"]`
+
+Login/Register pages use `data-testid` - see `test-constants.ts` for IDs.
+
+### Responsive Testing
+
+```typescript
+// Set viewport for mobile tests
+test.use({ viewport: devices['iPhone 12'].viewport })
+
+// Or dynamically
+await page.setViewportSize({ width: 375, height: 667 })
+```
+
+### Key Files to Read
+
+1. `e2e/TESTING_STANDARDS.md` - Complete testing guide
+2. `e2e/learnings.md` - Important discoveries and gotchas
+3. `e2e/utils/cookie-auth.ts` - Auth utilities (use this for tests)
+4. `e2e/test-constants.ts` - Turkish UI text constants and test IDs
+

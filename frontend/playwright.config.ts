@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+console.log('Playwright baseURL:', BASE_URL)
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
@@ -19,21 +22,9 @@ export default defineConfig({
         },
       },
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:5173',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    storageState: {
-      cookies: [],
-      origins: [
-        {
-          origin: 'http://localhost:5173',
-          localStorage: [
-            { name: 'botla_token', value: 'tok' },
-            { name: 'botla_refresh_token', value: 'ref' },
-          ],
-        },
-      ],
-    },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 })

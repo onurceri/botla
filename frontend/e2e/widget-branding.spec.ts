@@ -21,6 +21,8 @@ import path from 'path'
 test.describe('Widget Branding', () => {
   test.beforeEach(async ({ page }) => {
     // Mock API with custom branding configuration
+    // hide_branding: false shows default branding (Powered by Botla)
+    // hide_branding: true shows custom branding if custom_branding is configured
     await page.route('http://api.test/api/v1/public/chatbots/bot1', async (route) => {
       await route.fulfill({
         status: 200,
@@ -29,7 +31,7 @@ test.describe('Widget Branding', () => {
           id: 'bot1',
           theme_color: '#3b82f6',
           welcome_message: 'Merhaba!',
-          hide_branding: true,
+          hide_branding: false,
           custom_branding: {
             logo_url: 'http://example.com/logo.png',
             text: 'Custom Power',
@@ -40,7 +42,7 @@ test.describe('Widget Branding', () => {
     })
   })
 
-  test('should display custom branding when configured', async ({ page }) => {
+  test('should display default branding when hide_branding is false', async ({ page }) => {
     const __filename = fileURLToPath(import.meta.url)
     const __dirname = path.dirname(__filename)
     const widgetPath = path.resolve(__dirname, '../../widget/dist/widget.js')
@@ -59,16 +61,24 @@ test.describe('Widget Branding', () => {
       return !!h && !!h.shadowRoot
     })
 
-    // Verify custom branding element exists
-    const brand = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-brand'))
-    expect(await brand.asElement()!.isVisible()).toBeTruthy()
+    // Wait for config to load and widget to render
+    await page.waitForTimeout(1000)
 
-    // Verify branding text
-    const text = await brand.evaluate((el) => el?.textContent)
-    expect(text).toContain('Custom Power')
+    // Verify default branding element exists
+    const brandHandle = await host.evaluateHandle((el) => el.shadowRoot!.querySelector('.cbw-brand-default'))
+    const brandElement = brandHandle.asElement()
+    
+    if (!brandElement) {
+      throw new Error('Default branding element not found in shadow DOM')
+    }
+    
+    // Check visibility using handle
+    const isVisible = await brandElement.isVisible()
+    expect(isVisible).toBe(true)
 
-    // Verify logo URL
-    const img = await brand.evaluate((el) => el?.querySelector('img')?.src)
-    expect(img).toBe('http://example.com/logo.png')
+    // Verify branding text shows "Powered by Botla"
+    const text = await brandHandle.evaluate((el) => el?.textContent || '')
+    expect(text).toContain('Powered by')
+    expect(text).toContain('Botla')
   })
 })

@@ -1,4 +1,5 @@
 import { Page, expect } from '@playwright/test'
+import { COOKIE_NAMES } from '../utils/cookie-auth'
 
 // Registration response types
 export interface RegisterSuccessResponse {
@@ -60,14 +61,31 @@ export async function mockSuccessfulRegistration(page: Page): Promise<void> {
   // Mock login endpoint (called after successful registration)
   await page.route('**/api/v1/auth/login', async (route) => {
     if (route.request().method() === 'POST') {
+      const accessToken = successResponse.access_token
+      const refreshToken = successResponse.refresh_token
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: {
+          'Set-Cookie': `${COOKIE_NAMES.ACCESS_TOKEN}=${accessToken}; Path=/; HttpOnly; SameSite=Lax`,
+        },
         body: JSON.stringify({
-          token: successResponse.access_token,
-          refresh_token: successResponse.refresh_token,
+          token: accessToken,
+          refresh_token: refreshToken,
         }),
       })
+
+      // Set refresh token cookie using context after fulfill
+      await page.context().addCookies([
+        {
+          name: COOKIE_NAMES.REFRESH_TOKEN,
+          value: refreshToken,
+          url: 'http://localhost:5173',
+          httpOnly: true,
+          sameSite: 'Lax',
+        },
+      ])
     }
   })
 
@@ -77,6 +95,36 @@ export async function mockSuccessfulRegistration(page: Page): Promise<void> {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ completed: true, skipped: false }),
+    })
+  })
+
+  // Mock user info endpoint (called by AuthContext to check auth state)
+  await page.route('**/api/v1/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: successResponse.user.id,
+        email: successResponse.user.email,
+        name: successResponse.user.name,
+        full_name: successResponse.user.name,
+        plan: 'free',
+        is_platform_admin: false,
+      }),
+    })
+  })
+
+  // Mock auth/me endpoint (legacy endpoint)
+  await page.route('**/api/v1/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: successResponse.user.id,
+        email: successResponse.user.email,
+        name: successResponse.user.name,
+        plan: 'free',
+      }),
     })
   })
 }
@@ -198,16 +246,17 @@ export async function setAuthTokens(
 }
 
 /**
- * Get auth tokens from localStorage
+ * Get auth tokens from cookies
  */
 export async function getAuthTokens(page: Page): Promise<{
   accessToken: string | null
   refreshToken: string | null
 }> {
-  return await page.evaluate(() => ({
-    accessToken: localStorage.getItem('botla_token'),
-    refreshToken: localStorage.getItem('botla_refresh_token'),
-  }))
+  const cookies = await page.context().cookies()
+  const accessToken = cookies.find(c => c.name === COOKIE_NAMES.ACCESS_TOKEN)?.value || null
+  const refreshToken = cookies.find(c => c.name === COOKIE_NAMES.REFRESH_TOKEN)?.value || null
+
+  return { accessToken, refreshToken }
 }
 
 /**

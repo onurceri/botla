@@ -214,7 +214,7 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-testid="page-dashboard">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -420,7 +420,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Recent Chatbots */}
-        <div className="lg:col-span-3 glass-card rounded-xl p-6">
+        <div className="lg:col-span-3 glass-card rounded-xl p-6" data-testid="chatbots-page-list">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-lg">Son Chatbotlar</h3>
             <Link to="/dashboard/chatbots" className="text-xs text-primary hover:underline">
@@ -435,6 +435,7 @@ const DashboardPage = () => {
                   key={bot.id}
                   to={`/dashboard/chatbots/${bot.id}`}
                   className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group border border-border/50"
+                  data-testid="chatbot-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary/10 rounded-full text-primary group-hover:scale-110 transition-transform">
