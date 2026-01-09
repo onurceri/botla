@@ -199,10 +199,11 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 		RateLimitPerSec: 2,
 	}
 	sdConfig := scraper.DynamicConfig{
-		PoolSize:   cfg.SCRAPER_BROWSER_POOL_SIZE,
-		IdleTTL:    time.Duration(cfg.SCRAPER_DYNAMIC_IDLE_SECS) * time.Second,
-		NavTimeout: time.Duration(cfg.SCRAPER_NAV_TIMEOUT_MS) * time.Millisecond,
-		Allowed:    strings.Split(cfg.SCRAPER_ALLOWED_DOMAINS, ","),
+		PoolSize:    cfg.SCRAPER_BROWSER_POOL_SIZE,
+		IdleTTL:     time.Duration(cfg.SCRAPER_DYNAMIC_IDLE_SECS) * time.Second,
+		NavTimeout:  time.Duration(cfg.SCRAPER_NAV_TIMEOUT_MS) * time.Millisecond,
+		Allowed:     strings.Split(cfg.SCRAPER_ALLOWED_DOMAINS, ","),
+		BrowserPath: cfg.SCRAPER_BROWSER_PATH,
 	}
 	bScraper, err := scraper.NewBrowserScraper(sdConfig)
 	if err != nil {
