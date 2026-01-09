@@ -28,7 +28,7 @@ test.describe('Registration Page', () => {
 
   test.describe('Page Load', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
     })
 
     test('should load register page successfully', async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe('Registration Page', () => {
 
   test.describe('Form Fields', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
     })
 
     test('should fill name input correctly', async ({ page }) => {
@@ -167,7 +167,7 @@ test.describe('Registration Page', () => {
 
   test.describe('Form Submission Validation', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
       await clearAuthStorage(page)
     })
 
@@ -226,13 +226,13 @@ test.describe('Registration Page', () => {
 
   test.describe('Successful Registration', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      // Set up mocks BEFORE navigation to ensure AuthContext initializes correctly
+      await mockSuccessfulRegistration(page)
+      await page.goto('http://localhost:5173/register')
       await clearAuthStorage(page)
     })
 
     test('should register successfully with valid data', async ({ page }) => {
-      await mockSuccessfulRegistration(page)
-
       await page.getByTestId(TEST_IDS.REGISTER_NAME_INPUT).fill('Test User')
       await page.getByTestId(TEST_IDS.REGISTER_EMAIL_INPUT).fill('test@example.com')
       await page.getByTestId(TEST_IDS.REGISTER_PASSWORD_INPUT).fill('SecurePass123!')
@@ -270,7 +270,7 @@ test.describe('Registration Page', () => {
       await clickPromise
     })
 
-    test('should store tokens in localStorage after registration', async ({ page }) => {
+    test('should have auth cookies after registration', async ({ page }) => {
       await mockSuccessfulRegistration(page)
 
       await page.getByTestId(TEST_IDS.REGISTER_NAME_INPUT).fill('Test User')
@@ -282,7 +282,7 @@ test.describe('Registration Page', () => {
       // Wait for navigation
       await expect(page).toHaveURL(/\/(dashboard|onboarding)/, { timeout: 15000 })
 
-      // Verify tokens are stored
+      // Verify tokens are stored in cookies
       const tokens = await getAuthTokens(page)
       expect(tokens.accessToken).toBeTruthy()
       expect(tokens.refreshToken).toBeTruthy()
@@ -314,7 +314,7 @@ test.describe('Registration Page', () => {
 
   test.describe('Error Scenarios', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
       await clearAuthStorage(page)
     })
 
@@ -389,7 +389,7 @@ test.describe('Registration Page', () => {
 
   test.describe('Navigation', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
     })
 
     test('should navigate to login page when login link is clicked', async ({ page }) => {
@@ -410,7 +410,7 @@ test.describe('Registration Page', () => {
     })
 
     test('should have register page accessible directly', async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
 
       await expect(page.getByTestId(TEST_IDS.REGISTER_PAGE)).toBeVisible()
     })
@@ -422,7 +422,7 @@ test.describe('Registration Page', () => {
 
   test.describe('Focus States', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
     })
 
     test('should focus name input when clicked', async ({ page }) => {
@@ -450,7 +450,9 @@ test.describe('Registration Page', () => {
 
   test.describe('Keyboard Navigation', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      // Set up mocks BEFORE navigation to ensure AuthContext initializes correctly
+      await mockSuccessfulRegistration(page)
+      await page.goto('http://localhost:5173/register')
     })
 
     test('should be able to tab through all form fields', async ({ page }) => {
@@ -469,8 +471,6 @@ test.describe('Registration Page', () => {
     })
 
     test('should submit form when Enter is pressed on submit button', async ({ page }) => {
-      await mockSuccessfulRegistration(page)
-
       // Fill in all required fields
       await page.getByTestId(TEST_IDS.REGISTER_NAME_INPUT).fill('Test User')
       await page.getByTestId(TEST_IDS.REGISTER_EMAIL_INPUT).fill('test@example.com')
@@ -491,7 +491,7 @@ test.describe('Registration Page', () => {
 
   test.describe('Hover States', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/register')
+      await page.goto('http://localhost:5173/register')
     })
 
     test('should change submit button appearance on hover', async ({ page }) => {

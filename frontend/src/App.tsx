@@ -15,6 +15,7 @@ import { OrganizationProvider } from '@/features/organization/context/Organizati
 import { OrganizationSettingsPage } from '@/features/organization/pages/OrganizationSettingsPage'
 import { WorkspaceSettingsPage } from '@/features/organization/pages/WorkspaceSettingsPage'
 import LandingPage from '@/pages/LandingPage'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 
 // Dashboard 7-tab structure
 import SettingsTab from '@/features/chatbot/pages/tabs/SettingsTab'
@@ -41,70 +42,48 @@ import {
   AdminPrivacyPage,
 } from '@/pages/admin'
 
-// Helper to validate stored tokens - checks JWT format and expiry
-export const isValidToken = (token: string | null): boolean => {
-  // Basic null/empty checks
-  if (token === null || token === 'undefined' || token === 'null' || token.length === 0) {
-    return false
+/**
+ * PrivateRoute - Protects routes that require authentication
+ * 
+ * Uses API-based auth check via AuthContext (not localStorage).
+ * The server is the single source of truth for authentication state.
+ * 
+ * HttpOnly cookies are used for actual API authentication, but the
+ * client-side auth state is determined by a successful /api/v1/me call.
+ */
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  // Show loading spinner while checking auth status
+  // This prevents flash of login page for authenticated users
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 animate-spin" />
+          <span className="text-slate-400">Yükleniyor...</span>
+        </div>
+      </div>
+    )
   }
 
-  // JWT format check: must have exactly 3 parts separated by dots
-  const parts = token.split('.')
-  if (parts.length !== 3) {
-    return false
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
   }
 
-  // Each part must be non-empty and valid base64url
-  const base64urlRegex = /^[A-Za-z0-9_-]+$/
-  for (const part of parts) {
-    if (part.length === 0 || !base64urlRegex.test(part)) {
-      return false
-    }
-  }
-
-  // Optional: Check expiry from payload
-  try {
-    // Decode the payload (second part) - replace base64url chars with base64
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-    const decoded = JSON.parse(atob(payload))
-    
-    // If exp claim exists, check if token is expired
-    if (decoded.exp && typeof decoded.exp === 'number') {
-      const now = Math.floor(Date.now() / 1000)
-      if (decoded.exp < now) {
-        return false
-      }
-    }
-  } catch {
-    // If decoding fails, the token structure is invalid
-    return false
-  }
-
-  return true
-}
-
-const isAuthenticated = () => {
-  // In E2E mode, bypass auth gating for visual tests
-  // VITE_E2E is set in Playwright webServer env
-  if (import.meta.env.VITE_E2E) return true
-  const token = typeof window !== 'undefined' ? window.localStorage.getItem('botla_token') : null
-  return isValidToken(token)
-}
-
-const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
-  return isAuthenticated() ? <>{children}</> : <Navigate to="/login" />
+  return <>{children}</>
 }
 
 // Component to handle session expiry notifications
 function SessionExpiryHandler() {
   const { toast } = useToast()
-  
+
   // Use a ref to always have the latest toast function without causing effect re-runs
   const toastRef = useRef(toast)
   useEffect(() => {
     toastRef.current = toast
   }, [toast])
-  
+
   // Stable event handler using useCallback with no dependencies
   const handleSessionExpired = useCallback(() => {
     toastRef.current('Oturumunuz sona erdi. Lütfen tekrar giriş yapın.', 'error')
@@ -119,88 +98,108 @@ function SessionExpiryHandler() {
   return null
 }
 
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/onboarding"
+        element={
+          <PrivateRoute>
+            <OrganizationProvider>
+              <OnboardingPage />
+            </OrganizationProvider>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Protected Routes */}
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <OrganizationProvider>
+              <DashboardLayout />
+            </OrganizationProvider>
+          </PrivateRoute>
+        }
+      >
+        <Route index element={<DashboardPage />} />
+        <Route path="chatbots" element={<ChatbotsPage />} />
+
+        <Route path="chatbots/:id" element={<ChatbotDetailPage />}>
+          <Route index element={<Navigate to="settings" replace />} />
+          <Route path="settings" element={<SettingsTab />} />
+          <Route path="security" element={<SecurityTab />} />
+          <Route path="sources" element={<SourcesTab />} />
+          <Route path="actions" element={<ActionsTab />} />
+          <Route path="playground" element={<PlaygroundTab />} />
+          <Route path="deploy" element={<DeployTab />} />
+          <Route path="insights" element={<InsightsTab />} />
+        </Route>
+
+        <Route
+          path="settings"
+          element={<Navigate to="/dashboard/settings/profile" replace />}
+        />
+        <Route path="settings/profile" element={<ProfilePage />} />
+        <Route path="settings/organization" element={<OrganizationSettingsPage />} />
+        <Route path="settings/workspace" element={<WorkspaceSettingsPage />} />
+        <Route path="settings/plan" element={<PlanPage />} />
+        <Route path="settings/privacy" element={<PrivacySettingsPage />} />
+      </Route>
+
+      {/* Admin Routes - Protected by AdminRoute */}
+      <Route
+        path="/admin"
+        element={
+          <PrivateRoute>
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          </PrivateRoute>
+        }
+      >
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="organizations" element={<AdminOrganizationsPage />} />
+        <Route path="chatbots" element={<AdminChatbotsPage />} />
+        <Route path="sources" element={<AdminSourcesPage />} />
+        <Route path="system" element={<AdminSystemPage />} />
+        <Route path="queues" element={<AdminQueuesPage />} />
+        <Route path="errors" element={<AdminErrorsPage />} />
+        <Route path="audit" element={<AdminAuditPage />} />
+        <Route path="privacy" element={<AdminPrivacyPage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
+/**
+ * Main App Component
+ * 
+ * Authentication Architecture:
+ * - Backend: Sets HttpOnly cookies (botla_token, botla_refresh_token)
+ * - Frontend API: Uses axios with withCredentials: true
+ * - Auth State: Determined by /api/v1/me API call in AuthContext
+ * 
+ * This is the secure best practice for cookie-based authentication:
+ * - Tokens cannot be accessed by JavaScript (XSS protection)
+ * - Server is the single source of truth for auth state
+ */
 function App() {
   return (
     <ToastProvider>
-      <SessionExpiryHandler />
       <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route
-            path="/onboarding"
-            element={
-              <PrivateRoute>
-                <OrganizationProvider>
-                  <OnboardingPage />
-                </OrganizationProvider>
-              </PrivateRoute>
-            }
-          />
-
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <OrganizationProvider>
-                  <DashboardLayout />
-                </OrganizationProvider>
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-            <Route path="chatbots" element={<ChatbotsPage />} />
-
-            <Route path="chatbots/:id" element={<ChatbotDetailPage />}>
-              <Route index element={<Navigate to="settings" replace />} />
-              <Route path="settings" element={<SettingsTab />} />
-              <Route path="security" element={<SecurityTab />} />
-              <Route path="sources" element={<SourcesTab />} />
-              <Route path="actions" element={<ActionsTab />} />
-              <Route path="playground" element={<PlaygroundTab />} />
-              <Route path="deploy" element={<DeployTab />} />
-              <Route path="insights" element={<InsightsTab />} />
-            </Route>
-
-            <Route
-              path="settings"
-              element={<Navigate to="/dashboard/settings/profile" replace />}
-            />
-            <Route path="settings/profile" element={<ProfilePage />} />
-            <Route path="settings/organization" element={<OrganizationSettingsPage />} />
-            <Route path="settings/workspace" element={<WorkspaceSettingsPage />} />
-            <Route path="settings/plan" element={<PlanPage />} />
-            <Route path="settings/privacy" element={<PrivacySettingsPage />} />
-          </Route>
-
-          {/* Admin Routes - Protected by AdminRoute */}
-          <Route
-            path="/admin"
-            element={
-              <PrivateRoute>
-                <AdminRoute>
-                  <AdminLayout />
-                </AdminRoute>
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<AdminDashboardPage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="organizations" element={<AdminOrganizationsPage />} />
-            <Route path="chatbots" element={<AdminChatbotsPage />} />
-            <Route path="sources" element={<AdminSourcesPage />} />
-            <Route path="system" element={<AdminSystemPage />} />
-            <Route path="queues" element={<AdminQueuesPage />} />
-            <Route path="errors" element={<AdminErrorsPage />} />
-            <Route path="audit" element={<AdminAuditPage />} />
-            <Route path="privacy" element={<AdminPrivacyPage />} />
-          </Route>
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AuthProvider>
+          <SessionExpiryHandler />
+          <AppRoutes />
+        </AuthProvider>
       </Router>
     </ToastProvider>
   )

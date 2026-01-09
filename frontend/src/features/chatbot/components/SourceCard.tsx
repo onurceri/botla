@@ -77,7 +77,7 @@ const getSourceTypeLabel = (type: string) => {
     case 'text':
       return 'Metin'
     default:
-      return type.toUpperCase()
+      return type?.toUpperCase() || 'Diğer'
   }
 }
 

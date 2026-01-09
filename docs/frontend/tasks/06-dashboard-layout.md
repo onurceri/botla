@@ -174,96 +174,96 @@ Breadcrumb Flow (on /dashboard/chatbots/chatbot-id/settings)
 
 ### Phase 1: Setup and Page Objects
 
-- [ ] Create `frontend/e2e/pages/sidebar.page.ts`:
-  - Sidebar container locator
-  - Navigation item locators
-  - Logo locator
-  - Toggle button locator
-  - Collapse/expand methods
-- [ ] Create `frontend/e2e/pages/org-switcher.page.ts`:
-  - Organization switcher locator
-  - Dropdown list locator
-  - Organization item locators
-  - Selection methods
-- [ ] Create `frontend/e2e/pages/breadcrumb.page.ts`:
-  - Breadcrumb container locator
-  - Breadcrumb item locators
-  - Navigation methods
-  - Tooltip handling
+- [x] Create `frontend/e2e/pages/sidebar.page.ts`:
+  - [x] Sidebar container locator
+  - [x] Navigation item locators
+  - [x] Logo locator
+  - [x] Toggle button locator
+  - [x] Collapse/expand methods
+- [x] Create `frontend/e2e/pages/org-switcher.page.ts`:
+  - [x] Organization switcher locator
+  - [x] Dropdown list locator
+  - [x] Organization item locators
+  - [x] Selection methods
+- [x] Create `frontend/e2e/pages/breadcrumb.page.ts`:
+  - [x] Breadcrumb container locator
+  - [x] Breadcrumb item locators
+  - [x] Navigation methods
+  - [x] Tooltip handling
 
 ### Phase 2: Sidebar Navigation Tests
 
-- [ ] Test: Sidebar visible on dashboard
-- [ ] Test: All nav items present
-- [ ] Test: Dashboard nav item active on home
-- [ ] Test: Click Chatbots navigates to chatbots page
-- [ ] Test: Click Settings navigates to settings
-- [ ] Test: Admin nav visible only for admins
-- [ ] Test: Logo links to dashboard
-- [ ] Test: Navigation active states update correctly
+- [x] Test: Sidebar visible on dashboard
+- [x] Test: All nav items present
+- [x] Test: Dashboard nav item active on home
+- [x] Test: Click Chatbots navigates to chatbots page
+- [x] Test: Click Settings navigates to settings
+- [x] Test: Admin nav visible only for admins
+- [x] Test: Logo links to dashboard
+- [x] Test: Navigation active states update correctly
 
 ### Phase 3: Sidebar Collapse Tests
 
-- [ ] Test: Click toggle collapses sidebar
-- [ ] Test: Collapsed sidebar shows icons only
-- [ ] Test: Collapsed sidebar hides text labels
-- [ ] Test: Click toggle expands sidebar
-- [ ] Test: Expanded sidebar shows full width
-- [ ] Test: Navigation works when collapsed
-- [ ] Test: Collapse state persists on refresh
-- [ ] Test: Responsive collapse on mobile
+- [x] Test: Click toggle collapses sidebar
+- [x] Test: Collapsed sidebar shows icons only
+- [x] Test: Collapsed sidebar hides text labels
+- [x] Test: Click toggle expands sidebar
+- [x] Test: Expanded sidebar shows full width
+- [x] Test: Navigation works when collapsed
+- [x] Test: Collapse state persists on refresh
+- [x] Test: Responsive collapse on mobile
 
 ### Phase 4: Organization Switcher Tests
 
-- [ ] Test: Organization switcher visible
-- [ ] Test: Current org displayed
-- [ ] Test: Click opens dropdown
-- [ ] Test: Organization list visible
-- [ ] Test: Hover highlights org item
-- [ ] Test: Click org switches context
-- [ ] Test: Data refreshes for new org
-- [ ] Test: Switcher updates with new org name
-- [ ] Test: Single org hides switcher
-- [ ] Test: Multi-org shows switcher
+- [x] Test: Organization switcher visible
+- [x] Test: Current org displayed
+- [x] Test: Click opens dropdown
+- [x] Test: Organization list visible
+- [x] Test: Hover highlights org item
+- [x] Test: Click org switches context
+- [x] Test: Data refreshes for new org
+- [x] Test: Switcher updates with new org name
+- [x] Test: Single org hides switcher
+- [x] Test: Multi-org shows switcher
 
 ### Phase 5: User Menu Tests
 
-- [ ] Test: User avatar visible
-- [ ] Test: Click opens user menu
-- [ ] Test: Menu contains Profile
-- [ ] Test: Menu contains Settings
-- [ ] Test: Menu contains Help
-- [ ] Test: Menu contains Logout
-- [ ] Test: Hover highlights menu items
-- [ ] Test: Click Profile navigates to profile
-- [ ] Test: Click Settings navigates to settings
-- [ ] Test: Click Help navigates to help
-- [ ] Test: Menu closes when clicking outside
+- [x] Test: User avatar visible
+- [x] Test: Click opens user menu
+- [x] Test: Menu contains Profile
+- [x] Test: Menu contains Settings
+- [x] Test: Menu contains Help
+- [x] Test: Menu contains Logout
+- [x] Test: Hover highlights menu items
+- [x] Test: Click Profile navigates to profile
+- [x] Test: Click Settings navigates to settings
+- [x] Test: Click Help navigates to help
+- [x] Test: Menu closes when clicking outside
 
 ### Phase 6: Breadcrumb Navigation Tests
 
-- [ ] Test: Breadcrumb visible on inner pages
-- [ ] Test: Correct breadcrumb path
-- [ ] Test: Home link navigates to dashboard
-- [ ] Test: Intermediate links work
-- [ ] Test: Current page not clickable
-- [ ] Test: Hover shows tooltip for truncated
-- [ ] Test: Dynamic content in breadcrumbs
-- [ ] Test: Breadcrumb updates on navigation
+- [x] Test: Breadcrumb visible on inner pages
+- [x] Test: Correct breadcrumb path
+- [x] Test: Home link navigates to dashboard
+- [x] Test: Intermediate links work
+- [x] Test: Current page not clickable
+- [x] Test: Hover shows tooltip for truncated
+- [x] Test: Dynamic content in breadcrumbs
+- [x] Test: Breadcrumb updates on navigation
 
 ### Phase 7: Top Bar Tests
 
-- [ ] Test: Search bar visible
-- [ ] Test: Action buttons present
-- [ ] Test: User info displayed
-- [ ] Test: Notification indicator (if present)
+- [x] Test: Search bar visible
+- [x] Test: Action buttons present
+- [x] Test: User info displayed
+- [x] Test: Notification indicator (if present)
 
 ### Phase 8: Responsive Tests
 
-- [ ] Test: Sidebar behavior on mobile
-- [ ] Test: Hamburger menu on mobile
-- [ ] Test: Collapsed sidebar on tablet
-- [ ] Test: Full sidebar on desktop
+- [x] Test: Sidebar behavior on mobile
+- [x] Test: Hamburger menu on mobile
+- [x] Test: Collapsed sidebar on tablet
+- [x] Test: Full sidebar on desktop
 
 ---
 
@@ -492,31 +492,31 @@ cd frontend && npx playwright test dashboard.spec.ts --headed
 ## Verification Steps
 
 ### 1. Test Coverage Verification
-- [ ] All sidebar elements tested
-- [ ] All navigation paths tested
-- [ ] Collapse/expand tested
-- [ ] Organization switcher tested
-- [ ] User menu tested
-- [ ] Breadcrumbs tested
-- [ ] Responsive behavior tested
+- [x] All sidebar elements tested
+- [x] All navigation paths tested
+- [x] Collapse/expand tested
+- [x] Organization switcher tested
+- [x] User menu tested
+- [x] Breadcrumbs tested
+- [x] Responsive behavior tested
 
 ### 2. Test Execution Verification
-- [ ] All tests pass locally
-- [ ] Tests work with authenticated state
-- [ ] No flaky navigation tests
-- [ ] Proper timeout handling
+- [x] All tests pass locally
+- [x] Tests work with authenticated state
+- [x] No flaky navigation tests
+- [x] Proper timeout handling
 
 ### 3. Layout Verification
-- [ ] Sidebar layout consistent
-- [ ] Active states clear
-- [ ] Hover states visible
-- [ ] Responsive behavior correct
+- [x] Sidebar layout consistent
+- [x] Active states clear
+- [x] Hover states visible
+- [x] Responsive behavior correct
 
 ### 4. UX Verification
-- [ ] Navigation intuitive
-- [ ] Clear visual feedback
-- [ ] Loading states handled
-- [ ] Error states graceful
+- [x] Navigation intuitive
+- [x] Clear visual feedback
+- [x] Loading states handled
+- [x] Error states graceful
 
 ---
 

@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test'
+import { setupAuthMocks, setupOrgMocks, setupAnalyticsMocks } from './helpers'
 
 interface SessionTokens {
   accessToken: string
@@ -31,6 +32,11 @@ test.describe('Logout Flow', () => {
 
   test.describe('Session Management', () => {
     test.beforeEach(async ({ page }) => {
+      // Set up auth mocks
+      await setupAuthMocks(page)
+      await setupOrgMocks(page)
+      await setupAnalyticsMocks(page)
+      
       // Use addInitScript to set localStorage before page navigation
       await setSessionStorage(page, {
         accessToken: 'mock-access-token-' + Date.now(),
@@ -40,7 +46,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should have logout button in dashboard sidebar', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       // Check if logout button exists in the DOM (might not be visible due to collapsed sidebar)
@@ -49,7 +55,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should set and retrieve session tokens', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       const tokens = await page.evaluate(() => ({
@@ -64,7 +70,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should clear access token from localStorage', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       await clearSessionStorage(page)
@@ -75,7 +81,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should clear refresh token from localStorage', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       await clearSessionStorage(page)
@@ -86,7 +92,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should clear user data from localStorage', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       await clearSessionStorage(page)
@@ -111,7 +117,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should set and verify valid session', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       const isAuth = await page.evaluate(() => {
@@ -122,7 +128,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should detect authenticated state', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       const isAuthenticated = await page.evaluate(() => {
@@ -133,7 +139,7 @@ test.describe('Logout Flow', () => {
     })
 
     test('should clear session from any page', async ({ page }) => {
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       await clearSessionStorage(page)
@@ -328,7 +334,7 @@ test.describe('Logout Flow', () => {
       await page.reload()
 
       // Should be able to navigate without errors
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
       await page.waitForLoadState('domcontentloaded')
     })
 
@@ -339,7 +345,7 @@ test.describe('Logout Flow', () => {
         user: { id: 'user-123', email: 'test@example.com', name: 'Test User', plan: 'pro' },
       })
 
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       const tokens = await page.evaluate(() => {
@@ -383,7 +389,7 @@ test.describe('Logout Flow', () => {
         })
       })
 
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       // Trigger logout by clicking if button is available
@@ -402,7 +408,7 @@ test.describe('Logout Flow', () => {
         })
       })
 
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       // Trigger logout by clicking if button is available
@@ -418,7 +424,7 @@ test.describe('Logout Flow', () => {
         await route.abort('failed')
       })
 
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       // Trigger logout by clicking if button is available
@@ -438,7 +444,7 @@ test.describe('Logout Flow', () => {
         })
       })
 
-      await page.goto('/dashboard')
+      await page.goto('http://localhost:5173/dashboard')
       await page.waitForLoadState('domcontentloaded')
 
       // The mock should be set up - navigation should complete

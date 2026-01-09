@@ -1,0 +1,47 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - img "Botla Logo" [ref=e12]
+      - generic [ref=e13]: botla.app
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - img [ref=e16]
+        - generic [ref=e19]: Yapay Zeka Destekli Çözümler
+      - heading "Kendi verilerinizle eğitilmiş akıllı chatbotlar oluşturun." [level=1] [ref=e20]
+      - paragraph [ref=e21]: PDF, URL veya metin dosyalarınızı yükleyin, dakikalar içinde sitenize entegre edin. 7/24 çalışan, yorulmayan ve sürekli öğrenen bir asistan ile işinizi büyütün.
+      - generic [ref=e22]:
+        - generic [ref=e25]: Ücretsiz deneyin
+        - generic [ref=e28]: Dakikalar içinde kurulum
+    - generic [ref=e29]: © 2024 botla.app. Tüm hakları saklıdır.
+  - generic [ref=e32]:
+    - generic [ref=e33]:
+      - heading "Hoş Geldiniz" [level=2] [ref=e34]
+      - paragraph [ref=e35]: Hesabınıza giriş yapın
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - text: Email
+        - generic [ref=e38]:
+          - img [ref=e39]
+          - textbox "Email" [ref=e42]:
+            - /placeholder: ornek@sirket.com
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]: Şifre
+          - link "Şifremi unuttum?" [ref=e46] [cursor=pointer]:
+            - /url: /forgot-password
+        - generic [ref=e47]:
+          - img [ref=e48]
+          - textbox "Şifre" [ref=e51]:
+            - /placeholder: ••••••••
+      - button "Giriş Yap" [ref=e52]:
+        - generic [ref=e53]: Giriş Yap
+        - img [ref=e54]
+    - generic [ref=e56]: veya
+    - paragraph [ref=e57]:
+      - text: Hesabınız yok mu?
+      - link "Kayıt Olun" [ref=e58] [cursor=pointer]:
+        - /url: /register
+```

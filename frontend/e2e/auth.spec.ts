@@ -32,7 +32,7 @@ test.describe('Login Page', () => {
 
   test.describe('Page Load', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should load login page successfully', async ({ page }) => {
@@ -86,7 +86,7 @@ test.describe('Login Page', () => {
 
   test.describe('Focus States', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should focus email input when clicked', async ({ page }) => {
@@ -108,7 +108,7 @@ test.describe('Login Page', () => {
 
   test.describe('Keyboard Navigation', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should submit form when Enter is pressed on password field', async ({ page }) => {
@@ -144,7 +144,7 @@ test.describe('Login Page', () => {
 
   test.describe('Validation', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should show error when submitting with empty email', async ({ page }) => {
@@ -211,7 +211,7 @@ test.describe('Login Page', () => {
 
   test.describe('Authentication', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
       await clearAuthStorage(page)
     })
 
@@ -326,7 +326,7 @@ test.describe('Login Page', () => {
       await setupOrgMocks(page)
 
       // Go to login page
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
 
       // Check remember me checkbox
       const rememberMeCheckbox = page.getByTestId(TEST_IDS.LOGIN_REMEMBER_ME_CHECKBOX)
@@ -344,7 +344,7 @@ test.describe('Login Page', () => {
       await setupAnalyticsMocks(page)
 
       // Go to login page
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
 
       // Check remember me
       const rememberMeCheckbox = page.getByTestId(TEST_IDS.LOGIN_REMEMBER_ME_CHECKBOX)
@@ -381,7 +381,7 @@ test.describe('Login Page', () => {
       await setupOrgMocks(page)
 
       // Go to login page
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
 
       // Ensure remember me is unchecked (don't check it)
       const rememberMeCheckbox = page.getByTestId(TEST_IDS.LOGIN_REMEMBER_ME_CHECKBOX)
@@ -413,7 +413,7 @@ test.describe('Login Page', () => {
 
   test.describe('Forgot Password Flow', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should have forgot password link visible', async ({ page }) => {
@@ -427,7 +427,7 @@ test.describe('Login Page', () => {
 
   test.describe('Hover States', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should change login button appearance on hover', async ({ page }) => {
@@ -461,7 +461,7 @@ test.describe('Login Page', () => {
 
   test.describe('Error Handling', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should handle network error during login', async ({ page }) => {
@@ -522,7 +522,7 @@ test.describe('Login Page', () => {
 
   test.describe('Navigation', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should navigate to register page when register link is clicked', async ({ page }) => {
@@ -533,7 +533,7 @@ test.describe('Login Page', () => {
     })
 
     test('should navigate to login page directly', async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
       
       await expect(page.getByTestId(TEST_IDS.LOGIN_PAGE)).toBeVisible()
     })
@@ -545,7 +545,7 @@ test.describe('Login Page', () => {
 
   test.describe('Edge Cases', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/login')
+      await page.goto('http://localhost:5173/login')
     })
 
     test('should handle very long email input', async ({ page }) => {

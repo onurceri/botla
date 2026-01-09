@@ -25,11 +25,15 @@ RUN go build -tags fitz -ldflags="-s -w" -o server cmd/server/main.go
 # Stage 2: Create minimal runtime image with glibc compatibility
 FROM debian:bookworm-slim
 
-# Install runtime dependencies
+# Install runtime dependencies including Chromium for go-rod web scraping
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     tzdata \
+    chromium \
     && rm -rf /var/lib/apt/lists/*
+
+# Set Chromium path for go-rod (skip auto-download)
+ENV ROD_BROWSER_PATH=/usr/bin/chromium
 
 WORKDIR /root/
 

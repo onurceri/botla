@@ -1,34 +1,38 @@
 import { test, expect } from '@playwright/test'
 import {
-  setupAllMocks,
+  setupAuthMocks,
+  setupOrgMocks,
+  setupAnalyticsMocks,
+  setupChatbotMocks,
   login,
 } from './helpers'
 import { TEST_IDS, TURKISH } from './test-constants'
 
 /**
  * Chatbot Management E2E Tests
- * 
+ *
  * Tests cover:
  * - Chatbot creation and management
  * - Source management (text, URL sources)
  * - Playground testing
  * - Chatbot settings
  * - Chatbot list navigation
- * 
+ *
  * Element Selection Strategy:
  * - Primary: data-testid attributes from SELECTORS
  * - Fallback: Semantic selectors (getByLabel, getByRole)
- * 
+ *
  * @see TESTING_STANDARDS.md for naming conventions
  * @see selectors.ts for element ID constants
  */
 test.describe('Chatbot Management', () => {
-  test.beforeEach(async ({ page }) => {
-    // Setup all mocks before each test
-    await setupAllMocks(page)
-  })
-
   test.describe('Chatbot Creation', () => {
+    test.beforeEach(async ({ page }) => {
+      await setupAuthMocks(page)
+      await setupOrgMocks(page)
+      await setupAnalyticsMocks(page)
+      await setupChatbotMocks(page)
+    })
     test('can create a new chatbot', async ({ page }) => {
       // Login
       await login(page)
@@ -76,12 +80,25 @@ test.describe('Chatbot Management', () => {
       if (await submitBtn.isEnabled()) {
         await submitBtn.click()
         // Should show validation error or remain on form
-        await expect(page).not.toHaveURL(/\/chatbots\/[a-zA-Z0-9_-]+$/)
+        // Should show validation error or remain on the new page (which ends in /new)
+        // Assert we did NOT navigate to a specific bot page (assuming IDs don't equal 'new')
+        // Using a more specific pattern or ensuring we are still on /new
+        const url = page.url()
+        expect(url).toContain('/chatbots/new')
+        // And optionally check validation message
+        // await expect(page.getByText('required')).toBeVisible()
       }
     })
   })
 
   test.describe('Source Management', () => {
+    test.beforeEach(async ({ page }) => {
+      await setupAuthMocks(page)
+      await setupOrgMocks(page)
+      await setupAnalyticsMocks(page)
+      await setupChatbotMocks(page)
+    })
+
     test('can add text source to chatbot', async ({ page }) => {
       await login(page)
 
@@ -163,18 +180,45 @@ test.describe('Chatbot Management', () => {
     })
 
     test('sources list shows existing sources', async ({ page }) => {
+      // Mock sources list with proper structure matching SourceCard expectations
+      await page.route('**/api/v1/chatbots/bot-1/sources', async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify([
+              {
+                id: 'source-1',
+                source_type: 'text',
+                original_filename: 'test-content.txt',
+                status: 'completed',
+                chunk_count: 10,
+                created_at: new Date().toISOString(),
+              },
+            ]),
+          })
+        }
+      })
+
       await login(page)
       await page.goto('/dashboard/chatbots/bot-1/sources')
       await page.waitForLoadState('networkidle')
 
       // Verify source is listed (from mock) - use data-testid for source card
-      await expect(page.getByTestId(TEST_IDS.SOURCE_UPLOADER)
-        .or(page.getByText('test-content.txt')))
+      await expect(page.getByTestId('source-card')
+        .filter({ hasText: 'test-content.txt' }))
         .toBeVisible({ timeout: 10000 })
     })
   })
 
   test.describe('Playground Testing', () => {
+    test.beforeEach(async ({ page }) => {
+      await setupAuthMocks(page)
+      await setupOrgMocks(page)
+      await setupAnalyticsMocks(page)
+      await setupChatbotMocks(page)
+    })
+
     test('can access playground page', async ({ page }) => {
       await login(page)
       // Navigate directly to playground
@@ -215,6 +259,13 @@ test.describe('Chatbot Management', () => {
   })
 
   test.describe('Chatbot Settings', () => {
+    test.beforeEach(async ({ page }) => {
+      await setupAuthMocks(page)
+      await setupOrgMocks(page)
+      await setupAnalyticsMocks(page)
+      await setupChatbotMocks(page)
+    })
+
     test('can access chatbot settings', async ({ page }) => {
       await login(page)
       await page.goto('/dashboard/chatbots/bot-1/settings')
@@ -248,6 +299,12 @@ test.describe('Chatbot Management', () => {
   })
 
   test.describe('Chatbot List', () => {
+    test.beforeEach(async ({ page }) => {
+      await setupAuthMocks(page)
+      await setupOrgMocks(page)
+      await setupAnalyticsMocks(page)
+    })
+
     test('dashboard shows chatbot list', async ({ page }) => {
       // Mock chatbots list with data
       await page.route('**/api/v1/chatbots', async (route) => {
@@ -259,11 +316,13 @@ test.describe('Chatbot Management', () => {
               id: 'bot-1',
               name: 'Support Bot',
               created_at: new Date().toISOString(),
+              model: 'gpt-4',
             },
             {
               id: 'bot-2',
               name: 'Sales Bot',
               created_at: new Date().toISOString(),
+              model: 'gpt-4',
             },
           ]),
         })
@@ -274,11 +333,13 @@ test.describe('Chatbot Management', () => {
       await page.waitForLoadState('networkidle')
 
       // Verify bots are listed - use data-testid for chatbot card
-      await expect(page.getByTestId(TEST_IDS.CHATBOTS_LIST)
-        .getByText('Support Bot'))
+      await expect(page.getByTestId(TEST_IDS.CHATBOTS_LIST))
         .toBeVisible({ timeout: 10000 })
-      await expect(page.getByTestId(TEST_IDS.CHATBOTS_LIST)
-        .getByText('Sales Bot'))
+      await expect(page.getByTestId(TEST_IDS.CHATBOT_CARD)
+        .filter({ hasText: 'Support Bot' }))
+        .toBeVisible({ timeout: 10000 })
+      await expect(page.getByTestId(TEST_IDS.CHATBOT_CARD)
+        .filter({ hasText: 'Sales Bot' }))
         .toBeVisible({ timeout: 10000 })
     })
 
@@ -293,6 +354,7 @@ test.describe('Chatbot Management', () => {
               id: 'bot-1',
               name: 'Support Bot',
               created_at: new Date().toISOString(),
+              model: 'gpt-4',
             },
           ]),
         })
@@ -304,9 +366,9 @@ test.describe('Chatbot Management', () => {
 
       // Click on chatbot using data-testid
       const chatbotCard = page.getByTestId(TEST_IDS.CHATBOT_CARD)
-        .filter({ has: page.getByText('Support Bot') })
+        .filter({ hasText: 'Support Bot' })
       await expect(chatbotCard).toBeVisible({ timeout: 5000 })
-      await chatbotCard.getByTestId(TEST_IDS.CHATBOT_MANAGE_BUTTON).click()
+      await chatbotCard.click()
 
       // Should navigate to chatbot detail
       await expect(page).toHaveURL(/\/chatbots\/bot-1/)

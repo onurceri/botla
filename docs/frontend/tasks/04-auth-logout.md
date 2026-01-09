@@ -91,58 +91,58 @@ Logout Flow
 
 ### Phase 1: Setup and Utilities
 
-- [ ] Create `frontend/e2e/utils/session.utils.ts`:
-  - Token verification helpers
-  - Storage cleanup helpers
-  - Session state checkers
-- [ ] Create `frontend/e2e/mocks/session.mocks.ts`:
-  - Mock logout API
-  - Mock 401 responses
-  - Mock session validation
-- [ ] Create `frontend/e2e/pages/user-menu.page.ts`:
-  - User avatar locator
-  - Dropdown toggle
-  - Logout menu item
-  - Menu close functionality
+- [x] Create `frontend/e2e/utils/session.utils.ts`:
+  - [x] Token verification helpers
+  - [x] Storage cleanup helpers
+  - [x] Session state checkers
+- [x] Create `frontend/e2e/mocks/session.mocks.ts`:
+  - [x] Mock logout API
+  - [x] Mock 401 responses
+  - [x] Mock session validation
+- [x] Create `frontend/e2e/pages/user-menu.page.ts`:
+  - [x] User avatar locator
+  - [x] Dropdown toggle
+  - [x] Logout menu item
+  - [x] Menu close functionality
 
 ### Phase 2: Manual Logout Tests
 
-- [ ] Test: Open user menu from dashboard
-- [ ] Test: Open user menu from any authenticated page
-- [ ] Test: Menu dropdown visibility
-- [ ] Test: Click logout menu item
-- [ ] Test: Loading state during logout
-- [ ] Test: Access token removed from storage
-- [ ] Test: Refresh token removed from storage
-- [ ] Test: Session data cleared
-- [ ] Test: Redirect to login page
-- [ ] Test: Previous session not restored on login page
+- [x] Test: Open user menu from dashboard
+- [x] Test: Open user menu from any authenticated page
+- [x] Test: Menu dropdown visibility
+- [x] Test: Click logout menu item
+- [x] Test: Loading state during logout
+- [x] Test: Access token removed from storage
+- [x] Test: Refresh token removed from storage
+- [x] Test: Session data cleared
+- [x] Test: Redirect to login page
+- [x] Test: Previous session not restored on login page
 
 ### Phase 3: Session Expiration Tests
 
-- [ ] Test: Access token expiry detection
-- [ ] Test: 401 response triggers modal
-- [ ] Test: Session expired modal visibility
-- [ ] Test: Modal contains relogin button
-- [ ] Test: Clicking relogin redirects to login
-- [ ] Test: Multiple 401 responses handled
-- [ ] Test: No infinite redirect loops
+- [x] Test: Access token expiry detection
+- [x] Test: 401 response triggers modal
+- [x] Test: Session expired modal visibility
+- [x] Test: Modal contains relogin button
+- [x] Test: Clicking relogin redirects to login
+- [x] Test: Multiple 401 responses handled
+- [x] Test: No infinite redirect loops
 
 ### Phase 4: Multi-tab Synchronization Tests
 
-- [ ] Test: BroadcastChannel event emission
-- [ ] Test: Other tabs receive session_terminated
-- [ ] Test: Other tabs redirect to login
-- [ ] Test: All tabs synchronized logout
-- [ ] Test: No duplicate logout API calls
+- [x] Test: BroadcastChannel event emission
+- [x] Test: Other tabs receive session_terminated
+- [x] Test: Other tabs redirect to login
+- [x] Test: All tabs synchronized logout
+- [x] Test: No duplicate logout API calls
 
 ### Phase 5: Edge Cases Tests
 
-- [ ] Test: Logout during API call
-- [ ] Test: Logout with pending uploads
-- [ ] Test: Network error during logout
-- [ ] Test: Quick logout then relogin
-- [ ] Test: Logout from deep link page
+- [x] Test: Logout during API call
+- [x] Test: Logout with pending uploads
+- [x] Test: Network error during logout
+- [x] Test: Quick logout then relogin
+- [x] Test: Logout from deep link page
 
 ---
 
@@ -344,31 +344,31 @@ cd frontend && npx playwright test logout.spec.ts --headed
 ## Verification Steps
 
 ### 1. Test Coverage Verification
-- [ ] Manual logout tested from various pages
-- [ ] Session cleanup verified
-- [ ] Token removal verified
-- [ ] Redirect to login verified
-- [ ] Session expiration handled
-- [ ] Multi-tab sync tested
-- [ ] Error scenarios tested
+- [x] Manual logout tested from various pages
+- [x] Session cleanup verified
+- [x] Token removal verified
+- [x] Redirect to login verified
+- [x] Session expiration handled
+- [x] Multi-tab sync tested
+- [x] Error scenarios tested
 
 ### 2. Test Execution Verification
-- [ ] All tests pass locally
-- [ ] Tests work in parallel
-- [ ] No race conditions
-- [ ] Clean test isolation
+- [x] All tests pass locally
+- [x] Tests work in parallel
+- [x] No race conditions
+- [x] Clean test isolation
 
 ### 3. Security Verification
-- [ ] Tokens are properly cleared
-- [ ] No sensitive data in storage
-- [ ] 401 responses handled securely
-- [ ] No infinite redirect loops
+- [x] Tokens are properly cleared
+- [x] No sensitive data in storage
+- [x] 401 responses handled securely
+- [x] No infinite redirect loops
 
 ### 4. UX Verification
-- [ ] Loading states visible
-- [ ] Modal appears for expired sessions
-- [ ] Clear error messages
-- [ ] Smooth logout experience
+- [x] Loading states visible
+- [x] Modal appears for expired sessions
+- [x] Clear error messages
+- [x] Smooth logout experience
 
 ---
 

@@ -106,64 +106,66 @@ Remember Me Feature
 
 ### Phase 1: Setup and Utilities
 
-- [ ] Create `frontend/e2e/utils/session-manager.ts`:
-  - Token generation helpers
-  - Token parsing utilities
-  - Expiration simulation
-  - Storage manipulation
-- [ ] Create `frontend/e2e/mocks/tokens.mocks.ts`:
-  - Mock token refresh endpoint
-  - Mock token validation
-  - Mock session status
-- [ ] Create `frontend/e2e/pages/session.page.ts` (if needed)
+- [x] Create `frontend/e2e/utils/session-manager.ts`:
+  - [x] Token generation helpers
+  - [x] Token parsing utilities
+  - [x] Expiration simulation
+  - [x] Storage manipulation
+- [x] Create `frontend/e2e/mocks/tokens.mocks.ts`:
+  - [x] Mock token refresh endpoint
+  - [x] Mock token validation
+  - [x] Mock session status
+- [x] Create `frontend/e2e/pages/session.page.ts` (if needed)
 
 ### Phase 2: Token Refresh Tests
 
-- [ ] Test: Automatic token refresh on 401
-- [ ] Test: Token refresh with valid refresh token
-- [ ] Test: Token refresh with expired refresh token
-- [ ] Test: Token refresh API error handling
-- [ ] Test: Multiple concurrent refresh requests
-- [ ] Test: Refresh request deduplication
-- [ ] Test: Token refresh during active user session
+- [x] Test: Automatic token refresh on 401
+- [x] Test: Token refresh with valid refresh token
+- [x] Test: Token refresh with expired refresh token
+- [x] Test: Token refresh API error handling
+- [x] Test: Multiple concurrent refresh requests
+- [x] Test: Refresh request deduplication
+- [x] Test: Token refresh during active user session
 
 ### Phase 3: Remember Me Tests
 
-- [ ] Test: Login with Remember Me checked
-- [ ] Test: Token persistence in localStorage
-- [ ] Test: Session restoration after browser restart
-- [ ] Test: Remember Me with expired tokens
-- [ ] Test: Remember Me with valid tokens
-- [ ] Test: Remember Me checkbox persistence
-- [ ] Test: Unchecking Remember Me clears storage
+- [x] Test: Login with Remember Me checked
+- [x] Test: Token persistence in localStorage
+- [x] Test: Session restoration after browser restart
+- [x] Test: Remember Me with expired tokens
+- [x] Test: Remember Me with valid tokens
+- [x] Test: Remember Me checkbox persistence
+- [x] Test: Unchecking Remember Me clears storage
 
 ### Phase 4: Session Persistence Tests
 
-- [ ] Test: Session persists after page refresh
-- [ ] Test: Session persists after browser close
-- [ ] Test: Session persists after browser restart
-- [ ] Test: Multiple browser sessions (different devices)
-- [ ] Test: Session timeout handling
-- [ ] Test: Inactivity timeout
+- [x] Test: Session persists after page refresh
+- [x] Test: Session persists after browser close
+- [x] Test: Session persists after browser restart
+- [x] Test: Multiple browser sessions (different devices)
+- [x] Test: Session timeout handling
+- [x] Test: Inactivity timeout
 
 ### Phase 5: Session Security Tests
 
-- [ ] Test: Invalid token rejected
-- [ ] Test: Tampered token rejected
-- [ ] Test: Token used after logout rejected
-- [ ] Test: Multiple tab session consistency
-- [ ] Test: Session hijacking prevention
-- [ ] Test: XSS token protection
-- [ ] Test: CSRF token handling
+- [x] Test: Invalid token rejected
+- [x] Test: Tampered token rejected
+- [x] Test: Token used after logout rejected
+- [x] Test: Multiple tab session consistency
+- [x] Test: Session hijacking prevention
+- [x] Test: XSS token protection
+- [x] Test: CSRF token handling
 
 ### Phase 6: Edge Cases Tests
 
-- [ ] Test: Network error during token refresh
-- [ ] Test: Server error during refresh
-- [ ] Test: Rapid token refresh attempts
-- [ ] Test: Token refresh with missing permissions
-- [ ] Test: Session with revoked tokens
-- [ ] Test: Concurrent session limit
+- [x] Test: Network error during token refresh
+- [x] Test: Server error during refresh
+- [x] Test: Rapid token refresh attempts
+- [x] Test: Token refresh with missing permissions
+- [x] Test: Session with revoked tokens
+- [x] Test: Concurrent session limit
+- [x] Test: Token refresh with delayed response
+- [x] Test: Expired access token with valid refresh token
 
 ---
 
@@ -451,30 +453,30 @@ cd frontend && npx playwright test sessions.spec.ts --headed
 ## Verification Steps
 
 ### 1. Test Coverage Verification
-- [ ] Token refresh scenarios tested
-- [ ] Remember Me functionality tested
-- [ ] Session persistence tested
-- [ ] Security scenarios tested
-- [ ] Edge cases covered
-- [ ] Error handling tested
+- [x] Token refresh scenarios tested
+- [x] Remember Me functionality tested
+- [x] Session persistence tested
+- [x] Security scenarios tested
+- [x] Edge cases covered
+- [x] Error handling tested
 
 ### 2. Test Execution Verification
-- [ ] All tests pass locally
-- [ ] Tests work with mocked APIs
-- [ ] No race conditions in token refresh
-- [ ] Clean test isolation
+- [x] All tests pass locally
+- [x] Tests work with mocked APIs
+- [x] No race conditions in token refresh
+- [x] Clean test isolation
 
 ### 3. Security Verification
-- [ ] Invalid tokens rejected
-- [ ] Expired tokens handled
-- [ ] Token storage secure
-- [ ] No token leakage
+- [x] Invalid tokens rejected
+- [x] Expired tokens handled
+- [x] Token storage secure
+- [x] No token leakage
 
 ### 4. UX Verification
-- [ ] Seamless token refresh
-- [ ] No visible login prompts during refresh
-- [ ] Clear error messages for expired sessions
-- [ ] Remember Me persists correctly
+- [x] Seamless token refresh
+- [x] No visible login prompts during refresh
+- [x] Clear error messages for expired sessions
+- [x] Remember Me persists correctly
 
 ---
 

@@ -1,4 +1,5 @@
 import { Page, expect } from '@playwright/test'
+import { COOKIE_NAMES } from './utils/cookie-auth'
 
 /**
  * Sets up API mocks for authentication-related endpoints.
@@ -17,6 +18,13 @@ export async function setupAuthMocks(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
+      headers: {
+        // Set both cookies using newline separator (HTTP standard)
+        'Set-Cookie': [
+          `${COOKIE_NAMES.ACCESS_TOKEN}=test-token; Path=/; HttpOnly; SameSite=Strict`,
+          `${COOKIE_NAMES.REFRESH_TOKEN}=test-refresh; Path=/; HttpOnly; SameSite=Strict`,
+        ].join('\n'),
+      },
       body: JSON.stringify({ token: 'test-token', refresh_token: 'test-refresh' }),
     })
   })
@@ -26,6 +34,22 @@ export async function setupAuthMocks(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ id: 'user-1', email: 'test@example.com', plan: 'pro' }),
+    })
+  })
+
+  // Mock /api/v1/me for profile queries
+  await page.route('**/api/v1/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'user-1',
+        email: 'test@example.com',
+        full_name: 'Test User',
+        name: 'Test User',
+        plan: 'pro',
+        is_platform_admin: false,
+      }),
     })
   })
 
@@ -347,7 +371,7 @@ export async function login(
   email: string = 'test@example.com',
   password: string = 'password123',
 ) {
-  await page.goto('/login')
+  await page.goto('http://localhost:5173/login')
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Şifre').fill(password)
   await page.getByRole('button', { name: 'Giriş Yap' }).click()
@@ -364,7 +388,7 @@ export async function register(
   password: string = 'SecurePass123!',
 ) {
   const userEmail = email || `test-${Date.now()}@example.com`
-  await page.goto('/register')
+  await page.goto('http://localhost:5173/register')
   await page.getByLabel('Ad Soyad').fill(name)
   await page.getByLabel('Email').fill(userEmail)
   await page.getByLabel('Şifre').fill(password)
