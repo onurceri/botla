@@ -253,6 +253,60 @@ func TestPrivacyFlow(t *testing.T) {
 		assert.Equal(t, "Insufficient details provided", denialReason)
 	})
 
+	t.Run("User List Privacy Requests", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/privacy/requests", nil)
+		req.Header.Set("Authorization", "Bearer "+userToken)
+
+		resp, err := testHTTPClient().Do(req)
+		require.NoError(t, err)
+		defer drainBody(resp)
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var result struct {
+			Data  []repository.PrivacyRequest `json:"data"`
+			Total int                         `json:"total"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		require.NoError(t, err)
+
+		// Should have at least the export request we created earlier
+		found := false
+		for _, r := range result.Data {
+			if r.ID == exportRequestID {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Export request should be in user's requests list")
+		assert.GreaterOrEqual(t, result.Total, 1)
+	})
+
+	t.Run("Prevent Duplicate Export Requests", func(t *testing.T) {
+		// Create a new user to test duplicate prevention
+		dupUserEmail := fmt.Sprintf("dup_%d@example.com", time.Now().UnixNano())
+		registerUser(t, te.DB, te.Server.URL, dupUserEmail, "Test@123")
+		dupUserToken := loginUser(t, te.Server.URL, dupUserEmail, "Test@123")
+
+		// First export request should succeed
+		req1, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/export", nil)
+		req1.Header.Set("Authorization", "Bearer "+dupUserToken)
+
+		resp1, err := testHTTPClient().Do(req1)
+		require.NoError(t, err)
+		defer drainBody(resp1)
+		assert.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp1.StatusCode)
+
+		// Second export request should fail with 409 Conflict
+		req2, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/export", nil)
+		req2.Header.Set("Authorization", "Bearer "+dupUserToken)
+
+		resp2, err := testHTTPClient().Do(req2)
+		require.NoError(t, err)
+		defer drainBody(resp2)
+		assert.Equal(t, http.StatusConflict, resp2.StatusCode)
+	})
+
 	t.Run("Admin Process Request", func(t *testing.T) {
 		// First find the request ID
 		var requestID string

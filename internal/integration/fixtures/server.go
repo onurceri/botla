@@ -226,12 +226,13 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	privacySvc := services.NewPrivacyService(privacyRepo, log, memStore)
 
 	// User Privacy
-	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc}
+	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc, UserRepo: userRepo, PrivacyRepo: privacyRepo}
 	mux.Handle("GET /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyConsents)))
 	mux.Handle("PATCH /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.UpdateMyConsents)))
 	mux.Handle("POST /api/v1/me/privacy/export", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestMyDataExport)))
 	mux.Handle("POST /api/v1/me/privacy/correction", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestDataCorrection)))
 	mux.Handle("POST /api/v1/me/privacy/delete", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestAccountDeletion)))
+	mux.Handle("GET /api/v1/me/privacy/requests", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.ListMyPrivacyRequests)))
 	mux.Handle("GET /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyPrivacyRequest)))
 	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyPrivacyExport)))
 	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyDataExport)))
@@ -241,7 +242,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	aqh := handlers.NewAdminQueueHandlers(adminSvc, queueRepo, sourceRepo)
 	aeh := handlers.NewAdminErrorHandlers(adminRepo)
 	aah := handlers.NewAdminAuditHandlers(adminRepo)
-	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc}
+	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc, PrivacyRepo: privacyRepo}
 
 	// RAG service and queue wrapper for admin chatbot/source handlers
 	var embedder rag.EmbeddingClient

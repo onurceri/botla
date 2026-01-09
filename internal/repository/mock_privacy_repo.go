@@ -7,19 +7,21 @@ import (
 
 // MockPrivacyRepo is a mock implementation of PrivacyRepository for testing.
 type MockPrivacyRepo struct {
-	CreateDataExportFunc             func(ctx context.Context, exp DataExport) (*DataExport, error)
-	UpdateDataExportFunc             func(ctx context.Context, exp DataExport) error
-	GetDataExportFunc                func(ctx context.Context, id string) (*DataExport, error)
-	CreatePrivacyRequestFunc         func(ctx context.Context, req PrivacyRequest) (*PrivacyRequest, error)
-	GetPrivacyRequestFunc            func(ctx context.Context, requestID string) (*PrivacyRequest, error)
-	ListPrivacyRequestsFunc          func(ctx context.Context, status string, limit, offset int) ([]PrivacyRequest, int, error)
-	UpdatePrivacyRequestStatusFunc   func(ctx context.Context, requestID, status, adminID string, denialReason *string) error
-	CompletePrivacyExportRequestFunc func(ctx context.Context, requestID, adminID, exportURL string, expiresAt time.Time) error
-	GetUserDataForExportFunc         func(ctx context.Context, userID string) (*UserDataExport, error)
-	GetUserFilesForDeletionFunc      func(ctx context.Context, userID string) ([]string, error)
-	AnonymizeUserDataFunc            func(ctx context.Context, userID string) error
-	GetUserConsentsFunc              func(ctx context.Context, userID string) ([]UserConsent, error)
-	UpsertConsentFunc                func(ctx context.Context, userID string, consentType string, granted bool, ipAddress, userAgent string) error
+	CreateDataExportFunc               func(ctx context.Context, exp DataExport) (*DataExport, error)
+	UpdateDataExportFunc               func(ctx context.Context, exp DataExport) error
+	GetDataExportFunc                  func(ctx context.Context, id string) (*DataExport, error)
+	CreatePrivacyRequestFunc           func(ctx context.Context, req PrivacyRequest) (*PrivacyRequest, error)
+	GetPrivacyRequestFunc              func(ctx context.Context, requestID string) (*PrivacyRequest, error)
+	ListPrivacyRequestsFunc            func(ctx context.Context, status string, limit, offset int) ([]PrivacyRequest, int, error)
+	ListPrivacyRequestsByUserIDFunc    func(ctx context.Context, userID string, limit, offset int) ([]PrivacyRequest, int, error)
+	HasActivePrivacyRequestFunc        func(ctx context.Context, userID, requestType string) (bool, error)
+	UpdatePrivacyRequestStatusFunc     func(ctx context.Context, requestID, status, adminID string, denialReason *string) error
+	CompletePrivacyExportRequestFunc   func(ctx context.Context, requestID, adminID, exportURL string, expiresAt time.Time) error
+	GetUserDataForExportFunc           func(ctx context.Context, userID string) (*UserDataExport, error)
+	GetUserFilesForDeletionFunc        func(ctx context.Context, userID string) ([]string, error)
+	AnonymizeUserDataFunc              func(ctx context.Context, userID string) error
+	GetUserConsentsFunc                func(ctx context.Context, userID string) ([]UserConsent, error)
+	UpsertConsentFunc                  func(ctx context.Context, userID string, consentType string, granted bool, ipAddress, userAgent string) error
 
 	Calls struct {
 		CreateDataExport             []CreateDataExportCall
@@ -28,6 +30,8 @@ type MockPrivacyRepo struct {
 		CreatePrivacyRequest         []CreatePrivacyRequestCall
 		GetPrivacyRequest            []GetPrivacyRequestCall
 		ListPrivacyRequests          []ListPrivacyRequestsCall
+		ListPrivacyRequestsByUserID  []ListPrivacyRequestsByUserIDCall
+		HasActivePrivacyRequest      []HasActivePrivacyRequestCall
 		UpdatePrivacyRequestStatus   []UpdatePrivacyRequestStatusCall
 		CompletePrivacyExportRequest []CompletePrivacyExportRequestCall
 		GetUserDataForExport         []GetUserDataForExportCall
@@ -100,6 +104,17 @@ type UpsertConsentCall struct {
 	Granted     bool
 	IPAddress   string
 	UserAgent   string
+}
+
+type ListPrivacyRequestsByUserIDCall struct {
+	UserID string
+	Limit  int
+	Offset int
+}
+
+type HasActivePrivacyRequestCall struct {
+	UserID      string
+	RequestType string
 }
 
 var _ PrivacyRepository = (*MockPrivacyRepo)(nil)
@@ -212,6 +227,22 @@ func (m *MockPrivacyRepo) UpsertConsent(ctx context.Context, userID string, cons
 	return nil
 }
 
+func (m *MockPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, userID string, limit, offset int) ([]PrivacyRequest, int, error) {
+	m.Calls.ListPrivacyRequestsByUserID = append(m.Calls.ListPrivacyRequestsByUserID, ListPrivacyRequestsByUserIDCall{UserID: userID, Limit: limit, Offset: offset})
+	if m.ListPrivacyRequestsByUserIDFunc != nil {
+		return m.ListPrivacyRequestsByUserIDFunc(ctx, userID, limit, offset)
+	}
+	return nil, 0, nil
+}
+
+func (m *MockPrivacyRepo) HasActivePrivacyRequest(ctx context.Context, userID, requestType string) (bool, error) {
+	m.Calls.HasActivePrivacyRequest = append(m.Calls.HasActivePrivacyRequest, HasActivePrivacyRequestCall{UserID: userID, RequestType: requestType})
+	if m.HasActivePrivacyRequestFunc != nil {
+		return m.HasActivePrivacyRequestFunc(ctx, userID, requestType)
+	}
+	return false, nil
+}
+
 func (m *MockPrivacyRepo) Reset() {
 	m.Calls.CreateDataExport = nil
 	m.Calls.UpdateDataExport = nil
@@ -219,6 +250,8 @@ func (m *MockPrivacyRepo) Reset() {
 	m.Calls.CreatePrivacyRequest = nil
 	m.Calls.GetPrivacyRequest = nil
 	m.Calls.ListPrivacyRequests = nil
+	m.Calls.ListPrivacyRequestsByUserID = nil
+	m.Calls.HasActivePrivacyRequest = nil
 	m.Calls.UpdatePrivacyRequestStatus = nil
 	m.Calls.CompletePrivacyExportRequest = nil
 	m.Calls.GetUserDataForExport = nil

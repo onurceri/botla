@@ -334,6 +334,12 @@ type PrivacyRepository interface {
 
 	// UpsertConsent creates or updates a consent record.
 	UpsertConsent(ctx context.Context, userID string, consentType string, granted bool, ipAddress, userAgent string) error
+
+	// ListPrivacyRequestsByUserID retrieves privacy requests for a specific user with pagination.
+	ListPrivacyRequestsByUserID(ctx context.Context, userID string, limit, offset int) ([]PrivacyRequest, int, error)
+
+	// HasActivePrivacyRequest checks if user has a pending or processing request of the given type.
+	HasActivePrivacyRequest(ctx context.Context, userID, requestType string) (bool, error)
 }
 
 // HandoffRepository defines the interface for human handoff data access operations.

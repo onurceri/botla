@@ -50,6 +50,26 @@ func (h *UserPrivacyHandlers) GetMyConsents(w http.ResponseWriter, r *http.Reque
 	api.WriteJSON(w, http.StatusOK, consentMap)
 }
 
+// ListMyPrivacyRequests returns user's own privacy requests
+func (h *UserPrivacyHandlers) ListMyPrivacyRequests(w http.ResponseWriter, r *http.Request) {
+	userID, _ := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		api.WriteErrorCode(w, http.StatusUnauthorized, api.ErrCodeUnauthorized)
+		return
+	}
+
+	requests, total, err := h.PrivacyRepo.ListPrivacyRequestsByUserID(r.Context(), userID, 50, 0)
+	if err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	api.WriteJSON(w, http.StatusOK, map[string]any{
+		"data":  requests,
+		"total": total,
+	})
+}
+
 // UpdateMyConsents updates user's consent settings
 func (h *UserPrivacyHandlers) UpdateMyConsents(w http.ResponseWriter, r *http.Request) {
 	userID, _ := middleware.UserIDFromContext(r.Context())
@@ -122,6 +142,10 @@ func (h *UserPrivacyHandlers) RequestMyDataExport(w http.ResponseWriter, r *http
 
 	privacyReq, err := h.PrivacyService.RequestExport(r.Context(), userID, user.Email, "")
 	if err != nil {
+		if err == services.ErrActiveRequestExists {
+			api.WriteErrorCode(w, http.StatusConflict, api.ErrCodeConflict)
+			return
+		}
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
