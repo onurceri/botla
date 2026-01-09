@@ -60,6 +60,7 @@ type AuthHandlers struct {
 	DB               *sql.DB
 	Secret           string
 	CookieSecure     bool
+	CookieDomain     string
 	OrgService       *services.OrganizationService
 	WorkspaceService *services.WorkspaceService
 }
@@ -292,24 +293,32 @@ func (h *AuthHandlers) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Determine SameSite mode based on environment
+	sameSite := http.SameSiteLaxMode
+	if h.CookieSecure {
+		sameSite = http.SameSiteNoneMode
+	}
+
 	// Clear cookies
 	http.SetCookie(w, &http.Cookie{
 		Name:     "botla_token",
 		Value:    "",
 		Path:     "/",
+		Domain:   h.CookieDomain,
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   h.CookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: sameSite,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     "botla_refresh_token",
 		Value:    "",
 		Path:     "/",
+		Domain:   h.CookieDomain,
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   h.CookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: sameSite,
 	})
 
 	w.WriteHeader(http.StatusOK)
@@ -334,24 +343,34 @@ func (h *AuthHandlers) generateAndSendTokens(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Determine SameSite mode based on environment
+	// SameSite=None requires Secure=true (production)
+	// SameSite=Lax is used in development when Secure=false
+	sameSite := http.SameSiteLaxMode
+	if h.CookieSecure {
+		sameSite = http.SameSiteNoneMode
+	}
+
 	// Set cookies
 	http.SetCookie(w, &http.Cookie{
 		Name:     "botla_token",
 		Value:    accessToken,
 		Path:     "/",
+		Domain:   h.CookieDomain,
 		Expires:  time.Now().Add(1 * time.Hour),
 		HttpOnly: true,
 		Secure:   h.CookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: sameSite,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     "botla_refresh_token",
 		Value:    refreshToken,
 		Path:     "/",
+		Domain:   h.CookieDomain,
 		Expires:  time.Now().Add(7 * 24 * time.Hour),
 		HttpOnly: true,
 		Secure:   h.CookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: sameSite,
 	})
 
 	api.WriteJSON(w, status, tokenResponse{Token: accessToken, RefreshToken: refreshToken})

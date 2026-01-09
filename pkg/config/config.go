@@ -62,6 +62,7 @@ type Config struct {
 
 	// Cookie Configuration
 	CookieSecure bool
+	CookieDomain string
 
 	// Rate Limit Configuration
 	RateLimitGlobalRequestsPerMinute int
@@ -193,6 +194,7 @@ func LoadConfig() *Config {
 		CHAT_TIMEOUT_MS:        parseIntEnv("CHAT_TIMEOUT_MS", 60000),
 		GO_ENV:                 os.Getenv("GO_ENV"),
 		CookieSecure:           os.Getenv("GO_ENV") == "production",
+		CookieDomain:           os.Getenv("COOKIE_DOMAIN"), // e.g., ".botla.app" for cross-subdomain cookies
 
 		// Rate Limit Configuration
 		RateLimitGlobalRequestsPerMinute: parseIntEnv("RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE", 0),

@@ -1,26 +1,51 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider } from '@/contexts/AuthContext'
 import LoginPage from '../LoginPage'
 import { api } from '@/api/client'
 
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+})
+
+const renderWithProviders = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <AuthProvider>
+          <MemoryRouter>
+            {ui}
+          </MemoryRouter>
+        </AuthProvider>
+      </ToastProvider>
+    </QueryClientProvider>,
+  )
+}
+
 describe('LoginPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     window.localStorage.clear()
+    // Mock /api/v1/me to return null (not authenticated)
+    vi.spyOn(api, 'get').mockRejectedValue({ response: { status: 401 } })
   })
 
-  it('renders form elements', () => {
-    render(
-      <ToastProvider>
-        <MemoryRouter>
-          <LoginPage />
-        </MemoryRouter>
-      </ToastProvider>,
-    )
+  it('renders form elements', async () => {
+    renderWithProviders(<LoginPage />)
 
-    expect(screen.getByRole('heading', { name: 'Hoş Geldiniz' })).toBeInTheDocument()
+    // Wait for loading state to complete
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Hoş Geldiniz' })).toBeInTheDocument()
+    })
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByLabelText('Şifre')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Giriş Yap' })).toBeInTheDocument()
@@ -28,39 +53,38 @@ describe('LoginPage', () => {
     expect(screen.getByRole('link', { name: 'Şifremi unuttum?' })).toBeInTheDocument()
   })
 
-  it('submits and calls signIn with credentials', async () => {
+  it('submits and calls login API (cookies set by backend)', async () => {
     const user = userEvent.setup()
-    render(
-      <ToastProvider>
-        <MemoryRouter>
-          <LoginPage />
-        </MemoryRouter>
-      </ToastProvider>,
-    )
+    const postSpy = vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any)
+    
+    renderWithProviders(<LoginPage />)
+
+    // Wait for initial render
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    })
 
     const emailInput = screen.getByLabelText('Email')
     const passwordInput = screen.getByLabelText('Şifre')
     await user.type(emailInput, 'test@example.com')
     await user.type(passwordInput, 'secret123')
     const submitBtn = screen.getAllByRole('button', { name: 'Giriş Yap' })[0]
-    vi.spyOn(api, 'post').mockResolvedValueOnce({ data: { token: 't', refresh_token: 'r' } } as any)
-    const setSpy = vi.spyOn(window.localStorage, 'setItem')
     await user.click(submitBtn)
-    expect(setSpy).toHaveBeenCalledWith('botla_token', 't')
-    expect(setSpy).toHaveBeenCalledWith('botla_refresh_token', 'r')
+    
+    // Verify API was called - cookies are set by backend, not localStorage
+    expect(postSpy).toHaveBeenCalledWith('/api/v1/auth/login', { email: 'test@example.com', password: 'secret123' })
   })
 
   it('shows error handling on failed sign in', async () => {
     const user = userEvent.setup()
     const postSpy = vi.spyOn(api, 'post').mockRejectedValueOnce(new Error('invalid'))
 
-    render(
-      <ToastProvider>
-        <MemoryRouter>
-          <LoginPage />
-        </MemoryRouter>
-      </ToastProvider>,
-    )
+    renderWithProviders(<LoginPage />)
+
+    // Wait for initial render
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    })
 
     const emailInput = screen.getByLabelText('Email')
     const passwordInput = screen.getByLabelText('Şifre')
@@ -69,7 +93,8 @@ describe('LoginPage', () => {
     const submitBtn = screen.getAllByRole('button', { name: 'Giriş Yap' })[0]
     await user.click(submitBtn)
     expect(postSpy).toHaveBeenCalled()
-    const setSpy = vi.spyOn(window.localStorage, 'setItem')
-    expect(setSpy).not.toHaveBeenCalledWith('botla_token', expect.anything())
+    
+    // Verify error toast is shown
+    expect(await screen.findByText('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.')).toBeInTheDocument()
   })
 })

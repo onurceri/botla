@@ -150,8 +150,9 @@ func TestAuth_CookieSecureFlag_Development(t *testing.T) {
 			if c.Secure != false {
 				t.Errorf("%s cookie Secure should be false in development, got %v", c.Name, c.Secure)
 			}
-			if c.SameSite != http.SameSiteStrictMode {
-				t.Errorf("%s cookie SameSite should be StrictMode, got %v", c.Name, c.SameSite)
+			// Development uses SameSite=Lax since Secure=false (SameSite=None requires Secure=true)
+			if c.SameSite != http.SameSiteLaxMode {
+				t.Errorf("%s cookie SameSite should be LaxMode in development, got %v", c.Name, c.SameSite)
 			}
 		}
 	}
@@ -177,8 +178,9 @@ func TestAuth_CookieSecureFlag_Production(t *testing.T) {
 			if c.Secure != true {
 				t.Errorf("%s cookie Secure should be true in production, got %v", c.Name, c.Secure)
 			}
-			if c.SameSite != http.SameSiteStrictMode {
-				t.Errorf("%s cookie SameSite should be StrictMode, got %v", c.Name, c.SameSite)
+			// Production uses SameSite=None for cross-origin support (requires Secure=true)
+			if c.SameSite != http.SameSiteNoneMode {
+				t.Errorf("%s cookie SameSite should be NoneMode in production, got %v", c.Name, c.SameSite)
 			}
 		}
 	}
@@ -206,8 +208,9 @@ func TestAuth_LogoutHandler_CookieSecureFlag(t *testing.T) {
 			if c.Secure != true {
 				t.Errorf("%s cookie Secure should be true when CookieSecure=true, got %v", c.Name, c.Secure)
 			}
-			if c.SameSite != http.SameSiteStrictMode {
-				t.Errorf("%s cookie SameSite should be StrictMode, got %v", c.Name, c.SameSite)
+			// Production uses SameSite=None for cross-origin support
+			if c.SameSite != http.SameSiteNoneMode {
+				t.Errorf("%s cookie SameSite should be NoneMode when CookieSecure=true, got %v", c.Name, c.SameSite)
 			}
 		}
 	}
