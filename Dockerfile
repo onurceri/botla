@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y \
 
 # Set Chromium path for go-rod (skip auto-download)
 ENV ROD_BROWSER_PATH=/usr/bin/chromium
+ENV SCRAPER_BROWSER_PATH=/usr/bin/chromium
 
 WORKDIR /root/
 
