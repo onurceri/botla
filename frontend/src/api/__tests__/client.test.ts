@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios from 'axios'
-import { api, redirectService, _resetRefreshState } from '../client'
+import { api, redirectService, _resetRefreshState, _setWasAuthenticated } from '../client'
 
 describe('axios refresh interceptor', () => {
   beforeEach(() => {
@@ -156,5 +156,86 @@ describe('axios refresh interceptor', () => {
     // Cleanup handled by redirectService.reset() in beforeEach
     vi.useRealTimers()
     vi.unstubAllEnvs()
+  })
+
+  it('does not trigger token refresh on /me endpoint 401 (new visitor scenario)', async () => {
+    vi.useFakeTimers()
+    
+    // Set up mocks
+    const postSpy = vi.spyOn(axios, 'post')
+    const redirectMock = vi.fn()
+    redirectService.setRedirectFn(redirectMock)
+    const eventSpy = vi.fn()
+    window.addEventListener('session-expired', eventSpy)
+    
+    const handlers = (api as any).interceptors.response.handlers
+    const handler = handlers[handlers.length - 1].rejected
+    
+    // Simulate /me endpoint returning 401 (user not logged in)
+    const meReq: any = { url: '/api/v1/me', headers: {}, method: 'get', _retry: false }
+    const meErr: any = { response: { status: 401 }, config: meReq }
+    
+    await expect(handler(meErr)).rejects.toEqual(meErr)
+    
+    // Fast-forward time
+    await vi.advanceTimersByTimeAsync(2000)
+    
+    // Verify:
+    // 1. No refresh was attempted
+    expect(postSpy).not.toHaveBeenCalled()
+    // 2. No redirect was triggered
+    expect(redirectMock).not.toHaveBeenCalled()
+    // 3. No session-expired event was dispatched
+    expect(eventSpy).not.toHaveBeenCalled()
+    
+    window.removeEventListener('session-expired', eventSpy)
+    vi.useRealTimers()
+  })
+
+  it('only shows session expired message if wasAuthenticated is true', async () => {
+    vi.useFakeTimers()
+    
+    // Set up event listener to capture session-expired events
+    const eventSpy = vi.fn()
+    window.addEventListener('session-expired', eventSpy)
+    
+    const redirectMock = vi.fn()
+    redirectService.setRedirectFn(redirectMock)
+    
+    // Mock refresh to fail
+    vi.spyOn(axios, 'post').mockRejectedValueOnce(new Error('nope'))
+    
+    const handlers = (api as any).interceptors.response.handlers
+    const handler = handlers[handlers.length - 1].rejected
+    const req: any = { url: '/api/v1/chatbots', headers: {}, method: 'get', _retry: false }
+    const err: any = { response: { status: 401 }, config: req }
+    
+    // When wasAuthenticated is false (default), session-expired should NOT be dispatched
+    const p1 = handler(err).catch(() => {})
+    await vi.advanceTimersByTimeAsync(2000)
+    await p1
+    
+    // No session-expired event should be dispatched for unauthenticated user
+    expect(eventSpy).not.toHaveBeenCalled()
+    
+    // Reset for next test
+    _resetRefreshState()
+    vi.spyOn(axios, 'post').mockRejectedValueOnce(new Error('nope'))
+    
+    // Set wasAuthenticated to true (simulating logged-in user)
+    _setWasAuthenticated(true)
+    
+    const req2: any = { url: '/api/v1/chatbots', headers: {}, method: 'get', _retry: false }
+    const err2: any = { response: { status: 401 }, config: req2 }
+    
+    const p2 = handler(err2).catch(() => {})
+    await vi.advanceTimersByTimeAsync(2000)
+    await p2
+    
+    // Now session-expired event SHOULD be dispatched
+    expect(eventSpy).toHaveBeenCalled()
+    
+    window.removeEventListener('session-expired', eventSpy)
+    vi.useRealTimers()
   })
 })
