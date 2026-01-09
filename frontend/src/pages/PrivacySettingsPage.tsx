@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { AxiosError } from 'axios'
 import {
   Card,
   CardContent,
@@ -25,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Loader2, Download, Trash2, Shield, Edit3 } from 'lucide-react'
+import { getStatusLabel, privacy } from '@/i18n/privacy'
 
 interface Consents {
   marketing: boolean
@@ -43,6 +45,11 @@ interface PrivacyRequest {
   created_at: string
 }
 
+interface PrivacyRequestsResponse {
+  data: PrivacyRequest[]
+  total: number
+}
+
 export default function PrivacySettingsPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -59,21 +66,50 @@ export default function PrivacySettingsPage() {
     },
   })
 
-  // 2. Update Consents
+  // 2. Fetch existing privacy requests on page load
+  const { data: existingRequests } = useQuery<PrivacyRequestsResponse>({
+    queryKey: ['privacy', 'requests'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/v1/me/privacy/requests')
+      return data
+    },
+  })
+
+  // Find active export request from existing requests
+  useEffect(() => {
+    if (existingRequests?.data) {
+      const activeExport = existingRequests.data.find(
+        (req) =>
+          req.request_type === 'export' &&
+          (req.status === 'pending' || req.status === 'processing' || req.status === 'completed'),
+      )
+      if (activeExport && !exportRequestId) {
+        setExportRequestId(activeExport.id)
+      }
+    }
+  }, [existingRequests, exportRequestId])
+
+  // Check if there's an active (pending/processing) export request
+  const hasActiveExportRequest = existingRequests?.data?.some(
+    (req) =>
+      req.request_type === 'export' && (req.status === 'pending' || req.status === 'processing'),
+  )
+
+  // 3. Update Consents
   const updateConsentMutation = useMutation({
     mutationFn: async (vars: Partial<Consents>) => {
       await api.patch('/api/v1/me/privacy/consents', vars)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['privacy', 'consents'] })
-      toast('Gizlilik tercihleriniz güncellendi.', 'success')
+      toast(privacy.toast.consentsUpdated, 'success')
     },
     onError: () => {
-      toast('Tercihler güncellenirken bir hata oluştu.', 'error')
+      toast(privacy.toast.consentsError, 'error')
     },
   })
 
-  // 3. Data Export
+  // 4. Data Export
   const exportMutation = useMutation({
     mutationFn: async () => {
       const { data } = await api.post('/api/v1/me/privacy/export')
@@ -81,10 +117,15 @@ export default function PrivacySettingsPage() {
     },
     onSuccess: (data: PrivacyRequest) => {
       setExportRequestId(data.id)
-      toast('Veri dışa aktarma talebiniz alındı.', 'success')
+      queryClient.invalidateQueries({ queryKey: ['privacy', 'requests'] })
+      toast(privacy.toast.exportRequested, 'success')
     },
-    onError: () => {
-      toast('Dışa aktarma talebi oluşturulurken bir hata oluştu.', 'error')
+    onError: (error: AxiosError) => {
+      if (error.response?.status === 409) {
+        toast(privacy.toast.exportActiveExists, 'error')
+      } else {
+        toast(privacy.toast.exportError, 'error')
+      }
     },
   })
 
@@ -126,34 +167,36 @@ export default function PrivacySettingsPage() {
       a.remove()
       window.URL.revokeObjectURL(url)
     } catch {
-      toast('Dışa aktarma indirme sırasında bir hata oluştu.', 'error')
+      toast(privacy.toast.downloadError, 'error')
     }
   }
 
-  // 4. Data Correction
+  // 5. Data Correction
   const correctionMutation = useMutation({
     mutationFn: async () => {
       await api.post('/api/v1/me/privacy/correction', { reason: correctionReason })
     },
     onSuccess: () => {
-      toast('Veri düzeltme talebiniz alındı.', 'success')
+      toast(privacy.toast.correctionRequested, 'success')
       setCorrectionReason('')
     },
     onError: () => {
-      toast('Düzeltme talebi oluşturulurken bir hata oluştu.', 'error')
+      toast(privacy.toast.correctionError, 'error')
     },
   })
 
-  // 5. Account Deletion
+  // 6. Account Deletion
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
-      await api.post('/api/v1/me/privacy/delete', { reason: deleteReason || 'User requested deletion' })
+      await api.post('/api/v1/me/privacy/delete', {
+        reason: deleteReason || 'User requested deletion',
+      })
     },
     onSuccess: () => {
-      toast('Hesap silme talebiniz alındı.', 'success')
+      toast(privacy.toast.deleteRequested, 'success')
     },
     onError: () => {
-      toast('Hesap silme talebi oluşturulurken bir hata oluştu.', 'error')
+      toast(privacy.toast.deleteError, 'error')
     },
   })
 
@@ -172,10 +215,8 @@ export default function PrivacySettingsPage() {
   return (
     <div className="container max-w-3xl py-10 space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Gizlilik Ayarları</h1>
-        <p className="text-muted-foreground">
-          Veri işleme izinlerinizi, veri dışa aktarma ve hesap silme işlemlerinizi buradan yönetebilirsiniz.
-        </p>
+        <h1 className="text-3xl font-bold">{privacy.page.title}</h1>
+        <p className="text-muted-foreground">{privacy.page.description}</p>
       </div>
 
       {/* 1. Consents */}
@@ -183,18 +224,16 @@ export default function PrivacySettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            İzinler ve Tercihler
+            {privacy.consents.title}
           </CardTitle>
-          <CardDescription>
-            Hangi verilerinizin nasıl işleneceğine karar verin.
-          </CardDescription>
+          <CardDescription>{privacy.consents.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="marketing" className="flex flex-col space-y-1">
-              <span>Pazarlama İletişimi</span>
+              <span>{privacy.consents.marketing.label}</span>
               <span className="font-normal text-xs text-muted-foreground">
-                Kampanya ve duyurulardan haberdar olmak istiyorum.
+                {privacy.consents.marketing.description}
               </span>
             </Label>
             <Switch
@@ -205,9 +244,9 @@ export default function PrivacySettingsPage() {
           </div>
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="analytics" className="flex flex-col space-y-1">
-              <span>Analitik Veriler</span>
+              <span>{privacy.consents.analytics.label}</span>
               <span className="font-normal text-xs text-muted-foreground">
-                Hizmet kalitesini artırmak için anonim kullanım verilerimi paylaş.
+                {privacy.consents.analytics.description}
               </span>
             </Label>
             <Switch
@@ -218,9 +257,9 @@ export default function PrivacySettingsPage() {
           </div>
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="personalization" className="flex flex-col space-y-1">
-              <span>Kişiselleştirme</span>
+              <span>{privacy.consents.personalization.label}</span>
               <span className="font-normal text-xs text-muted-foreground">
-                Bana özel içerik ve öneriler sunulmasını kabul ediyorum.
+                {privacy.consents.personalization.description}
               </span>
             </Label>
             <Switch
@@ -231,9 +270,9 @@ export default function PrivacySettingsPage() {
           </div>
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="third_party" className="flex flex-col space-y-1">
-              <span>Üçüncü Taraf Paylaşımı</span>
+              <span>{privacy.consents.thirdParty.label}</span>
               <span className="font-normal text-xs text-muted-foreground">
-                Verilerimin iş ortakları ve üçüncü taraflarla paylaşılmasını kabul ediyorum.
+                {privacy.consents.thirdParty.description}
               </span>
             </Label>
             <Switch
@@ -250,39 +289,37 @@ export default function PrivacySettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
-            Veri Dışa Aktarma
+            {privacy.export.title}
           </CardTitle>
-          <CardDescription>
-            Tüm kişisel verilerinizin bir kopyasını indirin. İşlem tamamlandığında buradan indirebilirsiniz.
-          </CardDescription>
+          <CardDescription>{privacy.export.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button
             variant="outline"
             onClick={() => exportMutation.mutate()}
-            disabled={exportMutation.isPending}
+            disabled={exportMutation.isPending || hasActiveExportRequest}
           >
             {exportMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Hazırlanıyor...
+                {privacy.export.preparing}
               </>
             ) : (
-              'Verilerimi İndir'
+              privacy.export.button
             )}
           </Button>
 
           {exportRequestId && (
             <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <div>Durum: {exportRequest?.status ?? 'pending'}</div>
+              <div>
+                {privacy.export.statusLabel}: {getStatusLabel(exportRequest?.status)}
+              </div>
               {exportRequest?.status === 'completed' && (
                 <Button variant="secondary" onClick={downloadExport}>
-                  İndirmeyi Başlat
+                  {privacy.export.downloadButton}
                 </Button>
               )}
-              {exportRequest?.status === 'denied' && (
-                <div>Talebiniz reddedildi.</div>
-              )}
+              {exportRequest?.status === 'denied' && <div>{privacy.export.denied}</div>}
             </div>
           )}
         </CardContent>
@@ -293,18 +330,16 @@ export default function PrivacySettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Edit3 className="w-5 h-5" />
-            Veri Düzeltme
+            {privacy.correction.title}
           </CardTitle>
-          <CardDescription>
-            Kişisel verilerinizde bir yanlışlık olduğunu düşünüyorsanız düzeltme talebinde bulunun.
-          </CardDescription>
+          <CardDescription>{privacy.correction.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="correction-reason">Düzeltme Detayları</Label>
+            <Label htmlFor="correction-reason">{privacy.correction.label}</Label>
             <Textarea
               id="correction-reason"
-              placeholder="Hangi verinin nasıl düzeltilmesini istediğinizi açıklayın..."
+              placeholder={privacy.correction.placeholder}
               value={correctionReason}
               onChange={(e) => setCorrectionReason(e.target.value)}
             />
@@ -317,10 +352,10 @@ export default function PrivacySettingsPage() {
             {correctionMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Gönderiliyor...
+                {privacy.correction.sending}
               </>
             ) : (
-              'Düzeltme Talebi Gönder'
+              privacy.correction.button
             )}
           </Button>
         </CardContent>
@@ -331,30 +366,26 @@ export default function PrivacySettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
             <Trash2 className="w-5 h-5" />
-            Hesabı Sil
+            {privacy.delete.title}
           </CardTitle>
-          <CardDescription>
-            Hesabınızı ve tüm verilerinizi kalıcı olarak silin. Bu işlem geri alınamaz.
-          </CardDescription>
+          <CardDescription>{privacy.delete.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Hesabımı Sil</Button>
+              <Button variant="destructive">{privacy.delete.button}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Bu işlem geri alınamaz. Hesabınız ve tüm verileriniz sunucularımızdan kalıcı olarak silinecektir.
-                </AlertDialogDescription>
+                <AlertDialogTitle>{privacy.delete.dialog.title}</AlertDialogTitle>
+                <AlertDialogDescription>{privacy.delete.dialog.description}</AlertDialogDescription>
                 <div className="mt-4">
                   <Label htmlFor="reason" className="text-right">
-                    Silme Nedeni (İsteğe bağlı)
+                    {privacy.delete.dialog.reasonLabel}
                   </Label>
                   <Textarea
                     id="reason"
-                    placeholder="Bize neden ayrıldığınızı söylemek ister misiniz?"
+                    placeholder={privacy.delete.dialog.reasonPlaceholder}
                     value={deleteReason}
                     onChange={(e) => setDeleteReason(e.target.value)}
                     className="mt-2"
@@ -362,12 +393,14 @@ export default function PrivacySettingsPage() {
                 </div>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>İptal</AlertDialogCancel>
+                <AlertDialogCancel>{privacy.delete.dialog.cancel}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => deleteAccountMutation.mutate()}
                 >
-                  {deleteAccountMutation.isPending ? 'Siliniyor...' : 'Evet, Hesabımı Sil'}
+                  {deleteAccountMutation.isPending
+                    ? privacy.delete.dialog.deleting
+                    : privacy.delete.dialog.confirmButton}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

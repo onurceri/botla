@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 	"github.com/onurceri/botla-app/pkg/logger"
 	"github.com/onurceri/botla-app/pkg/storage"
 )
+
+// ErrActiveRequestExists is returned when user already has a pending/processing request of the same type.
+var ErrActiveRequestExists = errors.New("active request already exists")
 
 type PrivacyService struct {
 	PrivacyRepo repository.PrivacyRepository
@@ -134,6 +138,14 @@ func (s *PrivacyService) RequestDeletion(ctx context.Context, userID, email, rea
 }
 
 func (s *PrivacyService) RequestExport(ctx context.Context, userID, email, reason string) (*repository.PrivacyRequest, error) {
+	hasActive, err := s.PrivacyRepo.HasActivePrivacyRequest(ctx, userID, "export")
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "check active export request")
+	}
+	if hasActive {
+		return nil, ErrActiveRequestExists
+	}
+
 	req := repository.PrivacyRequest{
 		UserID:      &userID,
 		UserEmail:   email,

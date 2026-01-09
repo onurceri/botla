@@ -184,9 +184,6 @@ func LoadConfig() *Config {
 		SCRAPER_NAV_TIMEOUT_MS:    parseIntEnv("SCRAPER_NAV_TIMEOUT_MS", 10000),
 		SCRAPER_BROWSER_PATH: func() string {
 			v := os.Getenv("SCRAPER_BROWSER_PATH")
-			if v == "" {
-				return "/usr/bin/chromium"
-			}
 			return v
 		}(),
 		RAG_TOPK:               parseIntEnv("RAG_TOPK", 5),

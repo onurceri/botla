@@ -7,7 +7,6 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/onurceri/botla-app/internal/models"
 	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
@@ -45,14 +44,81 @@ type DataExport struct {
 
 // UserDataExport represents all user data for export.
 type UserDataExport struct {
-	User          models.User                 `json:"user"`
-	Organizations []models.Organization       `json:"organizations"`
-	Chatbots      []models.Chatbot            `json:"chatbots"`
-	Conversations []models.Conversation       `json:"conversations"`
-	Messages      []models.Message            `json:"messages"`
-	ActionLogs    []models.ActionExecutionLog `json:"action_logs"`
-	Consents      []UserConsent               `json:"consents"`
-	ExportedAt    time.Time                   `json:"exported_at"`
+	User          ExportUser          `json:"user"`
+	Organizations []ExportOrg         `json:"organizations"`
+	Chatbots      []ExportChatbot     `json:"chatbots"`
+	Conversations []ExportConv        `json:"conversations"`
+	Messages      []ExportMessage     `json:"messages"`
+	ActionLogs    []ExportActionLog   `json:"action_logs"`
+	Consents      []ExportConsent     `json:"consents"`
+	ExportedAt    time.Time           `json:"exported_at"`
+}
+
+// ExportUser contains user data for GDPR export (excludes internal fields).
+type ExportUser struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	FullName  *string   `json:"full_name,omitempty"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
+	PlanName  *string   `json:"plan_name,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ExportOrg contains organization data for GDPR export.
+type ExportOrg struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ExportChatbot contains chatbot data for GDPR export (excludes style/config).
+type ExportChatbot struct {
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	CreatedAt time.Time      `json:"created_at"`
+	Sources   []ExportSource `json:"sources,omitempty"`
+}
+
+// ExportSource contains data source info for GDPR export.
+type ExportSource struct {
+	Type         string    `json:"type"`
+	Name         string    `json:"name,omitempty"`
+	URL          string    `json:"url,omitempty"`
+	AddedAt      time.Time `json:"added_at"`
+}
+
+// ExportConv contains conversation data for GDPR export.
+type ExportConv struct {
+	ID        string    `json:"id"`
+	ChatbotID string    `json:"chatbot_id"`
+	SessionID string    `json:"session_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ExportMessage contains message data for GDPR export.
+type ExportMessage struct {
+	ID             string    `json:"id"`
+	ConversationID string    `json:"conversation_id"`
+	Role           string    `json:"role"`
+	Content        string    `json:"content"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// ExportActionLog contains action execution log for GDPR export.
+type ExportActionLog struct {
+	ID        string    `json:"id"`
+	ChatbotID string    `json:"chatbot_id"`
+	ActionID  string    `json:"action_id"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ExportConsent contains consent data for GDPR export.
+type ExportConsent struct {
+	ConsentType string     `json:"consent_type"`
+	Granted     bool       `json:"granted"`
+	GrantedAt   time.Time  `json:"granted_at"`
+	RevokedAt   *time.Time `json:"revoked_at,omitempty"`
 }
 
 // UserConsent represents user consent records.
@@ -369,7 +435,7 @@ func (r *PostgresPrivacyRepo) CompletePrivacyExportRequest(ctx context.Context, 
 	query, args, err := psql.
 		Update("privacy_requests").
 		Set("status", "completed").
-		Set("processed_by", sq.Expr("COALESCE(processed_by, $2)", adminID)).
+		Set("processed_by", sq.Expr("COALESCE(processed_by, ?)", adminID)).
 		Set("processed_at", sq.Expr("COALESCE(processed_at, NOW())")).
 		Set("completed_at", sq.Expr("NOW()")).
 		Set("export_url", exportURL).
@@ -479,15 +545,302 @@ func (r *PostgresPrivacyRepo) GetUserFilesForDeletion(ctx context.Context, userI
 
 // GetUserDataForExport retrieves all user data for GDPR export.
 func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID string) (*UserDataExport, error) {
-	// This is a simplified implementation. In production, you might want to
-	// break this into smaller queries or use pagination for large datasets.
 	export := &UserDataExport{
-		ExportedAt: time.Now(),
+		Organizations: []ExportOrg{},
+		Chatbots:      []ExportChatbot{},
+		Conversations: []ExportConv{},
+		Messages:      []ExportMessage{},
+		ActionLogs:    []ExportActionLog{},
+		Consents:      []ExportConsent{},
+		ExportedAt:    time.Now(),
 	}
 
-	// For now, return a basic export structure
-	// The full implementation would require joins across multiple tables
-	// This is intentionally simplified to avoid duplicating all the db logic
+	// 1. Get user with plan name
+	userQuery, userArgs, err := psql.
+		Select("u.id", "u.email", "u.full_name", "u.avatar_url", "p.code", "u.created_at").
+		From("users u").
+		LeftJoin("plans p ON p.id = u.plan_id").
+		Where(sq.Eq{"u.id": userID}).
+		Where(sq.Eq{"u.deleted_at": nil}).
+		ToSql()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "build user query")
+	}
+	err = r.pool.QueryRowContext(ctx, userQuery, userArgs...).Scan(
+		&export.User.ID, &export.User.Email, &export.User.FullName, &export.User.AvatarURL,
+		&export.User.PlanName, &export.User.CreatedAt,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, pkgerrors.Wrapf(err, "get user")
+	}
+
+	// 2. Get organizations via memberships
+	orgsQuery, orgsArgs, err := psql.
+		Select("o.id", "o.name", "o.created_at").
+		From("organizations o").
+		Join("memberships m ON m.organization_id = o.id").
+		Where(sq.Eq{"m.user_id": userID}).
+		ToSql()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "build orgs query")
+	}
+	orgsRows, err := r.pool.QueryContext(ctx, orgsQuery, orgsArgs...)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "query organizations")
+	}
+	defer func() { _ = orgsRows.Close() }()
+	for orgsRows.Next() {
+		var org ExportOrg
+		if err := orgsRows.Scan(&org.ID, &org.Name, &org.CreatedAt); err != nil {
+			return nil, pkgerrors.Wrapf(err, "scan organization")
+		}
+		export.Organizations = append(export.Organizations, org)
+	}
+
+	// 3. Get chatbots
+	botsQuery, botsArgs, err := psql.
+		Select("id", "name", "created_at").
+		From("chatbots").
+		Where(sq.Eq{"user_id": userID}).
+		Where(sq.Eq{"deleted_at": nil}).
+		ToSql()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "build chatbots query")
+	}
+	botsRows, err := r.pool.QueryContext(ctx, botsQuery, botsArgs...)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "query chatbots")
+	}
+	defer func() { _ = botsRows.Close() }()
+	var chatbotIDs []string
+	chatbotMap := make(map[string]int)
+	for botsRows.Next() {
+		var bot ExportChatbot
+		if err := botsRows.Scan(&bot.ID, &bot.Name, &bot.CreatedAt); err != nil {
+			return nil, pkgerrors.Wrapf(err, "scan chatbot")
+		}
+		chatbotMap[bot.ID] = len(export.Chatbots)
+		export.Chatbots = append(export.Chatbots, bot)
+		chatbotIDs = append(chatbotIDs, bot.ID)
+	}
+
+	// 4. Get data sources for chatbots
+	if len(chatbotIDs) > 0 {
+		sourcesQuery, sourcesArgs, err := psql.
+			Select("chatbot_id", "source_type", "original_filename", "source_url", "created_at").
+			From("data_sources").
+			Where(sq.Eq{"chatbot_id": chatbotIDs}).
+			Where(sq.Eq{"deleted_at": nil}).
+			ToSql()
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "build sources query")
+		}
+		sourcesRows, err := r.pool.QueryContext(ctx, sourcesQuery, sourcesArgs...)
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "query sources")
+		}
+		defer func() { _ = sourcesRows.Close() }()
+		for sourcesRows.Next() {
+			var chatbotID string
+			var source ExportSource
+			var filename, url *string
+			if err := sourcesRows.Scan(&chatbotID, &source.Type, &filename, &url, &source.AddedAt); err != nil {
+				return nil, pkgerrors.Wrapf(err, "scan source")
+			}
+			if filename != nil {
+				source.Name = *filename
+			}
+			if url != nil {
+				source.URL = *url
+			}
+			if idx, ok := chatbotMap[chatbotID]; ok {
+				export.Chatbots[idx].Sources = append(export.Chatbots[idx].Sources, source)
+			}
+		}
+	}
+
+	// 5. Get conversations for user's chatbots
+	if len(chatbotIDs) > 0 {
+		convsQuery, convsArgs, err := psql.
+			Select("id", "chatbot_id", "session_id", "created_at").
+			From("conversations").
+			Where(sq.Eq{"chatbot_id": chatbotIDs}).
+			ToSql()
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "build conversations query")
+		}
+		convsRows, err := r.pool.QueryContext(ctx, convsQuery, convsArgs...)
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "query conversations")
+		}
+		defer func() { _ = convsRows.Close() }()
+		var convIDs []string
+		for convsRows.Next() {
+			var conv ExportConv
+			if err := convsRows.Scan(&conv.ID, &conv.ChatbotID, &conv.SessionID, &conv.CreatedAt); err != nil {
+				return nil, pkgerrors.Wrapf(err, "scan conversation")
+			}
+			export.Conversations = append(export.Conversations, conv)
+			convIDs = append(convIDs, conv.ID)
+		}
+
+		// 6. Get messages
+		if len(convIDs) > 0 {
+			msgsQuery, msgsArgs, err := psql.
+				Select("id", "conversation_id", "role", "content", "created_at").
+				From("messages").
+				Where(sq.Eq{"conversation_id": convIDs}).
+				OrderBy("created_at ASC").
+				ToSql()
+			if err != nil {
+				return nil, pkgerrors.Wrapf(err, "build messages query")
+			}
+			msgsRows, err := r.pool.QueryContext(ctx, msgsQuery, msgsArgs...)
+			if err != nil {
+				return nil, pkgerrors.Wrapf(err, "query messages")
+			}
+			defer func() { _ = msgsRows.Close() }()
+			for msgsRows.Next() {
+				var msg ExportMessage
+				if err := msgsRows.Scan(&msg.ID, &msg.ConversationID, &msg.Role, &msg.Content, &msg.CreatedAt); err != nil {
+					return nil, pkgerrors.Wrapf(err, "scan message")
+				}
+				export.Messages = append(export.Messages, msg)
+			}
+		}
+
+		// 7. Get action execution logs
+		logsQuery, logsArgs, err := psql.
+			Select("id", "chatbot_id", "action_id", "status", "created_at").
+			From("action_execution_logs").
+			Where(sq.Eq{"chatbot_id": chatbotIDs}).
+			ToSql()
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "build action logs query")
+		}
+		logsRows, err := r.pool.QueryContext(ctx, logsQuery, logsArgs...)
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "query action logs")
+		}
+		defer func() { _ = logsRows.Close() }()
+		for logsRows.Next() {
+			var log ExportActionLog
+			if err := logsRows.Scan(&log.ID, &log.ChatbotID, &log.ActionID, &log.Status, &log.CreatedAt); err != nil {
+				return nil, pkgerrors.Wrapf(err, "scan action log")
+			}
+			export.ActionLogs = append(export.ActionLogs, log)
+		}
+	}
+
+	// 8. Get user consents
+	consentsQuery, consentsArgs, err := psql.
+		Select("consent_type", "granted", "granted_at", "revoked_at").
+		From("user_consents").
+		Where(sq.Eq{"user_id": userID}).
+		ToSql()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "build consents query")
+	}
+	consentsRows, err := r.pool.QueryContext(ctx, consentsQuery, consentsArgs...)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "query consents")
+	}
+	defer func() { _ = consentsRows.Close() }()
+	for consentsRows.Next() {
+		var consent ExportConsent
+		if err := consentsRows.Scan(&consent.ConsentType, &consent.Granted,
+			&consent.GrantedAt, &consent.RevokedAt); err != nil {
+			return nil, pkgerrors.Wrapf(err, "scan consent")
+		}
+		export.Consents = append(export.Consents, consent)
+	}
 
 	return export, nil
+}
+
+// ListPrivacyRequestsByUserID retrieves privacy requests for a specific user with pagination.
+func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, userID string, limit, offset int) ([]PrivacyRequest, int, error) {
+	query, args, err := psql.
+		Select(
+			"id", "user_id", "user_email", "request_type", "status", "reason",
+			"denial_reason", "processed_by", "processed_at", "completed_at",
+			"export_url", "export_expires_at", "created_at",
+		).
+		From("privacy_requests").
+		Where(sq.Eq{"user_id": userID}).
+		OrderBy("created_at DESC").
+		Limit(uint64(limit)).
+		Offset(uint64(offset)).
+		ToSql()
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "build list privacy requests by user query")
+	}
+
+	rows, err := r.pool.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "list privacy requests by user")
+	}
+	defer func() { _ = rows.Close() }()
+
+	var requests []PrivacyRequest
+	for rows.Next() {
+		var req PrivacyRequest
+		err := rows.Scan(
+			&req.ID, &req.UserID, &req.UserEmail, &req.RequestType, &req.Status,
+			&req.Reason, &req.DenialReason, &req.ProcessedBy, &req.ProcessedAt,
+			&req.CompletedAt, &req.ExportURL, &req.ExportExpiresAt, &req.CreatedAt,
+		)
+		if err != nil {
+			return nil, 0, pkgerrors.Wrapf(err, "scan privacy request")
+		}
+		requests = append(requests, req)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "privacy requests rows error")
+	}
+
+	// Get total count
+	countQuery, countArgs, err := psql.
+		Select("COUNT(*)").
+		From("privacy_requests").
+		Where(sq.Eq{"user_id": userID}).
+		ToSql()
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "build count query")
+	}
+
+	var totalCount int
+	err = r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "count privacy requests by user")
+	}
+
+	return requests, totalCount, nil
+}
+
+// HasActivePrivacyRequest checks if user has a pending or processing request of the given type.
+func (r *PostgresPrivacyRepo) HasActivePrivacyRequest(ctx context.Context, userID, requestType string) (bool, error) {
+	query, args, err := psql.
+		Select("COUNT(*)").
+		From("privacy_requests").
+		Where(sq.And{
+			sq.Eq{"user_id": userID},
+			sq.Eq{"request_type": requestType},
+			sq.Or{
+				sq.Eq{"status": "pending"},
+				sq.Eq{"status": "processing"},
+			},
+		}).
+		ToSql()
+	if err != nil {
+		return false, pkgerrors.Wrapf(err, "build has active privacy request query")
+	}
+
+	var count int
+	err = r.pool.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return false, pkgerrors.Wrapf(err, "has active privacy request")
+	}
+
+	return count > 0, nil
 }

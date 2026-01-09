@@ -40,7 +40,11 @@ func NewBrowserPool(size int, idleTTL time.Duration, browserPath string) (*Brows
 		browserPath: browserPath,
 	}
 	for i := 0; i < size; i++ {
-		u := launcher.New().Bin(browserPath).Headless(true).MustLaunch()
+		l := launcher.New().Headless(true)
+		if browserPath != "" {
+			l = l.Bin(browserPath)
+		}
+		u := l.MustLaunch()
 		b := rod.New().ControlURL(u).MustConnect()
 		bp.browsers = append(bp.browsers, b)
 	}
@@ -102,7 +106,11 @@ func (bp *BrowserPool) nextBrowser() *rod.Browser {
 	defer bp.mu.Unlock()
 	bp.lastUse = time.Now()
 	if len(bp.browsers) == 0 {
-		u := launcher.New().Bin(bp.browserPath).Headless(true).MustLaunch()
+		l := launcher.New().Headless(true)
+		if bp.browserPath != "" {
+			l = l.Bin(bp.browserPath)
+		}
+		u := l.MustLaunch()
 		b := rod.New().ControlURL(u).MustConnect()
 		bp.browsers = append(bp.browsers, b)
 		bp.idx = 0
