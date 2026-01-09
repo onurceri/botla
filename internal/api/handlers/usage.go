@@ -9,6 +9,7 @@ import (
 	"github.com/onurceri/botla-app/internal/models"
 	"github.com/onurceri/botla-app/internal/repository"
 	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
@@ -17,6 +18,7 @@ type UsageHandlers struct {
 	UserRepo    repository.UserRepository
 	ChatbotRepo repository.ChatbotRepository
 	UsageRepo   repository.UsageRepository
+	Log         *logger.Logger
 }
 
 // GetUsage handles GET /me/usage endpoint
@@ -30,6 +32,9 @@ func (h *UsageHandlers) GetUsage(w http.ResponseWriter, r *http.Request) {
 	// Verify user exists
 	u, err := h.UserRepo.GetByID(r.Context(), uid)
 	if err != nil {
+		if h.Log != nil {
+			h.Log.Error("GetUsage: failed to get user", map[string]any{"error": err.Error(), "userID": uid})
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -43,6 +48,9 @@ func (h *UsageHandlers) GetUsage(w http.ResponseWriter, r *http.Request) {
 
 	usage, err := h.getUserUsage(r.Context(), u.ID, wsID)
 	if err != nil {
+		if h.Log != nil {
+			h.Log.Error("GetUsage: failed to get usage", map[string]any{"error": err.Error(), "userID": uid, "workspaceID": wsID})
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -65,6 +65,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 		UserRepo:    userRepo,
 		ChatbotRepo: chatbotRepo,
 		UsageRepo:   usageRepo,
+		Log:         log,
 	}
 	onbh := &handlers.OnboardingHandlers{DB: pool, UserRepo: userRepo}
 	ch := &handlers.ChatbotHandlers{
