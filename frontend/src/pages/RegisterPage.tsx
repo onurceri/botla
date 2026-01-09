@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input'
 import { api } from '@/api/client'
 import { useToast } from '@/components/ui/toast'
 import { getTurkishErrorMessage } from '@/lib/errorMessages'
+import { useAuth } from '@/contexts/AuthContext'
 
 const RegisterPage = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { refetch } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,14 +28,14 @@ const RegisterPage = () => {
     setErrorMsg(null)
     setIsLoading(true)
     try {
-      // Register the user
+      // Register the user - backend sets HttpOnly cookies automatically
       await api.post('/api/v1/auth/register', { full_name: name, email, password })
-
-      // Auto-login after registration
-      const { data } = await api.post('/api/v1/auth/login', { email, password })
-      window.localStorage.setItem('botla_token', data.token)
-      window.localStorage.setItem('botla_refresh_token', data.refresh_token)
+      
+      // Clear any stale org selection
       window.localStorage.removeItem('botla_last_org_id')
+
+      // Refetch user to update AuthContext state
+      refetch()
 
       // Fetch onboarding status to determine where to redirect
       const { data: onboardingState } = await api.get('/api/v1/me/onboarding')
@@ -207,9 +209,11 @@ const RegisterPage = () => {
 
             {/* Divider */}
             <div className="relative my-8">
-              <div className="divider" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="px-4 text-xs font-medium uppercase text-muted-foreground bg-white/80 backdrop-blur-sm rounded-full">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border/50" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="px-4 text-muted-foreground bg-white/80 backdrop-blur-sm rounded-full">
                   veya
                 </span>
               </div>
