@@ -9,6 +9,9 @@ export const api = axios.create({
 
 let refreshPromise: Promise<void> | null = null
 let isRedirecting = false
+// Track if user was ever authenticated in this session
+// This prevents showing "session expired" to new visitors who never logged in
+let wasAuthenticated = false
 
 // Queue for failed requests waiting for token refresh
 interface FailedRequest {
@@ -108,6 +111,12 @@ export const _resetRefreshState = () => {
   failedQueue = []
   refreshPromise = null
   isRedirecting = false
+  wasAuthenticated = false
+}
+
+// Mark user as authenticated (called after successful login/register)
+export const _setWasAuthenticated = (value: boolean) => {
+  wasAuthenticated = value
 }
 
 export const _setRedirectToLogin = (fn: () => void) => {
@@ -130,10 +139,14 @@ const handleSessionExpired = () => {
   // We rely on the server to clear them on /logout or they will expire.
   // We can try to call logout endpoint here, but session expired usually means token is already invalid.
   
-  // Dispatch event for app-level handling (e.g., showing toast)
-  if (typeof window !== 'undefined') {
+  // Only show session expired message if user was actually authenticated before
+  // This prevents showing the message to new visitors who never logged in
+  if (wasAuthenticated && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('session-expired'))
   }
+  
+  // Reset the authenticated flag
+  wasAuthenticated = false
 
   // Small delay to allow toast to show before redirect
   setTimeout(() => {
@@ -176,10 +189,17 @@ api.interceptors.response.use(
       return Promise.reject(err)
     }
 
-    // Skip token refresh logic for auth endpoints - 401 on these means invalid credentials, not session expiry
-    const authEndpoints = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/refresh']
-    const isAuthEndpoint = authEndpoints.some((endpoint) => originalRequest?.url?.includes(endpoint))
-    if (isAuthEndpoint) {
+    // Skip token refresh logic for auth endpoints and /me - 401 on these means:
+    // - For auth endpoints: invalid credentials, not session expiry
+    // - For /me: user is not logged in (expected for new visitors)
+    const skipRefreshEndpoints = [
+      '/api/v1/auth/login', 
+      '/api/v1/auth/register', 
+      '/api/v1/auth/refresh',
+      '/api/v1/me'  // Don't try to refresh when checking auth status
+    ]
+    const shouldSkipRefresh = skipRefreshEndpoints.some((endpoint) => originalRequest?.url?.includes(endpoint))
+    if (shouldSkipRefresh) {
       return Promise.reject(err)
     }
 

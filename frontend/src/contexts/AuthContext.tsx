@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, _setWasAuthenticated } from '@/api/client'
 import type { User } from '@/types/user'
 
 /**
@@ -88,6 +88,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsInitialized(true)
     }
   }, [queryLoading])
+
+  // Track when user becomes authenticated
+  // This is used to determine if session expiry should be shown
+  useEffect(() => {
+    if (user) {
+      _setWasAuthenticated(true)
+    }
+  }, [user])
 
   const logout = async () => {
     try {
