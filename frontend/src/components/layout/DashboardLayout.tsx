@@ -163,7 +163,7 @@ const DashboardLayout = () => {
         <div className={cn(
           "h-16 flex items-center border-b border-black/5 transition-all duration-300 ease-in-out",
           isCollapsed 
-            ? "justify-center lg:group-hover/sidebar:justify-start lg:group-hover/sidebar:px-5" 
+            ? "px-5 lg:px-0 lg:justify-center lg:group-hover/sidebar:justify-start lg:group-hover/sidebar:px-5" 
             : "px-5"
         )}>
           <Link to="/dashboard" className="flex items-center gap-3 logo-glow">
@@ -179,7 +179,7 @@ const DashboardLayout = () => {
             <span
               className={cn(
                 'font-bold text-lg tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text whitespace-nowrap',
-                isCollapsed ? 'hidden lg:group-hover/sidebar:inline' : undefined,
+                isCollapsed ? 'lg:hidden lg:group-hover/sidebar:inline' : undefined,
               )}
             >
               botla.app
