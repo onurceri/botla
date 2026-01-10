@@ -44,19 +44,23 @@ type MockSourceRepo struct {
 	// UpdateForRefreshFunc is called when UpdateForRefresh is invoked.
 	UpdateForRefreshFunc func(ctx context.Context, id string) error
 
+	// GetCapabilitySummariesFunc is called when GetCapabilitySummaries is invoked.
+	GetCapabilitySummariesFunc func(ctx context.Context, chatbotID string) ([]string, error)
+
 	// Invocation tracking for test assertions
 	Calls struct {
-		GetByID          []MockSourceGetByIDCall
-		GetByChatbot     []MockSourceGetByChatbotCall
-		GetURLSources    []MockSourceGetURLSourcesCall
-		Create           []MockSourceCreateCall
-		SoftDelete       []MockSourceSoftDeleteCall
-		Delete           []MockSourceDeleteCall
-		Exists           []MockSourceExistsCall
-		ExistsByHash     []MockSourceExistsByHashCall
-		GetByHash        []MockSourceGetByHashCall
-		CountByType      []MockSourceCountByTypeCall
-		UpdateForRefresh []MockSourceUpdateForRefreshCall
+		GetByID                []MockSourceGetByIDCall
+		GetByChatbot           []MockSourceGetByChatbotCall
+		GetURLSources          []MockSourceGetURLSourcesCall
+		Create                 []MockSourceCreateCall
+		SoftDelete             []MockSourceSoftDeleteCall
+		Delete                 []MockSourceDeleteCall
+		Exists                 []MockSourceExistsCall
+		ExistsByHash           []MockSourceExistsByHashCall
+		GetByHash              []MockSourceGetByHashCall
+		CountByType            []MockSourceCountByTypeCall
+		UpdateForRefresh       []MockSourceUpdateForRefreshCall
+		GetCapabilitySummaries []MockSourceGetCapabilitySummariesCall
 	}
 }
 
@@ -107,6 +111,10 @@ type MockSourceCountByTypeCall struct {
 
 type MockSourceUpdateForRefreshCall struct {
 	ID string
+}
+
+type MockSourceGetCapabilitySummariesCall struct {
+	ChatbotID string
 }
 
 // Compile-time check that MockSourceRepo implements SourceRepository.
@@ -229,6 +237,7 @@ func (m *MockSourceRepo) Reset() {
 	m.Calls.GetByHash = nil
 	m.Calls.CountByType = nil
 	m.Calls.UpdateForRefresh = nil
+	m.Calls.GetCapabilitySummaries = nil
 }
 
 // UpdateSourceHash updates the content hash for a source.
@@ -258,5 +267,13 @@ func (m *MockSourceRepo) GetLastDeletedAtForURL(ctx context.Context, chatbotID, 
 
 // GetSourceSuggestions retrieves source suggested questions with chunk counts for aggregation.
 func (m *MockSourceRepo) GetSourceSuggestions(ctx context.Context, chatbotID string) ([]SourceSuggestion, error) {
+	return nil, nil
+}
+
+func (m *MockSourceRepo) GetCapabilitySummaries(ctx context.Context, chatbotID string) ([]string, error) {
+	m.Calls.GetCapabilitySummaries = append(m.Calls.GetCapabilitySummaries, MockSourceGetCapabilitySummariesCall{ChatbotID: chatbotID})
+	if m.GetCapabilitySummariesFunc != nil {
+		return m.GetCapabilitySummariesFunc(ctx, chatbotID)
+	}
 	return nil, nil
 }

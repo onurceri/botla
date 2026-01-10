@@ -438,3 +438,180 @@ func TestPostgresSourceRepo_Create_WithAllFields(t *testing.T) {
 func stringPtr(s string) *string {
 	return &s
 }
+
+// TestPostgresSourceRepo_GetCapabilitySummaries_Empty tests that empty list is returned when no summaries exist.
+func TestPostgresSourceRepo_GetCapabilitySummaries_Empty(t *testing.T) {
+	repo := newSourceRepo(t)
+	ctx := context.Background()
+
+	chatbotResult := testdb.CreateChatbot(t, repo.(*repository.PostgresSourceRepo).Pool())
+
+	summaries, err := repo.GetCapabilitySummaries(ctx, chatbotResult.Chatbot.ID)
+
+	require.NoError(t, err)
+	assert.Empty(t, summaries, "should return empty list when no summaries exist")
+}
+
+// TestPostgresSourceRepo_GetCapabilitySummaries_Success tests retrieving capability summaries.
+func TestPostgresSourceRepo_GetCapabilitySummaries_Success(t *testing.T) {
+	repo := newSourceRepo(t)
+	ctx := context.Background()
+
+	chatbotResult := testdb.CreateChatbot(t, repo.(*repository.PostgresSourceRepo).Pool())
+
+	// Create sources with capability summaries
+	summary1 := "Provides information about products and services."
+	summary2 := "Contains FAQ about shipping and returns."
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &summary1,
+	})
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &summary2,
+	})
+
+	summaries, err := repo.GetCapabilitySummaries(ctx, chatbotResult.Chatbot.ID)
+
+	require.NoError(t, err)
+	assert.Len(t, summaries, 2, "should return 2 summaries")
+	assert.Contains(t, summaries, summary1)
+	assert.Contains(t, summaries, summary2)
+}
+
+// TestPostgresSourceRepo_GetCapabilitySummaries_ExcludesNonCompleted tests that non-completed sources are excluded.
+func TestPostgresSourceRepo_GetCapabilitySummaries_ExcludesNonCompleted(t *testing.T) {
+	repo := newSourceRepo(t)
+	ctx := context.Background()
+
+	chatbotResult := testdb.CreateChatbot(t, repo.(*repository.PostgresSourceRepo).Pool())
+
+	summary := "This is a completed source summary."
+	pendingSummary := "This is a pending source."
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &summary,
+	})
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "pending",
+		CapabilitySummary: &pendingSummary,
+	})
+
+	summaries, err := repo.GetCapabilitySummaries(ctx, chatbotResult.Chatbot.ID)
+
+	require.NoError(t, err)
+	assert.Len(t, summaries, 1, "should only return completed source summaries")
+	assert.Contains(t, summaries, summary)
+	assert.NotContains(t, summaries, pendingSummary)
+}
+
+// TestPostgresSourceRepo_GetCapabilitySummaries_ExcludesDeleted tests that deleted sources are excluded.
+func TestPostgresSourceRepo_GetCapabilitySummaries_ExcludesDeleted(t *testing.T) {
+	repo := newSourceRepo(t)
+	ctx := context.Background()
+
+	chatbotResult := testdb.CreateChatbot(t, repo.(*repository.PostgresSourceRepo).Pool())
+
+	activeSummary := "This is an active source summary."
+	deletedSummary := "This is a deleted source summary."
+
+	sourceActive := testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &activeSummary,
+	})
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &deletedSummary,
+	})
+
+	// Soft delete the second source
+	err := repo.SoftDelete(ctx, sourceActive.Source.ID)
+	require.NoError(t, err)
+
+	summaries, err := repo.GetCapabilitySummaries(ctx, chatbotResult.Chatbot.ID)
+
+	require.NoError(t, err)
+	assert.Len(t, summaries, 1, "should only return non-deleted source summaries")
+	assert.Contains(t, summaries, deletedSummary)
+	assert.NotContains(t, summaries, activeSummary)
+}
+
+// TestPostgresSourceRepo_GetCapabilitySummaries_ExcludesEmpty tests that empty or null summaries are excluded.
+func TestPostgresSourceRepo_GetCapabilitySummaries_ExcludesEmpty(t *testing.T) {
+	repo := newSourceRepo(t)
+	ctx := context.Background()
+
+	chatbotResult := testdb.CreateChatbot(t, repo.(*repository.PostgresSourceRepo).Pool())
+
+	validSummary := "This source has a valid summary."
+	emptySummary := ""
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: nil, // NULL in database
+	})
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &emptySummary, // Empty string
+	})
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbotResult.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &validSummary,
+	})
+
+	summaries, err := repo.GetCapabilitySummaries(ctx, chatbotResult.Chatbot.ID)
+
+	require.NoError(t, err)
+	assert.Len(t, summaries, 1, "should only return non-empty summaries")
+	assert.Contains(t, summaries, validSummary)
+}
+
+// TestPostgresSourceRepo_GetCapabilitySummaries_DifferentChatbots tests that only summaries for the specified chatbot are returned.
+func TestPostgresSourceRepo_GetCapabilitySummaries_DifferentChatbots(t *testing.T) {
+	repo := newSourceRepo(t)
+	ctx := context.Background()
+
+	chatbot1 := testdb.CreateChatbot(t, repo.(*repository.PostgresSourceRepo).Pool())
+	chatbot2 := testdb.CreateChatbot(t, repo.(*repository.PostgresSourceRepo).Pool())
+
+	summary1 := "Summary for chatbot 1."
+	summary2 := "Summary for chatbot 2."
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbot1.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &summary1,
+	})
+
+	testdb.CreateSource(t, repo.(*repository.PostgresSourceRepo).Pool(), testdb.SourceFixture{
+		ChatbotID:         chatbot2.Chatbot.ID,
+		Status:            "completed",
+		CapabilitySummary: &summary2,
+	})
+
+	summaries1, err := repo.GetCapabilitySummaries(ctx, chatbot1.Chatbot.ID)
+	require.NoError(t, err)
+	assert.Len(t, summaries1, 1, "should only return chatbot 1 summaries")
+	assert.Contains(t, summaries1, summary1)
+
+	summaries2, err := repo.GetCapabilitySummaries(ctx, chatbot2.Chatbot.ID)
+	require.NoError(t, err)
+	assert.Len(t, summaries2, 1, "should only return chatbot 2 summaries")
+	assert.Contains(t, summaries2, summary2)
+}

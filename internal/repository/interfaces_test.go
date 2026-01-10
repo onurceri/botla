@@ -389,6 +389,10 @@ func (m *MockSourceRepository) GetSourceSuggestions(ctx context.Context, chatbot
 	return nil, nil
 }
 
+func (m *MockSourceRepository) GetCapabilitySummaries(ctx context.Context, chatbotID string) ([]string, error) {
+	return nil, nil
+}
+
 // =============================================================================
 // ChatbotRepository Interface Tests
 // =============================================================================

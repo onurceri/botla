@@ -483,13 +483,14 @@ func mergeChatbotFixture(defaults, override ChatbotFixture) ChatbotFixture {
 
 // SourceFixture configures a test data source's properties.
 type SourceFixture struct {
-	ID         string
-	ChatbotID  string // If empty, a new chatbot is created
-	SourceType string // "text", "url", "file"
-	SourceURL  *string
-	FilePath   *string
-	Status     string
-	ChunkCount int
+	ID                string
+	ChatbotID         string // If empty, a new chatbot is created
+	SourceType        string // "text", "url", "file"
+	SourceURL         *string
+	FilePath          *string
+	Status            string
+	ChunkCount        int
+	CapabilitySummary *string
 }
 
 // DefaultSourceFixture returns sensible defaults for a test source.
@@ -541,12 +542,12 @@ func CreateSource(t *testing.T, dbConn *sql.DB, fixture ...SourceFixture) *Sourc
 	var source models.DataSource
 	now := time.Now()
 	err := dbConn.QueryRowContext(ctx, `
-		INSERT INTO data_sources (id, chatbot_id, source_type, source_url, file_path, status, chunk_count, processed_at, size_bytes, is_discovered)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, false)
-		RETURNING id, chatbot_id, source_type, source_url, file_path, status, chunk_count, processed_at, created_at
-	`, f.ID, f.ChatbotID, f.SourceType, f.SourceURL, f.FilePath, f.Status, f.ChunkCount, now).Scan(
+		INSERT INTO data_sources (id, chatbot_id, source_type, source_url, file_path, status, chunk_count, processed_at, size_bytes, is_discovered, capability_summary)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, false, $9)
+		RETURNING id, chatbot_id, source_type, source_url, file_path, status, chunk_count, processed_at, created_at, capability_summary
+	`, f.ID, f.ChatbotID, f.SourceType, f.SourceURL, f.FilePath, f.Status, f.ChunkCount, now, f.CapabilitySummary).Scan(
 		&source.ID, &source.ChatbotID, &source.SourceType, &source.SourceURL, &source.FilePath,
-		&source.Status, &source.ChunkCount, &source.ProcessedAt, &source.CreatedAt,
+		&source.Status, &source.ChunkCount, &source.ProcessedAt, &source.CreatedAt, &source.CapabilitySummary,
 	)
 	if err != nil {
 		t.Fatalf("testdb.CreateSource: failed to create source: %v", err)
@@ -583,6 +584,9 @@ func mergeSourceFixture(defaults, override SourceFixture) SourceFixture {
 	}
 	if override.ChunkCount != 0 {
 		defaults.ChunkCount = override.ChunkCount
+	}
+	if override.CapabilitySummary != nil {
+		defaults.CapabilitySummary = override.CapabilitySummary
 	}
 	return defaults
 }

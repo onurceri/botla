@@ -158,9 +158,24 @@ func parseHandoffRequestID(result string) string {
 // DATA HELPERS
 // =============================================================================
 
-// getCapabilitySummaries retrieves capability summaries from data sources.
 func (s *ChatService) getCapabilitySummaries(ctx context.Context, chatbotID string) string {
-	return ""
+	if s.SourceRepo == nil {
+		return ""
+	}
+
+	summaries, err := s.SourceRepo.GetCapabilitySummaries(ctx, chatbotID)
+	if err != nil {
+		if s.Log != nil {
+			s.Log.Warn("get_capability_summaries_error", map[string]any{"error": err.Error(), "chatbot_id": chatbotID})
+		}
+		return ""
+	}
+
+	if len(summaries) == 0 {
+		return ""
+	}
+
+	return "- " + strings.Join(summaries, "\n- ")
 }
 
 // =============================================================================
