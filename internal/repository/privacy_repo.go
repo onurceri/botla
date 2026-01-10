@@ -44,14 +44,14 @@ type DataExport struct {
 
 // UserDataExport represents all user data for export.
 type UserDataExport struct {
-	User          ExportUser          `json:"user"`
-	Organizations []ExportOrg         `json:"organizations"`
-	Chatbots      []ExportChatbot     `json:"chatbots"`
-	Conversations []ExportConv        `json:"conversations"`
-	Messages      []ExportMessage     `json:"messages"`
-	ActionLogs    []ExportActionLog   `json:"action_logs"`
-	Consents      []ExportConsent     `json:"consents"`
-	ExportedAt    time.Time           `json:"exported_at"`
+	User          ExportUser        `json:"user"`
+	Organizations []ExportOrg       `json:"organizations"`
+	Chatbots      []ExportChatbot   `json:"chatbots"`
+	Conversations []ExportConv      `json:"conversations"`
+	Messages      []ExportMessage   `json:"messages"`
+	ActionLogs    []ExportActionLog `json:"action_logs"`
+	Consents      []ExportConsent   `json:"consents"`
+	ExportedAt    time.Time         `json:"exported_at"`
 }
 
 // ExportUser contains user data for GDPR export (excludes internal fields).
@@ -81,10 +81,10 @@ type ExportChatbot struct {
 
 // ExportSource contains data source info for GDPR export.
 type ExportSource struct {
-	Type         string    `json:"type"`
-	Name         string    `json:"name,omitempty"`
-	URL          string    `json:"url,omitempty"`
-	AddedAt      time.Time `json:"added_at"`
+	Type    string    `json:"type"`
+	Name    string    `json:"name,omitempty"`
+	URL     string    `json:"url,omitempty"`
+	AddedAt time.Time `json:"added_at"`
 }
 
 // ExportConv contains conversation data for GDPR export.
@@ -758,8 +758,13 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 	return export, nil
 }
 
-// ListPrivacyRequestsByUserID retrieves privacy requests for a specific user with pagination.
-func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, userID string, limit, offset int) ([]PrivacyRequest, int, error) {
+// ListPrivacyRequestsByUserID retrieves privacy requests for a specific user with pagination and optional request type filter.
+func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, userID, requestType string, limit, offset int) ([]PrivacyRequest, int, error) {
+	var whereClause sq.Sqlizer = sq.Eq{"user_id": userID}
+	if requestType != "" {
+		whereClause = sq.And{whereClause, sq.Eq{"request_type": requestType}}
+	}
+
 	query, args, err := psql.
 		Select(
 			"id", "user_id", "user_email", "request_type", "status", "reason",
@@ -767,7 +772,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, u
 			"export_url", "export_expires_at", "created_at",
 		).
 		From("privacy_requests").
-		Where(sq.Eq{"user_id": userID}).
+		Where(whereClause).
 		OrderBy("created_at DESC").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).
@@ -803,7 +808,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, u
 	countQuery, countArgs, err := psql.
 		Select("COUNT(*)").
 		From("privacy_requests").
-		Where(sq.Eq{"user_id": userID}).
+		Where(whereClause).
 		ToSql()
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "build count query")
@@ -843,4 +848,50 @@ func (r *PostgresPrivacyRepo) HasActivePrivacyRequest(ctx context.Context, userI
 	}
 
 	return count > 0, nil
+}
+
+// DeletePrivacyRequest deletes a privacy request by ID.
+func (r *PostgresPrivacyRepo) DeletePrivacyRequest(ctx context.Context, requestID string) error {
+	query, args, err := psql.
+		Delete("privacy_requests").
+		Where(sq.Eq{"id": requestID}).
+		ToSql()
+	if err != nil {
+		return pkgerrors.Wrapf(err, "build delete privacy request query")
+	}
+
+	_, err = r.pool.ExecContext(ctx, query, args...)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "delete privacy request")
+	}
+	return nil
+}
+
+// GetLastCompletedRequestDate returns the completion date of the last completed request of the given type for a user.
+func (r *PostgresPrivacyRepo) GetLastCompletedRequestDate(ctx context.Context, userID, requestType string) (*time.Time, error) {
+	query, args, err := psql.
+		Select("completed_at").
+		From("privacy_requests").
+		Where(sq.And{
+			sq.Eq{"user_id": userID},
+			sq.Eq{"request_type": requestType},
+			sq.Eq{"status": "completed"},
+		}).
+		OrderBy("completed_at DESC").
+		Limit(1).
+		ToSql()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "build get last completed request date query")
+	}
+
+	var completedAt *time.Time
+	err = r.pool.QueryRowContext(ctx, query, args...).Scan(&completedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, pkgerrors.Wrapf(err, "get last completed request date")
+	}
+
+	return completedAt, nil
 }

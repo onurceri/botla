@@ -27,11 +27,15 @@ const LoginPage = () => {
       // Login - backend sets HttpOnly cookies automatically
       await api.post('/api/v1/auth/login', { email, password })
       
-      // Refetch user to update AuthContext state
-      refetch()
+      // Refetch user to update AuthContext state and wait for it
+      const { data: user } = await refetch()
       
-      toast('Giriş başarılı! Yönlendiriliyorsunuz...', 'success')
-      navigate('/dashboard')
+      if (user) {
+        toast('Giriş başarılı! Yönlendiriliyorsunuz...', 'success')
+        navigate('/dashboard')
+      } else {
+        toast('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'error')
+      }
     } catch {
       toast('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.', 'error')
     } finally {

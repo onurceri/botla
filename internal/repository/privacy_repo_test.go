@@ -363,3 +363,125 @@ func TestMockPrivacyRepo_AnonymizeUserData(t *testing.T) {
 		}
 	})
 }
+
+func TestMockPrivacyRepo_DeletePrivacyRequest(t *testing.T) {
+	t.Run("default returns nil error", func(t *testing.T) {
+		mock := NewMockPrivacyRepo()
+		err := mock.DeletePrivacyRequest(context.Background(), "request-123")
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		if len(mock.Calls.DeletePrivacyRequest) != 1 {
+			t.Errorf("expected 1 call recorded, got: %d", len(mock.Calls.DeletePrivacyRequest))
+		}
+		if mock.Calls.DeletePrivacyRequest[0].RequestID != "request-123" {
+			t.Errorf("expected call with RequestID 'request-123', got: %s", mock.Calls.DeletePrivacyRequest[0].RequestID)
+		}
+	})
+
+	t.Run("custom function returns error", func(t *testing.T) {
+		mock := NewMockPrivacyRepo()
+		expectedErr := errors.New("delete failed")
+		mock.DeletePrivacyRequestFunc = func(ctx context.Context, requestID string) error {
+			return expectedErr
+		}
+
+		err := mock.DeletePrivacyRequest(context.Background(), "request-123")
+		if err != expectedErr {
+			t.Errorf("expected error %v, got: %v", expectedErr, err)
+		}
+	})
+}
+
+func TestMockPrivacyRepo_GetLastCompletedRequestDate(t *testing.T) {
+	t.Run("default returns nil", func(t *testing.T) {
+		mock := NewMockPrivacyRepo()
+		result, err := mock.GetLastCompletedRequestDate(context.Background(), "user-123", "export")
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		if result != nil {
+			t.Errorf("expected nil result, got: %v", result)
+		}
+		if len(mock.Calls.GetLastCompletedRequestDate) != 1 {
+			t.Errorf("expected 1 call recorded, got: %d", len(mock.Calls.GetLastCompletedRequestDate))
+		}
+		if mock.Calls.GetLastCompletedRequestDate[0].UserID != "user-123" {
+			t.Errorf("expected call with UserID 'user-123', got: %s", mock.Calls.GetLastCompletedRequestDate[0].UserID)
+		}
+		if mock.Calls.GetLastCompletedRequestDate[0].RequestType != "export" {
+			t.Errorf("expected call with RequestType 'export', got: %s", mock.Calls.GetLastCompletedRequestDate[0].RequestType)
+		}
+	})
+
+	t.Run("custom function returns completed date", func(t *testing.T) {
+		mock := NewMockPrivacyRepo()
+		expectedTime := time.Now().Add(-12 * time.Hour)
+		mock.GetLastCompletedRequestDateFunc = func(ctx context.Context, userID, requestType string) (*time.Time, error) {
+			if userID == "user-123" && requestType == "export" {
+				return &expectedTime, nil
+			}
+			return nil, nil
+		}
+
+		result, err := mock.GetLastCompletedRequestDate(context.Background(), "user-123", "export")
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		if result == nil {
+			t.Fatal("expected time result, got nil")
+		}
+		if result.Sub(expectedTime) > time.Second {
+			t.Errorf("expected time close to %v, got: %v", expectedTime, *result)
+		}
+	})
+
+	t.Run("custom function returns nil for no completed requests", func(t *testing.T) {
+		mock := NewMockPrivacyRepo()
+		mock.GetLastCompletedRequestDateFunc = func(ctx context.Context, userID, requestType string) (*time.Time, error) {
+			return nil, nil
+		}
+
+		result, err := mock.GetLastCompletedRequestDate(context.Background(), "user-456", "correction")
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+		if result != nil {
+			t.Errorf("expected nil result, got: %v", result)
+		}
+	})
+
+	t.Run("filters by request type", func(t *testing.T) {
+		mock := NewMockPrivacyRepo()
+		exportTime := time.Now().Add(-12 * time.Hour)
+		correctionTime := time.Now().Add(-25 * time.Hour)
+
+		mock.GetLastCompletedRequestDateFunc = func(ctx context.Context, userID, requestType string) (*time.Time, error) {
+			if userID == "user-123" {
+				if requestType == "export" {
+					return &exportTime, nil
+				}
+				if requestType == "correction" {
+					return &correctionTime, nil
+				}
+			}
+			return nil, nil
+		}
+
+		exportResult, err := mock.GetLastCompletedRequestDate(context.Background(), "user-123", "export")
+		if err != nil {
+			t.Errorf("expected no error for export, got: %v", err)
+		}
+		if exportResult == nil || exportResult.Sub(exportTime) > time.Second {
+			t.Errorf("expected export time close to %v, got: %v", exportTime, exportResult)
+		}
+
+		correctionResult, err := mock.GetLastCompletedRequestDate(context.Background(), "user-123", "correction")
+		if err != nil {
+			t.Errorf("expected no error for correction, got: %v", err)
+		}
+		if correctionResult == nil || correctionResult.Sub(correctionTime) > time.Second {
+			t.Errorf("expected correction time close to %v, got: %v", correctionTime, correctionResult)
+		}
+	})
+}

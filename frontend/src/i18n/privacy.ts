@@ -50,6 +50,23 @@ export const privacy = {
     statusLabel: 'Durum',
     downloadButton: 'İndirmeyi Başlat',
     denied: 'Talebiniz reddedildi.',
+    history: {
+      title: 'Dışa Aktarma Geçmişi',
+      empty: 'Henüz dışa aktarma talebiniz yok.',
+      type: 'Talep Türü',
+      status: 'Durum',
+      date: 'Tarih',
+      actions: 'İşlemler',
+      delete: 'Sil',
+      deleteConfirm: 'Bu dışa aktarma talebini silmek istediğinizden emin misiniz?',
+      deleteSuccess: 'Dışa aktarma talebi silindi.',
+      deleteError: 'Silme işlemi başarısız oldu.',
+    },
+    rateLimit: {
+      title: 'Dışa Aktarma Sınırlaması',
+      message: '24 saatte bir dışa aktarma talebinde bulunabilirsiniz.',
+      nextAvailable: 'Sonraki dışa aktarma: {time}',
+    },
   },
 
   // Data Correction Section
@@ -60,6 +77,25 @@ export const privacy = {
     placeholder: 'Hangi verinin nasıl düzeltilmesini istediğinizi açıklayın...',
     button: 'Düzeltme Talebi Gönder',
     sending: 'Gönderiliyor...',
+    history: {
+      title: 'Düzeltme Geçmişi',
+      empty: 'Henüz düzeltme talebiniz yok.',
+      reason: 'Düzeltme Talebi',
+      status: 'Durum',
+      date: 'Tarih',
+      actions: 'İşlemler',
+      viewDetails: 'Detay',
+      detailsTitle: 'Düzeltme Talebi Detayı',
+      delete: 'Sil',
+      deleteConfirm: 'Bu düzeltme talebini silmek istediğinizden emin misiniz?',
+      deleteSuccess: 'Düzeltme talebi silindi.',
+      deleteError: 'Silme işlemi başarısız oldu.',
+    },
+    rateLimit: {
+      title: 'Düzeltme Sınırlaması',
+      message: '24 saatte bir düzeltme talebinde bulunabilirsiniz.',
+      nextAvailable: 'Sonraki düzeltme: {time}',
+    },
   },
 
   // Delete Account Section
@@ -85,6 +121,7 @@ export const privacy = {
     exportRequested: 'Veri dışa aktarma talebiniz alındı.',
     exportError: 'Dışa aktarma talebi oluşturulurken bir hata oluştu.',
     exportActiveExists: 'Zaten bekleyen bir dışa aktarma talebiniz var.',
+    exportRateLimit: '24 saatte bir dışa aktarma talebinde bulunabilirsiniz.',
     downloadError: 'Dışa aktarma indirme sırasında bir hata oluştu.',
     correctionRequested: 'Veri düzeltme talebiniz alındı.',
     correctionError: 'Düzeltme talebi oluşturulurken bir hata oluştu.',

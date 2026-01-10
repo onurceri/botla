@@ -343,4 +343,139 @@ func TestPrivacyFlow(t *testing.T) {
 		assert.Contains(t, email, "anonymized-")
 		assert.NotNil(t, deletedAt)
 	})
+
+	t.Run("User List Privacy Requests with Pagination", func(t *testing.T) {
+		// Create multiple privacy requests to test pagination
+		for i := 0; i < 15; i++ {
+			body := map[string]string{
+				"reason": fmt.Sprintf("Test correction %d", i),
+			}
+			b, err := json.Marshal(body)
+			require.NoError(t, err)
+			req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/correction", bytes.NewReader(b))
+			req.Header.Set("Authorization", "Bearer "+userToken)
+			resp, err := testHTTPClient().Do(req)
+			require.NoError(t, err)
+			drainBody(resp)
+		}
+
+		// Test first page with limit 10
+		req1, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/privacy/requests?page=1&limit=10", nil)
+		req1.Header.Set("Authorization", "Bearer "+userToken)
+
+		resp1, err := testHTTPClient().Do(req1)
+		require.NoError(t, err)
+		defer drainBody(resp1)
+		assert.Equal(t, http.StatusOK, resp1.StatusCode)
+
+		var result1 struct {
+			Data  []repository.PrivacyRequest `json:"data"`
+			Total int                         `json:"total"`
+			Page  int                         `json:"page"`
+			Limit int                         `json:"limit"`
+		}
+		err = json.NewDecoder(resp1.Body).Decode(&result1)
+		require.NoError(t, err)
+
+		assert.Equal(t, 10, len(result1.Data))
+		assert.Equal(t, 1, result1.Page)
+		assert.Equal(t, 10, result1.Limit)
+		assert.GreaterOrEqual(t, result1.Total, 15)
+
+		// Test second page
+		req2, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/privacy/requests?page=2&limit=10", nil)
+		req2.Header.Set("Authorization", "Bearer "+userToken)
+
+		resp2, err := testHTTPClient().Do(req2)
+		require.NoError(t, err)
+		defer drainBody(resp2)
+		assert.Equal(t, http.StatusOK, resp2.StatusCode)
+
+		var result2 struct {
+			Data  []repository.PrivacyRequest `json:"data"`
+			Total int                         `json:"total"`
+			Page  int                         `json:"page"`
+			Limit int                         `json:"limit"`
+		}
+		err = json.NewDecoder(resp2.Body).Decode(&result2)
+		require.NoError(t, err)
+
+		assert.Equal(t, 5, len(result2.Data))
+		assert.Equal(t, 2, result2.Page)
+		assert.Equal(t, 10, result2.Limit)
+		assert.Equal(t, result1.Total, result2.Total)
+	})
+
+	t.Run("User Delete Privacy Request", func(t *testing.T) {
+		// Create a new privacy request to delete
+		body := map[string]string{
+			"reason": "Test for deletion",
+		}
+		b, err := json.Marshal(body)
+		require.NoError(t, err)
+		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/correction", bytes.NewReader(b))
+		req.Header.Set("Authorization", "Bearer "+userToken)
+
+		resp, err := testHTTPClient().Do(req)
+		require.NoError(t, err)
+		defer drainBody(resp)
+
+		var pr repository.PrivacyRequest
+		err = json.NewDecoder(resp.Body).Decode(&pr)
+		require.NoError(t, err)
+
+		// Delete the request
+		deleteReq, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/me/privacy/requests/"+pr.ID, nil)
+		deleteReq.Header.Set("Authorization", "Bearer "+userToken)
+
+		deleteResp, err := testHTTPClient().Do(deleteReq)
+		require.NoError(t, err)
+		defer drainBody(deleteResp)
+		assert.Equal(t, http.StatusOK, deleteResp.StatusCode)
+
+		// Verify it's deleted from DB
+		var count int
+		err = te.DB.QueryRow("SELECT COUNT(*) FROM privacy_requests WHERE id = $1", pr.ID).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("User Cannot Delete Another User's Request", func(t *testing.T) {
+		// Create another user
+		otherUserEmail := fmt.Sprintf("other_%d@example.com", time.Now().UnixNano())
+		registerUser(t, te.DB, te.Server.URL, otherUserEmail, "Test@123")
+		otherUserToken := loginUser(t, te.Server.URL, otherUserEmail, "Test@123")
+
+		// Create a privacy request for the other user
+		body := map[string]string{
+			"reason": "Other user's request",
+		}
+		b, err := json.Marshal(body)
+		require.NoError(t, err)
+		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/correction", bytes.NewReader(b))
+		req.Header.Set("Authorization", "Bearer "+otherUserToken)
+
+		resp, err := testHTTPClient().Do(req)
+		require.NoError(t, err)
+		defer drainBody(resp)
+
+		var pr repository.PrivacyRequest
+		err = json.NewDecoder(resp.Body).Decode(&pr)
+		require.NoError(t, err)
+
+		// Try to delete with the first user's token
+		deleteReq, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/me/privacy/requests/"+pr.ID, nil)
+		deleteReq.Header.Set("Authorization", "Bearer "+userToken)
+
+		deleteResp, err := testHTTPClient().Do(deleteReq)
+		require.NoError(t, err)
+		defer drainBody(deleteResp)
+		assert.Equal(t, http.StatusNotFound, deleteResp.StatusCode)
+
+		// Verify the request still exists
+		var count int
+		err = te.DB.QueryRow("SELECT COUNT(*) FROM privacy_requests WHERE id = $1", pr.ID).Scan(&count)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
 }
