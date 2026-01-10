@@ -424,8 +424,7 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 		}()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		oldThumbsUpPtr := oldThumbsUp
-		_ = h.AnalyticsRepo.IncrementFeedback(bgCtx, chatbotID, &oldThumbsUpPtr, req.ThumbsUp)
+		_ = h.AnalyticsRepo.IncrementFeedback(bgCtx, chatbotID, oldThumbsUp, req.ThumbsUp)
 	}()
 
 	w.WriteHeader(http.StatusOK)

@@ -139,7 +139,7 @@ func (h *ChatHandlers) FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Update Analytics
 	h.WorkerPool.Submit(func(ctx context.Context) {
-		if err := h.AnalyticsRepo.IncrementFeedback(ctx, chatbotID, &oldThumbsUp, req.ThumbsUp); err != nil {
+		if err := h.AnalyticsRepo.IncrementFeedback(ctx, chatbotID, oldThumbsUp, req.ThumbsUp); err != nil {
 			h.Logger.Error("feedback_increment_failed", map[string]any{
 				"chatbot_id": chatbotID,
 				"error":      err.Error(),

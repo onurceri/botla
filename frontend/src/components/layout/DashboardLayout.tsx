@@ -12,7 +12,6 @@ import {
   User,
   CreditCard,
   Shield,
-  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -36,40 +35,28 @@ const SidebarItem = ({
   collapsed?: boolean
 }) => {
   return (
-    <Link to={to}>
+    <Link to={to} className="block mb-0.5">
       <div
         className={cn(
           'sidebar-nav-item',
-          active && 'active',
+          active ? 'active' : 'text-muted-foreground',
           collapsed && 'lg:justify-center lg:group-hover/sidebar:justify-start',
         )}
       >
         <Icon
           className={cn(
-            'nav-icon w-5 h-5 flex-shrink-0',
-            active
-              ? 'text-primary'
-              : 'text-muted-foreground group-hover:text-foreground',
+            'nav-icon w-[18px] h-[18px] flex-shrink-0', // Fixed standard size
           )}
-          strokeWidth={active ? 2 : 1.5}
+          strokeWidth={2} // Consistent stroke
         />
         <span
           className={cn(
-            'font-medium transition-colors duration-200',
-            active ? 'text-foreground' : 'text-muted-foreground',
+            'text-[13.5px] font-medium transition-colors duration-200 truncate leading-none',
             collapsed ? 'lg:hidden lg:group-hover/sidebar:inline' : undefined,
           )}
         >
           {label}
         </span>
-        {active && (
-          <div
-            className={cn(
-              'nav-indicator-dot ml-auto',
-              collapsed && 'lg:hidden lg:group-hover/sidebar:block',
-            )}
-          />
-        )}
       </div>
     </Link>
   )
@@ -121,17 +108,7 @@ const DashboardLayout = () => {
     { icon: Shield, label: 'Gizlilik', to: '/dashboard/settings/privacy' },
   ]
 
-  // Get plan badge color
-  const getPlanBadgeStyle = () => {
-    switch (planCode.toLowerCase()) {
-      case 'pro':
-        return 'bg-gradient-to-r from-primary to-orange-500 text-white'
-      case 'enterprise':
-        return 'bg-gradient-to-r from-violet-500 to-purple-600 text-white'
-      default:
-        return 'bg-muted text-muted-foreground'
-    }
-  }
+
 
   return (
     <div className="h-screen bg-background text-foreground flex overflow-hidden">
@@ -159,7 +136,7 @@ const DashboardLayout = () => {
       >
         {/* Logo Area */}
         <div className={cn(
-          "h-16 flex items-center border-b border-black/5 transition-all duration-300 ease-in-out",
+          "h-[60px] flex items-center border-b border-black/[0.06] transition-all duration-300 ease-in-out",
           isCollapsed 
             ? "px-5 lg:px-0 lg:justify-center lg:group-hover/sidebar:justify-start lg:group-hover/sidebar:px-5" 
             : "px-5"
@@ -169,14 +146,12 @@ const DashboardLayout = () => {
               <img
                 src="/logo-128.png"
                 alt="Botla Logo"
-                className="w-9 h-9 rounded-xl shadow-lg"
+                className="w-8 h-8 rounded-lg"
               />
-              {/* Subtle glow behind logo */}
-              <div className="absolute inset-0 w-9 h-9 rounded-xl bg-primary/20 blur-xl -z-10" />
             </div>
             <span
               className={cn(
-                'font-bold text-lg tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text whitespace-nowrap',
+                'font-bold text-[15px] tracking-tight text-foreground whitespace-nowrap',
                 isCollapsed ? 'lg:hidden lg:group-hover/sidebar:inline' : undefined,
               )}
             >
@@ -185,21 +160,20 @@ const DashboardLayout = () => {
           </Link>
           
           <div className={cn(
-            "ml-auto flex items-center gap-2 overflow-hidden",
+            "ml-auto flex items-center gap-1 overflow-hidden",
             isCollapsed && "hidden lg:group-hover/sidebar:flex"
           )}>
-            {/* Pin/Hover toggle */}
+            {/* Pin/Hover toggle - Simplified */}
             <Button
               variant="ghost"
               size="icon"
-              className="hidden lg:inline-flex h-8 w-8 rounded-lg hover:bg-black/5 transition-all duration-200"
+              className="hidden lg:inline-flex h-7 w-7 rounded-md text-muted-foreground hover:bg-black/5 hover:text-foreground transition-all duration-200"
               onClick={toggleSidebarMode}
-              title={sidebarMode === 'pinned' ? 'Sabit → Hover' : 'Hover → Sabit'}
             >
               {sidebarMode === 'pinned' ? (
-                <Pin className="w-4 h-4 text-primary" />
+                <Pin className="w-3.5 h-3.5" />
               ) : (
-                <MousePointer className="w-4 h-4 text-muted-foreground" />
+                <MousePointer className="w-3.5 h-3.5" />
               )}
             </Button>
             {/* Mobile close button */}
@@ -207,7 +181,7 @@ const DashboardLayout = () => {
               className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -274,36 +248,27 @@ const DashboardLayout = () => {
             isCollapsed ? 'lg:p-2 lg:group-hover/sidebar:p-3' : undefined,
           )}
         >
-          {/* User Profile Card */}
+          {/* User Profile Card - Professional */}
           <div
             className={cn(
-              'user-profile-card flex items-center gap-3 mb-3 cursor-pointer',
+              'user-profile-card flex items-center gap-3 mb-2 cursor-pointer border border-border/40 hover:border-border/80 bg-white/50',
               isCollapsed ? 'lg:hidden lg:group-hover/sidebar:flex' : undefined,
             )}
             onClick={() => navigate('/dashboard/settings/profile')}
           >
-            {/* Avatar with gradient ring */}
-            <div className="avatar-ring">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-orange-400 to-amber-300 flex items-center justify-center text-white font-semibold text-sm shadow-lg">
+            {/* Avatar - Simple & Clean */}
+            <div className="w-8 h-8 rounded-full bg-orange-100 flex-shrink-0 flex items-center justify-center text-orange-700 font-semibold text-xs border border-orange-200">
                 {(profileName || profileEmail || 'U').charAt(0).toUpperCase()}
-              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate text-foreground">
+            
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <div className="text-[13px] font-medium truncate text-foreground leading-tight">
                 {profileName || profileEmail || 'Kullanıcı'}
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span
-                  className={cn(
-                    'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
-                    getPlanBadgeStyle(),
-                  )}
-                >
-                  {planName || planCode.toUpperCase()}
-                </span>
-                {planCode !== 'free' && (
-                  <Sparkles className="w-3 h-3 text-primary" />
-                )}
+               <span className="text-[10px] text-muted-foreground capitalize">
+                  {planName || planCode} Plan
+               </span>
               </div>
             </div>
           </div>
@@ -315,10 +280,8 @@ const DashboardLayout = () => {
               isCollapsed ? 'lg:flex lg:justify-center lg:group-hover/sidebar:hidden' : undefined,
             )}
           >
-            <div className="avatar-ring">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-orange-400 to-amber-300 flex items-center justify-center text-white font-semibold text-sm shadow-lg">
-                {(profileName || profileEmail || 'U').charAt(0).toUpperCase()}
-              </div>
+            <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 font-semibold text-xs border border-orange-200">
+               {(profileName || profileEmail || 'U').charAt(0).toUpperCase()}
             </div>
           </div>
 

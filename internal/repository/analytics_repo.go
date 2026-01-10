@@ -452,13 +452,13 @@ func (r *PostgresAnalyticsRepo) GetSourceUsageStats(ctx context.Context, chatbot
 	return stats, nil
 }
 
-func (r *PostgresAnalyticsRepo) UpdateMessageFeedback(ctx context.Context, messageID string, thumbsUp bool) (string, bool, error) {
+func (r *PostgresAnalyticsRepo) UpdateMessageFeedback(ctx context.Context, messageID string, thumbsUp bool) (string, *bool, error) {
 	var chatbotIDVar string
 	var oldThumbsUpVar sql.NullBool
 
 	tx, err := r.pool.BeginTx(ctx, nil)
 	if err != nil {
-		return "", false, pkgerrors.Wrapf(err, "begin tx")
+		return "", nil, pkgerrors.Wrapf(err, "begin tx")
 	}
 	defer func() { _ = tx.Rollback() }()
 
@@ -469,7 +469,7 @@ func (r *PostgresAnalyticsRepo) UpdateMessageFeedback(ctx context.Context, messa
 		WHERE m.id = $1 FOR UPDATE
 	`, messageID).Scan(&oldThumbsUpVar, &chatbotIDVar)
 	if err != nil {
-		return "", false, pkgerrors.Wrapf(err, "query current feedback state")
+		return "", nil, pkgerrors.Wrapf(err, "query current feedback state")
 	}
 
 	_, err = tx.ExecContext(ctx, `
@@ -477,16 +477,17 @@ func (r *PostgresAnalyticsRepo) UpdateMessageFeedback(ctx context.Context, messa
 		WHERE id = $1
 	`, messageID, thumbsUp)
 	if err != nil {
-		return "", false, pkgerrors.Wrapf(err, "update message feedback")
+		return "", nil, pkgerrors.Wrapf(err, "update message feedback")
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", false, pkgerrors.Wrapf(err, "commit tx")
+		return "", nil, pkgerrors.Wrapf(err, "commit tx")
 	}
 
-	oldVal := false
+	var oldVal *bool
 	if oldThumbsUpVar.Valid {
-		oldVal = oldThumbsUpVar.Bool
+		v := oldThumbsUpVar.Bool
+		oldVal = &v
 	}
 	return chatbotIDVar, oldVal, nil
 }
