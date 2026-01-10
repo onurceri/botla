@@ -60,6 +60,8 @@ interface PrivacyRequestsResponse {
   total: number
   page: number
   limit: number
+  last_completed_at?: string
+  next_available_at?: string
 }
 
 export default function PrivacySettingsPage() {
@@ -104,29 +106,20 @@ export default function PrivacySettingsPage() {
     },
   })
 
-  // Find the last completed export request for rate limiting
-  const lastCompletedExport = exportRequests?.data?.find(
-    (req) => req.status === 'completed' && req.completed_at,
-  )
+  // Rate limit info from backend (includes soft-deleted requests)
+  const nextExportAvailableTime = exportRequests?.next_available_at
+    ? new Date(exportRequests.next_available_at)
+    : null
+  const isExportRateLimited = nextExportAvailableTime ? new Date() < nextExportAvailableTime : false
 
-  // Find the last completed correction request for rate limiting
-  const lastCompletedCorrection = correctionRequests?.data?.find(
-    (req) => req.status === 'completed' && req.completed_at,
-  )
+  const nextCorrectionAvailableTime = correctionRequests?.next_available_at
+    ? new Date(correctionRequests.next_available_at)
+    : null
+  const isCorrectionRateLimited = nextCorrectionAvailableTime
+    ? new Date() < nextCorrectionAvailableTime
+    : false
 
-  // Calculate when next export is available (24 hours after last completion)
-  const getNextAvailableTime = (completedAt?: string | null) => {
-    if (!completedAt) return null
-    const completedTime = new Date(completedAt)
-    const nextAvailable = new Date(completedTime.getTime() + 24 * 60 * 60 * 1000)
-    return nextAvailable
-  }
 
-  const nextExportAvailableTime = getNextAvailableTime(lastCompletedExport?.completed_at)
-  const isExportRateLimited = nextExportAvailableTime ? new Date() < nextExportAvailableTime : undefined
-
-  const nextCorrectionAvailableTime = getNextAvailableTime(lastCompletedCorrection?.completed_at)
-  const isCorrectionRateLimited = nextCorrectionAvailableTime ? new Date() < nextCorrectionAvailableTime : undefined
 
   // Find active export request from export requests
   useEffect(() => {
@@ -183,20 +176,6 @@ export default function PrivacySettingsPage() {
       } else {
         toast(privacy.toast.exportError, 'error')
       }
-    },
-  })
-
-  // Delete privacy request mutation
-  const deleteRequestMutation = useMutation({
-    mutationFn: async (requestId: string) => {
-      await api.delete(`/api/v1/me/privacy/requests/${requestId}`)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['privacy', 'requests'] })
-      toast(privacy.export.history.deleteSuccess, 'success')
-    },
-    onError: () => {
-      toast(privacy.export.history.deleteError, 'error')
     },
   })
 
@@ -438,47 +417,17 @@ export default function PrivacySettingsPage() {
                             })}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {request.status === 'completed' && (
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => downloadExportRequest(request.id)}
-                                  className="h-8"
-                                  title={privacy.export.downloadButton}
-                                >
-                                  <Download className="h-3 w-3" />
-                                </Button>
-                              )}
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>{privacy.export.history.deleteConfirm}</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      {privacy.export.history.deleteConfirm}
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>{privacy.delete.dialog.cancel}</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteRequestMutation.mutate(request.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      {deleteRequestMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        privacy.export.history.delete
-                                      )}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
+                            {request.status === 'completed' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => downloadExportRequest(request.id)}
+                                className="h-8"
+                                title={privacy.export.downloadButton}
+                              >
+                                <Download className="h-3 w-3" />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -531,50 +480,59 @@ export default function PrivacySettingsPage() {
           </CardTitle>
           <CardDescription>{privacy.correction.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="correction-reason">{privacy.correction.label}</Label>
-            <Textarea
-              id="correction-reason"
-              placeholder={privacy.correction.placeholder}
-              value={correctionReason}
-              onChange={(e) => setCorrectionReason(e.target.value)}
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => correctionMutation.mutate()}
-            disabled={correctionMutation.isPending || !correctionReason.trim() || hasActiveCorrectionRequest || isCorrectionRateLimited}
-          >
-            {correctionMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {privacy.correction.sending}
-              </>
-            ) : (
-              privacy.correction.button
-            )}
-          </Button>
-
-          {isCorrectionRateLimited && nextCorrectionAvailableTime && (
-            <div className="mt-4 flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4">
-              <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-amber-900">
-                  {privacy.correction.rateLimit.message}
-                </p>
-                <p className="mt-1 text-sm text-amber-700">
-                  {privacy.correction.rateLimit.nextAvailable.replace(
-                    '{time}',
-                    nextCorrectionAvailableTime.toLocaleString('tr-TR', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    }),
-                  )}
-                </p>
-              </div>
+        <CardContent className="space-y-6">
+          <div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="correction-reason">{privacy.correction.label}</Label>
+              <Textarea
+                id="correction-reason"
+                placeholder={privacy.correction.placeholder}
+                value={correctionReason}
+                onChange={(e) => setCorrectionReason(e.target.value.slice(0, privacy.correction.maxLength))}
+                maxLength={privacy.correction.maxLength}
+                className="resize-y max-h-64"
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {privacy.correction.charCount
+                  .replace('{count}', String(correctionReason.length))
+                  .replace('{max}', String(privacy.correction.maxLength))}
+              </p>
             </div>
-          )}
+            <Button
+              variant="outline"
+              onClick={() => correctionMutation.mutate()}
+              disabled={correctionMutation.isPending || !correctionReason.trim() || hasActiveCorrectionRequest || isCorrectionRateLimited}
+            >
+              {correctionMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {privacy.correction.sending}
+                </>
+              ) : (
+                privacy.correction.button
+              )}
+            </Button>
+
+            {isCorrectionRateLimited && nextCorrectionAvailableTime && (
+              <div className="mt-4 flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4">
+                <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-900">
+                    {privacy.correction.rateLimit.message}
+                  </p>
+                  <p className="mt-1 text-sm text-amber-700">
+                    {privacy.correction.rateLimit.nextAvailable.replace(
+                      '{time}',
+                      nextCorrectionAvailableTime.toLocaleString('tr-TR', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }),
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Correction History Table */}
           <div className="space-y-4">
@@ -621,44 +579,14 @@ export default function PrivacySettingsPage() {
                             })}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8"
-                                onClick={() => setSelectedCorrectionRequest(request)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>{privacy.correction.history.deleteConfirm}</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    {privacy.correction.history.deleteConfirm}
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>{privacy.delete.dialog.cancel}</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteRequestMutation.mutate(request.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    {deleteRequestMutation.isPending ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      privacy.correction.history.delete
-                                    )}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8"
+                              onClick={() => setSelectedCorrectionRequest(request)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

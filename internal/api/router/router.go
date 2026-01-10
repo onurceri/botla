@@ -149,33 +149,33 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	registerAuthRoutes(mux, ah, cfg.JWT_SECRET)
 
 	// User
-	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
-	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(plh.GetPlan)))
-	mux.Handle("/api/v1/me/usage", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(uh.GetUsage))))
+	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(mh.Me))))
+	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(plh.GetPlan))))
+	mux.Handle("/api/v1/me/usage", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(middleware.ExtractTenantContext()(http.HandlerFunc(uh.GetUsage)))))
 
 	// User Privacy
-	mux.Handle("GET /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyConsents)))
-	mux.Handle("PATCH /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.UpdateMyConsents)))
-	mux.Handle("POST /api/v1/me/privacy/export", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestMyDataExport)))
-	mux.Handle("POST /api/v1/me/privacy/correction", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestDataCorrection)))
-	mux.Handle("POST /api/v1/me/privacy/delete", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestAccountDeletion)))
-	mux.Handle("GET /api/v1/me/privacy/requests", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.ListMyPrivacyRequests)))
-	mux.Handle("GET /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyPrivacyRequest)))
-	mux.Handle("DELETE /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DeleteMyPrivacyRequest)))
-	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyPrivacyExport)))
-	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyDataExport)))
+	mux.Handle("GET /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.GetMyConsents))))
+	mux.Handle("PATCH /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.UpdateMyConsents))))
+	mux.Handle("POST /api/v1/me/privacy/export", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.RequestMyDataExport))))
+	mux.Handle("POST /api/v1/me/privacy/correction", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.RequestDataCorrection))))
+	mux.Handle("POST /api/v1/me/privacy/delete", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.RequestAccountDeletion))))
+	mux.Handle("GET /api/v1/me/privacy/requests", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.ListMyPrivacyRequests))))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.GetMyPrivacyRequest))))
+	mux.Handle("DELETE /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DeleteMyPrivacyRequest))))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DownloadMyPrivacyExport))))
+	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DownloadMyDataExport))))
 
 	// Onboarding
-	mux.Handle("GET /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.GetOnboardingState)))
-	mux.Handle("PUT /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.UpdateOnboardingState)))
-	mux.Handle("POST /api/v1/me/onboarding/skip", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.SkipOnboarding)))
-	mux.Handle("POST /api/v1/me/onboarding/complete", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(onbh.CompleteOnboarding)))
+	mux.Handle("GET /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(onbh.GetOnboardingState))))
+	mux.Handle("PUT /api/v1/me/onboarding", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(onbh.UpdateOnboardingState))))
+	mux.Handle("POST /api/v1/me/onboarding/skip", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(onbh.SkipOnboarding))))
+	mux.Handle("POST /api/v1/me/onboarding/complete", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(onbh.CompleteOnboarding))))
 
 	// Chatbots (List/Create)
-	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate))))
+	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(middleware.ExtractTenantContext()(http.HandlerFunc(ch.ListOrCreate)))))
 
 	// Chatbots Dispatch (Sub-routes)
-	mux.Handle("/api/v1/chatbots/", ChatbotsDispatchHandler(cfg.JWT_SECRET, ch, sh, chh, puh, acth, hoh, anh, sugh))
+	mux.Handle("/api/v1/chatbots/", ChatbotsDispatchHandler(cfg.JWT_SECRET, userRepo, log, ch, sh, chh, puh, acth, hoh, anh, sugh))
 
 	// Public Routes
 	registerPublicRoutes(mux, cfg.JWT_SECRET, hoh, ph, chatbotRepo)
@@ -185,16 +185,16 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	mux.HandleFunc("GET /api/v1/plans/{code}", plansH.GetPlanByCode)
 
 	// Feedback
-	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
+	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(chh.FeedbackHandler))))
 
 	// Sources
-	RegisterSourceRoutes(mux, cfg.JWT_SECRET, sh, tjh)
+	RegisterSourceRoutes(mux, cfg.JWT_SECRET, userRepo, log, sh, tjh)
 
 	// Analytics
-	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.ExtractTenantContext()(http.HandlerFunc(anh.GetAnalytics))))
+	mux.Handle("/api/v1/analytics", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(middleware.ExtractTenantContext()(http.HandlerFunc(anh.GetAnalytics)))))
 
 	// Organizations & Workspaces
-	registerOrgRoutes(mux, cfg.JWT_SECRET, orgSvc, oh, wh)
+	registerOrgRoutes(mux, cfg.JWT_SECRET, userRepo, log, orgSvc, oh, wh)
 
 	// Admin
 	RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)

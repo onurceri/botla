@@ -103,8 +103,6 @@ const DashboardLayout = () => {
   }
 
   const handleLogout = () => {
-    window.localStorage.removeItem('botla_token')
-    window.localStorage.removeItem('botla_refresh_token')
     navigate('/login')
   }
 

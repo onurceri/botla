@@ -79,19 +79,10 @@ describe('DashboardLayout', () => {
   })
 
   it('logs out and navigates to login', async () => {
-    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
-      if (key === 'botla_token') return 'tok'
-      return null
-    })
-    const removeSpy = vi.spyOn(window.localStorage, 'removeItem')
-
     renderWithProviders(null)
 
     const logoutBtns = screen.getAllByRole('button', { name: /Çıkış Yap/i })
     logoutBtns[0].click()
-
-    expect(removeSpy).toHaveBeenCalledWith('botla_token')
-    expect(removeSpy).toHaveBeenCalledWith('botla_refresh_token')
 
     expect(await screen.findByText('Login Page')).toBeInTheDocument()
   })

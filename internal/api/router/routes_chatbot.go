@@ -4,11 +4,13 @@ import (
 	"net/http"
 
 	"github.com/onurceri/botla-app/internal/api/handlers"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/pkg/logger"
 	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
-func ChatbotsDispatchHandler(secret string, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {
-	return middleware.AuthMiddleware(secret)(middleware.ExtractTenantContext()(ChatbotsRawHandler(ch, sh, chh, puh, acth, hoh, anh, sugh)))
+func ChatbotsDispatchHandler(secret string, userRepo *repository.PostgresUserRepo, log *logger.Logger, ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {
+	return middleware.AuthMiddleware(secret)(middleware.DeletedAccountMiddleware(userRepo, log)(middleware.ExtractTenantContext()(ChatbotsRawHandler(ch, sh, chh, puh, acth, hoh, anh, sugh))))
 }
 
 func ChatbotsRawHandler(ch *handlers.ChatbotHandlers, sh *handlers.SourcesHandlers, chh *handlers.ChatHandlers, puh *handlers.PendingURLsHandlers, acth *handlers.ActionHandlers, hoh *handlers.HandoffHandlers, anh *handlers.AnalyticsHandlers, sugh *handlers.SuggestionsHandlers) http.Handler {

@@ -25,6 +25,7 @@ type PrivacyRequest struct {
 	ExportURL       *string    `json:"export_url,omitempty"`
 	ExportExpiresAt *time.Time `json:"export_expires_at,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
+	DeletedAt       *time.Time `json:"deleted_at,omitempty"`
 }
 
 // DataExport represents a data export record.
@@ -336,6 +337,7 @@ func (r *PostgresPrivacyRepo) GetPrivacyRequest(ctx context.Context, requestID s
 }
 
 // ListPrivacyRequests retrieves privacy requests with optional status filter and pagination.
+// Excludes soft-deleted requests.
 func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status string, limit, offset int) ([]PrivacyRequest, int, error) {
 	baseQuery := psql.
 		Select(
@@ -345,9 +347,9 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 		).
 		From("privacy_requests")
 
-	var whereClause sq.Eq
+	whereClause := sq.Eq{"deleted_at": nil}
 	if status != "" {
-		whereClause = sq.Eq{"status": status}
+		whereClause["status"] = status
 	}
 
 	query, args, err := baseQuery.
@@ -759,8 +761,12 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 }
 
 // ListPrivacyRequestsByUserID retrieves privacy requests for a specific user with pagination and optional request type filter.
+// Excludes soft-deleted requests.
 func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, userID, requestType string, limit, offset int) ([]PrivacyRequest, int, error) {
-	var whereClause sq.Sqlizer = sq.Eq{"user_id": userID}
+	var whereClause sq.Sqlizer = sq.And{
+		sq.Eq{"user_id": userID},
+		sq.Eq{"deleted_at": nil},
+	}
 	if requestType != "" {
 		whereClause = sq.And{whereClause, sq.Eq{"request_type": requestType}}
 	}
@@ -824,6 +830,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, u
 }
 
 // HasActivePrivacyRequest checks if user has a pending or processing request of the given type.
+// Excludes soft-deleted requests.
 func (r *PostgresPrivacyRepo) HasActivePrivacyRequest(ctx context.Context, userID, requestType string) (bool, error) {
 	query, args, err := psql.
 		Select("COUNT(*)").
@@ -831,6 +838,7 @@ func (r *PostgresPrivacyRepo) HasActivePrivacyRequest(ctx context.Context, userI
 		Where(sq.And{
 			sq.Eq{"user_id": userID},
 			sq.Eq{"request_type": requestType},
+			sq.Eq{"deleted_at": nil},
 			sq.Or{
 				sq.Eq{"status": "pending"},
 				sq.Eq{"status": "processing"},
@@ -850,24 +858,28 @@ func (r *PostgresPrivacyRepo) HasActivePrivacyRequest(ctx context.Context, userI
 	return count > 0, nil
 }
 
-// DeletePrivacyRequest deletes a privacy request by ID.
+// DeletePrivacyRequest soft-deletes a privacy request by ID (sets deleted_at).
+// The record is preserved for rate limiting and audit purposes.
 func (r *PostgresPrivacyRepo) DeletePrivacyRequest(ctx context.Context, requestID string) error {
 	query, args, err := psql.
-		Delete("privacy_requests").
+		Update("privacy_requests").
+		Set("deleted_at", sq.Expr("NOW()")).
+		Set("updated_at", sq.Expr("NOW()")).
 		Where(sq.Eq{"id": requestID}).
 		ToSql()
 	if err != nil {
-		return pkgerrors.Wrapf(err, "build delete privacy request query")
+		return pkgerrors.Wrapf(err, "build soft delete privacy request query")
 	}
 
 	_, err = r.pool.ExecContext(ctx, query, args...)
 	if err != nil {
-		return pkgerrors.Wrapf(err, "delete privacy request")
+		return pkgerrors.Wrapf(err, "soft delete privacy request")
 	}
 	return nil
 }
 
 // GetLastCompletedRequestDate returns the completion date of the last completed request of the given type for a user.
+// Intentionally includes soft-deleted requests to prevent rate limit bypass via deletion.
 func (r *PostgresPrivacyRepo) GetLastCompletedRequestDate(ctx context.Context, userID, requestType string) (*time.Time, error) {
 	query, args, err := psql.
 		Select("completed_at").

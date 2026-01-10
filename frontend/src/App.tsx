@@ -98,6 +98,30 @@ function SessionExpiryHandler() {
   return null
 }
 
+// Component to handle account deleted notifications
+function AccountDeletedHandler() {
+  const { toast } = useToast()
+
+  // Use a ref to always have the latest toast function without causing effect re-runs
+  const toastRef = useRef(toast)
+  useEffect(() => {
+    toastRef.current = toast
+  }, [toast])
+
+  // Stable event handler using useCallback with no dependencies
+  const handleAccountDeleted = useCallback(() => {
+    toastRef.current('Hesabınız silindiği için oturumunuz sonlandırıldı.', 'error')
+  }, [])
+
+  useEffect(() => {
+    // Effect runs only once on mount, cleanup uses the same stable function reference
+    window.addEventListener('account-deleted', handleAccountDeleted)
+    return () => window.removeEventListener('account-deleted', handleAccountDeleted)
+  }, [handleAccountDeleted])
+
+  return null
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -198,6 +222,7 @@ function App() {
       <Router>
         <AuthProvider>
           <SessionExpiryHandler />
+          <AccountDeletedHandler />
           <AppRoutes />
         </AuthProvider>
       </Router>
