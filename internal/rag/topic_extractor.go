@@ -80,6 +80,9 @@ var fenceRe = regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
 // ExtractIngestionMetadata asks the LLM for structured output with capability summary and example questions.
 // maxQuestions specifies the plan-based limit for suggested questions.
 func ExtractIngestionMetadata(ctx context.Context, client LLMClient, content string, langCode string, maxQuestions int) (models.IngestionMetadata, error) {
+	if client == nil {
+		return models.IngestionMetadata{}, fmt.Errorf("LLM client is nil")
+	}
 	if len(content) > 4000 {
 		content = content[:4000]
 	}

@@ -167,14 +167,14 @@ func (p *JobProcessor) processJob(jobID string) {
 	if result.Skipped {
 		completedStep := models.StepStoreVectors
 		_ = p.trainingJobRepo.UpdateJobStatus(ctx, jobID, models.JobStatusCompleted, &completedStep)
-		p.complete(job.SourceID, result.ChunkCount)
+		p.complete(job.SourceID, result.ChunkCount, job.ChatbotID)
 		return
 	}
 
 	// Success
 	completedStep := models.StepStoreVectors
 	_ = p.trainingJobRepo.UpdateJobStatus(ctx, jobID, models.JobStatusCompleted, &completedStep)
-	p.complete(job.SourceID, result.ChunkCount)
+	p.complete(job.SourceID, result.ChunkCount, job.ChatbotID)
 
 	// Return discovered sources (handled by orchestrator)
 	// Note: NewSourceIDs are stored in result and will be handled externally
@@ -285,13 +285,22 @@ func (p *JobProcessor) fail(id string, msg string) {
 	_ = p.sourceRepo.UpdateSourceProcessing(context.Background(), id, "failed", &msg, 0, nil)
 }
 
-// complete marks a source as completed.
-func (p *JobProcessor) complete(id string, chunks int) {
+// complete marks a source as completed and aggregates suggested questions.
+func (p *JobProcessor) complete(id string, chunks int, chatbotID string) {
 	if p.log != nil {
-		p.log.Info("source_processing_complete", map[string]any{"source_id": id, "chunks": chunks})
+		p.log.Info("source_processing_complete", map[string]any{"source_id": id, "chunks": chunks, "chatbot_id": chatbotID})
 	}
 	now := time.Now()
-	_ = p.sourceRepo.UpdateSourceProcessing(context.Background(), id, "completed", nil, chunks, &now)
+	ctx := context.Background()
+	_ = p.sourceRepo.UpdateSourceProcessing(ctx, id, "completed", nil, chunks, &now)
+
+	// Aggregate suggested questions from all sources to the chatbot
+	if chatbotID != "" {
+		if p.log != nil {
+			p.log.Info("suggestion_aggregation_triggered", map[string]any{"source_id": id, "chatbot_id": chatbotID})
+		}
+		ReAggregateSuggestionsForChatbot(ctx, p.chatbotRepo, p.sourceRepo, chatbotID, p.log)
+	}
 }
 
 // isRetryableError determines if an error should trigger a retry.

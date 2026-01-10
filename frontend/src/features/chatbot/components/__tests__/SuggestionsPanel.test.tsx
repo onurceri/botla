@@ -9,14 +9,14 @@ describe('SuggestionsPanel', () => {
     const user = userEvent.setup()
     function Harness() {
       const [enabled, setEnabled] = React.useState(true)
-      const [qs, setQs] = React.useState<string[]>([])
+      const [manualQs, setManualQs] = React.useState<string[]>([])
       return (
         <SuggestionsPanel
           suggestionsEnabled={enabled}
           setSuggestionsEnabled={setEnabled}
-          suggestedQuestions={qs}
-          setSuggestedQuestions={setQs as any}
-          allSuggestedQuestions={[]}
+          suggestedQuestions={[]}
+          manualQuestions={manualQs}
+          setManualQuestions={setManualQs}
         />
       )
     }
@@ -34,14 +34,15 @@ describe('SuggestionsPanel', () => {
     const user = userEvent.setup()
     function Harness() {
       const [enabled, setEnabled] = React.useState(true)
-      const [qs, setQs] = React.useState<string[]>([])
+      const [manualQs, setManualQs] = React.useState<string[]>([])
       return (
         <SuggestionsPanel
           suggestionsEnabled={enabled}
           setSuggestionsEnabled={setEnabled}
-          suggestedQuestions={qs}
-          setSuggestedQuestions={setQs as any}
-          allSuggestedQuestions={[]}
+          suggestedQuestions={[]}
+          manualQuestions={manualQs}
+          setManualQuestions={setManualQs}
+          maxManualQuestions={10}
         />
       )
     }
@@ -68,8 +69,8 @@ describe('SuggestionsPanel', () => {
           suggestionsEnabled={enabled}
           setSuggestionsEnabled={setEnabled}
           suggestedQuestions={[]}
-          setSuggestedQuestions={() => {}}
-          allSuggestedQuestions={[]}
+          manualQuestions={[]}
+          setManualQuestions={() => {}}
         />
       )
     }
@@ -85,14 +86,14 @@ describe('SuggestionsPanel', () => {
     const user = userEvent.setup()
     function Harness() {
       const [enabled, setEnabled] = React.useState(true)
-      const [qs, setQs] = React.useState<string[]>([])
+      const [manualQs, setManualQs] = React.useState<string[]>([])
       return (
         <SuggestionsPanel
           suggestionsEnabled={enabled}
           setSuggestionsEnabled={setEnabled}
-          suggestedQuestions={qs}
-          setSuggestedQuestions={setQs as any}
-          allSuggestedQuestions={[]}
+          suggestedQuestions={[]}
+          manualQuestions={manualQs}
+          setManualQuestions={setManualQs}
         />
       )
     }

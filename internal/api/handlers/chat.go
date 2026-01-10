@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -84,7 +83,7 @@ func (h *ChatHandlers) Chat(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		if errors.Is(err, services.ErrTokenQuotaExceeded) {
+		if err == repository.ErrTokenQuotaExceeded {
 			api.WriteErrorCode(w, http.StatusPaymentRequired, api.ErrMonthlyTokensExceeded)
 			return
 		}

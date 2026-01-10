@@ -40,6 +40,7 @@ import {
   AdminErrorsPage,
   AdminAuditPage,
   AdminPrivacyPage,
+  AdminPlansPage,
 } from '@/pages/admin'
 
 /**
@@ -197,6 +198,7 @@ function AppRoutes() {
         <Route path="errors" element={<AdminErrorsPage />} />
         <Route path="audit" element={<AdminAuditPage />} />
         <Route path="privacy" element={<AdminPrivacyPage />} />
+        <Route path="plans" element={<AdminPlansPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,0 +1,467 @@
+package handlers
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/onurceri/botla-app/internal/api"
+	"github.com/onurceri/botla-app/internal/models"
+	"github.com/onurceri/botla-app/internal/repository"
+	"github.com/onurceri/botla-app/internal/services"
+)
+
+// AdminPlanHandlers handles admin operations for plans and their limits/features.
+type AdminPlanHandlers struct {
+	PlanSvc  *services.PlanService
+	PlanRepo repository.PlanRepository
+	Logger   any
+}
+
+// NewAdminPlanHandlers creates a new AdminPlanHandlers instance.
+func NewAdminPlanHandlers(planSvc *services.PlanService, planRepo repository.PlanRepository) *AdminPlanHandlers {
+	return &AdminPlanHandlers{
+		PlanSvc:  planSvc,
+		PlanRepo: planRepo,
+	}
+}
+
+// ListPlans returns a paginated list of all plans with their limits.
+func (h *AdminPlanHandlers) ListPlans(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 20
+	}
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+
+	plans, err := h.PlanRepo.GetAll(r.Context())
+	if err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	// Calculate pagination
+	total := len(plans)
+	start := offset
+	end := offset + limit
+	if start > total {
+		plans = []models.Plan{}
+	} else {
+		if end > total {
+			end = total
+		}
+		plans = plans[start:end]
+	}
+
+	response := AdminPlanListResponse{
+		Plans: make([]AdminPlanSummary, len(plans)),
+		Total: total,
+	}
+
+	for i, plan := range plans {
+		response.Plans[i] = makePlanSummary(plan)
+	}
+
+	api.WriteJSON(w, http.StatusOK, response)
+}
+
+// GetPlan returns details for a single plan with full limits.
+func (h *AdminPlanHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	plan, err := h.PlanRepo.GetByID(r.Context(), id)
+	if err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	if plan == nil {
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
+		return
+	}
+
+	response := AdminPlanDetailResponse{
+		Plan:         makePlanInfo(*plan),
+		Limits:       makeLimitsDetail(plan.Limits),
+		Translations: []PlanTranslation{},
+	}
+
+	api.WriteJSON(w, http.StatusOK, response)
+}
+
+// UpdateLimits updates a plan's limits/features.
+func (h *AdminPlanHandlers) UpdateLimits(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	// Verify plan exists
+	plan, err := h.PlanRepo.GetByID(r.Context(), id)
+	if err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+	if plan == nil {
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
+		return
+	}
+
+	// Parse update request
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	if len(updates) == 0 {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	fmt.Printf("[DEBUG] UpdateLimits - planID: %s, updates: %+v\n", id, updates)
+
+	// Apply updates via service
+	if err := h.PlanSvc.UpdatePlanLimits(r.Context(), id, updates); err != nil {
+		fmt.Printf("[ERROR] UpdateLimits failed: %v\n", err)
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	// Invalidate cache
+	if err := h.PlanSvc.InvalidateCache(r.Context(), plan.Code); err != nil {
+		// Log but don't fail request
+		fmt.Printf("[WARN] Failed to invalidate cache: %v\n", err)
+	}
+
+	api.WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+}
+
+	// Verify plan exists
+	plan, err := h.PlanRepo.GetByID(r.Context(), id)
+	if err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+	if plan == nil {
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
+		return
+	}
+
+	// Parse update request
+	var updates map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	if len(updates) == 0 {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	// Apply updates via service
+	if err := h.PlanSvc.UpdatePlanLimits(r.Context(), id, updates); err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	// Invalidate cache
+	if err := h.PlanSvc.InvalidateCache(r.Context(), plan.Code); err != nil {
+		// Log but don't fail the request
+		_ = h.Logger
+	}
+
+	api.WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+}
+
+// InvalidateCache clears the cache for a specific plan.
+func (h *AdminPlanHandlers) InvalidateCache(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	// Get plan code for cache invalidation
+	plan, err := h.PlanRepo.GetByID(r.Context(), id)
+	if err != nil || plan == nil {
+		api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
+		return
+	}
+
+	if err := h.PlanSvc.InvalidateCache(r.Context(), plan.Code); err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	api.WriteJSON(w, http.StatusOK, map[string]string{"status": "cache_invalidated"})
+}
+
+// Response types
+
+type AdminPlanListResponse struct {
+	Plans []AdminPlanSummary `json:"plans"`
+	Total int                `json:"total"`
+}
+
+type AdminPlanSummary struct {
+	ID                     string  `json:"id"`
+	Code                   string  `json:"code"`
+	Name                   string  `json:"name"`
+	Status                 string  `json:"status"`
+	BillingCycle           string  `json:"billing_cycle"`
+	Price                  float64 `json:"price"`
+	Currency               string  `json:"currency"`
+	TrialDays              int     `json:"trial_days"`
+	MaxChatbots            int     `json:"max_chatbots"`
+	MaxMonthlyIngestions   int     `json:"max_monthly_ingestions"`
+	FilesMaxSizeMB         int     `json:"files_max_size_mb"`
+	ChatAllowedModelsCount int     `json:"chat_allowed_models_count"`
+}
+
+type AdminPlanDetailResponse struct {
+	Plan         PlanInfo          `json:"plan"`
+	Limits       PlanLimitsDetail  `json:"limits"`
+	Translations []PlanTranslation `json:"translations,omitempty"`
+}
+
+type PlanInfo struct {
+	ID           string  `json:"id"`
+	Code         string  `json:"code"`
+	Name         string  `json:"name"`
+	Status       string  `json:"status"`
+	BillingCycle string  `json:"billing_cycle"`
+	Price        float64 `json:"price"`
+	Currency     string  `json:"currency"`
+	TrialDays    int     `json:"trial_days"`
+	CreatedAt    string  `json:"created_at"`
+	UpdatedAt    string  `json:"updated_at,omitempty"`
+}
+
+type PlanLimitsDetail struct {
+	// Core Limits
+	MaxChatbots               int `json:"max_chatbots"`
+	MaxMonthlyIngestions      int `json:"max_monthly_ingestions"`
+	MaxMonthlyEmbeddingTokens int `json:"max_monthly_embedding_tokens"`
+	MinReAddCooldownMinutes   int `json:"min_readd_cooldown_minutes"`
+
+	// Scraping
+	ScrapingDynamicEnabled   bool `json:"scraping_dynamic_enabled"`
+	ScrapingMaxURLsPerBot    int  `json:"scraping_max_urls_per_bot"`
+	ScrapingMaxPagesPerCrawl int  `json:"scraping_max_pages_per_crawl"`
+
+	// Files
+	FilesMaxSizeMB      int `json:"files_max_size_mb"`
+	FilesMaxFilesPerBot int `json:"files_max_files_per_bot"`
+	FilesMaxFilesTotal  int `json:"files_max_files_total"`
+	FilesTotalStorageMB int `json:"files_total_storage_mb"`
+	FilesMaxTextLength  int `json:"files_max_text_length"`
+
+	// Chat
+	ChatDefaultModel          string   `json:"chat_default_model"`
+	ChatAllowedModels         []string `json:"chat_allowed_models"`
+	ChatMaxMonthlyTokens      int      `json:"chat_max_monthly_tokens"`
+	ChatRAGTopK               int      `json:"chat_rag_top_k"`
+	ChatRAGMaxContextTokens   int      `json:"chat_rag_max_context_tokens"`
+	ChatMaxSuggestedQuestions int      `json:"chat_max_suggested_questions"`
+	ChatMaxManualQuestions    int      `json:"chat_max_manual_questions"`
+	ChatMinResponseTokenLimit int      `json:"chat_min_response_token_limit"`
+	ChatMaxResponseTokenLimit int      `json:"chat_max_response_token_limit"`
+
+	// Refresh
+	RefreshEnabled    bool `json:"refresh_enabled"`
+	RefreshMaxMonthly int  `json:"refresh_max_monthly"`
+
+	// Security
+	SecuritySecureEmbedEnabled bool `json:"security_secure_embed_enabled"`
+
+	// Guardrails
+	GuardrailsCanCustomizeThresholds bool `json:"guardrails_can_customize_thresholds"`
+	GuardrailsCanUseSmartFallback    bool `json:"guardrails_can_use_smart_fallback"`
+	GuardrailsCanUseEscalateFallback bool `json:"guardrails_can_use_escalate_fallback"`
+	GuardrailsCanManageTopics        bool `json:"guardrails_can_manage_topics"`
+	GuardrailsCanCustomizeMessages   bool `json:"guardrails_can_customize_messages"`
+
+	// Branding
+	BrandingCanHideBranding   bool `json:"branding_can_hide_branding"`
+	BrandingCanCustomBranding bool `json:"branding_can_custom_branding"`
+
+	// Rate Limits
+	RateLimitsRequestsPerMinute int `json:"rate_limits_requests_per_minute"`
+	RateLimitsWindowSeconds     int `json:"rate_limits_window_seconds"`
+	RateLimitsChatRPM           int `json:"rate_limits_chat_rpm"`
+	RateLimitsChatWindow        int `json:"rate_limits_chat_window"`
+	RateLimitsSourcesRPM        int `json:"rate_limits_sources_rpm"`
+	RateLimitsSourcesWindow     int `json:"rate_limits_sources_window"`
+}
+
+type PlanTranslation struct {
+	LanguageID   string `json:"language_id"`
+	LanguageCode string `json:"language_code"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+}
+
+// Helper functions
+
+func makePlanSummary(plan models.Plan) AdminPlanSummary {
+	summary := AdminPlanSummary{
+		ID:                     plan.ID,
+		Code:                   plan.Code,
+		Name:                   plan.Code,
+		Status:                 plan.Status,
+		BillingCycle:           plan.BillingCycle,
+		Price:                  plan.Price,
+		Currency:               plan.Currency,
+		TrialDays:              plan.TrialDays,
+		ChatAllowedModelsCount: 0,
+	}
+
+	if plan.Limits != nil {
+		summary.MaxChatbots = plan.Limits.MaxChatbots
+		summary.MaxMonthlyIngestions = plan.Limits.MaxMonthlyIngestions
+		summary.FilesMaxSizeMB = plan.Limits.FilesMaxSizeMB
+		summary.ChatAllowedModelsCount = len(plan.Limits.ChatAllowedModels)
+	}
+
+	return summary
+}
+
+func makePlanInfo(plan models.Plan) PlanInfo {
+	createdAt := ""
+	if !plan.CreatedAt.IsZero() {
+		createdAt = plan.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+
+	updatedAt := ""
+	if plan.UpdatedAt != nil && !plan.UpdatedAt.IsZero() {
+		updatedAt = plan.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
+	}
+
+	return PlanInfo{
+		ID:           plan.ID,
+		Code:         plan.Code,
+		Name:         plan.Code,
+		Status:       plan.Status,
+		BillingCycle: plan.BillingCycle,
+		Price:        plan.Price,
+		Currency:     plan.Currency,
+		TrialDays:    plan.TrialDays,
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
+	}
+}
+
+func makeLimitsDetail(limits *models.PlanLimits) PlanLimitsDetail {
+	if limits == nil {
+		return PlanLimitsDetail{}
+	}
+
+	return PlanLimitsDetail{
+		MaxChatbots:                      limits.MaxChatbots,
+		MaxMonthlyIngestions:             limits.MaxMonthlyIngestions,
+		MaxMonthlyEmbeddingTokens:        limits.MaxMonthlyEmbeddingTokens,
+		MinReAddCooldownMinutes:          limits.MinReAddCooldownMinutes,
+		ScrapingDynamicEnabled:           limits.ScrapingDynamicEnabled,
+		ScrapingMaxURLsPerBot:            limits.ScrapingMaxURLsPerBot,
+		ScrapingMaxPagesPerCrawl:         limits.ScrapingMaxPagesPerCrawl,
+		FilesMaxSizeMB:                   limits.FilesMaxSizeMB,
+		FilesMaxFilesPerBot:              limits.FilesMaxFilesPerBot,
+		FilesMaxFilesTotal:               limits.FilesMaxFilesTotal,
+		FilesTotalStorageMB:              limits.FilesTotalStorageMB,
+		FilesMaxTextLength:               limits.FilesMaxTextLength,
+		ChatDefaultModel:                 limits.ChatDefaultModel,
+		ChatAllowedModels:                limits.ChatAllowedModels,
+		ChatMaxMonthlyTokens:             limits.ChatMaxMonthlyTokens,
+		ChatRAGTopK:                      limits.ChatRAGTopK,
+		ChatRAGMaxContextTokens:          limits.ChatRAGMaxContextTokens,
+		ChatMaxSuggestedQuestions:        limits.ChatMaxSuggestedQuestions,
+		ChatMaxManualQuestions:           limits.ChatMaxManualQuestions,
+		ChatMinResponseTokenLimit:        limits.ChatMinResponseTokenLimit,
+		ChatMaxResponseTokenLimit:        limits.ChatMaxResponseTokenLimit,
+		RefreshEnabled:                   limits.RefreshEnabled,
+		RefreshMaxMonthly:                limits.RefreshMaxMonthly,
+		SecuritySecureEmbedEnabled:       limits.SecuritySecureEmbedEnabled,
+		GuardrailsCanCustomizeThresholds: limits.GuardrailsCanCustomizeThresholds,
+		GuardrailsCanUseSmartFallback:    limits.GuardrailsCanUseSmartFallback,
+		GuardrailsCanUseEscalateFallback: limits.GuardrailsCanUseEscalateFallback,
+		GuardrailsCanManageTopics:        limits.GuardrailsCanManageTopics,
+		GuardrailsCanCustomizeMessages:   limits.GuardrailsCanCustomizeMessages,
+		BrandingCanHideBranding:          limits.BrandingCanHideBranding,
+		BrandingCanCustomBranding:        limits.BrandingCanCustomBranding,
+		RateLimitsRequestsPerMinute:      limits.RateLimitsRequestsPerMinute,
+		RateLimitsWindowSeconds:          limits.RateLimitsWindowSeconds,
+		RateLimitsChatRPM:                limits.RateLimitsChatRPM,
+		RateLimitsChatWindow:             limits.RateLimitsChatWindow,
+		RateLimitsSourcesRPM:             limits.RateLimitsSourcesRPM,
+		RateLimitsSourcesWindow:          limits.RateLimitsSourcesWindow,
+	}
+}
+
+// UpdatePlanLimitsRequest is the request body for updating plan limits.
+type UpdatePlanLimitsRequest struct {
+	// Core Limits
+	MaxChatbots               *int `json:"max_chatbots,omitempty"`
+	MaxMonthlyIngestions      *int `json:"max_monthly_ingestions,omitempty"`
+	MaxMonthlyEmbeddingTokens *int `json:"max_monthly_embedding_tokens,omitempty"`
+	MinReAddCooldownMinutes   *int `json:"min_readd_cooldown_minutes,omitempty"`
+
+	// Scraping
+	ScrapingDynamicEnabled   *bool `json:"scraping_dynamic_enabled,omitempty"`
+	ScrapingMaxURLsPerBot    *int  `json:"scraping_max_urls_per_bot,omitempty"`
+	ScrapingMaxPagesPerCrawl *int  `json:"scraping_max_pages_per_crawl,omitempty"`
+
+	// Files
+	FilesMaxSizeMB      *int `json:"files_max_size_mb,omitempty"`
+	FilesMaxFilesPerBot *int `json:"files_max_files_per_bot,omitempty"`
+	FilesMaxFilesTotal  *int `json:"files_max_files_total,omitempty"`
+	FilesTotalStorageMB *int `json:"files_total_storage_mb,omitempty"`
+	FilesMaxTextLength  *int `json:"files_max_text_length,omitempty"`
+
+	// Chat
+	ChatDefaultModel          *string  `json:"chat_default_model,omitempty"`
+	ChatAllowedModels         []string `json:"chat_allowed_models,omitempty"`
+	ChatMaxMonthlyTokens      *int     `json:"chat_max_monthly_tokens,omitempty"`
+	ChatRAGTopK               *int     `json:"chat_rag_top_k,omitempty"`
+	ChatRAGMaxContextTokens   *int     `json:"chat_rag_max_context_tokens,omitempty"`
+	ChatMaxSuggestedQuestions *int     `json:"chat_max_suggested_questions,omitempty"`
+	ChatMaxManualQuestions    *int     `json:"chat_max_manual_questions,omitempty"`
+	ChatMinResponseTokenLimit *int     `json:"chat_min_response_token_limit,omitempty"`
+	ChatMaxResponseTokenLimit *int     `json:"chat_max_response_token_limit,omitempty"`
+
+	// Refresh
+	RefreshEnabled    *bool `json:"refresh_enabled,omitempty"`
+	RefreshMaxMonthly *int  `json:"refresh_max_monthly,omitempty"`
+
+	// Security
+	SecuritySecureEmbedEnabled *bool `json:"security_secure_embed_enabled,omitempty"`
+
+	// Guardrails
+	GuardrailsCanCustomizeThresholds *bool `json:"guardrails_can_customize_thresholds,omitempty"`
+	GuardrailsCanUseSmartFallback    *bool `json:"guardrails_can_use_smart_fallback,omitempty"`
+	GuardrailsCanUseEscalateFallback *bool `json:"guardrails_can_use_escalate_fallback,omitempty"`
+	GuardrailsCanManageTopics        *bool `json:"guardrails_can_manage_topics,omitempty"`
+	GuardrailsCanCustomizeMessages   *bool `json:"guardrails_can_customize_messages,omitempty"`
+
+	// Branding
+	BrandingCanHideBranding   *bool `json:"branding_can_hide_branding,omitempty"`
+	BrandingCanCustomBranding *bool `json:"branding_can_custom_branding,omitempty"`
+
+	// Rate Limits
+	RateLimitsRequestsPerMinute *int `json:"rate_limits_requests_per_minute,omitempty"`
+	RateLimitsWindowSeconds     *int `json:"rate_limits_window_seconds,omitempty"`
+	RateLimitsChatRPM           *int `json:"rate_limits_chat_rpm,omitempty"`
+	RateLimitsChatWindow        *int `json:"rate_limits_chat_window,omitempty"`
+	RateLimitsSourcesRPM        *int `json:"rate_limits_sources_rpm,omitempty"`
+	RateLimitsSourcesWindow     *int `json:"rate_limits_sources_window,omitempty"`
+}

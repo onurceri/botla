@@ -99,16 +99,6 @@ func NewCollector(cfg CollectorConfig) (*CollectorBundle, error) {
 }
 
 func DefaultCollectorConfig() CollectorConfig {
-	var domains []string
-	if v := os.Getenv("SCRAPER_ALLOWED_DOMAINS"); v != "" {
-		parts := strings.Split(v, ",")
-		for _, p := range parts {
-			t := strings.TrimSpace(p)
-			if t != "" {
-				domains = append(domains, t)
-			}
-		}
-	}
 	var uas []string
 	if v := os.Getenv("SCRAPER_UA_LIST"); v != "" {
 		parts := strings.Split(v, "|")
@@ -120,7 +110,7 @@ func DefaultCollectorConfig() CollectorConfig {
 		}
 	}
 	return CollectorConfig{
-		AllowedDomains:  domains,
+		AllowedDomains:  nil, // Domain allowlist removed - SSRF protection is enough
 		UserAgents:      uas,
 		Timeout:         30 * time.Second,
 		RateLimitPerSec: 2,

@@ -13,8 +13,8 @@ export default function SuggestionsTab() {
     suggestionsEnabled,
     setSuggestionsEnabled,
     suggestedQuestions,
-    setSuggestedQuestions,
-    allSuggestedQuestions,
+    manualQuestions,
+    setManualQuestions,
     buildSuggestionsPayload,
   } = useChatbotContext()
 
@@ -56,8 +56,9 @@ export default function SuggestionsTab() {
         suggestionsEnabled={suggestionsEnabled}
         setSuggestionsEnabled={setSuggestionsEnabled}
         suggestedQuestions={suggestedQuestions}
-        setSuggestedQuestions={setSuggestedQuestions}
-        allSuggestedQuestions={allSuggestedQuestions}
+        manualQuestions={manualQuestions}
+        setManualQuestions={setManualQuestions}
+        maxManualQuestions={3}
       />
     </div>
   )

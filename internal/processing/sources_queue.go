@@ -29,7 +29,19 @@ type SourceQueue struct {
 }
 
 // StartSourceQueue creates and starts a new source processing queue.
-func StartSourceQueue(trainingJobRepo repository.TrainingJobRepository, st storage.StorageService, oai rag.LLMClient, vc rag.VectorClient, sc scraper.Scraper, loader *tokenizer.Loader, workerCount int) (*SourceQueue, error) {
+func StartSourceQueue(
+	trainingJobRepo repository.TrainingJobRepository,
+	sourceRepo repository.SourceRepository,
+	chatbotRepo repository.ChatbotRepository,
+	planRepo repository.PlanRepository,
+	usageRepo repository.UsageRepository,
+	st storage.StorageService,
+	oai rag.LLMClient,
+	vc rag.VectorClient,
+	sc scraper.Scraper,
+	loader *tokenizer.Loader,
+	workerCount int,
+) (*SourceQueue, error) {
 	log := logger.New("INFO")
 
 	// Create the orchestrator first (needed for circular dependency with processor)
@@ -41,6 +53,10 @@ func StartSourceQueue(trainingJobRepo repository.TrainingJobRepository, st stora
 	// Create processor with enqueue callback
 	processor := NewJobProcessor(JobProcessorConfig{
 		TrainingJobRepo: trainingJobRepo,
+		SourceRepo:      sourceRepo,
+		ChatbotRepo:     chatbotRepo,
+		PlanRepo:        planRepo,
+		UsageRepo:       usageRepo,
 		Storage:         st,
 		OpenAIClient:    oai,
 		VectorClient:    vc,
@@ -138,7 +154,8 @@ func (sq *SourceQueue) QueueLength() int {
 	return sq.queue.QueueLength()
 }
 
-// recoverPendingJobs finds and enqueues jobs stuck in 'pending' status at startup.
+// recoverPendingJobs finds and enqueues jobs stuck in 'pending' or 'running' status at startup.
+// Jobs in 'running' status are likely from a previous crash and need to be re-processed.
 func (sq *SourceQueue) recoverPendingJobs() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -155,29 +172,54 @@ func (sq *SourceQueue) recoverPendingJobs() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	var recovered int
+
 	// Find jobs with pending status
-	jobs, err := sq.trainingJobRepo.GetPendingJobs(ctx, 100)
+	pendingJobs, err := sq.trainingJobRepo.GetPendingJobs(ctx, 100)
 	if err != nil {
 		if sq.log != nil {
 			sq.log.Warn("recover_pending_jobs_query_failed", map[string]any{"error": err.Error()})
 		}
-		return
+	} else {
+		for _, job := range pendingJobs {
+			if sq.queue.Enqueue(job.ID) {
+				recovered++
+			} else {
+				if sq.log != nil {
+					sq.log.Warn("recover_pending_jobs_queue_full", map[string]any{"job_id": job.ID})
+				}
+				break
+			}
+		}
 	}
 
-	var recovered int
-	for _, job := range jobs {
-		if sq.queue.Enqueue(job.ID) {
-			recovered++
-		} else {
+	// Also recover jobs stuck in 'running' status (likely from a previous crash)
+	runningJobs, err := sq.trainingJobRepo.GetRunningJobs(ctx, 100)
+	if err != nil {
+		if sq.log != nil {
+			sq.log.Warn("recover_running_jobs_query_failed", map[string]any{"error": err.Error()})
+		}
+	} else {
+		for _, job := range runningJobs {
 			if sq.log != nil {
-				sq.log.Warn("recover_pending_jobs_queue_full", map[string]any{"job_id": job.ID})
+				sq.log.Info("recovering_stale_running_job", map[string]any{
+					"job_id":    job.ID,
+					"source_id": job.SourceID,
+				})
 			}
-			break
+			if sq.queue.Enqueue(job.ID) {
+				recovered++
+			} else {
+				if sq.log != nil {
+					sq.log.Warn("recover_running_jobs_queue_full", map[string]any{"job_id": job.ID})
+				}
+				break
+			}
 		}
 	}
 
 	if recovered > 0 && sq.log != nil {
-		sq.log.Info("recover_pending_jobs_completed", map[string]any{
+		sq.log.Info("recover_jobs_completed", map[string]any{
 			"recovered_count": recovered,
 		})
 	}

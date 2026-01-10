@@ -21,7 +21,6 @@ func TestScrapeDynamicURL_Fixture(t *testing.T) {
 	cfg := DynamicConfig{
 		PoolSize:   1,
 		IdleTTL:    5 * time.Second,
-		Allowed:    []string{"localhost"},
 		NavTimeout: 500 * time.Millisecond,
 	}
 	scraper, err := NewBrowserScraper(cfg)

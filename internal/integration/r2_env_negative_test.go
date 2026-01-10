@@ -14,6 +14,7 @@ import (
 
 	"github.com/onurceri/botla-app/internal/api/handlers"
 	"github.com/onurceri/botla-app/internal/integration/fixtures"
+	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/pkg/logger"
 	"github.com/onurceri/botla-app/pkg/middleware"
 	"github.com/onurceri/botla-app/pkg/storage"
@@ -25,7 +26,9 @@ func buildR2Mux(te *fixtures.TestEnv, bucket string) http.Handler {
 	ah := &handlers.AuthHandlers{DB: te.DB, Secret: te.Cfg.JWT_SECRET}
 	mux.HandleFunc("/api/v1/auth/register", ah.RegisterHandler)
 	mux.HandleFunc("/api/v1/auth/login", ah.LoginHandler)
-	ch := &handlers.ChatbotHandlers{DB: te.DB}
+	planRepo := repository.NewPostgresPlanRepo(te.DB, nil)
+	chatbotRepo := repository.NewPostgresChatbotRepo(te.DB)
+	ch := &handlers.ChatbotHandlers{DB: te.DB, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
 	mux.Handle("/api/v1/chatbots", middleware.AuthMiddleware(te.Cfg.JWT_SECRET)(http.HandlerFunc(ch.ListOrCreate)))
 	// R2 storage with empty bucket to force client-side error without network leakage
 	r2, _ := storage.NewR2Storage("acc-test", "AKIA_TEST_LEAK", "SECRET_TEST_LEAK", bucket)
@@ -49,7 +52,7 @@ func buildR2Mux(te *fixtures.TestEnv, bucket string) http.Handler {
 }
 
 func TestR2_EnvMissing_UploadFails_NoKeyLeakInLogs(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)

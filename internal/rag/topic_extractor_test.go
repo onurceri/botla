@@ -97,3 +97,13 @@ func TestExtractIngestionMetadata_EmptyQuestionsInJSON(t *testing.T) {
 		t.Fatalf("expected derived questions when JSON list is empty")
 	}
 }
+
+func TestExtractIngestionMetadata_NilClient(t *testing.T) {
+	_, err := ExtractIngestionMetadata(context.Background(), nil, "demo content", "en", 0)
+	if err == nil {
+		t.Fatalf("expected error for nil client")
+	}
+	if err.Error() != "LLM client is nil" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

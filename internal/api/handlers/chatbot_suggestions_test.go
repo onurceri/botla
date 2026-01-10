@@ -212,6 +212,43 @@ func TestGetSuggestionJobStatus_WithError(t *testing.T) {
 	assert.Equal(t, errMsg, *response.ErrorMessage)
 }
 
+func TestGetSuggestionJobStatus_WithEmptySuggestions(t *testing.T) {
+	h, dbConn := setupTestHandler(t)
+
+	ctx := context.Background()
+
+	result := testdb.CreateChatbot(t, dbConn)
+	chatbotID := result.Chatbot.ID
+	userID := result.User.ID
+
+	job, err := h.SuggestionJobRepo.Create(ctx, chatbotID)
+	assert.NoError(t, err)
+
+	// Complete with empty suggestions
+	err = h.SuggestionJobRepo.Complete(ctx, job.ID, []string{})
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/chatbots/"+chatbotID+"/suggestions/status", nil)
+	req.SetPathValue("id", chatbotID)
+	ctx = context.WithValue(req.Context(), middleware.ContextKeyUserID, userID)
+	rec := httptest.NewRecorder()
+
+	h.GetSuggestionJobStatus(rec, req.WithContext(ctx))
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	// Verify response doesn't contain [null]
+	body := rec.Body.String()
+	assert.NotContains(t, body, "[null]", "response should not contain [null]")
+
+	var response SuggestionJobStatusResponse
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	assert.Equal(t, models.SuggestionJobStatusCompleted.String(), response.Status)
+	assert.Nil(t, response.SuggestedQuestions, "SuggestedQuestions should be nil when empty")
+}
+
 func TestRegenerateSuggestions_InvalidChatbotID(t *testing.T) {
 	h, dbConn := setupTestHandler(t)
 

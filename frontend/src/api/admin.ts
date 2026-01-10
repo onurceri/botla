@@ -387,3 +387,187 @@ export const reprocessSource = async (id: string) => {
   return data
 }
 
+
+// === Plans Management ===
+
+export interface AdminPlanSummary {
+  id: string
+  code: string
+  name: string
+  status: string
+  billing_cycle: string
+  price: number
+  currency: string
+  trial_days: number
+  max_chatbots: number
+  max_monthly_ingestions: number
+  files_max_size_mb: number
+  chat_allowed_models_count: number
+}
+
+export interface PlanLimitsDetail {
+  // Core Limits
+  max_chatbots: number
+  max_monthly_ingestions: number
+  max_monthly_embedding_tokens: number
+  min_readd_cooldown_minutes: number
+
+  // Scraping
+  scraping_dynamic_enabled: boolean
+  scraping_max_urls_per_bot: number
+  scraping_max_pages_per_crawl: number
+
+  // Files
+  files_max_size_mb: number
+  files_max_files_per_bot: number
+  files_max_files_total: number
+  files_total_storage_mb: number
+  files_max_text_length: number
+
+  // Chat
+  chat_default_model: string
+  chat_allowed_models: string[]
+  chat_max_monthly_tokens: number
+  chat_rag_top_k: number
+  chat_rag_max_context_tokens: number
+  chat_max_suggested_questions: number
+  chat_max_manual_questions: number
+  chat_min_response_token_limit: number
+  chat_max_response_token_limit: number
+
+  // Refresh
+  refresh_enabled: boolean
+  refresh_max_monthly: number
+
+  // Security
+  security_secure_embed_enabled: boolean
+
+  // Guardrails
+  guardrails_can_customize_thresholds: boolean
+  guardrails_can_use_smart_fallback: boolean
+  guardrails_can_use_escalate_fallback: boolean
+  guardrails_can_manage_topics: boolean
+  guardrails_can_customize_messages: boolean
+
+  // Branding
+  branding_can_hide_branding: boolean
+  branding_can_custom_branding: boolean
+
+  // Rate Limits
+  rate_limits_requests_per_minute: number
+  rate_limits_window_seconds: number
+  rate_limits_chat_rpm: number
+  rate_limits_chat_window: number
+  rate_limits_sources_rpm: number
+  rate_limits_sources_window: number
+}
+
+export interface AdminPlanDetail {
+  plan: {
+    id: string
+    code: string
+    name: string
+    status: string
+    billing_cycle: string
+    price: number
+    currency: string
+    trial_days: number
+    created_at: string
+    updated_at?: string
+  }
+  limits: PlanLimitsDetail
+  translations: Array<{
+    language_id: string
+    language_code: string
+    name: string
+    description: string
+  }>
+}
+
+export interface PlanListResponse {
+  plans: AdminPlanSummary[]
+  total: number
+}
+
+export interface ListPlansParams {
+  limit?: number
+  offset?: number
+}
+
+export const listPlans = async (params?: ListPlansParams) => {
+  const { data } = await api.get<PlanListResponse>(`${ADMIN_BASE}/plans`, { params })
+  return data
+}
+
+export const getPlan = async (id: string) => {
+  const { data } = await api.get<AdminPlanDetail>(`${ADMIN_BASE}/plans/${id}`)
+  return data
+}
+
+export interface UpdatePlanLimitsRequest {
+  // Core Limits
+  max_chatbots?: number
+  max_monthly_ingestions?: number
+  max_monthly_embedding_tokens?: number
+  min_readd_cooldown_minutes?: number
+
+  // Scraping
+  scraping_dynamic_enabled?: boolean
+  scraping_max_urls_per_bot?: number
+  scraping_max_pages_per_crawl?: number
+
+  // Files
+  files_max_size_mb?: number
+  files_max_files_per_bot?: number
+  files_max_files_total?: number
+  files_total_storage_mb?: number
+  files_max_text_length?: number
+
+  // Chat
+  chat_default_model?: string
+  chat_allowed_models?: string[]
+  chat_max_monthly_tokens?: number
+  chat_rag_top_k?: number
+  chat_rag_max_context_tokens?: number
+  chat_max_suggested_questions?: number
+  chat_max_manual_questions?: number
+  chat_min_response_token_limit?: number
+  chat_max_response_token_limit?: number
+
+  // Refresh
+  refresh_enabled?: boolean
+  refresh_max_monthly?: number
+
+  // Security
+  security_secure_embed_enabled?: boolean
+
+  // Guardrails
+  guardrails_can_customize_thresholds?: boolean
+  guardrails_can_use_smart_fallback?: boolean
+  guardrails_can_use_escalate_fallback?: boolean
+  guardrails_can_manage_topics?: boolean
+  guardrails_can_customize_messages?: boolean
+
+  // Branding
+  branding_can_hide_branding?: boolean
+  branding_can_custom_branding?: boolean
+
+  // Rate Limits
+  rate_limits_requests_per_minute?: number
+  rate_limits_window_seconds?: number
+  rate_limits_chat_rpm?: number
+  rate_limits_chat_window?: number
+  rate_limits_sources_rpm?: number
+  rate_limits_sources_window?: number
+}
+
+export const updatePlanLimits = async (planId: string, updates: UpdatePlanLimitsRequest) => {
+  const { data } = await api.patch<{ status: string }>(`${ADMIN_BASE}/plans/${planId}/limits`, updates)
+  return data
+}
+
+export const invalidatePlanCache = async (planId: string) => {
+  const { data } = await api.post<{ status: string }>(`${ADMIN_BASE}/plans/${planId}/cache-invalidate`)
+  return data
+}
+

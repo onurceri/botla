@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Shield,
   Sparkles,
+  CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +27,7 @@ const navItems = [
   { to: '/admin/errors', icon: AlertTriangle, label: 'Hatalar' },
   { to: '/admin/audit', icon: FileText, label: 'Denetim Günlüğü' },
   { to: '/admin/privacy', icon: Shield, label: 'Gizlilik Talepleri' },
+  { to: '/admin/plans', icon: CreditCard, label: 'Planlar' },
 ]
 
 /**

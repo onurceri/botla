@@ -492,7 +492,6 @@ func TestProPlan_DynamicScraping(t *testing.T) {
 		PoolSize:   1,
 		IdleTTL:    30 * time.Second,
 		NavTimeout: 3 * time.Second,
-		Allowed:    []string{"127.0.0.1", "localhost"},
 	}
 	bScraper, err := scraper.NewBrowserScraper(cfg)
 	if err != nil {

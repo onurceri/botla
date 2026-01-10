@@ -44,10 +44,11 @@ func TestChat_NoInfoFound(t *testing.T) {
 	conversationRepo := repository.NewPostgresConversationRepo(dbx)
 	analyticsRepo := repository.NewPostgresAnalyticsRepo(dbx)
 	chatbotRepo := repository.NewPostgresChatbotRepo(dbx)
+	usageRepo := repository.NewPostgresUsageRepo(dbx)
 
 	h := &ChatbotHandlers{DB: dbx, ChatbotRepo: chatbotRepo, PlanRepo: planRepo}
-	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, nil, nil, nil, factory, nil, nil, logger.New("info")) // factory provided
-	chatSvc.SyncAnalytics = true                                                                                                        // Run analytics synchronously in tests
+	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, nil, nil, nil, factory, nil, nil, usageRepo, logger.New("info")) // factory provided
+	chatSvc.SyncAnalytics = true                                                                                                                   // Run analytics synchronously in tests
 	ch := &ChatHandlers{DB: dbx, ChatService: chatSvc, Logger: logger.New("info"), ChatbotRepo: chatbotRepo}
 	ctx := func(req *http.Request) *http.Request {
 		return req.WithContext(context.WithValue(req.Context(), middleware.ContextKeyUserID, uid))

@@ -184,7 +184,7 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, re
 		AllowedDomains:       req.AllowedDomains,
 		EmbedSecret:          req.EmbedSecret,
 		SuggestedQuestions:   suggestionsValue(req.SuggestedQuestions),
-		SuggestionsEnabled:   boolValue(req.SuggestionsEnabled, false),
+		SuggestionsEnabled:   boolValue(req.SuggestionsEnabled, true),
 		IncludePaths:         pathsValue(req.IncludePaths),
 		ExcludePaths:         pathsValue(req.ExcludePaths),
 		SelectorWhitelist:    selectorsValue(req.SelectorWhitelist),

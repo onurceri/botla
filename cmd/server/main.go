@@ -194,7 +194,6 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 	}
 
 	scConfig := scraper.CollectorConfig{
-		AllowedDomains:  strings.Split(cfg.SCRAPER_ALLOWED_DOMAINS, ","),
 		Timeout:         30 * time.Second,
 		RateLimitPerSec: 2,
 	}
@@ -202,7 +201,6 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 		PoolSize:    cfg.SCRAPER_BROWSER_POOL_SIZE,
 		IdleTTL:     time.Duration(cfg.SCRAPER_DYNAMIC_IDLE_SECS) * time.Second,
 		NavTimeout:  time.Duration(cfg.SCRAPER_NAV_TIMEOUT_MS) * time.Millisecond,
-		Allowed:     strings.Split(cfg.SCRAPER_ALLOWED_DOMAINS, ","),
 		BrowserPath: cfg.SCRAPER_BROWSER_PATH,
 	}
 	bScraper, err := scraper.NewBrowserScraper(sdConfig)
@@ -215,8 +213,12 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 
 	// Create repositories needed for the source queue
 	trainingJobRepo := repository.NewPostgresTrainingJobRepo(pool)
+	sourceRepo := repository.NewPostgresSourceRepo(pool)
+	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
+	planRepo := repository.NewPostgresPlanRepo(pool, nil)
+	usageRepo := repository.NewPostgresUsageRepo(pool)
 
-	q, err := processing.StartSourceQueue(trainingJobRepo, storageService, oaiClient, qdrantClient, scrp, tokLoader, cfg.WORKER_COUNT)
+	q, err := processing.StartSourceQueue(trainingJobRepo, sourceRepo, chatbotRepo, planRepo, usageRepo, storageService, oaiClient, qdrantClient, scrp, tokLoader, cfg.WORKER_COUNT)
 	if err != nil {
 		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init source queue: %w", err)
