@@ -230,6 +230,20 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeChunkingFailed}, FailedStep: models.StepChunkText}
 	}
 
+	// Step 4: Embed
+	if lastStep == nil || (models.IsStepAtOrAfter(models.StepEmbedChunks, *lastStep) && models.StepEmbedChunks != *lastStep) {
+		onStep(models.StepEmbedChunks)
+	}
+
+	if p.EmbeddingService == nil {
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeLLMNotSupported}, FailedStep: models.StepEmbedChunks}
+	}
+
+	if embedErr := p.EmbeddingService.GenerateForSource(ctx, rc, s.ChatbotID, s.ID, s.SourceType); embedErr != nil {
+		p.logWarn("url_embedding_failed", map[string]any{"error": embedErr.Error()})
+		return ProcessResult{Error: &ProcessingError{Msg: ErrCodeEmbeddingFailed}, FailedStep: models.StepEmbedChunks}
+	}
+
 	// Calculate token usage
 	var tokens int
 	for _, ch := range rc {

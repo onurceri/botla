@@ -6,8 +6,10 @@ import (
 
 	"github.com/onurceri/botla-app/internal/models"
 	"github.com/onurceri/botla-app/internal/rag"
+	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/pkg/config"
 	"github.com/onurceri/botla-app/pkg/langconfig"
+	"github.com/stretchr/testify/assert"
 )
 
 // =============================================================================
@@ -621,6 +623,75 @@ func TestExecuteAgenticLoop_SkipConditions(t *testing.T) {
 
 		if err == nil {
 			t.Error("expected error from missing factory/client, but loop was not skipped")
+		}
+	})
+}
+
+// =============================================================================
+// CAPABILITY SUMMARIES TESTS
+// =============================================================================
+
+func TestGetCapabilitySummaries(t *testing.T) {
+	t.Run("returns empty when SourceRepo is nil", func(t *testing.T) {
+		service := &ChatService{SourceRepo: nil}
+		result := service.getCapabilitySummaries(context.Background(), "test-bot")
+		if result != "" {
+			t.Errorf("expected empty string when SourceRepo is nil, got %q", result)
+		}
+	})
+
+	t.Run("returns empty when repository returns error", func(t *testing.T) {
+		repo := repository.NewMockSourceRepo()
+		repo.GetCapabilitySummariesFunc = func(ctx context.Context, chatbotID string) ([]string, error) {
+			return nil, assert.AnError
+		}
+		service := &ChatService{SourceRepo: repo}
+		result := service.getCapabilitySummaries(context.Background(), "test-bot")
+		if result != "" {
+			t.Errorf("expected empty string on error, got %q", result)
+		}
+	})
+
+	t.Run("returns empty when no summaries exist", func(t *testing.T) {
+		repo := repository.NewMockSourceRepo()
+		repo.GetCapabilitySummariesFunc = func(ctx context.Context, chatbotID string) ([]string, error) {
+			return []string{}, nil
+		}
+		service := &ChatService{SourceRepo: repo}
+		result := service.getCapabilitySummaries(context.Background(), "test-bot")
+		if result != "" {
+			t.Errorf("expected empty string when no summaries, got %q", result)
+		}
+	})
+
+	t.Run("returns formatted summaries", func(t *testing.T) {
+		repo := repository.NewMockSourceRepo()
+		repo.GetCapabilitySummariesFunc = func(ctx context.Context, chatbotID string) ([]string, error) {
+			return []string{
+				"Provides information about products.",
+				"Contains FAQ about shipping.",
+			}, nil
+		}
+		service := &ChatService{SourceRepo: repo}
+		result := service.getCapabilitySummaries(context.Background(), "test-bot")
+
+		expected := "- Provides information about products.\n- Contains FAQ about shipping."
+		if result != expected {
+			t.Errorf("expected formatted summaries, got %q", result)
+		}
+	})
+
+	t.Run("handles single summary", func(t *testing.T) {
+		repo := repository.NewMockSourceRepo()
+		repo.GetCapabilitySummariesFunc = func(ctx context.Context, chatbotID string) ([]string, error) {
+			return []string{"Provides oven manual information."}, nil
+		}
+		service := &ChatService{SourceRepo: repo}
+		result := service.getCapabilitySummaries(context.Background(), "test-bot")
+
+		expected := "- Provides oven manual information."
+		if result != expected {
+			t.Errorf("expected single formatted summary, got %q", result)
 		}
 	})
 }

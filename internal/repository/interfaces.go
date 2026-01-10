@@ -140,9 +140,8 @@ type SourceRepository interface {
 	// Returns sql.NullTime{} if no deleted source is found.
 	GetLastDeletedAtForURL(ctx context.Context, chatbotID, url string) (time.Time, bool, error)
 
-	// GetSourceSuggestions retrieves source suggested questions with chunk counts for aggregation.
-	// Returns completed sources with their questions ordered by chunk count descending.
 	GetSourceSuggestions(ctx context.Context, chatbotID string) ([]SourceSuggestion, error)
+	GetCapabilitySummaries(ctx context.Context, chatbotID string) ([]string, error)
 }
 
 // SourceSuggestion represents a source with its suggested questions for aggregation.

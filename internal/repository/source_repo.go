@@ -546,3 +546,37 @@ func (r *PostgresSourceRepo) GetSourceSuggestions(ctx context.Context, chatbotID
 
 	return result, nil
 }
+
+// GetCapabilitySummaries retrieves non-empty capability summaries from completed sources.
+func (r *PostgresSourceRepo) GetCapabilitySummaries(ctx context.Context, chatbotID string) ([]string, error) {
+	query := `
+		SELECT DISTINCT capability_summary
+		FROM data_sources
+		WHERE chatbot_id = $1
+		  AND deleted_at IS NULL
+		  AND status = 'completed'
+		  AND capability_summary IS NOT NULL
+		  AND capability_summary != ''
+		ORDER BY capability_summary
+	`
+
+	rows, err := r.pool.QueryContext(ctx, query, chatbotID)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "query capability summaries")
+	}
+	defer rows.Close()
+
+	var result []string
+	for rows.Next() {
+		var summary string
+		if err := rows.Scan(&summary); err != nil {
+			return nil, pkgerrors.Wrapf(err, "scan capability summary")
+		}
+		result = append(result, summary)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, pkgerrors.Wrapf(err, "iterate capability summaries")
+	}
+
+	return result, nil
+}
