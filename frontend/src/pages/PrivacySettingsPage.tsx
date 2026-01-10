@@ -25,7 +25,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Loader2, Download, Trash2, Shield, Edit3 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Loader2, Download, Trash2, Shield, Edit3, ChevronLeft, ChevronRight, Clock, Eye } from 'lucide-react'
 import { getStatusLabel, privacy } from '@/i18n/privacy'
 
 interface Consents {
@@ -39,15 +47,19 @@ interface PrivacyRequest {
   id: string
   request_type: string
   status: string
+  reason?: string | null
   export_url?: string | null
   export_expires_at?: string | null
   denial_reason?: string | null
   created_at: string
+  completed_at?: string | null
 }
 
 interface PrivacyRequestsResponse {
   data: PrivacyRequest[]
   total: number
+  page: number
+  limit: number
 }
 
 export default function PrivacySettingsPage() {
@@ -56,6 +68,10 @@ export default function PrivacySettingsPage() {
   const [deleteReason, setDeleteReason] = useState('')
   const [correctionReason, setCorrectionReason] = useState('')
   const [exportRequestId, setExportRequestId] = useState<string | null>(null)
+  const [exportPage, setExportPage] = useState(1)
+  const [correctionPage, setCorrectionPage] = useState(1)
+  const [limit] = useState(10)
+  const [selectedCorrectionRequest, setSelectedCorrectionRequest] = useState<PrivacyRequest | null>(null)
 
   // 1. Get Consents
   const { data: consents, isLoading: consentsLoading } = useQuery<Consents>({
@@ -66,33 +82,72 @@ export default function PrivacySettingsPage() {
     },
   })
 
-  // 2. Fetch existing privacy requests on page load
-  const { data: existingRequests } = useQuery<PrivacyRequestsResponse>({
-    queryKey: ['privacy', 'requests'],
+  // 2. Fetch export requests with pagination
+  const { data: exportRequests, isLoading: exportRequestsLoading } = useQuery<PrivacyRequestsResponse>({
+    queryKey: ['privacy', 'requests', 'export', exportPage, limit],
     queryFn: async () => {
-      const { data } = await api.get('/api/v1/me/privacy/requests')
+      const { data } = await api.get('/api/v1/me/privacy/requests', {
+        params: { type: 'export', page: exportPage, limit },
+      })
       return data
     },
   })
 
-  // Find active export request from existing requests
+  // 3. Fetch correction requests with pagination
+  const { data: correctionRequests, isLoading: correctionRequestsLoading } = useQuery<PrivacyRequestsResponse>({
+    queryKey: ['privacy', 'requests', 'correction', correctionPage, limit],
+    queryFn: async () => {
+      const { data } = await api.get('/api/v1/me/privacy/requests', {
+        params: { type: 'correction', page: correctionPage, limit },
+      })
+      return data
+    },
+  })
+
+  // Find the last completed export request for rate limiting
+  const lastCompletedExport = exportRequests?.data?.find(
+    (req) => req.status === 'completed' && req.completed_at,
+  )
+
+  // Find the last completed correction request for rate limiting
+  const lastCompletedCorrection = correctionRequests?.data?.find(
+    (req) => req.status === 'completed' && req.completed_at,
+  )
+
+  // Calculate when next export is available (24 hours after last completion)
+  const getNextAvailableTime = (completedAt?: string | null) => {
+    if (!completedAt) return null
+    const completedTime = new Date(completedAt)
+    const nextAvailable = new Date(completedTime.getTime() + 24 * 60 * 60 * 1000)
+    return nextAvailable
+  }
+
+  const nextExportAvailableTime = getNextAvailableTime(lastCompletedExport?.completed_at)
+  const isExportRateLimited = nextExportAvailableTime ? new Date() < nextExportAvailableTime : undefined
+
+  const nextCorrectionAvailableTime = getNextAvailableTime(lastCompletedCorrection?.completed_at)
+  const isCorrectionRateLimited = nextCorrectionAvailableTime ? new Date() < nextCorrectionAvailableTime : undefined
+
+  // Find active export request from export requests
   useEffect(() => {
-    if (existingRequests?.data) {
-      const activeExport = existingRequests.data.find(
-        (req) =>
-          req.request_type === 'export' &&
-          (req.status === 'pending' || req.status === 'processing' || req.status === 'completed'),
+    if (exportRequests?.data) {
+      const activeExport = exportRequests.data.find(
+        (req) => req.status === 'pending' || req.status === 'processing' || req.status === 'completed',
       )
       if (activeExport && !exportRequestId) {
         setExportRequestId(activeExport.id)
       }
     }
-  }, [existingRequests, exportRequestId])
+  }, [exportRequests, exportRequestId])
 
   // Check if there's an active (pending/processing) export request
-  const hasActiveExportRequest = existingRequests?.data?.some(
-    (req) =>
-      req.request_type === 'export' && (req.status === 'pending' || req.status === 'processing'),
+  const hasActiveExportRequest = exportRequests?.data?.some(
+    (req) => req.status === 'pending' || req.status === 'processing',
+  )
+
+  // Check if there's an active (pending/processing) correction request
+  const hasActiveCorrectionRequest = correctionRequests?.data?.some(
+    (req) => req.status === 'pending' || req.status === 'processing',
   )
 
   // 3. Update Consents
@@ -123,31 +178,31 @@ export default function PrivacySettingsPage() {
     onError: (error: AxiosError) => {
       if (error.response?.status === 409) {
         toast(privacy.toast.exportActiveExists, 'error')
+      } else if (error.response?.status === 429) {
+        toast(privacy.toast.exportRateLimit, 'error')
       } else {
         toast(privacy.toast.exportError, 'error')
       }
     },
   })
 
-  const exportRequestQuery = useQuery<PrivacyRequest>({
-    queryKey: ['privacy', 'export-request', exportRequestId],
-    queryFn: async () => {
-      const { data } = await api.get(`/api/v1/me/privacy/requests/${exportRequestId}`)
-      return data
+  // Delete privacy request mutation
+  const deleteRequestMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      await api.delete(`/api/v1/me/privacy/requests/${requestId}`)
     },
-    enabled: !!exportRequestId,
-    refetchInterval: (query) => {
-      const status = (query.state.data as PrivacyRequest | undefined)?.status
-      if (status === 'completed' || status === 'denied') return false
-      return 2000
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['privacy', 'requests'] })
+      toast(privacy.export.history.deleteSuccess, 'success')
+    },
+    onError: () => {
+      toast(privacy.export.history.deleteError, 'error')
     },
   })
-  const exportRequest = exportRequestQuery.data
 
-  const downloadExport = async () => {
-    if (!exportRequestId) return
+  const downloadExportRequest = async (requestId: string) => {
     try {
-      const res = await api.get(`/api/v1/me/privacy/requests/${exportRequestId}/download`, {
+      const res = await api.get(`/api/v1/me/privacy/requests/${requestId}/download`, {
         responseType: 'blob',
       })
 
@@ -164,10 +219,10 @@ export default function PrivacySettingsPage() {
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      a.remove()
       window.URL.revokeObjectURL(url)
-    } catch {
-      toast(privacy.toast.downloadError, 'error')
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Download failed:', error)
     }
   }
 
@@ -177,11 +232,18 @@ export default function PrivacySettingsPage() {
       await api.post('/api/v1/me/privacy/correction', { reason: correctionReason })
     },
     onSuccess: () => {
-      toast(privacy.toast.correctionRequested, 'success')
       setCorrectionReason('')
+      queryClient.invalidateQueries({ queryKey: ['privacy', 'requests', 'correction'] })
+      toast(privacy.toast.correctionRequested, 'success')
     },
-    onError: () => {
-      toast(privacy.toast.correctionError, 'error')
+    onError: (error: AxiosError) => {
+      if (error.response?.status === 409) {
+        toast('Zaten bekleyen bir düzeltme talebiniz var.', 'error')
+      } else if (error.response?.status === 429) {
+        toast(privacy.export.rateLimit.message, 'error')
+      } else {
+        toast(privacy.toast.correctionError, 'error')
+      }
     },
   })
 
@@ -293,35 +355,170 @@ export default function PrivacySettingsPage() {
           </CardTitle>
           <CardDescription>{privacy.export.description}</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button
-            variant="outline"
-            onClick={() => exportMutation.mutate()}
-            disabled={exportMutation.isPending || hasActiveExportRequest}
-          >
-            {exportMutation.isPending ? (
+        <CardContent className="space-y-6">
+          <div>
+            <Button
+              variant="outline"
+              onClick={() => exportMutation.mutate()}
+              disabled={exportMutation.isPending || hasActiveExportRequest || isExportRateLimited}
+            >
+              {exportMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {privacy.export.preparing}
+                </>
+              ) : (
+                privacy.export.button
+              )}
+            </Button>
+
+            {isExportRateLimited && nextExportAvailableTime && (
+              <div className="mt-4 flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4">
+                <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-900">
+                    {privacy.export.rateLimit.message}
+                  </p>
+                  <p className="mt-1 text-sm text-amber-700">
+                    {privacy.export.rateLimit.nextAvailable.replace(
+                      '{time}',
+                      nextExportAvailableTime.toLocaleString('tr-TR', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }),
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Export History Table */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{privacy.export.history.title}</h3>
+            {exportRequestsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : exportRequests?.data && exportRequests.data.length > 0 ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {privacy.export.preparing}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{privacy.export.history.status}</TableHead>
+                        <TableHead>{privacy.export.history.date}</TableHead>
+                        <TableHead className="text-right">{privacy.export.history.actions}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {exportRequests.data.map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                request.status === 'completed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : request.status === 'processing'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : request.status === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : request.status === 'denied'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {getStatusLabel(request.status)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(request.created_at).toLocaleString('tr-TR', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {request.status === 'completed' && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => downloadExportRequest(request.id)}
+                                  className="h-8"
+                                  title={privacy.export.downloadButton}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </Button>
+                              )}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>{privacy.export.history.deleteConfirm}</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {privacy.export.history.deleteConfirm}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>{privacy.delete.dialog.cancel}</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteRequestMutation.mutate(request.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      {deleteRequestMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        privacy.export.history.delete
+                                      )}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                {exportRequests.total > limit && (
+                  <div className="flex items-center justify-between px-2">
+                    <div className="text-sm text-muted-foreground">
+                      Sayfa {exportRequests.page} / {Math.ceil(exportRequests.total / limit)}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExportPage((p) => Math.max(1, p - 1))}
+                        disabled={exportPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Önceki
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExportPage((p) => p + 1)}
+                        disabled={exportPage >= Math.ceil(exportRequests.total / limit)}
+                      >
+                        Sonraki
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
-              privacy.export.button
+              <p className="text-sm text-muted-foreground py-4">{privacy.export.history.empty}</p>
             )}
-          </Button>
-
-          {exportRequestId && (
-            <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <div>
-                {privacy.export.statusLabel}: {getStatusLabel(exportRequest?.status)}
-              </div>
-              {exportRequest?.status === 'completed' && (
-                <Button variant="secondary" onClick={downloadExport}>
-                  {privacy.export.downloadButton}
-                </Button>
-              )}
-              {exportRequest?.status === 'denied' && <div>{privacy.export.denied}</div>}
-            </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
@@ -347,7 +544,7 @@ export default function PrivacySettingsPage() {
           <Button
             variant="outline"
             onClick={() => correctionMutation.mutate()}
-            disabled={correctionMutation.isPending || !correctionReason.trim()}
+            disabled={correctionMutation.isPending || !correctionReason.trim() || hasActiveCorrectionRequest || isCorrectionRateLimited}
           >
             {correctionMutation.isPending ? (
               <>
@@ -358,6 +555,150 @@ export default function PrivacySettingsPage() {
               privacy.correction.button
             )}
           </Button>
+
+          {isCorrectionRateLimited && nextCorrectionAvailableTime && (
+            <div className="mt-4 flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4">
+              <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-900">
+                  {privacy.correction.rateLimit.message}
+                </p>
+                <p className="mt-1 text-sm text-amber-700">
+                  {privacy.correction.rateLimit.nextAvailable.replace(
+                    '{time}',
+                    nextCorrectionAvailableTime.toLocaleString('tr-TR', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    }),
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Correction History Table */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{privacy.correction.history.title}</h3>
+            {correctionRequestsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : correctionRequests?.data && correctionRequests.data.length > 0 ? (
+              <>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{privacy.correction.history.status}</TableHead>
+                        <TableHead>{privacy.correction.history.date}</TableHead>
+                        <TableHead className="text-right">{privacy.correction.history.actions}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {correctionRequests.data.map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                request.status === 'completed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : request.status === 'processing'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : request.status === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : request.status === 'denied'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {getStatusLabel(request.status)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(request.created_at).toLocaleString('tr-TR', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8"
+                                onClick={() => setSelectedCorrectionRequest(request)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{privacy.correction.history.deleteConfirm}</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {privacy.correction.history.deleteConfirm}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{privacy.delete.dialog.cancel}</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteRequestMutation.mutate(request.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    {deleteRequestMutation.isPending ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      privacy.correction.history.delete
+                                    )}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination for correction requests */}
+                {correctionRequests.total > limit && (
+                  <div className="flex items-center justify-between px-2">
+                    <div className="text-sm text-muted-foreground">
+                      Sayfa {correctionRequests.page} / {Math.ceil(correctionRequests.total / limit)}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCorrectionPage((p) => Math.max(1, p - 1))}
+                        disabled={correctionPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Önceki
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCorrectionPage((p) => p + 1)}
+                        disabled={correctionPage >= Math.ceil(correctionRequests.total / limit)}
+                      >
+                        Sonraki
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">{privacy.correction.history.empty}</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -407,6 +748,57 @@ export default function PrivacySettingsPage() {
           </AlertDialog>
         </CardContent>
       </Card>
+
+      {/* Correction Request Detail Modal */}
+      <Dialog open={!!selectedCorrectionRequest} onOpenChange={(open) => !open && setSelectedCorrectionRequest(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{privacy.correction.history.detailsTitle}</DialogTitle>
+            <DialogDescription>
+              {selectedCorrectionRequest && new Date(selectedCorrectionRequest.created_at).toLocaleString('tr-TR', {
+                dateStyle: 'long',
+                timeStyle: 'short',
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">{privacy.correction.history.status}</Label>
+              <div className="mt-1">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    selectedCorrectionRequest?.status === 'completed'
+                      ? 'bg-green-100 text-green-800'
+                      : selectedCorrectionRequest?.status === 'processing'
+                        ? 'bg-blue-100 text-blue-800'
+                        : selectedCorrectionRequest?.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : selectedCorrectionRequest?.status === 'denied'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {getStatusLabel(selectedCorrectionRequest?.status)}
+                </span>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">{privacy.correction.history.reason}</Label>
+              <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
+                {selectedCorrectionRequest?.reason || '-'}
+              </p>
+            </div>
+            {selectedCorrectionRequest?.denial_reason && (
+              <div>
+                <Label className="text-sm font-medium text-destructive">Red Sebebi</Label>
+                <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
+                  {selectedCorrectionRequest.denial_reason}
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -3,9 +3,11 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/onurceri/botla-app/internal/api"
@@ -50,7 +52,7 @@ func (h *UserPrivacyHandlers) GetMyConsents(w http.ResponseWriter, r *http.Reque
 	api.WriteJSON(w, http.StatusOK, consentMap)
 }
 
-// ListMyPrivacyRequests returns user's own privacy requests
+// ListMyPrivacyRequests returns user's own privacy requests with pagination and optional type filter
 func (h *UserPrivacyHandlers) ListMyPrivacyRequests(w http.ResponseWriter, r *http.Request) {
 	userID, _ := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
@@ -58,7 +60,27 @@ func (h *UserPrivacyHandlers) ListMyPrivacyRequests(w http.ResponseWriter, r *ht
 		return
 	}
 
-	requests, total, err := h.PrivacyRepo.ListPrivacyRequestsByUserID(r.Context(), userID, 50, 0)
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+	requestType := r.URL.Query().Get("type")
+
+	page := 1
+	limit := 10
+
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	offset := (page - 1) * limit
+
+	requests, total, err := h.PrivacyRepo.ListPrivacyRequestsByUserID(r.Context(), userID, requestType, limit, offset)
 	if err != nil {
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
@@ -67,6 +89,8 @@ func (h *UserPrivacyHandlers) ListMyPrivacyRequests(w http.ResponseWriter, r *ht
 	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"data":  requests,
 		"total": total,
+		"page":  page,
+		"limit": limit,
 	})
 }
 
@@ -146,6 +170,10 @@ func (h *UserPrivacyHandlers) RequestMyDataExport(w http.ResponseWriter, r *http
 			api.WriteErrorCode(w, http.StatusConflict, api.ErrCodeConflict)
 			return
 		}
+		if err == services.ErrRateLimitExceeded {
+			api.WriteErrorCode(w, http.StatusTooManyRequests, api.ErrCodeTooManyRequests)
+			return
+		}
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
@@ -186,6 +214,14 @@ func (h *UserPrivacyHandlers) RequestDataCorrection(w http.ResponseWriter, r *ht
 
 	privacyReq, err := h.PrivacyService.RequestCorrection(r.Context(), userID, user.Email, req.Reason)
 	if err != nil {
+		if errors.Is(err, services.ErrRateLimitExceeded) {
+			api.WriteErrorCode(w, http.StatusTooManyRequests, api.ErrCodeTooManyRequests)
+			return
+		}
+		if errors.Is(err, services.ErrActiveRequestExists) {
+			api.WriteErrorCode(w, http.StatusConflict, api.ErrCodeConflict)
+			return
+		}
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
@@ -375,4 +411,26 @@ func (h *UserPrivacyHandlers) DownloadMyDataExport(w http.ResponseWriter, r *htt
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, reader)
+}
+
+// DeleteMyPrivacyRequest deletes a user's own privacy request
+func (h *UserPrivacyHandlers) DeleteMyPrivacyRequest(w http.ResponseWriter, r *http.Request) {
+	userID, _ := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		api.WriteErrorCode(w, http.StatusUnauthorized, api.ErrCodeUnauthorized)
+		return
+	}
+
+	id := r.PathValue("id")
+	if id == "" {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		return
+	}
+
+	if err := h.PrivacyService.DeleteMyPrivacyRequest(r.Context(), id, userID); err != nil {
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		return
+	}
+
+	api.WriteJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

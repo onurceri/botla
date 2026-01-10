@@ -17,6 +17,8 @@ import (
 // ErrActiveRequestExists is returned when user already has a pending/processing request of the same type.
 var ErrActiveRequestExists = errors.New("active request already exists")
 
+var ErrRateLimitExceeded = errors.New("rate limit exceeded: please wait 24 hours between export requests")
+
 type PrivacyService struct {
 	PrivacyRepo repository.PrivacyRepository
 	Log         *logger.Logger
@@ -146,6 +148,14 @@ func (s *PrivacyService) RequestExport(ctx context.Context, userID, email, reaso
 		return nil, ErrActiveRequestExists
 	}
 
+	lastCompleted, err := s.PrivacyRepo.GetLastCompletedRequestDate(ctx, userID, "export")
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "check last completed export date")
+	}
+	if lastCompleted != nil && time.Since(*lastCompleted) < 24*time.Hour {
+		return nil, ErrRateLimitExceeded
+	}
+
 	req := repository.PrivacyRequest{
 		UserID:      &userID,
 		UserEmail:   email,
@@ -161,6 +171,22 @@ func (s *PrivacyService) RequestExport(ctx context.Context, userID, email, reaso
 }
 
 func (s *PrivacyService) RequestCorrection(ctx context.Context, userID, email, reason string) (*repository.PrivacyRequest, error) {
+	hasActive, err := s.PrivacyRepo.HasActivePrivacyRequest(ctx, userID, "correction")
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "check active correction request")
+	}
+	if hasActive {
+		return nil, ErrActiveRequestExists
+	}
+
+	lastCompleted, err := s.PrivacyRepo.GetLastCompletedRequestDate(ctx, userID, "correction")
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "check last completed correction date")
+	}
+	if lastCompleted != nil && time.Since(*lastCompleted) < 24*time.Hour {
+		return nil, ErrRateLimitExceeded
+	}
+
 	req := repository.PrivacyRequest{
 		UserID:      &userID,
 		UserEmail:   email,
@@ -297,5 +323,42 @@ func (s *PrivacyService) ProcessDeletion(ctx context.Context, requestID, adminID
 	if errStatus := s.PrivacyRepo.UpdatePrivacyRequestStatus(ctx, requestID, "completed", adminID, nil); errStatus != nil {
 		return pkgerrors.Wrapf(errStatus, "update privacy request status")
 	}
+	return nil
+}
+
+// DeleteMyPrivacyRequest deletes a user's own privacy request.
+func (s *PrivacyService) DeleteMyPrivacyRequest(ctx context.Context, requestID, userID string) error {
+	req, err := s.PrivacyRepo.GetPrivacyRequest(ctx, requestID)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "get privacy request")
+	}
+	if req == nil {
+		return fmt.Errorf("request not found")
+	}
+	if req.UserID == nil || *req.UserID != userID {
+		return fmt.Errorf("unauthorized: request does not belong to user")
+	}
+
+	// If it's an export request with a file, delete the file from storage
+	if req.RequestType == "export" && req.ExportURL != nil && *req.ExportURL != "" {
+		if s.Storage != nil {
+			// Extract key from URL
+			key := *req.ExportURL
+			if delErr := s.Storage.DeleteFile(ctx, key); delErr != nil {
+				s.Log.Error("failed_to_delete_export_file", map[string]any{
+					"request_id": requestID,
+					"key":        key,
+					"error":      delErr.Error(),
+				})
+				// Continue with DB deletion even if file deletion fails
+			}
+		}
+	}
+
+	// Delete the request from database
+	if err := s.PrivacyRepo.DeletePrivacyRequest(ctx, requestID); err != nil {
+		return pkgerrors.Wrapf(err, "delete privacy request")
+	}
+
 	return nil
 }

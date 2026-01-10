@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { format } from 'date-fns'
-import { Loader2, Check, X, Download, FileText, Trash2, Edit } from 'lucide-react'
+import { Loader2, Check, X, Download, FileText, Trash2, Edit, Eye } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -64,6 +64,7 @@ export function AdminPrivacyPage() {
     open: false,
   })
   const [rejectReason, setRejectReason] = useState('')
+  const [selectedRequest, setSelectedRequest] = useState<PrivacyRequest | null>(null)
   
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -199,8 +200,19 @@ export function AdminPrivacyPage() {
                     <TableCell>
                       {getRequestTypeBadge(request.request_type)}
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                      {request.reason || '-'}
+                    <TableCell className="text-sm text-muted-foreground">
+                      {request.reason ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setSelectedRequest(request)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
@@ -294,6 +306,53 @@ export function AdminPrivacyPage() {
               {processMutation.isPending ? 'İşleniyor...' : 'Reddet'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Request Detail Modal */}
+      <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Talep Detayı</DialogTitle>
+            <DialogDescription>
+              {selectedRequest && format(new Date(selectedRequest.created_at), 'dd MMMM yyyy HH:mm')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Kullanıcı</Label>
+              <div className="mt-1">
+                <p className="text-sm">{selectedRequest?.user_email}</p>
+                <p className="text-xs text-muted-foreground font-mono">{selectedRequest?.user_id}</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Talep Tipi</Label>
+              <div className="mt-1">
+                {selectedRequest && getRequestTypeBadge(selectedRequest.request_type)}
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Durum</Label>
+              <div className="mt-1">
+                <StatusBadge status={selectedRequest?.status || ''} size="sm" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Açıklama</Label>
+              <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
+                {selectedRequest?.reason || '-'}
+              </p>
+            </div>
+            {selectedRequest?.denial_reason && (
+              <div>
+                <Label className="text-sm font-medium text-destructive">Red Sebebi</Label>
+                <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
+                  {selectedRequest.denial_reason}
+                </p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
