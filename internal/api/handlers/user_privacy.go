@@ -86,12 +86,36 @@ func (h *UserPrivacyHandlers) ListMyPrivacyRequests(w http.ResponseWriter, r *ht
 		return
 	}
 
-	api.WriteJSON(w, http.StatusOK, map[string]any{
+	response := map[string]any{
 		"data":  requests,
 		"total": total,
 		"page":  page,
 		"limit": limit,
-	})
+	}
+
+	if requestType != "" {
+		// Check if there's an active (pending/processing) request
+		hasActive, err := h.PrivacyRepo.HasActivePrivacyRequest(r.Context(), userID, requestType)
+		if err == nil && hasActive {
+			// Get the most recent request (could be pending, processing, or completed)
+			requests, _, err := h.PrivacyRepo.ListPrivacyRequestsByUserID(r.Context(), userID, requestType, 1, 0)
+			if err == nil && len(requests) > 0 {
+				mostRecent := requests[0]
+				// Use created_at as the base time for rate limiting
+				response["next_available_at"] = mostRecent.CreatedAt.Add(24 * time.Hour)
+			}
+		} else {
+			// No active request, check last completed
+			lastCompletedAt, err := h.PrivacyRepo.GetLastCompletedRequestDate(r.Context(), userID, requestType)
+			if err == nil && lastCompletedAt != nil {
+				response["last_completed_at"] = lastCompletedAt
+				nextAvailable := lastCompletedAt.Add(24 * time.Hour)
+				response["next_available_at"] = nextAvailable
+			}
+		}
+	}
+
+	api.WriteJSON(w, http.StatusOK, response)
 }
 
 // UpdateMyConsents updates user's consent settings

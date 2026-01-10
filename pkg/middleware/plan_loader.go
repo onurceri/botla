@@ -34,6 +34,7 @@ func PlanLoaderMiddleware(planRepo repository.PlanRepository, log *logger.Logger
 				return
 			}
 
+			// If plan is nil, check if user account was deleted
 			if plan == nil {
 				log.Warn("user_has_no_plan", map[string]any{
 					"user_id": userID,

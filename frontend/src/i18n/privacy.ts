@@ -66,6 +66,12 @@ export const privacy = {
       title: 'Dışa Aktarma Sınırlaması',
       message: '24 saatte bir dışa aktarma talebinde bulunabilirsiniz.',
       nextAvailable: 'Sonraki dışa aktarma: {time}',
+      lastRequest: 'Son dışa aktarma: {time}',
+    },
+    activeRequest: {
+      title: 'Bekleyen Talep',
+      message: 'Zaten bekleyen veya işlenmekte olan bir dışa aktarma talebiniz var.',
+      waitMessage: 'Mevcut talep tamamlandıktan sonra yeni talep oluşturabilirsiniz.',
     },
   },
 
@@ -75,6 +81,8 @@ export const privacy = {
     description: 'Kişisel verilerinizde bir yanlışlık olduğunu düşünüyorsanız düzeltme talebinde bulunun.',
     label: 'Düzeltme Detayları',
     placeholder: 'Hangi verinin nasıl düzeltilmesini istediğinizi açıklayın...',
+    charCount: '{count} / {max}',
+    maxLength: 1000,
     button: 'Düzeltme Talebi Gönder',
     sending: 'Gönderiliyor...',
     history: {
@@ -95,6 +103,12 @@ export const privacy = {
       title: 'Düzeltme Sınırlaması',
       message: '24 saatte bir düzeltme talebinde bulunabilirsiniz.',
       nextAvailable: 'Sonraki düzeltme: {time}',
+      lastRequest: 'Son düzeltme talebi: {time}',
+    },
+    activeRequest: {
+      title: 'Bekleyen Talep',
+      message: 'Zaten bekleyen veya işlenmekte olan bir düzeltme talebiniz var.',
+      waitMessage: 'Mevcut talep tamamlandıktan sonra yeni talep oluşturabilirsiniz.',
     },
   },
 

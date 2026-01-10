@@ -238,4 +238,48 @@ describe('axios refresh interceptor', () => {
     window.removeEventListener('session-expired', eventSpy)
     vi.useRealTimers()
   })
+
+  it('handles ERR_ACCOUNT_DELETED error by clearing localStorage and redirecting', async () => {
+    vi.useFakeTimers()
+    
+    // Set up event listener to capture account-deleted events
+    const eventSpy = vi.fn()
+    window.addEventListener('account-deleted', eventSpy)
+    
+    const redirectMock = vi.fn()
+    redirectService.setRedirectFn(redirectMock)
+    
+    // Set some localStorage data
+    window.localStorage.setItem('botla_user', '{"email":"test@example.com"}')
+    window.localStorage.setItem('botla_last_org_id', 'org-123')
+    
+    const handlers = (api as any).interceptors.response.handlers
+    const handler = handlers[handlers.length - 1].rejected
+    
+    // Simulate ERR_ACCOUNT_DELETED error
+    const req: any = { url: '/api/v1/chatbots', headers: {}, method: 'get', _retry: false }
+    const err: any = { 
+      response: { 
+        status: 403, 
+        data: { code: 'ERR_ACCOUNT_DELETED' }
+      }, 
+      config: req 
+    }
+    
+    const p = handler(err).catch(() => {})
+    await vi.advanceTimersByTimeAsync(2000)
+    await p
+    
+    // Verify:
+    // 1. account-deleted event was dispatched
+    expect(eventSpy).toHaveBeenCalled()
+    // 2. localStorage was cleared
+    expect(window.localStorage.getItem('botla_user')).toBeNull()
+    expect(window.localStorage.getItem('botla_last_org_id')).toBeNull()
+    // 3. Redirect was called
+    expect(redirectMock).toHaveBeenCalled()
+    
+    window.removeEventListener('account-deleted', eventSpy)
+    vi.useRealTimers()
+  })
 })

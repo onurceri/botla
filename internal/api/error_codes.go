@@ -34,6 +34,7 @@ const (
 	ErrFailedToCreateUser   = "ERR_FAILED_TO_CREATE_USER"
 	ErrInvalidIDFormat      = "ERR_INVALID_ID_FORMAT"
 	ErrMissingID            = "ERR_MISSING_ID"
+	ErrAccountDeleted       = "ERR_ACCOUNT_DELETED"
 )
 
 // Group: Chatbot/Source errors

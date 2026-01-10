@@ -106,13 +106,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear cached auth data
       queryClient.setQueryData(AUTH_QUERY_KEY, null)
       queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
-      
-      // Clear any legacy localStorage data
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('botla_token')
-        localStorage.removeItem('botla_refresh_token')
-        localStorage.removeItem('botla_user')
-      }
     }
   }
 
@@ -125,7 +118,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: !!user,
     error: error as Error | null,
     logout,
-    refetch: () => { refetch() },
+    refetch: () => refetch(),
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

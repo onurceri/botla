@@ -189,6 +189,44 @@ api.interceptors.response.use(
       return Promise.reject(err)
     }
 
+    // Handle ERR_ACCOUNT_DELETED error (403 with specific error code)
+    // Check this BEFORE skipRefreshEndpoints to ensure deleted accounts are always logged out
+    if (err.response?.status === 403 && err.response?.data?.code === 'ERR_ACCOUNT_DELETED') {
+      isRedirecting = true
+      
+      // Clear local storage
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('botla_user')
+        window.localStorage.removeItem('botla_last_org_id')
+      }
+      
+      // Dispatch custom event for account deleted
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('account-deleted'))
+      }
+      
+      // Call logout endpoint to clear HttpOnly cookies server-side
+      // This prevents infinite loop where /me keeps returning 403
+      try {
+        await axios.post(`${api.defaults.baseURL}/api/v1/auth/logout`, {}, { withCredentials: true })
+      } catch {
+        // Ignore logout errors - the account is already deleted
+      }
+      
+      // Only redirect if not already on login page
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        // Redirect to login after showing message
+        setTimeout(() => {
+          redirectService.redirect()
+        }, 1500)
+      } else {
+        // Already on login page, just reset the flag so user can try logging in
+        isRedirecting = false
+      }
+      
+      return Promise.reject(err)
+    }
+
     // Skip token refresh logic for auth endpoints and /me - 401 on these means:
     // - For auth endpoints: invalid credentials, not session expiry
     // - For /me: user is not logged in (expected for new visitors)
@@ -242,6 +280,7 @@ api.interceptors.response.use(
         return Promise.reject(err)
       }
     }
+
     return Promise.reject(err)
   },
 )

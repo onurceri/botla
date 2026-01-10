@@ -36,6 +36,7 @@ export const errorMessages = {
     ERR_FAILED_TO_CREATE_USER: 'Failed to create account. Please try again.',
     ERR_INVALID_ID_FORMAT: 'Invalid ID format',
     ERR_MISSING_ID: 'ID is required',
+    ERR_ACCOUNT_DELETED: 'Your account has been deleted',
 
     // Chatbot/Source errors
     ERR_MONTHLY_TOKENS_EXCEEDED: 'Monthly usage limit reached',
@@ -135,6 +136,7 @@ export const errorMessages = {
     ERR_FAILED_TO_CREATE_USER: 'Hesap oluşturulamadı. Lütfen tekrar deneyin.',
     ERR_INVALID_ID_FORMAT: 'Geçersiz ID formatı',
     ERR_MISSING_ID: 'ID gereklidir',
+    ERR_ACCOUNT_DELETED: 'Hesabınız silindi',
 
     // Chatbot/Source errors
     ERR_MONTHLY_TOKENS_EXCEEDED: 'Aylık kullanım limiti aşıldı',

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Bot,
@@ -1102,13 +1103,7 @@ const Footer = ({ authenticated }: { authenticated: boolean }) => (
 // --- Main Component ---
 
 export default function LandingPage() {
-  const [authenticated, setAuthenticated] = useState(false)
-
-  useEffect(() => {
-    const token = window.localStorage.getItem('botla_token')
-    const isValid = token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
-    setAuthenticated(isValid)
-  }, [])
+  const { isAuthenticated: authenticated } = useAuth()
 
   useEffect(() => {
     const hash = window.location.hash
@@ -1125,9 +1120,7 @@ export default function LandingPage() {
 
   // Dynamically load chatbot widget for landing page demo
   useEffect(() => {
-    const token = window.localStorage.getItem('botla_token')
-    const isAuthenticated = token !== null && token !== 'undefined' && token !== 'null' && token.length > 0
-    if (isAuthenticated) return
+    if (authenticated) return
 
     const chatbotId = import.meta.env.VITE_LANDING_CHATBOT_ID
     const widgetUrl = import.meta.env.VITE_WIDGET_SCRIPT_URL
@@ -1151,7 +1144,7 @@ export default function LandingPage() {
       const widgetHost = document.getElementById('chatbot-widget-host')
       if (widgetHost) widgetHost.remove()
     }
-  }, [])
+  }, [authenticated])
 
   return (
     <div className="relative isolate min-h-screen bg-background font-sans selection:bg-primary/20 text-foreground">
