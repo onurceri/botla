@@ -139,6 +139,17 @@ type SourceRepository interface {
 	// GetLastDeletedAtForURL returns the most recent deleted_at timestamp for a given URL in a chatbot.
 	// Returns sql.NullTime{} if no deleted source is found.
 	GetLastDeletedAtForURL(ctx context.Context, chatbotID, url string) (time.Time, bool, error)
+
+	// GetSourceSuggestions retrieves source suggested questions with chunk counts for aggregation.
+	// Returns completed sources with their questions ordered by chunk count descending.
+	GetSourceSuggestions(ctx context.Context, chatbotID string) ([]SourceSuggestion, error)
+}
+
+// SourceSuggestion represents a source with its suggested questions for aggregation.
+type SourceSuggestion struct {
+	SourceID   string
+	Questions  []string
+	ChunkCount int
 }
 
 // AdminChatbot represents a chatbot for admin views with additional metadata.
@@ -220,6 +231,11 @@ type PlanRepository interface {
 	// InvalidateCache removes the cached plan for a user.
 	// Call this when a user's plan changes (upgrade/downgrade).
 	InvalidateCache(ctx context.Context, userID string) error
+
+	// UpdatePlanLimits updates the plan limits/features for a given plan.
+	// The updates map contains field names (snake_case) mapped to new values.
+	// Only fields present in the map will be updated (partial update).
+	UpdatePlanLimits(ctx context.Context, planID string, updates map[string]interface{}) error
 }
 
 // ConversationRepository defines the interface for conversation data access operations.

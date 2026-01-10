@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/onurceri/botla-app/internal/repository"
-	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
 )
 
 // QuotaEnforcer handles token quota reservation and adjustment for chat operations.
@@ -35,7 +34,7 @@ func (q *QuotaEnforcer) ReserveTokens(ctx context.Context, userID string, estima
 	}
 	err := q.usageRepo.ReserveChatTokens(ctx, userID, estimatedTokens, maxMonthlyTokens)
 	if err != nil {
-		return pkgerrors.Wrapf(err, "reserve tokens")
+		return err
 	}
 	return nil
 }

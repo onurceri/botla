@@ -121,8 +121,8 @@ func AggregateAndPersistChatbotSuggestionsWithLimit(ctx context.Context, chatbot
 }
 
 // ReAggregateSuggestionsForChatbotWithJob re-aggregates suggestions for a chatbot with job tracking.
-// Uses ChatbotRepository and SuggestionJobRepository to manage the process.
-func ReAggregateSuggestionsForChatbotWithJob(ctx context.Context, chatbotRepo repository.ChatbotRepository, suggestionJobRepo repository.SuggestionJobRepository, chatbotID, jobID string, log *logger.Logger) {
+// Uses ChatbotRepository, SourceRepository, and SuggestionJobRepository to manage the process.
+func ReAggregateSuggestionsForChatbotWithJob(ctx context.Context, chatbotRepo repository.ChatbotRepository, sourceRepo repository.SourceRepository, suggestionJobRepo repository.SuggestionJobRepository, chatbotID, jobID string, log *logger.Logger) {
 	// Update job status to running
 	if err := suggestionJobRepo.UpdateStatus(ctx, jobID, models.SuggestionJobStatusRunning); err != nil {
 		logWarnIfPresent(log, "update_job_status_failed", map[string]any{"job_id": jobID, "error": err.Error()})
@@ -132,7 +132,7 @@ func ReAggregateSuggestionsForChatbotWithJob(ctx context.Context, chatbotRepo re
 
 	maxQuestions := fetchMaxSuggestionsForChatbot(ctx, chatbotRepo, chatbotID)
 
-	sources, err := fetchSourceQuestions(ctx, chatbotID)
+	sources, err := fetchSourceQuestionsFromRepo(ctx, sourceRepo, chatbotID)
 	if err != nil {
 		logWarnIfPresent(log, "reaggregate_fetch_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		_ = suggestionJobRepo.Fail(ctx, jobID, err.Error())
@@ -153,28 +153,73 @@ func ReAggregateSuggestionsForChatbotWithJob(ctx context.Context, chatbotRepo re
 }
 
 // ReAggregateSuggestionsForChatbot re-aggregates suggestions for a chatbot.
-func ReAggregateSuggestionsForChatbot(ctx context.Context, chatbotRepo repository.ChatbotRepository, chatbotID string, log *logger.Logger) {
-	maxQuestions := fetchMaxSuggestionsForChatbot(ctx, chatbotRepo, chatbotID)
+// This is called after source processing completes to update the chatbot's suggested_questions
+// from all available sources.
+func ReAggregateSuggestionsForChatbot(ctx context.Context, chatbotRepo repository.ChatbotRepository, sourceRepo repository.SourceRepository, chatbotID string, log *logger.Logger) {
+	logInfoIfPresent(log, "reaggregate_start", map[string]any{"chatbot_id": chatbotID})
 
-	sources, err := fetchSourceQuestions(ctx, chatbotID)
+	maxQuestions := fetchMaxSuggestionsForChatbot(ctx, chatbotRepo, chatbotID)
+	logInfoIfPresent(log, "reaggregate_max_questions", map[string]any{"chatbot_id": chatbotID, "max_questions": maxQuestions})
+
+	sources, err := fetchSourceQuestionsFromRepo(ctx, sourceRepo, chatbotID)
 	if err != nil {
 		logWarnIfPresent(log, "reaggregate_fetch_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
 		return
 	}
 
+	// Log source count and total questions
+	var totalSourceQuestions int
+	for _, s := range sources {
+		totalSourceQuestions += len(s.Questions)
+	}
+	logInfoIfPresent(log, "reaggregate_sources_fetched", map[string]any{
+		"chatbot_id":             chatbotID,
+		"source_count":           len(sources),
+		"total_source_questions": totalSourceQuestions,
+	})
+
 	newSuggestions := AggregateWithWeightedSelection(sources, nil, maxQuestions)
+
+	logInfoIfPresent(log, "reaggregate_result", map[string]any{
+		"chatbot_id":            chatbotID,
+		"new_suggestions_count": len(newSuggestions),
+		"suggestions":           newSuggestions,
+	})
 
 	if err := chatbotRepo.UpdateSuggestedQuestions(ctx, chatbotID, newSuggestions); err != nil {
 		logWarnIfPresent(log, "reaggregate_update_failed", map[string]any{"chatbot_id": chatbotID, "error": err.Error()})
+		return
 	}
+
+	logInfoIfPresent(log, "reaggregate_success", map[string]any{"chatbot_id": chatbotID, "questions_count": len(newSuggestions)})
+}
+
+// fetchSourceQuestionsFromRepo retrieves source questions from the chatbot's sources using the repository.
+func fetchSourceQuestionsFromRepo(ctx context.Context, sourceRepo repository.SourceRepository, chatbotID string) ([]SourceQuestions, error) {
+	if sourceRepo == nil {
+		return []SourceQuestions{}, nil
+	}
+
+	suggestions, err := sourceRepo.GetSourceSuggestions(ctx, chatbotID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]SourceQuestions, 0, len(suggestions))
+	for _, s := range suggestions {
+		result = append(result, SourceQuestions{
+			Questions:  s.Questions,
+			ChunkCount: s.ChunkCount,
+		})
+	}
+	return result, nil
 }
 
 // fetchSourceQuestions retrieves source questions from the chatbot's sources.
-// Uses raw SQL query to get suggestions from data_sources table.
+// Deprecated: Use fetchSourceQuestionsFromRepo with a SourceRepository instead.
 func fetchSourceQuestions(ctx context.Context, chatbotID string) ([]SourceQuestions, error) {
-	// This would need to use a repository method or raw SQL
-	// For migration purposes, returning empty slice as placeholder
-	// A proper implementation would add a method to SourceRepository
+	// This is a legacy placeholder for backward compatibility
+	// New code should use fetchSourceQuestionsFromRepo
 	return []SourceQuestions{}, nil
 }
 
@@ -198,6 +243,12 @@ func SlicesEqual(a, b []string) bool {
 func logWarnIfPresent(log *logger.Logger, event string, data map[string]any) {
 	if log != nil {
 		log.Warn(event, data)
+	}
+}
+
+func logInfoIfPresent(log *logger.Logger, event string, data map[string]any) {
+	if log != nil {
+		log.Info(event, data)
 	}
 }
 

@@ -90,7 +90,8 @@ func TestAutomatedHandoff(t *testing.T) {
 	actionRepo := repository.NewPostgresActionRepo(te.DB)
 	sourceRepo := repository.NewPostgresSourceRepo(te.DB)
 	handoffRepo := repository.NewPostgresHandoffRepo(te.DB)
-	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, nil, nil, log)
+	usageRepo := repository.NewPostgresUsageRepo(te.DB)
+	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, nil, nil, usageRepo, log)
 	chatSvc.SyncAnalytics = true // Run analytics synchronously in tests
 
 	// 3. Create Chatbot with HandoffEnabled

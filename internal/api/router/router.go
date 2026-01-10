@@ -53,7 +53,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 
 	oaiClient, _ := rag.NewOpenAIClient(cfg)
 	// qdClient is passed in
-	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, oaiClient, qdClient, log)
+	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, oaiClient, qdClient, usageRepo, log)
 	toolNameGenerator := rag.NewToolNameGenerator(oaiClient)
 
 	// Handlers
@@ -118,6 +118,8 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 		OrgService:        orgSvc,
 		SuggestionJobRepo: suggestionJobRepo,
 		ChatbotRepo:       chatbotRepo,
+		SourceRepo:        sourceRepo,
+		WorkerPool:        workerPool,
 	}
 	ph := &handlers.PublicHandlers{ChatService: chatSvc, Log: log, ChatbotRepo: chatbotRepo, PlanRepo: planRepo, UsageRepo: usageRepo, AnalyticsRepo: analyticsRepo}
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, UserRepo: userRepo}
@@ -141,6 +143,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	queueWrapper := &services.Queue{SourceQueue: q}
 	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
 	ash := handlers.NewAdminSourceHandlers(adminRepo, adminSvc, ragSvc, queueWrapper)
+	apnh := handlers.NewAdminPlanHandlers(planSvc, planRepo)
 
 	// Health
 	mux.HandleFunc("/health", hh.Health)
@@ -197,7 +200,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	registerOrgRoutes(mux, cfg.JWT_SECRET, userRepo, log, orgSvc, oh, wh)
 
 	// Admin
-	RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)
+	RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, apnh, cfg.JWT_SECRET)
 
 	// OpenAPI Spec
 	mux.HandleFunc("GET /api/openapi.yaml", handlers.ServeOpenAPI)

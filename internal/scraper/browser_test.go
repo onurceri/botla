@@ -20,7 +20,6 @@ func TestScrapeDynamicURL(t *testing.T) {
 	cfg := DynamicConfig{
 		PoolSize:   1,
 		IdleTTL:    5 * time.Second,
-		Allowed:    []string{"127.0.0.1", "localhost"},
 		NavTimeout: 5 * time.Second,
 	}
 

@@ -108,7 +108,7 @@ func (e *TestEnv) CreateChatbot(user *models.User, name string) (*models.Chatbot
 		HandoffType:          "email",
 		LanguageCode:         "en-US",
 		SecureEmbedEnabled:   false,
-		SuggestionsEnabled:   false,
+		SuggestionsEnabled:   true,
 	}
 
 	_, err = e.DB.Exec(`INSERT INTO chatbots (
@@ -258,7 +258,7 @@ func (e *TestEnv) CreateChatbotWithConfig(user *models.User, name string, opts m
 		HandoffType:          "email",
 		LanguageCode:         "en-US",
 		SecureEmbedEnabled:   false,
-		SuggestionsEnabled:   false,
+		SuggestionsEnabled:   true,
 	}
 
 	if dm, ok := opts["discovery_mode"].(string); ok {

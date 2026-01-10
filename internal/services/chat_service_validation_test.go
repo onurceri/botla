@@ -47,6 +47,7 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 	conversationRepo := repository.NewPostgresConversationRepo(dbConn)
 	analyticsRepo := repository.NewPostgresAnalyticsRepo(dbConn)
 	actionRepo := repository.NewMockActionRepo()
+	usageRepo := repository.NewPostgresUsageRepo(dbConn)
 
 	svc := services.NewChatService(
 		planRepo,
@@ -58,6 +59,7 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 		rag.NewClientFactory(&config.Config{}),
 		nil,
 		nil,
+		usageRepo,
 		logger.New("ERROR"),
 	)
 
@@ -94,6 +96,7 @@ func TestChatService_ProcessChatWithValidation_DelegationAndRefund(t *testing.T)
 	conversationRepo := repository.NewPostgresConversationRepo(dbConn)
 	analyticsRepo := repository.NewPostgresAnalyticsRepo(dbConn)
 	actionRepo := repository.NewMockActionRepo()
+	usageRepo := repository.NewPostgresUsageRepo(dbConn)
 
 	svc := services.NewChatService(
 		planRepo,
@@ -105,6 +108,7 @@ func TestChatService_ProcessChatWithValidation_DelegationAndRefund(t *testing.T)
 		rag.NewClientFactory(&config.Config{}),
 		nil,
 		nil,
+		usageRepo,
 		logger.New("ERROR"),
 	)
 

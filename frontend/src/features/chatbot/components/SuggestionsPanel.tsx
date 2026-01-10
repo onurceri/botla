@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, MessageSquare, Sparkles, PlusCircle, Trash2, Power } from 'lucide-react'
+import { MessageSquare, Sparkles, PlusCircle, Trash2, Power } from 'lucide-react'
 
 type Props = {
   suggestionsEnabled: boolean
@@ -171,7 +171,7 @@ export default function SuggestionsPanel({
         </div>
 
         {/* Empty State */}
-        {!hasGeneratedQuestions && customQuestions.length === 0 && (
+        {!hasGeneratedQuestions && manualQuestions.length === 0 && (
           <div className="p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center gap-3">
             <div className="p-2.5 rounded-full bg-white shadow-sm border border-slate-100">
               <MessageSquare className="w-6 h-6 text-slate-200" />

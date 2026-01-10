@@ -11,44 +11,43 @@ import (
 )
 
 type Config struct {
-	DB_HOST                string
-	DB_PORT                string
-	DB_NAME                string
-	DB_USER                string
-	DB_PASSWORD            string
-	DB_SCHEMA              string
-	DB_SSLMODE             string
-	REDIS_URL              string
-	QDRANT_URL             string
-	QDRANT_API_KEY         string
-	OPENAI_API_KEY         string
-	OPENAI_API_BASE        string
-	OPENAI_TIMEOUT_MS      int
-	OPENROUTER_API_KEY     string
-	OPENROUTER_API_BASE    string
-	OPENROUTER_TIMEOUT_MS  int
-	IYZICO_API_KEY         string
-	IYZICO_SECRET_KEY      string
-	JWT_SECRET             string
-	PORT                   string
-	CORS_ALLOWED_ORIGINS   string
-	WORKER_COUNT           int
-	ANALYTICS_WORKER_COUNT int
-	R2_ACCOUNT_ID          string
-	R2_ACCESS_KEY_ID       string
-	R2_SECRET_ACCESS_KEY   string
-	R2_BUCKET_NAME         string
-	DEFAULT_CHATBOT_MODEL  string
-	ANTHROPIC_API_KEY      string
-	ANTHROPIC_API_BASE     string
-	GOOGLE_AI_API_KEY      string
-	GOOGLE_AI_API_BASE     string
-	QDRANT_TIMEOUT_MS      int
-	SCRAPER_ALLOWED_DOMAINS string
+	DB_HOST                   string
+	DB_PORT                   string
+	DB_NAME                   string
+	DB_USER                   string
+	DB_PASSWORD               string
+	DB_SCHEMA                 string
+	DB_SSLMODE                string
+	REDIS_URL                 string
+	QDRANT_URL                string
+	QDRANT_API_KEY            string
+	OPENAI_API_KEY            string
+	OPENAI_API_BASE           string
+	OPENAI_TIMEOUT_MS         int
+	OPENROUTER_API_KEY        string
+	OPENROUTER_API_BASE       string
+	OPENROUTER_TIMEOUT_MS     int
+	IYZICO_API_KEY            string
+	IYZICO_SECRET_KEY         string
+	JWT_SECRET                string
+	PORT                      string
+	CORS_ALLOWED_ORIGINS      string
+	WORKER_COUNT              int
+	ANALYTICS_WORKER_COUNT    int
+	R2_ACCOUNT_ID             string
+	R2_ACCESS_KEY_ID          string
+	R2_SECRET_ACCESS_KEY      string
+	R2_BUCKET_NAME            string
+	DEFAULT_CHATBOT_MODEL     string
+	ANTHROPIC_API_KEY         string
+	ANTHROPIC_API_BASE        string
+	GOOGLE_AI_API_KEY         string
+	GOOGLE_AI_API_BASE        string
+	QDRANT_TIMEOUT_MS         int
 	SCRAPER_BROWSER_POOL_SIZE int
 	SCRAPER_DYNAMIC_IDLE_SECS int
-	SCRAPER_NAV_TIMEOUT_MS int
-	SCRAPER_BROWSER_PATH string
+	SCRAPER_NAV_TIMEOUT_MS    int
+	SCRAPER_BROWSER_PATH      string
 
 	// RAG Configuration
 	RAG_TOPK               int
@@ -166,19 +165,18 @@ func LoadConfig() *Config {
 			}
 			return v
 		}(),
-		WORKER_COUNT:           parseIntEnv("WORKER_COUNT", 4),
-		ANALYTICS_WORKER_COUNT: parseIntEnv("ANALYTICS_WORKER_COUNT", 10),
-		R2_ACCOUNT_ID:          os.Getenv("R2_ACCOUNT_ID"),
-		R2_ACCESS_KEY_ID:       os.Getenv("R2_ACCESS_KEY_ID"),
-		R2_SECRET_ACCESS_KEY:   os.Getenv("R2_SECRET_ACCESS_KEY"),
-		R2_BUCKET_NAME:         os.Getenv("R2_BUCKET_NAME"),
-		DEFAULT_CHATBOT_MODEL:  DefaultChatbotModel(),
-		ANTHROPIC_API_KEY:      os.Getenv("ANTHROPIC_API_KEY"),
-		ANTHROPIC_API_BASE:     os.Getenv("ANTHROPIC_API_BASE"),
-		GOOGLE_AI_API_KEY:      os.Getenv("GOOGLE_AI_API_KEY"),
-		GOOGLE_AI_API_BASE:     os.Getenv("GOOGLE_AI_API_BASE"),
-		QDRANT_TIMEOUT_MS:      parseIntEnv("QDRANT_TIMEOUT_MS", 30000),
-		SCRAPER_ALLOWED_DOMAINS: os.Getenv("SCRAPER_ALLOWED_DOMAINS"),
+		WORKER_COUNT:              parseIntEnv("WORKER_COUNT", 4),
+		ANALYTICS_WORKER_COUNT:    parseIntEnv("ANALYTICS_WORKER_COUNT", 10),
+		R2_ACCOUNT_ID:             os.Getenv("R2_ACCOUNT_ID"),
+		R2_ACCESS_KEY_ID:          os.Getenv("R2_ACCESS_KEY_ID"),
+		R2_SECRET_ACCESS_KEY:      os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2_BUCKET_NAME:            os.Getenv("R2_BUCKET_NAME"),
+		DEFAULT_CHATBOT_MODEL:     DefaultChatbotModel(),
+		ANTHROPIC_API_KEY:         os.Getenv("ANTHROPIC_API_KEY"),
+		ANTHROPIC_API_BASE:        os.Getenv("ANTHROPIC_API_BASE"),
+		GOOGLE_AI_API_KEY:         os.Getenv("GOOGLE_AI_API_KEY"),
+		GOOGLE_AI_API_BASE:        os.Getenv("GOOGLE_AI_API_BASE"),
+		QDRANT_TIMEOUT_MS:         parseIntEnv("QDRANT_TIMEOUT_MS", 30000),
 		SCRAPER_BROWSER_POOL_SIZE: parseIntEnv("SCRAPER_BROWSER_POOL_SIZE", 2),
 		SCRAPER_DYNAMIC_IDLE_SECS: parseIntEnv("SCRAPER_DYNAMIC_IDLE_SECS", 60),
 		SCRAPER_NAV_TIMEOUT_MS:    parseIntEnv("SCRAPER_NAV_TIMEOUT_MS", 10000),

@@ -548,12 +548,12 @@ func (te *TestEnv) UpdatePlanLimit(planCode, field string, value any) error {
 // updatePlanLimitField updates a single field in the plan_limits table for a given plan code.
 // This is a local implementation that replaces the deprecated db.UpdatePlanLimitField.
 func updatePlanLimitField(ctx context.Context, db *sql.DB, planCode, field string, value any) error {
+	// Build dynamic SET clause using the field name as column name
 	query := fmt.Sprintf(`
 		UPDATE plan_limits
-		SET value = $1, updated_at = NOW()
+		SET %s = $1, updated_at = NOW()
 		WHERE plan_id = (SELECT id FROM plans WHERE code = $2)
-		  AND field = $3
-	`)
-	_, err := db.ExecContext(ctx, query, value, planCode, field)
+	`, field)
+	_, err := db.ExecContext(ctx, query, value, planCode)
 	return err
 }

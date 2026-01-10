@@ -226,3 +226,10 @@ func (s *PlanService) ValidateAllPlans(ctx context.Context) error {
 	}
 	return nil
 }
+
+// UpdatePlanLimits updates a plan's limits/features.
+// The updates map contains field names (snake_case) mapped to new values.
+// Only fields present in the map will be updated (partial update).
+func (s *PlanService) UpdatePlanLimits(ctx context.Context, planID string, updates map[string]interface{}) error {
+	return s.planRepo.UpdatePlanLimits(ctx, planID, updates)
+}

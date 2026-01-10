@@ -105,6 +105,14 @@ func (p *PDFProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 	}
 
 	content = text.NormalizeTR(content)
+
+	// Extract and persist metadata
+	maxQuestions := 0
+	if plan != nil && plan.Limits.ChatMaxSuggestedQuestions > 0 {
+		maxQuestions = plan.Limits.ChatMaxSuggestedQuestions
+	}
+	p.persistIngestionMetadata(ctx, content, langCode, s, maxQuestions)
+
 	rc, rerr := rag.ChunkText(p.Loader, content, 512, langCode)
 	if rerr != nil {
 		p.logWarn("pdf_chunking_failed", map[string]any{"error": rerr.Error()})
@@ -159,5 +167,31 @@ func (p *PDFProcessor) logInfo(event string, data map[string]any) {
 func (p *PDFProcessor) logWarn(event string, data map[string]any) {
 	if p.Log != nil {
 		p.Log.Warn(event, data)
+	}
+}
+
+// persistIngestionMetadata extracts and saves metadata for the source
+func (p *PDFProcessor) persistIngestionMetadata(ctx context.Context, content, langCode string, s *models.DataSource, maxQuestions int) {
+	meta, err := rag.ExtractIngestionMetadata(ctx, p.OpenAIClient, content, langCode, maxQuestions)
+	if err != nil {
+		p.logWarn("extract_metadata_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
+		return
+	}
+
+	if len(meta.SuggestedQuestions) == 0 {
+		p.logWarn("extract_metadata_empty_questions", map[string]any{"source_id": s.ID})
+	} else {
+		p.logInfo("extract_metadata_success", map[string]any{
+			"source_id":       s.ID,
+			"questions_count": len(meta.SuggestedQuestions),
+			"questions":       meta.SuggestedQuestions,
+		})
+	}
+
+	if err := p.sourceRepo.UpdateSourceCapability(ctx, s.ID, meta.CapabilitySummary); err != nil {
+		p.logWarn("update_source_capability_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
+	}
+	if err := p.sourceRepo.UpdateSourceSuggestions(ctx, s.ID, meta.SuggestedQuestions); err != nil {
+		p.logWarn("update_source_suggestions_failed", map[string]any{"source_id": s.ID, "error": err.Error()})
 	}
 }

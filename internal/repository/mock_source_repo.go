@@ -255,3 +255,8 @@ func (m *MockSourceRepo) UpdateSourceSuggestions(ctx context.Context, id string,
 func (m *MockSourceRepo) GetLastDeletedAtForURL(ctx context.Context, chatbotID, url string) (time.Time, bool, error) {
 	return time.Time{}, false, nil
 }
+
+// GetSourceSuggestions retrieves source suggested questions with chunk counts for aggregation.
+func (m *MockSourceRepo) GetSourceSuggestions(ctx context.Context, chatbotID string) ([]SourceSuggestion, error) {
+	return nil, nil
+}

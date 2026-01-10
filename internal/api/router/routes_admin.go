@@ -8,7 +8,7 @@ import (
 	pkgMiddleware "github.com/onurceri/botla-app/pkg/middleware"
 )
 
-func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *handlers.AdminHealthHandlers, aqh *handlers.AdminQueueHandlers, aeh *handlers.AdminErrorHandlers, aah *handlers.AdminAuditHandlers, aph *handlers.PrivacyHandlers, ach *handlers.AdminChatbotHandlers, ash *handlers.AdminSourceHandlers, secret string) {
+func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *handlers.AdminHealthHandlers, aqh *handlers.AdminQueueHandlers, aeh *handlers.AdminErrorHandlers, aah *handlers.AdminAuditHandlers, aph *handlers.PrivacyHandlers, ach *handlers.AdminChatbotHandlers, ash *handlers.AdminSourceHandlers, apnh *handlers.AdminPlanHandlers, secret string) {
 	// Base admin handler with Auth and Admin middleware
 	adminChain := func(h http.HandlerFunc) http.Handler {
 		return pkgMiddleware.AuthMiddleware(secret)(
@@ -65,4 +65,10 @@ func RegisterAdminRoutes(mux *http.ServeMux, ah *handlers.AdminHandlers, adhh *h
 	mux.Handle("PATCH /api/v1/admin/privacy/requests/{id}", adminChain(aph.ProcessPrivacyRequest))
 	mux.Handle("POST /api/v1/admin/privacy/export/{userId}", adminChain(aph.GenerateUserExport))
 	mux.Handle("GET /api/v1/admin/privacy/exports/{id}/download", adminChain(aph.DownloadDataExport))
+
+	// Plans Management
+	mux.Handle("GET /api/v1/admin/plans", adminChain(apnh.ListPlans))
+	mux.Handle("GET /api/v1/admin/plans/{id}", adminChain(apnh.GetPlan))
+	mux.Handle("PATCH /api/v1/admin/plans/{id}/limits", adminChain(apnh.UpdateLimits))
+	mux.Handle("POST /api/v1/admin/plans/{id}/cache-invalidate", adminChain(apnh.InvalidateCache))
 }

@@ -31,6 +31,9 @@ type MockPlanRepo struct {
 	// InvalidateCacheFunc is called when InvalidateCache is invoked.
 	InvalidateCacheFunc func(ctx context.Context, userID string) error
 
+	// UpdatePlanLimitsFunc is called when UpdatePlanLimits is invoked.
+	UpdatePlanLimitsFunc func(ctx context.Context, planID string, updates map[string]interface{}) error
+
 	// Invocation tracking for test assertions
 	Calls struct {
 		GetByUserID           []PlanGetByUserIDCall
@@ -40,6 +43,7 @@ type MockPlanRepo struct {
 		GetPlanWithLimits     []PlanGetByUserIDCall
 		GetAllPlansWithLimits []PlanGetAllCall
 		InvalidateCache       []PlanInvalidateCacheCall
+		UpdatePlanLimits      []PlanUpdateLimitsCall
 	}
 }
 
@@ -60,6 +64,11 @@ type PlanGetByIDCall struct {
 
 type PlanInvalidateCacheCall struct {
 	UserID string
+}
+
+type PlanUpdateLimitsCall struct {
+	PlanID  string
+	Updates map[string]interface{}
 }
 
 // Compile-time check that MockPlanRepo implements PlanRepository.
@@ -133,6 +142,15 @@ func (m *MockPlanRepo) InvalidateCache(ctx context.Context, userID string) error
 	return nil
 }
 
+// UpdatePlanLimits updates the plan limits/features for a given plan.
+func (m *MockPlanRepo) UpdatePlanLimits(ctx context.Context, planID string, updates map[string]interface{}) error {
+	m.Calls.UpdatePlanLimits = append(m.Calls.UpdatePlanLimits, PlanUpdateLimitsCall{PlanID: planID, Updates: updates})
+	if m.UpdatePlanLimitsFunc != nil {
+		return m.UpdatePlanLimitsFunc(ctx, planID, updates)
+	}
+	return nil
+}
+
 // Reset clears all recorded calls. Useful for resetting state between tests.
 func (m *MockPlanRepo) Reset() {
 	m.Calls.GetByUserID = nil
@@ -142,4 +160,5 @@ func (m *MockPlanRepo) Reset() {
 	m.Calls.GetPlanWithLimits = nil
 	m.Calls.GetAllPlansWithLimits = nil
 	m.Calls.InvalidateCache = nil
+	m.Calls.UpdatePlanLimits = nil
 }

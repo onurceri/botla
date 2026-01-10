@@ -133,6 +133,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		DB:               pool,
 		VectorStore:      vs,
 		ChatbotService:   services.NewChatbotService(chatbotRepo, planRepo, log),
+		ChatbotRepo:      chatbotRepo,
+		PlanRepo:         planRepo,
 		OrgService:       orgSvc,
 		WorkspaceService: workspaceSvc,
 		Logger:           log,
@@ -157,7 +159,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// Initialize tokenizer loader for tests (mock storage)
 	tokLoader := tokenizer.NewLoader(memStore)
 
-	q, err := processing.StartSourceQueue(trainingJobRepo, memStore, actualLLM, actualVC, ms, tokLoader, 2)
+	q, err := processing.StartSourceQueue(trainingJobRepo, sourceRepo, chatbotRepo, planRepo, usageRepo, memStore, actualLLM, actualVC, ms, tokLoader, 2)
 	if err != nil {
 		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
 	}
@@ -169,6 +171,10 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		WorkspaceService: workspaceSvc,
 		OrgService:       orgSvc,
 		SSRFValidator:    urlutil.NewSSRFValidator(true),
+		PlanRepo:         planRepo,
+		SourceRepo:       sourceRepo,
+		UsageRepo:        usageRepo,
+		ChatbotRepo:      chatbotRepo,
 	}
 	tjh := &handlers.TrainingJobHandlers{Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, Queue: q, TrainingJobRepo: trainingJobRepo, SourceRepo: sourceRepo, ChatbotRepo: chatbotRepo}
 	factory := rag.NewClientFactory(cfg)
@@ -177,13 +183,13 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 		factory.RegisterClient("openai", actualLLM)
 		factory.RegisterClient("openrouter", actualLLM)
 	}
-	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, nil, actualVC, log)
+	chatSvc := services.NewChatService(planRepo, conversationRepo, analyticsRepo, actionRepo, sourceRepo, handoffRepo, factory, nil, actualVC, usageRepo, log)
 	chatSvc.SyncAnalytics = true
 	if llmEmbed, ok := actualLLM.(rag.EmbeddingClient); ok {
 		chatSvc.Embedder = llmEmbed
 	}
 	workerPool := workers.NewWorkerPool(log, 5)
-	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
+	chh := &handlers.ChatHandlers{DB: pool, ChatService: chatSvc, ChatbotRepo: chatbotRepo, AnalyticsRepo: analyticsRepo, WorkspaceService: workspaceSvc, OrgService: orgSvc, WorkerPool: workerPool, Logger: log}
 
 	// Create mock tool name generator for tests
 	mockClient := &MockToolsClient{}
@@ -191,9 +197,9 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	actionService := services.NewActionService(actionRepo, tng)
 	acth := &handlers.ActionHandlers{ActionService: actionService, ChatbotRepo: chatbotRepo, WorkspaceService: workspaceSvc, OrgService: orgSvc}
 	handoffSvc := services.NewHandoffService(handoffRepo, conversationRepo, analyticsRepo, log)
-	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, HandoffService: handoffSvc}
+	hoh := &handlers.HandoffHandlers{DB: pool, Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, HandoffService: handoffSvc, ChatbotRepo: chatbotRepo, ConversationRepo: conversationRepo, HandoffRepo: handoffRepo}
 	puh := &handlers.PendingURLsHandlers{Log: log, Queue: q, WorkspaceService: workspaceSvc, OrgService: orgSvc, PendingURLRepo: repository.NewPostgresPendingURLRepo(pool), SourceRepo: sourceRepo, ChatbotRepo: chatbotRepo}
-	sugh := &handlers.SuggestionsHandlers{Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, SuggestionJobRepo: repository.NewPostgresSuggestionJobRepo(pool), ChatbotRepo: chatbotRepo}
+	sugh := &handlers.SuggestionsHandlers{Log: log, WorkspaceService: workspaceSvc, OrgService: orgSvc, SuggestionJobRepo: repository.NewPostgresSuggestionJobRepo(pool), ChatbotRepo: chatbotRepo, SourceRepo: sourceRepo, WorkerPool: workerPool}
 
 	// Actions routes
 	// Note: Actions routes are now handled by ChatbotsDispatchHandler
@@ -256,7 +262,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	queueWrapper := &services.Queue{SourceQueue: q}
 	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
 	ash := handlers.NewAdminSourceHandlers(adminRepo, adminSvc, ragSvc, queueWrapper)
-	router.RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, cfg.JWT_SECRET)
+	apnh := handlers.NewAdminPlanHandlers(planSvc, planRepo)
+	router.RegisterAdminRoutes(mux, adh, adhh, aqh, aeh, aah, aph, ach, ash, apnh, cfg.JWT_SECRET)
 
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)

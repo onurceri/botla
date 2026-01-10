@@ -506,3 +506,43 @@ func (r *PostgresSourceRepo) GetLastDeletedAtForURL(ctx context.Context, chatbot
 	}
 	return deletedAt.Time, deletedAt.Valid, nil
 }
+
+// GetSourceSuggestions retrieves source suggested questions with chunk counts for aggregation.
+func (r *PostgresSourceRepo) GetSourceSuggestions(ctx context.Context, chatbotID string) ([]SourceSuggestion, error) {
+	query := `
+		SELECT id, suggested_questions, chunk_count
+		FROM data_sources
+		WHERE chatbot_id = $1
+		  AND deleted_at IS NULL
+		  AND status = 'completed'
+		  AND suggested_questions IS NOT NULL
+		ORDER BY chunk_count DESC
+	`
+
+	rows, err := r.pool.QueryContext(ctx, query, chatbotID)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "query source suggestions")
+	}
+	defer rows.Close()
+
+	var result []SourceSuggestion
+	for rows.Next() {
+		var ss SourceSuggestion
+		var suggestionsJSON []byte
+		if err := rows.Scan(&ss.SourceID, &suggestionsJSON, &ss.ChunkCount); err != nil {
+			return nil, pkgerrors.Wrapf(err, "scan source suggestion")
+		}
+		if len(suggestionsJSON) > 0 {
+			if err := json.Unmarshal(suggestionsJSON, &ss.Questions); err != nil {
+				// Skip sources with invalid JSON
+				continue
+			}
+		}
+		result = append(result, ss)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, pkgerrors.Wrapf(err, "iterate source suggestions")
+	}
+
+	return result, nil
+}

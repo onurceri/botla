@@ -82,7 +82,7 @@ export function ChatDrawer(
             <span>{botName || 'Chatbot'}</span>
         </div>
         <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -92,18 +92,19 @@ export function ChatDrawer(
         {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} botIcon={botIcon} />)}
         {(!messages || (messages.filter(m => m.role === 'user').length === 0 && !messages.some(m => m.type === 'handoff'))) && suggestions && suggestions.length > 0 && (
           <div className="cbw-suggestions-container">
+
             <Suggestions items={suggestions} disabled={!!loading} onPick={(q) => {
               if (onPickSuggestion) onPickSuggestion(q)
             }} />
           </div>
         )}
         {loading && (
-          <div className="cbw-loading-row">
+          <div className="cbw-msg-row">
             <div className="cbw-avatar">
               {botIcon ? (
                 <img src={botIcon} alt="" className="cbw-avatar-img" />
               ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 8V4H8" />
                   <rect width="16" height="12" x="4" y="8" rx="2" />
                   <path d="M2 14h2" />
@@ -135,29 +136,28 @@ export function ChatDrawer(
             disabled={loading}
           />
           <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label="Gönder">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 2L11 13"></path>
               <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
             </svg>
           </button>
         </div>
         <div className="cbw-input-footer">
+           <div className="cbw-char-limit">{input.length} / {MAX_CHARS}</div>
           {/* Branding Footer */}
           {hideBranding && customBranding ? (
-            <div className="cbw-brand-custom">
-              {customBranding.logo_url && <img src={customBranding.logo_url} alt="" className="cbw-brand-logo" />}
+            <div className="cbw-brand">
               {customBranding.link ? (
-                <a href={customBranding.link} target="_blank" rel="noreferrer" className="cbw-brand-text">{typeof customBranding.text === 'string' ? customBranding.text : 'Powered by'}</a>
+                <a href={customBranding.link} target="_blank" rel="noreferrer">{typeof customBranding.text === 'string' ? customBranding.text : 'Powered by'}</a>
               ) : (
-                <span className="cbw-brand-text">{typeof customBranding.text === 'string' ? customBranding.text : ''}</span>
+                <span>{typeof customBranding.text === 'string' ? customBranding.text : ''}</span>
               )}
             </div>
           ) : !hideBranding ? (
-            <div className="cbw-brand-default">Powered by <a href={MARKETING_URL} target="_blank" rel="noreferrer">Botla</a></div>
+             <div className="cbw-brand">Powered by <a href={MARKETING_URL} target="_blank" rel="noreferrer">Botla</a></div>
           ) : (
             <div></div>
           )}
-          <div className="cbw-char-limit">{input.length} / {MAX_CHARS}</div>
         </div>
       </div>
       <style>{`

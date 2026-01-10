@@ -385,6 +385,10 @@ func (m *MockSourceRepository) GetLastDeletedAtForURL(ctx context.Context, chatb
 	return time.Time{}, false, nil
 }
 
+func (m *MockSourceRepository) GetSourceSuggestions(ctx context.Context, chatbotID string) ([]repository.SourceSuggestion, error) {
+	return nil, nil
+}
+
 // =============================================================================
 // ChatbotRepository Interface Tests
 // =============================================================================

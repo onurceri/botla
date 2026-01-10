@@ -73,7 +73,7 @@ func (h *SourcesHandlers) deleteSource(w http.ResponseWriter, r *http.Request, s
 				h.Log.Error("re_aggregate_panic", map[string]any{"panic": r, "chatbot_id": s.ChatbotID})
 			}
 		}()
-		processing.ReAggregateSuggestionsForChatbot(context.Background(), h.ChatbotRepo, s.ChatbotID, h.Log)
+		processing.ReAggregateSuggestionsForChatbot(context.Background(), h.ChatbotRepo, h.SourceRepo, s.ChatbotID, h.Log)
 	}()
 
 	w.WriteHeader(http.StatusNoContent)

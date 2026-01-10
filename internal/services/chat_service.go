@@ -55,6 +55,7 @@ func NewChatService(
 	factory *rag.ClientFactory,
 	embedder rag.EmbeddingClient,
 	qc rag.VectorClient,
+	usageRepo repository.UsageRepository,
 	log *logger.Logger,
 ) *ChatService {
 	if embedder == nil {
@@ -77,7 +78,7 @@ func NewChatService(
 		QC:               qc,
 		Log:              log,
 		Guardrails:       guardrails,
-		Quota:            NewQuotaEnforcer(nil),
+		Quota:            NewQuotaEnforcer(usageRepo),
 		Context:          NewChatContextBuilder(guardrails),
 	}
 }

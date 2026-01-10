@@ -2,10 +2,7 @@ package scraper
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -125,7 +122,6 @@ type DynamicConfig struct {
 	PoolSize    int
 	IdleTTL     time.Duration
 	NavTimeout  time.Duration
-	Allowed     []string
 	BrowserPath string
 }
 
@@ -150,33 +146,9 @@ func (s *BrowserScraper) Close() error {
 	return s.pool.Close()
 }
 
-func allowed(urlStr string, allowed []string) bool {
-	if len(allowed) == 0 {
-		return true
-	}
-	u, err := url.Parse(urlStr)
-	if err != nil || u.Host == "" {
-		return false
-	}
-	host := u.Host
-	if h, p, err := net.SplitHostPort(u.Host); err == nil && h != "" {
-		host = h
-		_ = p
-	}
-	h := strings.ToLower(host)
-	for _, d := range allowed {
-		d = strings.ToLower(strings.TrimSpace(d))
-		if h == d || strings.HasSuffix(h, "."+d) {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *BrowserScraper) ScrapeDynamicURL(urlStr string) (string, error) {
-	if !allowed(urlStr, s.cfg.Allowed) {
-		return "", errors.New("domain_not_allowed")
-	}
+	// SSRF validation is done in ScrapeURLWithFallback before calling this
+	// Domain allowlist removed - customers can add any public website
 
 	s.pool.acquire()
 	defer s.pool.release()
