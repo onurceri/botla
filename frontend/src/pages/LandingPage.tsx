@@ -12,16 +12,13 @@ import {
   Menu,
   X,
   Sparkles,
-  MessagesSquare,
   Search,
   BarChart3,
   Lock,
   Palette,
   Headphones,
   Building2,
-  ShoppingCart,
   Code2,
-  BookOpen,
   Play,
   ChevronRight,
   Shield,
@@ -29,6 +26,14 @@ import {
   Eye,
   Activity,
   Clock,
+  Globe,
+  Upload,
+  Cpu,
+  MessageCircle,
+  Users,
+  Star,
+  Check,
+  Minus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
@@ -38,38 +43,50 @@ import { landing } from '@/i18n/landing'
 
 const t = landing
 
-// --- Premium Visual Primitives ---
+// ============================================
+// DESIGN SYSTEM COMPONENTS
+// ============================================
 
-const Noise = () => (
-  <div className="fixed inset-0 w-full h-full pointer-events-none opacity-[0.02] z-[100] mix-blend-overlay">
-    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-      <filter id="noise">
-        <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-      </filter>
-      <rect width="100%" height="100%" filter="url(#noise)" />
-    </svg>
-  </div>
+const SectionBadge = ({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ElementType }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 border border-primary/10 mb-6"
+  >
+    {Icon && <Icon className="w-4 h-4 text-primary" />}
+    <span className="text-sm font-semibold text-primary">{children}</span>
+  </motion.div>
 )
 
-const MouseHighlight = () => {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-  useEffect(() => {
-    const handleMove = (e: MouseEvent) => setMousePos({ x: e.clientX, y: e.clientY })
-    window.addEventListener('mousemove', handleMove)
-    return () => window.removeEventListener('mousemove', handleMove)
-  }, [])
+const SectionTitle = ({ children, highlight }: { children: React.ReactNode; highlight?: string }) => (
+  <motion.h2
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ delay: 0.1 }}
+    className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground"
+  >
+    {children}
+    {highlight && <span className="text-primary"> {highlight}</span>}
+  </motion.h2>
+)
 
-  return (
-    <div 
-      className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300"
-      style={{
-        background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(245, 158, 11, 0.04), transparent 80%)`
-      }}
-    />
-  )
-}
+const SectionDescription = ({ children }: { children: React.ReactNode }) => (
+  <motion.p
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ delay: 0.2 }}
+    className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+  >
+    {children}
+  </motion.p>
+)
 
-// --- Navbar ---
+// ============================================
+// NAVBAR
+// ============================================
 
 const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -116,60 +133,72 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   }
 
   return (
-    <nav className={cn(
-      "fixed inset-x-0 top-0 z-50 transition-all duration-300 border-b",
-      scrolled 
-        ? "bg-background/80 backdrop-blur-xl border-border/40 py-3" 
-        : "bg-transparent border-transparent py-5"
-    )}>
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={handleLogoClick}>
-            <div className="bg-primary p-2.5 rounded-xl shadow-glow transition-transform group-hover:scale-105">
-              <Bot className="w-5 h-5 text-primary-foreground" />
+    <nav
+      className={cn(
+        'fixed inset-x-0 top-0 z-50 transition-all duration-500',
+        scrolled ? 'bg-background/80 backdrop-blur-xl border-b border-border/50 py-4' : 'py-6',
+      )}
+    >
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <div
+            className="flex items-center gap-3 cursor-pointer group"
+            onClick={handleLogoClick}
+          >
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-colors" />
+              <div className="relative bg-gradient-to-br from-primary to-orange-600 p-2.5 rounded-xl">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
             </div>
-            <span className="font-bold text-xl tracking-tight text-foreground">botla.app</span>
+            <span className="font-bold text-xl tracking-tight">botla.app</span>
           </div>
 
           {/* Desktop Nav */}
-          <div className="hidden lg:flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border/40">
+          <div className="hidden lg:flex items-center gap-1">
             {links.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
                 onClick={(e) => handleScroll(e, link.href)}
-                className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-full transition-all"
-                >
+                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
+              >
                 {link.name}
               </a>
             ))}
           </div>
 
+          {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-3">
             {authenticated ? (
               <Link to="/dashboard">
-                <Button className="rounded-full px-6 font-semibold shadow-sm">{t.nav.dashboard}</Button>
+                <Button className="rounded-full px-6 font-semibold">{t.nav.dashboard}</Button>
               </Link>
             ) : (
               <>
                 <Link to="/login">
-                  <Button variant="ghost" className="rounded-full px-6 font-medium text-muted-foreground hover:text-foreground">
+                  <Button variant="ghost" className="rounded-full px-5 font-medium">
                     {t.nav.login}
                   </Button>
                 </Link>
                 <Link to="/register">
-                  <Button className="rounded-full px-6 font-semibold shadow-glow transition-all hover:scale-105">{t.nav.register}</Button>
+                  <Button className="rounded-full px-6 font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow">
+                    {t.nav.register}
+                    <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
                 </Link>
               </>
             )}
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="lg:hidden">
-            <button onClick={() => setIsOpen(!isOpen)} className="text-foreground p-2 rounded-full hover:bg-muted transition-colors">
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="lg:hidden p-2 rounded-lg hover:bg-muted/50 transition-colors"
+          >
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </div>
 
@@ -177,37 +206,38 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            className="lg:hidden fixed top-[80px] inset-x-4 glass p-8 rounded-3xl shadow-xl z-50 border border-white/20"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="lg:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl"
           >
-            <div className="space-y-6">
+            <div className="max-w-7xl mx-auto px-6 py-6 space-y-4">
               {links.map((link) => (
                 <a
                   key={link.name}
                   href={link.href}
                   onClick={(e) => handleScroll(e, link.href)}
-                  className="block text-xl font-semibold text-foreground hover:text-primary transition-colors"
+                  className="block py-3 text-lg font-medium text-foreground hover:text-primary transition-colors"
                 >
                   {link.name}
                 </a>
               ))}
-              <hr className="border-border/10" />
-              <div className="flex flex-col gap-4">
+              <div className="pt-4 border-t border-border/50 flex flex-col gap-3">
                 {authenticated ? (
                   <Link to="/dashboard" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full h-14 rounded-2xl text-lg">{t.nav.goToDashboard}</Button>
+                    <Button className="w-full h-12 rounded-xl text-base">
+                      {t.nav.goToDashboard}
+                    </Button>
                   </Link>
                 ) : (
                   <>
                     <Link to="/login" onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full h-14 rounded-2xl text-lg border-border/40">
+                      <Button variant="outline" className="w-full h-12 rounded-xl text-base">
                         {t.nav.login}
                       </Button>
                     </Link>
                     <Link to="/register" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full h-14 rounded-2xl text-lg shadow-glow">{t.nav.register}</Button>
+                      <Button className="w-full h-12 rounded-xl text-base">{t.nav.register}</Button>
                     </Link>
                   </>
                 )}
@@ -220,82 +250,77 @@ const Navbar = ({ authenticated }: { authenticated: boolean }) => {
   )
 }
 
-// --- Hero Section ---
+// ============================================
+// HERO SECTION
+// ============================================
 
 const Hero = ({ authenticated }: { authenticated: boolean }) => {
   return (
-    <section className="relative pt-32 pb-24 lg:pt-48 lg:pb-32 overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 blur-[150px] rounded-full animate-pulse" />
-        <div className="absolute top-[20%] left-[30%] w-[300px] h-[300px] bg-orange-600/5 blur-[100px] rounded-full animate-bounce" style={{ animationDuration: '8s' }} />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 pb-20">
+      {/* Background */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(245,158,11,0.15),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(251,146,60,0.08),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(245,158,11,0.05),transparent_50%)]" />
+        
+        {/* Grid Pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.015]"
+          style={{
+            backgroundImage: `linear-gradient(to right, currentColor 1px, transparent 1px),
+                             linear-gradient(to bottom, currentColor 1px, transparent 1px)`,
+            backgroundSize: '64px 64px'
+          }}
+        />
       </div>
 
-      {/* Floating Elements */}
-      <div className="absolute inset-0 -z-5 pointer-events-none overflow-hidden opacity-15">
-        {[...Array(5)].map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ 
-              opacity: [0, 1, 0], 
-              scale: [0.5, 1, 0.5],
-              y: [0, -80, 0],
-            }}
-            transition={{ duration: 8 + i * 2, repeat: Infinity, delay: i * 1.5 }}
-            className="absolute rounded-full border border-primary/20 bg-primary/5 flex items-center justify-center p-2"
-            style={{ 
-              top: `${25 + i * 12}%`, 
-              left: `${10 + i * 16}%`,
-            }}
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative">
-        <div className="flex flex-col items-center text-center max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto px-6 relative">
+        <div className="text-center max-w-5xl mx-auto">
           {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full glass border border-white/30 text-foreground text-xs font-bold uppercase tracking-widest mb-10 shadow-xl shadow-primary/5"
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary/10 to-orange-500/10 border border-primary/20 mb-8"
           >
-            <div className="flex -space-x-2">
-              <div className="w-5 h-5 rounded-full border-2 border-background bg-emerald-400" />
-              <div className="w-5 h-5 rounded-full border-2 border-background bg-primary" />
-              <div className="w-5 h-5 rounded-full border-2 border-background bg-violet-400" />
-            </div>
-            <span className="opacity-80">{t.hero.badge}</span>
             <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-emerald-500 text-[10px]">{t.hero.badgeLive}</span>
+              <Cpu className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">{t.hero.badge}</span>
+            </div>
+            <div className="h-4 w-px bg-border" />
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-sm font-medium text-emerald-600">{t.hero.badgeLive}</span>
             </div>
           </motion.div>
 
-          {/* Title */}
+          {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="text-5xl sm:text-6xl lg:text-8xl font-bold tracking-tight text-foreground mb-8 leading-[1.05]"
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1]"
           >
-            {t.hero.title.line1} <br />
-            <span className="relative inline-block">
-              <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-primary via-orange-500 to-primary">
+            <span className="text-foreground">{t.hero.title.line1}</span>
+            <br />
+            <span className="relative">
+              <span className="bg-gradient-to-r from-primary via-orange-500 to-amber-500 bg-clip-text text-transparent">
                 {t.hero.title.highlight}
               </span>
             </span>
-            <br />{t.hero.title.line2}
+            <br />
+            <span className="text-foreground">{t.hero.title.line2}</span>
           </motion.h1>
 
           {/* Subtitle */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="text-lg sm:text-xl text-muted-foreground/80 mb-12 max-w-3xl leading-relaxed"
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="mt-8 text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed"
           >
             {t.hero.subtitle}
           </motion.p>
@@ -304,22 +329,25 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 1 }}
-            className="flex flex-col sm:flex-row gap-4 items-center mb-16"
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
-            <Link to={authenticated ? "/dashboard" : "/register"}>
-              <Button size="lg" className="h-14 px-10 text-lg font-bold rounded-2xl shadow-glow group hover:scale-105 transition-all">
+            <Link to={authenticated ? '/dashboard' : '/register'}>
+              <Button
+                size="lg"
+                className="h-14 px-8 text-base font-semibold rounded-full shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-300 group"
+              >
                 {authenticated ? t.hero.cta.primaryAuth : t.hero.cta.primary}
-                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <a href="#how-it-works">
               <Button
                 variant="outline"
                 size="lg"
-                className="h-14 px-10 text-lg font-medium rounded-2xl border-border/40 hover:bg-muted/50 transition-all group"
+                className="h-14 px-8 text-base font-medium rounded-full border-2 hover:bg-muted/50 group"
               >
-                <Play className="mr-2 w-5 h-5 text-primary" />
+                <Play className="mr-2 w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
                 {t.hero.cta.secondary}
               </Button>
             </a>
@@ -327,215 +355,267 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
 
           {/* Stats */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 1 }}
-            className="grid grid-cols-3 gap-8 sm:gap-16 pt-8 border-t border-border/30"
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-16 pt-10 border-t border-border/50"
           >
-            <div className="text-center">
-              <div className="text-3xl sm:text-4xl font-bold text-foreground mb-1">{t.hero.stats.sourcesValue}</div>
-              <div className="text-sm text-muted-foreground">{t.hero.stats.sources}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl sm:text-4xl font-bold text-primary mb-1">{t.hero.stats.securityValue}</div>
-              <div className="text-sm text-muted-foreground">{t.hero.stats.security}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl sm:text-4xl font-bold text-foreground mb-1">{t.hero.stats.languagesValue}</div>
-              <div className="text-sm text-muted-foreground">{t.hero.stats.languages}</div>
+            <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
+              {[
+                { value: t.hero.stats.sourcesValue, label: t.hero.stats.sources, icon: Database },
+                { value: t.hero.stats.securityValue, label: t.hero.stats.security, icon: ShieldCheck },
+                { value: t.hero.stats.languagesValue, label: t.hero.stats.languages, icon: Globe },
+              ].map((stat, i) => (
+                <div key={i} className="text-center group">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/5 mb-3 group-hover:bg-primary/10 transition-colors">
+                    <stat.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+                </div>
+              ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Chat Widget Demo */}
+        {/* Hero Visual - Chat Widget Demo */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 60 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-w-lg mx-auto mt-16 group"
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.5 }}
+          className="mt-20 relative max-w-4xl mx-auto"
         >
-          <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-orange-500/10 to-primary/20 rounded-[3rem] blur-3xl opacity-50 group-hover:opacity-80 transition-opacity duration-1000" />
+          {/* Glow Effect */}
+          <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-orange-500/20 to-primary/20 rounded-[2rem] blur-3xl opacity-60" />
           
-          {/* Chat Widget Container */}
-          <div className="relative rounded-3xl shadow-2xl shadow-primary/20 overflow-hidden border border-border/50 bg-card">
-            {/* Widget Header */}
-            <div className="bg-gradient-to-r from-primary to-orange-500 px-6 py-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <Bot className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="text-white font-semibold text-sm">Müşteri Asistanı</div>
-                <div className="text-white/70 text-xs flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Çevrimiçi
-                </div>
-              </div>
+          {/* Browser Frame */}
+          <div className="relative bg-card rounded-2xl shadow-2xl border border-border/50 overflow-hidden">
+            {/* Browser Header */}
+            <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border/50">
               <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
-                <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+              </div>
+              <div className="flex-1 flex justify-center">
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-background text-sm text-muted-foreground">
+                  <Lock className="w-3 h-3" />
+                  <span>yourwebsite.com</span>
+                </div>
               </div>
             </div>
 
-            {/* Chat Messages */}
-            <div className="p-5 space-y-4 bg-gradient-to-b from-muted/30 to-background min-h-[320px]">
-              {/* Bot Welcome */}
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="flex gap-3"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4 text-primary" />
-                </div>
-                <div className="bg-card rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-border/50 max-w-[85%]">
-                  <p className="text-sm text-foreground">
-                    Merhaba! 👋 Size nasıl yardımcı olabilirim?
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* User Question */}
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.5 }}
-                className="flex gap-3 justify-end"
-              >
-                <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-md px-4 py-3 shadow-sm max-w-[85%]">
-                  <p className="text-sm">Kargo takip numaram nedir?</p>
-                </div>
-              </motion.div>
-
-              {/* Bot Response with Typing Animation */}
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 2.2 }}
-                className="flex gap-3"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4 text-primary" />
-                </div>
-                <div className="bg-card rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-border/50 max-w-[85%]">
-                  <p className="text-sm text-foreground">
-                    Siparişinizin kargo takip numarası: <span className="font-mono font-semibold text-primary">TR1234567890</span>
-                  </p>
-                  <p className="text-sm text-foreground mt-2">
-                    📦 Kargo şu an <span className="font-medium">dağıtımda</span> - Bugün teslim edilecek.
-                  </p>
-                </div>
-              </motion.div>
-
-              {/* Suggestions */}
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 2.8 }}
-                className="flex gap-2 flex-wrap pt-2"
-              >
-                {['İade nasıl yapılır?', 'Ödeme seçenekleri', 'İletişim'].map((suggestion) => (
-                  <span
-                    key={suggestion}
-                    className="px-3 py-1.5 text-xs font-medium bg-primary/5 text-primary border border-primary/20 rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
-                  >
-                    {suggestion}
-                  </span>
-                ))}
-              </motion.div>
-            </div>
-
-            {/* Input Area */}
-            <div className="px-4 py-3 border-t border-border/50 bg-card">
-              <div className="flex items-center gap-2 bg-muted/50 rounded-xl px-4 py-2.5">
-                <span className="text-sm text-muted-foreground flex-1">Mesajınızı yazın...</span>
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                  <ArrowRight className="w-4 h-4 text-primary-foreground" />
+            {/* Website Content Area */}
+            <div className="relative h-[320px] sm:h-[440px] bg-gradient-to-br from-slate-50 to-slate-100 p-6 sm:p-8">
+              {/* Placeholder Website Content */}
+              <div className="space-y-3">
+                <div className="h-6 w-40 bg-slate-200 rounded-lg" />
+                <div className="h-3 w-full bg-slate-200 rounded" />
+                <div className="h-3 w-3/4 bg-slate-200 rounded" />
+                <div className="h-3 w-5/6 bg-slate-200 rounded hidden sm:block" />
+                <div className="grid grid-cols-3 gap-3 mt-6 hidden sm:grid">
+                  <div className="h-20 bg-slate-200 rounded-xl" />
+                  <div className="h-20 bg-slate-200 rounded-xl" />
+                  <div className="h-20 bg-slate-200 rounded-xl" />
                 </div>
               </div>
+
+              {/* Floating Chat Widget */}
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 1, duration: 0.5 }}
+                className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 w-[260px] sm:w-[300px]"
+              >
+                {/* Chat Window */}
+                <div className="bg-white rounded-2xl shadow-2xl border border-border/50 overflow-hidden">
+                  {/* Chat Header */}
+                  <div className="bg-gradient-to-r from-primary to-orange-500 px-4 py-2.5 sm:py-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold text-sm">Destek Asistanı</div>
+                      <div className="text-white/70 text-xs flex items-center gap-1.5">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                        </span>
+                        Çevrimiçi
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chat Messages */}
+                  <div className="p-3 space-y-2.5 bg-slate-50 h-[130px] sm:h-[170px]">
+                    {/* Bot Message */}
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.3 }}
+                      className="flex gap-2"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-3 h-3 text-primary" />
+                      </div>
+                      <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm text-xs max-w-[85%]">
+                        Merhaba! 👋 Size nasıl yardımcı olabilirim?
+                      </div>
+                    </motion.div>
+
+                    {/* User Message */}
+                    <motion.div
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.8 }}
+                      className="flex gap-2 justify-end"
+                    >
+                      <div className="bg-primary text-white rounded-2xl rounded-tr-sm px-3 py-2 text-xs max-w-[85%]">
+                        Çalışma saatleriniz nedir?
+                      </div>
+                    </motion.div>
+
+                    {/* Bot Response */}
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 2.3 }}
+                      className="flex gap-2"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-3 h-3 text-primary" />
+                      </div>
+                      <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm text-xs max-w-[85%]">
+                        Hafta içi 09:00-18:00 arası hizmetinizdeyiz! 🕐
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Input */}
+                  <div className="px-3 py-2 border-t border-border/50 bg-white">
+                    <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-1.5">
+                      <span className="text-xs text-muted-foreground flex-1">Mesajınızı yazın...</span>
+                      <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center">
+                        <ArrowRight className="w-3 h-3 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </div>
-
-          {/* Decorative elements */}
-          <div className="absolute -right-8 top-1/4 w-16 h-16 bg-primary/10 rounded-full blur-2xl" />
-          <div className="absolute -left-8 bottom-1/4 w-20 h-20 bg-orange-500/10 rounded-full blur-2xl" />
         </motion.div>
       </div>
     </section>
   )
 }
 
-// --- Features Section ---
+// ============================================
+// LOGOS / SOCIAL PROOF
+// ============================================
 
-const Badge = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary tracking-widest uppercase ring-1 ring-inset ring-primary/20 shadow-sm shadow-primary/5">
-    {children}
-  </span>
+const LogoCloud = () => (
+  <section className="py-16 border-y border-border/50 bg-muted/30">
+    <div className="max-w-7xl mx-auto px-6">
+      <motion.p
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        className="text-center text-sm font-medium text-muted-foreground mb-8"
+      >
+        Güvenilir teknolojilerle destekleniyor
+      </motion.p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6"
+      >
+        {['OpenAI', 'PostgreSQL', 'Qdrant', 'Redis', 'Cloudflare'].map((name) => (
+          <div
+            key={name}
+            className="flex items-center gap-2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+          >
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+              <Cpu className="w-4 h-4" />
+            </div>
+            <span className="font-semibold">{name}</span>
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  </section>
 )
 
-const FeatureCard = ({ icon: Icon, title, description, delay, gradient }: {
+// ============================================
+// FEATURES SECTION
+// ============================================
+
+const FeatureCard = ({
+  icon: Icon,
+  title,
+  description,
+  index,
+}: {
   icon: React.ElementType
   title: string
   description: string
-  delay: number
-  gradient?: boolean
+  index: number
 }) => (
   <motion.div
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 30 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    transition={{ delay, duration: 0.6 }}
-    className={cn(
-      "group relative overflow-hidden rounded-3xl bg-card border border-border/50 p-8 hover:border-primary/40 transition-all duration-500",
-      gradient && "bg-gradient-to-br from-card to-primary/5"
-    )}
+    transition={{ delay: index * 0.1 }}
+    className="group relative"
   >
-    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-    </div>
+    <div className="relative p-6 sm:p-8 rounded-2xl bg-card border border-border/50 h-full hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500">
+      {/* Icon */}
+      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:from-primary/20 group-hover:to-primary/10 transition-all duration-500">
+        <Icon className="w-6 h-6 text-primary" />
+      </div>
 
-    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-      <Icon className="w-6 h-6 text-primary" />
+      {/* Content */}
+      <h3 className="text-lg font-bold mb-2 text-foreground group-hover:text-primary transition-colors">
+        {title}
+      </h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+
+      {/* Hover Effect */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
     </div>
-    <h3 className="text-xl font-bold mb-3 tracking-tight">{title}</h3>
-    <p className="text-muted-foreground/80 leading-relaxed text-sm">{description}</p>
   </motion.div>
 )
 
 const Features = () => {
   const features = [
-    { icon: Search, ...t.features.items.rag, gradient: true },
+    { icon: Search, ...t.features.items.rag },
     { icon: Database, ...t.features.items.sources },
     { icon: Palette, ...t.features.items.widget },
     { icon: Zap, ...t.features.items.actions },
-    { icon: ShieldCheck, ...t.features.items.guardrails, gradient: true },
+    { icon: ShieldCheck, ...t.features.items.guardrails },
     { icon: BarChart3, ...t.features.items.analytics },
     { icon: Headphones, ...t.features.items.handoff },
     { icon: Building2, ...t.features.items.multiTenant },
   ]
 
   return (
-    <section id="features" className="py-32 bg-secondary/30 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <Badge>{t.features.badge}</Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
-            {t.features.title} <span className="text-primary">{t.features.titleHighlight}</span>
-          </h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            {t.features.subtitle}
-          </p>
+    <section id="features" className="py-24 sm:py-32 scroll-mt-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <SectionBadge icon={Sparkles}>{t.features.badge}</SectionBadge>
+          <SectionTitle highlight={t.features.titleHighlight}>{t.features.title}</SectionTitle>
+          <SectionDescription>{t.features.subtitle}</SectionDescription>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((feature, i) => (
             <FeatureCard
               key={feature.title}
               icon={feature.icon}
               title={feature.title}
               description={feature.description}
-              delay={i * 0.1}
-              gradient={feature.gradient}
+              index={i}
             />
           ))}
         </div>
@@ -544,27 +624,40 @@ const Features = () => {
   )
 }
 
-// --- Use Cases Section ---
+// ============================================
+// USE CASES SECTION
+// ============================================
 
-const UseCaseCard = ({ icon: Icon, title, description, features, delay }: {
+const UseCaseCard = ({
+  icon: Icon,
+  title,
+  description,
+  features,
+  index,
+}: {
   icon: React.ElementType
   title: string
   description: string
   features: string[]
-  delay: number
+  index: number
 }) => (
   <motion.div
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 30 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    transition={{ delay, duration: 0.6 }}
-    className="group relative rounded-3xl bg-card border border-border/50 p-8 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500"
+    transition={{ delay: index * 0.1 }}
+    className="group relative p-8 rounded-3xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500"
   >
-    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+    {/* Icon */}
+    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-orange-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
       <Icon className="w-7 h-7 text-primary" />
     </div>
-    <h3 className="text-2xl font-bold mb-3 tracking-tight">{title}</h3>
+
+    {/* Content */}
+    <h3 className="text-2xl font-bold mb-3 text-foreground">{title}</h3>
     <p className="text-muted-foreground leading-relaxed mb-6">{description}</p>
+
+    {/* Feature Tags */}
     <div className="flex flex-wrap gap-2">
       {features.map((feature) => (
         <span
@@ -581,34 +674,30 @@ const UseCaseCard = ({ icon: Icon, title, description, features, delay }: {
 
 const UseCases = () => {
   const cases = [
-    { icon: ShoppingCart, ...t.useCases.items.ecommerce },
-    { icon: Code2, ...t.useCases.items.saas },
+    { icon: Globe, ...t.useCases.items.website },
+    { icon: Database, ...t.useCases.items.docs },
     { icon: Headphones, ...t.useCases.items.support },
-    { icon: BookOpen, ...t.useCases.items.internal },
+    { icon: Palette, ...t.useCases.items.brand },
   ]
 
   return (
-    <section id="use-cases" className="py-32 bg-background relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <Badge>{t.useCases.badge}</Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
-            {t.useCases.title} <span className="text-primary">{t.useCases.titleHighlight}</span>
-          </h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            {t.useCases.subtitle}
-          </p>
+    <section id="use-cases" className="py-24 sm:py-32 bg-muted/30 scroll-mt-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <SectionBadge icon={Users}>{t.useCases.badge}</SectionBadge>
+          <SectionTitle highlight={t.useCases.titleHighlight}>{t.useCases.title}</SectionTitle>
+          <SectionDescription>{t.useCases.subtitle}</SectionDescription>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8">
           {cases.map((useCase, i) => (
             <UseCaseCard
               key={useCase.title}
               icon={useCase.icon}
               title={useCase.title}
               description={useCase.description}
-              features={useCase.features}
-              delay={i * 0.15}
+              features={[...useCase.features]}
+              index={i}
             />
           ))}
         </div>
@@ -617,118 +706,128 @@ const UseCases = () => {
   )
 }
 
-// --- How It Works Section ---
+// ============================================
+// HOW IT WORKS SECTION
+// ============================================
 
 const HowItWorks = () => {
   const [activeStep, setActiveStep] = useState(0)
   const steps = [
-    { ...t.howItWorks.steps.step1, icon: Database },
+    { ...t.howItWorks.steps.step1, icon: Upload },
     { ...t.howItWorks.steps.step2, icon: ShieldCheck },
-    { ...t.howItWorks.steps.step3, icon: MessagesSquare },
+    { ...t.howItWorks.steps.step3, icon: Code2 },
   ]
 
-  const active = steps[activeStep]
-  const ActiveIcon = active.icon
-
   return (
-    <section id="how-it-works" className="scroll-mt-24 py-32 bg-secondary/20 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <Badge>{t.howItWorks.badge}</Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
-            {t.howItWorks.title} <span className="text-primary">{t.howItWorks.titleHighlight}</span>
-          </h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            {t.howItWorks.subtitle}
-          </p>
+    <section id="how-it-works" className="py-24 sm:py-32 scroll-mt-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <SectionBadge icon={Zap}>{t.howItWorks.badge}</SectionBadge>
+          <SectionTitle highlight={t.howItWorks.titleHighlight}>{t.howItWorks.title}</SectionTitle>
+          <SectionDescription>{t.howItWorks.subtitle}</SectionDescription>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-12 items-start">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* Steps Navigation */}
           <div className="lg:col-span-5 space-y-4">
             {steps.map((step, i) => {
               const isActive = i === activeStep
               const Icon = step.icon
               return (
-                <button
+                <motion.button
                   key={step.number}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
                   type="button"
                   onClick={() => setActiveStep(i)}
-                  onMouseEnter={() => setActiveStep(i)}
                   className={cn(
-                    "w-full text-left relative rounded-[2rem] border transition-all duration-300 p-6 sm:p-8",
-                    isActive 
-                      ? "border-primary/40 bg-card shadow-xl shadow-primary/5 -translate-x-2" 
-                      : "border-border/40 bg-card/40 hover:bg-card hover:border-border"
+                    'w-full text-left p-6 rounded-2xl border transition-all duration-300',
+                    isActive
+                      ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/10'
+                      : 'border-border/50 bg-card hover:border-border hover:bg-muted/50',
                   )}
                 >
-                  <div className="flex items-start gap-5">
+                  <div className="flex items-start gap-4">
                     <div
                       className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center border transition-all duration-300 shrink-0",
-                        isActive 
-                          ? "bg-primary text-primary-foreground border-primary shadow-glow" 
-                          : "bg-muted text-muted-foreground border-border"
+                        'w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300',
+                        isActive
+                          ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                          : 'bg-muted text-muted-foreground',
                       )}
                     >
-                      <Icon className="w-6 h-6" />
+                      <Icon className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <div className="font-bold text-lg text-foreground">{step.title}</div>
-                        <div className={cn("text-sm font-bold opacity-30 tracking-widest", isActive && "text-primary opacity-100")}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-bold text-foreground">{step.title}</span>
+                        <span
+                          className={cn(
+                            'text-xs font-bold tracking-wider',
+                            isActive ? 'text-primary' : 'text-muted-foreground/50',
+                          )}
+                        >
                           {step.number}
-                        </div>
+                        </span>
                       </div>
-                      <div className="text-muted-foreground text-sm leading-relaxed">
-                        {step.description}
-                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{step.description}</p>
                     </div>
                   </div>
-                </button>
+                </motion.button>
               )
             })}
           </div>
 
-          <div className="lg:col-span-7 lg:sticky lg:top-32">
+          {/* Step Content */}
+          <div className="lg:col-span-7">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeStep}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="rounded-[2.5rem] glass shadow-2xl p-8 sm:p-10 border border-white/30"
+                transition={{ duration: 0.3 }}
+                className="p-8 rounded-3xl bg-gradient-to-br from-card to-muted/30 border border-border/50 shadow-xl"
               >
-                <div className="flex items-center gap-5 mb-8">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                    <ActiveIcon className="w-7 h-7" />
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    {React.createElement(steps[activeStep].icon, {
+                      className: 'w-7 h-7 text-primary',
+                    })}
                   </div>
                   <div>
-                    <div className="text-sm font-bold text-primary uppercase tracking-[0.2em]">Adım {active.number}</div>
-                    <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{active.title}</div>
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                      Adım {steps[activeStep].number}
+                    </span>
+                    <h3 className="text-2xl font-bold text-foreground">{steps[activeStep].title}</h3>
                   </div>
                 </div>
 
                 <div className="space-y-3 mb-8">
-                  {active.bullets.map((bullet: string) => (
-                    <div
+                  {steps[activeStep].bullets.map((bullet: string, i: number) => (
+                    <motion.div
                       key={bullet}
-                      className="rounded-2xl border border-border/40 bg-background/50 px-5 py-4 flex items-center gap-3 text-sm font-medium text-foreground transition-all hover:bg-background hover:border-primary/30"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex items-center gap-3 p-4 rounded-xl bg-background border border-border/50"
                     >
                       <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                      {bullet}
-                    </div>
+                      <span className="text-sm font-medium text-foreground">{bullet}</span>
+                    </motion.div>
                   ))}
                 </div>
 
-                <div className="rounded-2xl bg-primary/5 p-5 border border-primary/10">
-                  <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-2">
+                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                  <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    Profesyonel İpucu
+                    <span className="text-sm font-bold text-foreground">Profesyonel İpucu</span>
                   </div>
-                  <div className="text-muted-foreground text-sm leading-relaxed">
-                    {active.tip}
-                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {steps[activeStep].tip}
+                  </p>
                 </div>
               </motion.div>
             </AnimatePresence>
@@ -739,119 +838,163 @@ const HowItWorks = () => {
   )
 }
 
-// --- Pricing Section ---
+// ============================================
+// PRICING SECTION
+// ============================================
 
-const PricingCard = ({ title, price, features, recommended, cta, description }: {
+const PricingCard = ({
+  title,
+  price,
+  features,
+  recommended,
+  cta,
+  description,
+}: {
   title: string
   price: string
   features: { text: string; included: boolean }[]
   recommended?: boolean
-  cta: { text: string; href: string }
+  cta: { text: string; href?: string }
   description?: string
 }) => (
-  <div
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
     className={cn(
-      "relative p-8 sm:p-10 rounded-[2.5rem] border transition-all duration-500 flex flex-col",
-      recommended 
-        ? "border-primary/50 shadow-2xl shadow-primary/10 bg-card scale-100 lg:scale-105 z-10" 
-        : "border-border/50 bg-card/50 hover:bg-card hover:border-border transition-colors"
+      'relative p-8 rounded-3xl border flex flex-col h-full transition-all duration-500',
+      recommended
+        ? 'border-primary bg-gradient-to-b from-primary/5 to-transparent shadow-xl shadow-primary/10 scale-105 z-10'
+        : 'border-border/50 bg-card hover:border-border',
     )}
   >
     {recommended && (
-      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-5 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-glow">
-        {t.pricing.mostPopular}
+      <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+        <span className="px-4 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-lg shadow-primary/30">
+          {t.pricing.mostPopular}
+        </span>
       </div>
     )}
 
-    <div className="mb-8">
+    {/* Header */}
+    <div className="text-center mb-8">
       <div className="flex justify-center mb-4">
         <PlanBadge plan={title.toLowerCase() as PlanTier} size="lg" variant="soft" />
       </div>
-      {description && (
-        <p className="text-sm text-muted-foreground text-center mb-4">{description}</p>
-      )}
+      {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
       <div className="flex items-baseline justify-center gap-1">
         <span className="text-4xl sm:text-5xl font-bold tracking-tight">{price}</span>
-        <span className="text-muted-foreground text-base">{t.pricing.perMonth}</span>
+        <span className="text-muted-foreground">{t.pricing.perMonth}</span>
       </div>
     </div>
 
-    <ul className="space-y-3 mb-8 flex-1">
+    {/* Features */}
+    <ul className="space-y-3 flex-1 mb-8">
       {features.map((f, i) => (
-        <li key={i} className="flex items-start gap-3 text-sm">
+        <li key={i} className="flex items-center gap-3 text-sm">
           {f.included ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+            <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <Check className="w-3 h-3 text-emerald-500" />
+            </div>
           ) : (
-            <X className="w-5 h-5 text-muted-foreground/30 shrink-0 mt-0.5" />
+            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <Minus className="w-3 h-3 text-muted-foreground/50" />
+            </div>
           )}
-          <span className={f.included ? 'text-foreground' : 'text-muted-foreground/50 line-through'}>
+          <span className={f.included ? 'text-foreground' : 'text-muted-foreground/50'}>
             {f.text}
           </span>
         </li>
       ))}
     </ul>
 
-    <Link to={cta.href} className="w-full mt-auto">
+    {/* CTA */}
+    {cta.href ? (
+      <Link to={cta.href} className="w-full">
+        <Button
+          variant={recommended ? 'default' : 'outline'}
+          className={cn(
+            'w-full h-12 font-semibold rounded-xl transition-all',
+            recommended && 'shadow-lg shadow-primary/25 hover:shadow-primary/40',
+          )}
+        >
+          {cta.text}
+          <ArrowRight className="ml-2 w-4 h-4" />
+        </Button>
+      </Link>
+    ) : (
       <Button
         variant={recommended ? 'default' : 'outline'}
+        disabled
         className={cn(
-          "w-full h-12 text-base font-semibold rounded-2xl transition-all",
-          recommended ? "shadow-glow hover:scale-[1.02]" : "border-border/40 hover:bg-muted/50"
+          'w-full h-12 font-semibold rounded-xl transition-all',
+          recommended && 'shadow-lg shadow-primary/25 hover:shadow-primary/40',
         )}
       >
         {cta.text}
       </Button>
-    </Link>
-  </div>
+    )}
+  </motion.div>
 )
 
 const Pricing = ({ authenticated }: { authenticated: boolean }) => {
   const { data: apiPlans, isLoading } = usePlans()
 
-  const plans = apiPlans?.map(p => {
-    const isFree = p.code === 'free'
-    const isUltra = p.code === 'ultra'
-    const isPro = p.code === 'pro'
+  const plans =
+    apiPlans?.map((p) => {
+      const isFree = p.code === 'free'
+      const isUltra = p.code === 'ultra'
+      const isPro = p.code === 'pro'
 
-    return {
-      title: p.name || (p.code.charAt(0).toUpperCase() + p.code.slice(1)),
-      price: p.price === 0 ? '0 TL' : `${p.price} ${p.currency}`,
-      recommended: isPro,
-      description: isFree 
-        ? t.pricing.plans.free.description 
-        : isPro 
-          ? t.pricing.plans.pro.description 
-          : t.pricing.plans.ultra.description,
-      cta: isUltra 
-        ? { text: t.pricing.cta.ultra, href: 'mailto:sales@botla.app' }
-        : {
-            text: authenticated ? t.pricing.cta.authenticated : (isFree ? t.pricing.cta.free : t.pricing.cta.pro),
-            href: authenticated ? '/dashboard' : '/register',
+      return {
+        title: p.name || p.code.charAt(0).toUpperCase() + p.code.slice(1),
+        price: p.price === 0 ? '0 TL' : `${p.price} ${p.currency}`,
+        recommended: isFree,
+        description: isFree
+          ? t.pricing.plans.free.description
+          : isPro
+            ? t.pricing.plans.pro.description
+            : t.pricing.plans.ultra.description,
+        cta: isFree
+          ? {
+              text: authenticated
+                ? t.pricing.cta.authenticated
+                : t.pricing.cta.free,
+              href: authenticated ? '/dashboard' : '/register',
+            }
+          : {
+              text: isPro ? t.pricing.cta.pro : t.pricing.cta.ultra,
+            },
+        features: [
+          { text: `${p.limits.max_chatbots} ${t.pricing.features.chatbots}`, included: true },
+          {
+            text: `${p.limits.max_monthly_ingestions.toLocaleString('tr-TR')} ${t.pricing.features.tokens}`,
+            included: true,
           },
-      features: [
-        { text: `${p.limits.max_chatbots} ${t.pricing.features.chatbots}`, included: true },
-        { text: `${p.limits.max_monthly_ingestions.toLocaleString('tr-TR')} ${t.pricing.features.tokens}`, included: true },
-        { text: `${p.features.scraping.max_urls_per_bot} ${t.pricing.features.sites}`, included: true },
-        { text: `${p.features.files.max_files_per_bot} ${t.pricing.features.pdfs}`, included: true },
-        { text: isUltra ? 'GPT-4o & GPT-5' : (isPro ? 'GPT-4o & GPT-4o Mini' : 'GPT-4o Mini'), included: true },
-        { text: t.pricing.features.dynamicScraping, included: isPro || isUltra },
-        { text: t.pricing.features.guardrails, included: isPro || isUltra },
-        { text: t.pricing.features.smartFallback, included: isPro || isUltra },
-        { text: t.pricing.features.handoff, included: isUltra },
-        { text: t.pricing.features.branding, included: isUltra },
-      ],
-    }
-  }) || []
+          { text: `${p.features.scraping.max_urls_per_bot} ${t.pricing.features.sites}`, included: true },
+          { text: `${p.features.files.max_files_per_bot} ${t.pricing.features.pdfs}`, included: true },
+          {
+            text: isUltra ? 'GPT-4o & GPT-5' : isPro ? 'GPT-4o & GPT-4o Mini' : 'GPT-4o Mini',
+            included: true,
+          },
+          { text: t.pricing.features.dynamicScraping, included: isPro || isUltra },
+          { text: t.pricing.features.guardrails, included: isPro || isUltra },
+          { text: t.pricing.features.smartFallback, included: isPro || isUltra },
+          { text: t.pricing.features.handoff, included: isUltra },
+          { text: t.pricing.features.branding, included: isUltra },
+        ],
+      }
+    }) || []
 
   if (isLoading) {
     return (
-      <section id="pricing" className="py-32 bg-background relative overflow-hidden">
+      <section id="pricing" className="py-24 sm:py-32 bg-muted/30 scroll-mt-20">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <Badge>{t.pricing.badge}</Badge>
-          <div className="mt-20 flex flex-col lg:flex-row justify-center gap-8">
-            <div className="w-full lg:w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
-            <div className="w-full lg:w-80 h-[550px] bg-muted animate-pulse rounded-3xl" />
-            <div className="w-full lg:w-80 h-[500px] bg-muted animate-pulse rounded-3xl" />
+          <SectionBadge>{t.pricing.badge}</SectionBadge>
+          <div className="mt-16 grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-[500px] bg-card animate-pulse rounded-3xl" />
+            ))}
           </div>
         </div>
       </section>
@@ -859,19 +1002,15 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
   }
 
   return (
-    <section id="pricing" className="scroll-mt-24 py-32 bg-background relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="text-center max-w-3xl mx-auto mb-20">
-          <Badge>{t.pricing.badge}</Badge>
-          <h2 className="text-4xl md:text-6xl font-bold mt-6 mb-6 tracking-tight">
-            {t.pricing.title} <span className="text-primary italic">{t.pricing.titleHighlight}</span>
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            {t.pricing.subtitle}
-          </p>
+    <section id="pricing" className="py-24 sm:py-32 bg-muted/30 scroll-mt-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <SectionBadge icon={Star}>{t.pricing.badge}</SectionBadge>
+          <SectionTitle highlight={t.pricing.titleHighlight}>{t.pricing.title}</SectionTitle>
+          <SectionDescription>{t.pricing.subtitle}</SectionDescription>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto items-start">
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-stretch">
           {plans.map((plan, i) => (
             <PricingCard key={i} {...plan} />
           ))}
@@ -881,23 +1020,9 @@ const Pricing = ({ authenticated }: { authenticated: boolean }) => {
   )
 }
 
-// --- Security Section ---
-
-const SecurityFeature = ({ icon: Icon, title, description }: {
-  icon: React.ElementType
-  title: string
-  description: string
-}) => (
-  <div className="flex items-start gap-4">
-    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-      <Icon className="w-5 h-5 text-primary" />
-    </div>
-    <div>
-      <h4 className="font-bold text-foreground mb-1">{title}</h4>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-    </div>
-  </div>
-)
+// ============================================
+// SECURITY SECTION
+// ============================================
 
 const Security = () => {
   const securityItems = [
@@ -910,69 +1035,114 @@ const Security = () => {
   ]
 
   return (
-    <section className="py-32 bg-secondary/30 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+    <section className="py-24 sm:py-32">
+      <div className="max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
+          {/* Content */}
           <div>
-            <Badge>{t.security.badge}</Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mt-6 mb-6 tracking-tight">
+            <SectionBadge icon={ShieldCheck}>{t.security.badge}</SectionBadge>
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-4xl sm:text-5xl font-bold tracking-tight mb-6"
+            >
               {t.security.title} <span className="text-primary">{t.security.titleHighlight}</span>
-            </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-lg text-muted-foreground mb-10"
+            >
               {t.security.subtitle}
-            </p>
+            </motion.p>
+
             <div className="grid sm:grid-cols-2 gap-6">
-              {securityItems.map((item) => (
-                <SecurityFeature
+              {securityItems.map((item, i) => (
+                <motion.div
                   key={item.title}
-                  icon={item.icon}
-                  title={item.title}
-                  description={item.description}
-                />
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-start gap-4"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <item.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-foreground mb-1">{item.title}</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                  </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute -inset-8 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 blur-3xl rounded-full" />
-            <div className="relative glass rounded-3xl p-8 border border-white/20">
+          {/* Visual */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="relative"
+          >
+            <div className="absolute -inset-4 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 rounded-3xl blur-2xl" />
+            <div className="relative p-8 rounded-3xl bg-card border border-border/50 shadow-xl">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
                   <ShieldCheck className="w-6 h-6 text-emerald-500" />
                 </div>
                 <div>
                   <div className="font-bold text-foreground">Güvenlik Durumu</div>
-                  <div className="text-sm text-emerald-500">Tüm sistemler aktif</div>
+                  <div className="text-sm text-emerald-500 flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    Tüm sistemler aktif
+                  </div>
                 </div>
               </div>
-              <div className="space-y-4">
-                {['KVKK Uyumlu', 'GDPR Uyumlu', 'SSL/TLS Şifreleme', 'SOC 2 Ready'].map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span className="text-foreground">{item}</span>
-                  </div>
+
+              <div className="space-y-3">
+                {['KVKK Uyumlu', 'GDPR Uyumlu', 'SSL/TLS Şifreleme', 'SOC 2 Ready'].map((item, i) => (
+                  <motion.div
+                    key={item}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + i * 0.1 }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-muted/50"
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    <span className="text-sm font-medium text-foreground">{item}</span>
+                  </motion.div>
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
   )
 }
 
-// --- FAQ Section ---
+// ============================================
+// FAQ SECTION
+// ============================================
 
 const FAQ = () => {
+  const [openIndex, setOpenIndex] = useState<number | null>(0)
+
   return (
-    <section id="faq" className="scroll-mt-24 py-32 bg-background">
-      <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-10">
+    <section id="faq" className="py-24 sm:py-32 bg-muted/30 scroll-mt-20">
+      <div className="max-w-4xl mx-auto px-6">
         <div className="text-center mb-16">
-          <Badge>{t.faq.badge}</Badge>
-          <h2 className="text-4xl md:text-5xl font-bold mt-6 mb-6 tracking-tight">
-            {t.faq.title} <span className="text-primary">{t.faq.titleHighlight}</span>
-          </h2>
-          <p className="text-lg text-muted-foreground">{t.faq.subtitle}</p>
+          <SectionBadge icon={MessageCircle}>{t.faq.badge}</SectionBadge>
+          <SectionTitle highlight={t.faq.titleHighlight}>{t.faq.title}</SectionTitle>
+          <SectionDescription>{t.faq.subtitle}</SectionDescription>
         </div>
 
         <div className="space-y-4">
@@ -982,20 +1152,44 @@ const FAQ = () => {
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="border border-border/40 rounded-2xl bg-card overflow-hidden hover:border-primary/30 transition-colors"
+              transition={{ delay: i * 0.05 }}
+              className="border border-border/50 rounded-2xl bg-card overflow-hidden hover:border-primary/20 transition-colors"
             >
-              <details className="group">
-                <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
-                  <span className="font-bold text-lg pr-6">{faq.question}</span>
-                  <span className="transition-transform group-open:rotate-180 bg-muted/50 p-2 rounded-full shrink-0">
-                    <ChevronRight className="w-5 h-5 rotate-90" />
-                  </span>
-                </summary>
-                <div className="px-6 pb-6 pt-0 text-muted-foreground leading-relaxed">
-                  <div className="pt-4 border-t border-border/10">{faq.answer}</div>
+              <button
+                type="button"
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="w-full flex items-center justify-between p-6 text-left"
+              >
+                <span className="font-bold text-lg pr-4">{faq.question}</span>
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 transition-transform duration-300',
+                    openIndex === i && 'rotate-45 bg-primary/10',
+                  )}
+                >
+                  <ChevronRight
+                    className={cn(
+                      'w-4 h-4 rotate-90 transition-colors',
+                      openIndex === i ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                  />
                 </div>
-              </details>
+              </button>
+              <AnimatePresence>
+                {openIndex === i && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-6 pb-6 pt-0 text-muted-foreground leading-relaxed border-t border-border/50 mt-0 pt-4">
+                      {faq.answer}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           ))}
         </div>
@@ -1004,32 +1198,41 @@ const FAQ = () => {
   )
 }
 
-// --- CTA Section ---
+// ============================================
+// CTA SECTION
+// ============================================
 
 const CTASection = ({ authenticated }: { authenticated: boolean }) => (
-  <section className="py-32 bg-gradient-to-b from-background to-secondary/30 relative overflow-hidden">
-    <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 blur-[150px] rounded-full" />
+  <section className="py-24 sm:py-32 relative overflow-hidden">
+    {/* Background */}
+    <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/10 blur-[150px] rounded-full" />
     </div>
 
-    <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-10 text-center relative">
+    <div className="max-w-4xl mx-auto px-6 text-center">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
       >
-        <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
-          {t.cta.title} <br />
+        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+          {t.cta.title}
+          <br />
           <span className="text-primary">{t.cta.titleHighlight}</span>
         </h2>
-        <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
+        <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
           {t.cta.subtitle}
         </p>
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link to={authenticated ? "/dashboard" : "/register"}>
-            <Button size="lg" className="h-14 px-12 text-lg font-bold rounded-2xl shadow-glow group hover:scale-105 transition-all">
+          <Link to={authenticated ? '/dashboard' : '/register'}>
+            <Button
+              size="lg"
+              className="h-14 px-10 text-lg font-bold rounded-full shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-300 group"
+            >
               {authenticated ? t.cta.buttonAuth : t.cta.button}
-              <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
           <span className="text-sm text-muted-foreground">{t.cta.note}</span>
@@ -1039,60 +1242,107 @@ const CTASection = ({ authenticated }: { authenticated: boolean }) => (
   </section>
 )
 
-// --- Footer ---
+// ============================================
+// FOOTER
+// ============================================
 
 const Footer = ({ authenticated }: { authenticated: boolean }) => (
-  <footer className="bg-foreground text-background py-20 border-t border-border/10">
-    <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-      <div className="grid md:grid-cols-12 gap-12">
-        <div className="col-span-12 md:col-span-5">
+  <footer className="bg-foreground text-background py-16 sm:py-20">
+    <div className="max-w-7xl mx-auto px-6">
+      <div className="grid md:grid-cols-12 gap-12 mb-12">
+        {/* Brand */}
+        <div className="md:col-span-5">
           <div className="flex items-center gap-3 mb-6">
-            <div className="bg-primary p-2.5 rounded-xl shadow-glow">
-              <Bot className="w-6 h-6 text-primary-foreground" />
+            <div className="bg-primary p-2.5 rounded-xl">
+              <Bot className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-2xl tracking-tight text-background">botla.app</span>
+            <span className="font-bold text-2xl">botla.app</span>
           </div>
-          <p className="text-background/60 leading-relaxed max-w-sm">
-            {t.footer.description}
-          </p>
+          <p className="text-background/60 leading-relaxed max-w-sm">{t.footer.description}</p>
         </div>
 
-        <div className="col-span-6 md:col-span-2 md:col-start-7">
-          <h4 className="font-bold text-background mb-5">{t.footer.product.title}</h4>
+        {/* Links */}
+        <div className="md:col-span-2 md:col-start-7">
+          <h4 className="font-bold mb-5">{t.footer.product.title}</h4>
           <ul className="space-y-3 text-background/60 text-sm">
-            <li><a href="#features" className="hover:text-primary transition-colors">{t.footer.product.features}</a></li>
-            <li><a href="#pricing" className="hover:text-primary transition-colors">{t.footer.product.pricing}</a></li>
+            <li>
+              <a href="#features" className="hover:text-primary transition-colors">
+                {t.footer.product.features}
+              </a>
+            </li>
+            <li>
+              <a href="#pricing" className="hover:text-primary transition-colors">
+                {t.footer.product.pricing}
+              </a>
+            </li>
             {authenticated ? (
-              <li><Link to="/dashboard" className="hover:text-primary transition-colors">{t.footer.product.dashboard}</Link></li>
+              <li>
+                <Link to="/dashboard" className="hover:text-primary transition-colors">
+                  {t.footer.product.dashboard}
+                </Link>
+              </li>
             ) : (
               <>
-                <li><Link to="/login" className="hover:text-primary transition-colors">{t.footer.product.login}</Link></li>
-                <li><Link to="/register" className="hover:text-primary transition-colors">{t.footer.product.register}</Link></li>
+                <li>
+                  <Link to="/login" className="hover:text-primary transition-colors">
+                    {t.footer.product.login}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/register" className="hover:text-primary transition-colors">
+                    {t.footer.product.register}
+                  </Link>
+                </li>
               </>
             )}
           </ul>
         </div>
 
-        <div className="col-span-6 md:col-span-2">
-          <h4 className="font-bold text-background mb-5">{t.footer.company.title}</h4>
+        <div className="md:col-span-2">
+          <h4 className="font-bold mb-5">{t.footer.company.title}</h4>
           <ul className="space-y-3 text-background/60 text-sm">
-            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.company.about}</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.company.blog}</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.company.contact}</a></li>
+            <li>
+              <a href="#" className="hover:text-primary transition-colors">
+                {t.footer.company.about}
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-primary transition-colors">
+                {t.footer.company.blog}
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-primary transition-colors">
+                {t.footer.company.contact}
+              </a>
+            </li>
           </ul>
         </div>
 
-        <div className="col-span-6 md:col-span-2">
-          <h4 className="font-bold text-background mb-5">{t.footer.legal.title}</h4>
+        <div className="md:col-span-2">
+          <h4 className="font-bold mb-5">{t.footer.legal.title}</h4>
           <ul className="space-y-3 text-background/60 text-sm">
-            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.legal.privacy}</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.legal.terms}</a></li>
-            <li><a href="#" className="hover:text-primary transition-colors">{t.footer.legal.kvkk}</a></li>
+            <li>
+              <a href="#" className="hover:text-primary transition-colors">
+                {t.footer.legal.privacy}
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-primary transition-colors">
+                {t.footer.legal.terms}
+              </a>
+            </li>
+            <li>
+              <a href="#" className="hover:text-primary transition-colors">
+                {t.footer.legal.kvkk}
+              </a>
+            </li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-background/10 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-background/40 text-sm">
+      {/* Bottom */}
+      <div className="pt-8 border-t border-background/10 flex flex-col md:flex-row justify-between items-center gap-4 text-background/40 text-sm">
         <p>{t.footer.copyright.replace('{year}', new Date().getFullYear().toString())}</p>
         <p>{t.footer.madeWith}</p>
       </div>
@@ -1100,7 +1350,9 @@ const Footer = ({ authenticated }: { authenticated: boolean }) => (
   </footer>
 )
 
-// --- Main Component ---
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export default function LandingPage() {
   const { isAuthenticated: authenticated } = useAuth()
@@ -1118,7 +1370,6 @@ export default function LandingPage() {
     return () => window.clearTimeout(t)
   }, [])
 
-  // Dynamically load chatbot widget for landing page demo
   useEffect(() => {
     if (authenticated) return
 
@@ -1147,12 +1398,11 @@ export default function LandingPage() {
   }, [authenticated])
 
   return (
-    <div className="relative isolate min-h-screen bg-background font-sans selection:bg-primary/20 text-foreground">
-      <Noise />
-      <MouseHighlight />
+    <div className="relative min-h-screen bg-background font-sans antialiased">
       <Navbar authenticated={authenticated} />
       <main>
         <Hero authenticated={authenticated} />
+        <LogoCloud />
         <Features />
         <UseCases />
         <HowItWorks />

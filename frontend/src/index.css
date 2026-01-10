@@ -240,170 +240,90 @@
   }
 
   /* ============================================
-   * PREMIUM SIDEBAR STYLES
+   * PROFESSIONAL SIDEBAR STYLES
    * ============================================ */
 
   .sidebar-glass {
-    /* Solid base to prevent transparency on fixed positioned elements */
-    background-color: #fafafa;
-    /* Glass overlay gradient for subtle premium effect */
-    background-image: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(255, 255, 255, 0.92) 100%
-    );
-    backdrop-filter: blur(24px) saturate(200%);
-    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    /* Professional Layout: White sidebar on off-white background */
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-right: 1px solid rgba(0, 0, 0, 0.08); /* Slightly stronger border */
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02); /* Very subtle depth shadow */
   }
 
   .sidebar-nav-item {
-    @apply relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300;
-    transition-timing-function: var(--ease-out-expo);
+    @apply relative flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 ease-out select-none mx-2;
+    /* Use rounded-md for a cleaner, less "bubbly" look */
   }
 
-  .sidebar-nav-item::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%) scaleY(0);
-    width: 3px;
-    height: 60%;
-    border-radius: 0 4px 4px 0;
-    background: linear-gradient(180deg, var(--color-primary), #f97316);
-    transition: transform 0.3s var(--ease-out-expo);
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
-  }
-
-  .sidebar-nav-item.active::before {
-    transform: translateY(-50%) scaleY(1);
+  .sidebar-nav-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+    color: var(--color-foreground);
   }
 
   .sidebar-nav-item.active {
-    background: linear-gradient(
-      135deg,
-      rgba(245, 158, 11, 0.12) 0%,
-      rgba(249, 115, 22, 0.08) 100%
-    );
+    background-color: rgba(245, 158, 11, 0.08); /* Very subtle amber bg */
+    color: var(--color-primary-foreground); 
+    /* Actually for professional look, let's keep text dark or distinct color */
+  }
+  
+  /* Override the active text color for professional contrast */
+  .sidebar-nav-item.active .nav-icon {
+    color: var(--color-primary); /* Amber icon */
+  }
+  
+  .sidebar-nav-item.active span {
+    color: #1a1a1a; /* Dark text for readability */
+    font-weight: 600;
   }
 
-  .sidebar-nav-item:not(.active):hover {
-    background: rgba(0, 0, 0, 0.04);
-    transform: translateX(4px);
+  .sidebar-nav-item:active {
+    transform: scale(0.99);
   }
+
 
   .sidebar-nav-item .nav-icon {
-    @apply transition-all duration-300;
+    @apply transition-transform duration-200 ease-out;
   }
 
   .sidebar-nav-item:hover .nav-icon {
-    transform: scale(1.1);
-  }
-
-  .sidebar-nav-item.active .nav-icon {
-    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
-  }
-
-  /* Active indicator dot with glow pulse */
-  .nav-indicator-dot {
-    @apply w-2 h-2 rounded-full;
-    background: linear-gradient(135deg, var(--color-primary), #f97316);
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-      transform: scale(1);
-    }
-    50% {
-      box-shadow: 0 0 16px rgba(245, 158, 11, 0.8);
-      transform: scale(1.15);
-    }
-  }
-
-  /* Avatar gradient ring */
-  .avatar-ring {
-    @apply relative;
-  }
-
-  .avatar-ring::before {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, var(--color-primary), #f97316, #ec4899, var(--color-primary));
-    background-size: 300% 300%;
-    animation: gradient-rotate 4s ease infinite;
-    z-index: -1;
-  }
-
-  @keyframes gradient-rotate {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  /* Logo hover glow */
-  .logo-glow {
-    @apply transition-all duration-300;
-  }
-
-  .logo-glow:hover {
     transform: scale(1.05);
-    filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.4));
   }
 
   /* Section label styling */
   .sidebar-section-label {
-    @apply px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.15em];
-    color: rgba(0, 0, 0, 0.35);
+    @apply px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70;
   }
 
-  /* User profile card */
+  /* Logo hover glow - Subtle */
+  .logo-glow {
+    @apply transition-transform duration-200;
+  }
+
+  .logo-glow:hover {
+    transform: scale(1.02);
+  }
+
+  /* Build Version / User Profile */
   .user-profile-card {
-    @apply rounded-2xl p-3 transition-all duration-300;
-    background: linear-gradient(
-      135deg,
-      rgba(245, 158, 11, 0.08) 0%,
-      rgba(249, 115, 22, 0.04) 100%
-    );
-    border: 1px solid rgba(245, 158, 11, 0.1);
+    @apply rounded-xl p-2 transition-all duration-200 border border-transparent;
   }
 
   .user-profile-card:hover {
-    background: linear-gradient(
-      135deg,
-      rgba(245, 158, 11, 0.12) 0%,
-      rgba(249, 115, 22, 0.08) 100%
-    );
-    border-color: rgba(245, 158, 11, 0.2);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12);
+    @apply bg-black/5;
   }
 
-  /* Logout button hover */
+  /* Avatar ring - Simplified */
+  .avatar-ring {
+    @apply relative flex items-center justify-center;
+  }
+
+  .avatar-ring > div {
+    @apply ring-2 ring-background shadow-sm;
+  }
+
   .logout-btn {
-    @apply transition-all duration-300;
-  }
-
-  .logout-btn:hover {
-    @apply text-destructive;
-    background: rgba(239, 68, 68, 0.1) !important;
-  }
-
-  /* Reduced motion support */
-  @media (prefers-reduced-motion: reduce) {
-    .nav-indicator-dot,
-    .avatar-ring::before {
-      animation: none;
-    }
-    
-    .sidebar-nav-item,
-    .sidebar-nav-item::before,
-    .user-profile-card {
-      transition-duration: 0.01ms;
-    }
+    @apply text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors duration-200 rounded-xl px-3 py-2;
   }
 }

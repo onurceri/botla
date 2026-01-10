@@ -46,7 +46,7 @@ type MockAnalyticsRepo struct {
 	GetSourceUsageStatsFunc func(ctx context.Context, chatbotID string, days int) ([]SourceUsageStat, error)
 
 	// UpdateMessageFeedbackFunc is called when UpdateMessageFeedback is invoked.
-	UpdateMessageFeedbackFunc func(ctx context.Context, messageID string, thumbsUp bool) (string, bool, error)
+	UpdateMessageFeedbackFunc func(ctx context.Context, messageID string, thumbsUp bool) (string, *bool, error)
 
 	// Invocation tracking for test assertions
 	Calls struct {
@@ -260,12 +260,12 @@ func (m *MockAnalyticsRepo) GetSourceUsageStats(ctx context.Context, chatbotID s
 }
 
 // UpdateMessageFeedback updates feedback for a message and returns affected chatbot ID.
-func (m *MockAnalyticsRepo) UpdateMessageFeedback(ctx context.Context, messageID string, thumbsUp bool) (string, bool, error) {
+func (m *MockAnalyticsRepo) UpdateMessageFeedback(ctx context.Context, messageID string, thumbsUp bool) (string, *bool, error) {
 	m.Calls.UpdateMessageFeedback = append(m.Calls.UpdateMessageFeedback, UpdateMessageFeedbackCall{MessageID: messageID, ThumbsUp: thumbsUp})
 	if m.UpdateMessageFeedbackFunc != nil {
 		return m.UpdateMessageFeedbackFunc(ctx, messageID, thumbsUp)
 	}
-	return "", false, nil
+	return "", nil, nil
 }
 
 // Reset clears all recorded calls. Useful for resetting state between tests.

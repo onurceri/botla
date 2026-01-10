@@ -1,8 +1,19 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useRef } from 'react'
+import { motion, Variants } from 'framer-motion'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { PlanBadge, PlanTier } from '@/components/ui/plan-badge'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
   HardDrive,
   Globe,
@@ -10,16 +21,19 @@ import {
   Zap,
   Shield,
   Check,
-  X,
-  LayoutDashboard,
   FileText,
   Clock,
   Database,
+  Lock,
+  Bot,
+  Sparkles,
+  TrendingUp,
 } from 'lucide-react'
 import { usePlan, useUsage } from '@/hooks/queries/useProfile'
 import { useRateLimit } from '@/hooks/useRateLimit'
 import { cn } from '@/lib/utils'
 
+// Data Interfaces
 interface PlanLimits {
   max_chatbots: number
   max_monthly_ingestions: number
@@ -73,170 +87,188 @@ interface Usage {
   refresh_count?: number
 }
 
-// Skeleton component for loading state
-const Skeleton = ({ className }: { className?: string }) => (
-  <div className={cn('animate-pulse rounded-xl bg-muted/60', className)} />
-)
+// ------------------------------------------------------------------
+// Custom Visual Components
+// ------------------------------------------------------------------
 
-// Stat card component with a cleaner, more professional look
-const StatCard = ({
-  icon: Icon,
-  label,
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
+
+const CircularProgress = ({
   value,
   max,
-  showProgress = false,
-  accentColor = 'primary',
-}: {
-  icon: React.ElementType
-  label: string
-  value: string | number
-  max?: string | number
-  showProgress?: boolean
-  accentColor?: 'primary' | 'amber' | 'blue' | 'violet' | 'emerald'
-}) => {
-  const percentage =
-    showProgress && typeof value === 'number' && typeof max === 'number' && max > 0
-      ? Math.min(100, Math.max(0, (value / max) * 100))
-      : 0
-
-  const accentClasses = {
-    primary: 'text-primary bg-primary/10',
-    amber: 'text-amber-600 bg-amber-500/10',
-    blue: 'text-blue-600 bg-blue-500/10',
-    violet: 'text-violet-600 bg-violet-500/10',
-    emerald: 'text-emerald-600 bg-emerald-500/10',
-  }
-
-  return (
-    <Card className="overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-200 hover:border-border hover:shadow-sm">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className={cn('p-2 rounded-lg shrink-0', accentClasses[accentColor])}>
-            <Icon className="w-4 h-4" />
-          </div>
-          <span className="text-sm font-medium text-muted-foreground truncate">{label}</span>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold tracking-tight">{value}</span>
-            {max !== undefined && (
-              <span className="text-sm text-muted-foreground font-medium">/ {max}</span>
-            )}
-          </div>
-
-          {showProgress && (
-            <div className="space-y-2">
-              <Progress value={percentage} className="h-1.5 bg-muted/50" />
-              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70">
-                <span>Kullanım</span>
-                <span>%{Math.round(percentage)}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Feature row component
-const FeatureRow = ({
+  size = 60,
+  strokeWidth = 4,
+  color = 'var(--color-primary)',
+  trackColor = 'rgba(0,0,0,0.1)',
   label,
-  value,
-  enabled,
-  showProgress = false,
-  current,
-  max,
-  className,
+  subLabel,
 }: {
-  label: string
-  value?: string | number
-  enabled?: boolean
-  showProgress?: boolean
-  current?: number
-  max?: number
-  className?: string
+  value: number
+  max: number
+  size?: number
+  strokeWidth?: number
+  color?: string
+  trackColor?: string
+  label?: string
+  subLabel?: string
 }) => {
-  const percentage =
-    showProgress && current !== undefined && max !== undefined && max > 0
-      ? Math.min(100, Math.max(0, (current / max) * 100))
-      : 0
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const percentage = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
+  const offset = circumference - (percentage / 100) * circumference
 
   return (
-    <div className={cn('py-3.5 first:pt-0 last:pb-0', className)}>
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-sm text-muted-foreground font-medium">{label}</span>
-        <div className="flex items-center gap-2 shrink-0">
-          {enabled !== undefined ? (
-            enabled ? (
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[11px] font-bold uppercase tracking-wider">
-                <Check className="w-3 h-3" />
-                Aktif
-              </div>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border text-[11px] font-bold uppercase tracking-wider cursor-help">
-                    <X className="w-3 h-3" />
-                    Pasif
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  <p className="text-xs">Bu özellik üst paketlerde mevcuttur.</p>
-                </TooltipContent>
-              </Tooltip>
-            )
-          ) : showProgress ? (
-            <span className="text-sm font-bold tracking-tight">
-              {current?.toLocaleString()} <span className="text-muted-foreground font-medium">/</span> {max?.toLocaleString()}
-            </span>
-          ) : (
-            <span className="text-sm font-bold tracking-tight">{value}</span>
-          )}
+    <div className="flex flex-col items-center justify-center gap-2">
+      <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="transform -rotate-90">
+          {/* Track */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={trackColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+          {/* Indicator */}
+          <motion.circle
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset: offset }}
+            transition={{ duration: 1.5, ease: EASE_OUT_EXPO }}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center flex-col">
+          <span className="text-[10px] font-bold text-muted-foreground">{Math.round(percentage)}%</span>
         </div>
       </div>
-      {showProgress && current !== undefined && max !== undefined && (
-        <div className="mt-2.5">
-          <Progress value={percentage} className="h-1 bg-muted/50" />
+      {(label || subLabel) && (
+        <div className="text-center space-y-0.5">
+          {label && <div className="text-xs font-bold">{label}</div>}
+          {subLabel && <div className="text-[10px] text-muted-foreground">{subLabel}</div>}
         </div>
       )}
     </div>
   )
 }
 
-// Section card component
-const SectionCard = ({
+const FeatureTile = ({
+  label,
+  enabled,
+  value,
   icon: Icon,
-  title,
-  description,
-  children,
+  tooltip,
 }: {
-  icon: React.ElementType
-  title: string
-  description?: string
-  children: React.ReactNode
-}) => (
-  <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
-    <CardHeader className="pb-5">
-      <div className="flex items-center gap-4">
-        <div className="p-2.5 rounded-xl bg-muted border border-border/50 text-foreground/80">
-          <Icon className="w-5 h-5" />
+  label: string
+  enabled?: boolean
+  value?: string
+  icon: any
+  tooltip?: string
+}) => {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            'group relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-300',
+            enabled === false
+              ? 'bg-muted/30 border-dashed border-border/60 text-muted-foreground opacity-70'
+              : 'bg-gradient-to-br from-card to-card/50 border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5'
+          )}
+        >
+          <div
+            className={cn(
+              'p-2 rounded-full mb-2 transition-colors duration-300',
+              enabled === false
+                ? 'bg-muted text-muted-foreground'
+                : 'bg-primary/10 text-primary group-hover:bg-primary/20'
+            )}
+          >
+            {enabled === false ? <Lock className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+          </div>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-center text-muted-foreground/80 mb-0.5">
+            {label}
+          </span>
+          <span
+            className={cn(
+              'text-sm font-bold text-center',
+              enabled === false ? 'text-muted-foreground line-through' : 'text-foreground'
+            )}
+          >
+            {value || (enabled ? 'Aktif' : 'Pasif')}
+          </span>
         </div>
-        <div className="space-y-0.5">
-          <CardTitle className="text-base font-bold tracking-tight">{title}</CardTitle>
-          {description && <CardDescription className="text-xs">{description}</CardDescription>}
+      </TooltipTrigger>
+      {tooltip && <TooltipContent>{tooltip}</TooltipContent>}
+    </Tooltip>
+  )
+}
+
+const LimitBar = ({
+  label,
+  current,
+  max,
+  icon: Icon,
+  format = (v: number) => v.toLocaleString(),
+}: {
+  label: string
+  current: number
+  max: number
+  icon: any
+  format?: (v: number) => string
+}) => {
+  const percentage = max > 0 ? (current / max) * 100 : 0
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-end">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">{label}</span>
+        </div>
+        <div className="text-xs font-bold">
+          <span className={cn(percentage > 90 ? 'text-red-500' : 'text-foreground')}>
+            {format(current)}
+          </span>
+          <span className="text-muted-foreground"> / {format(max)}</span>
         </div>
       </div>
-    </CardHeader>
-    <CardContent className="pt-0 border-t border-border/10 mt-1">{children}</CardContent>
-  </Card>
-)
+      <div className="h-2 w-full bg-muted/50 rounded-full overflow-hidden">
+        <motion.div
+          className={cn(
+            'h-full rounded-full',
+            percentage > 90
+              ? 'bg-gradient-to-r from-red-500 to-red-400'
+              : 'bg-gradient-to-r from-primary to-amber-400'
+          )}
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(100, percentage)}%` }}
+          transition={{ duration: 1, delay: 0.2, ease: EASE_OUT_EXPO }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// Main Page Component
+// ------------------------------------------------------------------
 
 const PlanPage = () => {
   const { data: planData, isLoading: planLoading } = usePlan()
   const { data: usageData, isLoading: usageLoading } = useUsage()
   const rateLimit = useRateLimit()
+
+  // Use refs for potential scroll animations
+  const containerRef = useRef(null)
 
   const userPlan = planData?.code || 'free'
   const planPrice = planData?.price || 0
@@ -246,325 +278,330 @@ const PlanPage = () => {
   const usage = usageData as Usage | null
   const loading = planLoading || usageLoading
 
+  // Constants
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('tr-TR', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('tr-TR', {
+      style: 'currency',
       currency: currency,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount)
   }
 
-  const rateLimitPercentage =
-    rateLimit.limit && rateLimit.remaining !== null
-      ? ((rateLimit.limit - rateLimit.remaining) / rateLimit.limit) * 100
-      : 0
+  const rateLimitUsed = rateLimit.limit ? (rateLimit.limit - (rateLimit.remaining ?? 0)) : 0
+  const rateLimitMax = rateLimit.limit ?? 0
 
-  // Loading skeleton
+  // Animation variants
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
+  }
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE_OUT_EXPO } },
+  }
+
   if (loading) {
     return (
-      <TooltipProvider>
-        <div className="max-w-6xl mx-auto space-y-8 pb-12">
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-9 w-64" />
-            <Skeleton className="h-4 w-96" />
-          </div>
-          <Skeleton className="h-44 rounded-2xl" />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-xl" />
-            ))}
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-64 rounded-xl" />
-            ))}
-          </div>
+      <div className="max-w-7xl mx-auto p-4 space-y-8 animate-pulse">
+        <div className="h-48 bg-muted/20 rounded-3xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          <div className="h-64 bg-muted/20 rounded-3xl" />
+          <div className="h-64 bg-muted/20 rounded-3xl" />
         </div>
-      </TooltipProvider>
+      </div>
     )
   }
 
   return (
     <TooltipProvider>
-      <div className="max-w-6xl mx-auto space-y-8 pb-12 animate-in fade-in duration-700">
-        {/* Simplified Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Plan ve Kullanım
-            </h1>
-            <p className="text-muted-foreground text-sm font-medium">
-              Mevcut paketinizin detayları ve kaynak kullanım durumunuz.
-            </p>
-          </div>
-        </div>
-
-        {/* Current Plan Card - More Professional & Structured */}
-        <Card className="overflow-hidden border-border/60 bg-gradient-to-br from-background via-muted/5 to-muted/10 shadow-sm relative">
-          <div className="p-6 md:p-10 flex flex-col lg:flex-row items-stretch lg:items-center gap-8">
-            <div className="flex-1 space-y-4 text-center md:text-left">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight capitalize">{userPlan}</h2>
-                <PlanBadge plan={userPlan as PlanTier} size="md" variant="solid" />
-              </div>
-              <p className="text-muted-foreground font-medium max-w-lg text-lg">
-                {planPrice > 0
-                  ? `Aylık ${formatCurrency(planPrice, planCurrency)} karşılığında profesyonel özelliklere erişiminiz var.`
-                  : "Ücretsiz plan ile Botla'nın temel özelliklerini kullanıyorsunuz."}
+      <div className="min-h-screen pb-20 overflow-x-hidden" ref={containerRef}>
+        <motion.div
+          className="max-w-7xl mx-auto space-y-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+          {/* HEADER SECTION */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
+            <motion.div variants={itemVariants} className="space-y-1">
+              <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
+                Plan &amp; Limitler
+              </h1>
+              <p className="text-muted-foreground font-medium text-base">
+                Hesap özelliklerinizi yönetin ve kullanımınızı takip edin.
               </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 min-w-[320px]">
-              <div className="flex-1 p-5 rounded-2xl bg-background/80 border border-border/50 flex flex-col justify-center gap-1.5 shadow-sm">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Plan Ücreti</span>
-                <span className="text-2xl font-black">
-                  {planPrice > 0 ? formatCurrency(planPrice, planCurrency) : 'Ücretsiz'}
-                  {planPrice > 0 && <span className="text-sm font-bold text-muted-foreground ml-1">/ ay</span>}
-                </span>
-              </div>
-            </div>
+            </motion.div>
+            
+            <motion.div variants={itemVariants}>
+               {/* Optional Header Action */}
+            </motion.div>
           </div>
-        </Card>
 
-        {/* Refined Quick Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 font-inter">
-          <StatCard
-            icon={LayoutDashboard}
-            label="Mevcut Chatbot"
-            value={usage?.chatbots_count ?? 0}
-            max={planLimits?.max_chatbots ?? 1}
-            showProgress
-            accentColor="violet"
-          />
-          <StatCard
-            icon={FileText}
-            label="Aylık Kaynak Ekleme"
-            value={usage?.ingestions_used ?? 0}
-            max={planLimits?.max_monthly_ingestions ?? 0}
-            showProgress
-            accentColor="emerald"
-          />
-          <StatCard
-            icon={Zap}
-            label="AI Token Kullanımı"
-            value={(usage?.tokens_used ?? 0).toLocaleString()}
-            max={(planFeatures?.chat.max_monthly_tokens || 0).toLocaleString()}
-            showProgress
-            accentColor="amber"
-          />
-          <StatCard
-            icon={HardDrive}
-            label="Depolama Alanı"
-            value={`${usage?.storage_used_mb ?? 0} MB`}
-            max={`${planFeatures?.files.total_storage_mb ?? 0} MB`}
-            showProgress
-            accentColor="blue"
-          />
-        </div>
+          {/* TOTAL OVERVIEW GRID */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* 1. CURRENT PLAN CARD */}
+            <motion.div variants={itemVariants} className="lg:col-span-2">
+              <div className="relative h-full overflow-hidden rounded-3xl border border-orange-100/50 bg-gradient-to-br from-white via-orange-50/40 to-white shadow-2xl shadow-orange-500/5">
+                {/* Background decorative blobs */}
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-orange-400/10 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-amber-300/10 blur-[100px] rounded-full -translate-x-1/3 translate-y-1/3" />
 
-        {/* Detailed Sections with cleaner layout */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Files & Storage */}
-          <SectionCard
-            icon={Database}
-            title="Veri Kaynakları & Depolama"
-            description="Dosya yükleme ve depolama limitleri"
-          >
-            <div className="divide-y divide-border/10">
-              <FeatureRow
-                label="Toplam Depolama"
-                showProgress
-                current={usage?.storage_used_mb ?? 0}
-                max={planFeatures?.files.total_storage_mb ?? 0}
-              />
-              <FeatureRow
-                label="Toplam Yüklenen Dosya"
-                showProgress
-                current={usage?.files_count ?? 0}
-                max={planFeatures?.files.max_files_total ?? 0}
-              />
-              <FeatureRow
-                label="Maksimum Dosya Boyutu"
-                value={`${planFeatures?.files.max_size_mb} MB`}
-              />
-              <FeatureRow
-                label="Bot Başına Dosya Limiti"
-                showProgress
-                current={usage?.max_files_count_in_one_bot ?? 0}
-                max={planFeatures?.files.max_files_per_bot ?? 0}
-              />
-            </div>
-          </SectionCard>
+                <div className="relative z-10 p-8 h-full flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <PlanBadge plan={userPlan as PlanTier} variant="soft" className="scale-110 origin-left" />
+                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Aktif Paket
+                        </span>
+                      </div>
+                      <div>
+                        <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground capitalize mb-2">
+                          {userPlan} Plan
+                        </h2>
+                        <p className="text-muted-foreground font-medium max-w-md text-lg leading-relaxed">
+                          {planPrice > 0 
+                            ? 'İşletmeniz için tam profesyonel özellikler paketi.'
+                            : 'Bireysel kullanım ve deneme için başlangıç paketi.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    {/* Price Tag */}
+                    <div className="text-right hidden sm:block">
+                      <div className="text-4xl font-black text-foreground tracking-tight">
+                        {planPrice > 0 ? formatCurrency(planPrice, planCurrency) : 'Ücretsiz'}
+                      </div>
+                      {planPrice > 0 && <div className="text-sm font-bold text-muted-foreground/60 uppercase tracking-wide mt-1">aylık faturalandırma</div>}
+                    </div>
+                  </div>
 
-          {/* Web Scraping */}
-          <SectionCard
-            icon={Globe}
-            title="Web Sitesi Denetimi"
-            description="URL kotaları ve tarama özellikleri"
-          >
-            <div className="divide-y divide-border/10">
-              <FeatureRow
-                label="Toplam Kayıtlı URL"
-                value={`${usage?.urls_count ?? 0} adet`}
-              />
-              <FeatureRow
-                label="Bot Başına URL Limiti"
-                showProgress
-                current={usage?.max_urls_count_in_one_bot ?? 0}
-                max={(planFeatures?.scraping.max_urls_per_bot ?? 0) + (planFeatures?.scraping.max_pages_per_crawl ?? 0)}
-              />
-              <FeatureRow
-                label="Dinamik Web Taraması (JS)"
-                enabled={planFeatures?.scraping.dynamic_enabled}
-              />
-              <FeatureRow label="İçerik Otomatik Yenileme" enabled={planFeatures?.refresh?.enabled} />
-              {planFeatures?.refresh?.enabled && (
-                <FeatureRow
-                  label="Aylık Yenileme Kotası"
-                  showProgress
-                  current={usage?.refresh_count ?? 0}
-                  max={planFeatures?.refresh?.max_monthly ?? 0}
-                />
-              )}
-            </div>
-          </SectionCard>
-
-          {/* AI Models */}
-          <SectionCard
-            icon={Cpu}
-            title="Zeka & Model Erişimi"
-            description="Yapay zeka modelleri ve RAG ayarları"
-          >
-            <div className="divide-y divide-border/10">
-              <FeatureRow
-                label="AI Token Kotası"
-                showProgress
-                current={usage?.tokens_used ?? 0}
-                max={planFeatures?.chat.max_monthly_tokens ?? 0}
-              />
-              <div className="py-4 last:pb-0">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="text-sm text-muted-foreground font-medium">Kullanılabilir Modeller</span>
-                  <div className="flex flex-wrap gap-1.5 justify-end">
-                    {planFeatures?.chat.allowed_models.map((m) => (
-                      <Badge key={m} variant="secondary" className="px-2 py-0 text-[10px] font-bold h-5 uppercase tracking-wide bg-muted border border-border/50">
-                        {m}
-                      </Badge>
-                    ))}
+                  {/* Quick Features */}
+                  <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-6">
+                     <div className="flex items-center gap-3.5 group">
+                       <div className="p-2.5 rounded-xl bg-orange-50 text-orange-600 ring-1 ring-orange-100 group-hover:scale-110 transition-transform duration-300"><Bot className="w-5 h-5" /></div>
+                       <div className="flex flex-col gap-0.5">
+                         <span className="text-[10px] text-muted-foreground/70 uppercase font-black tracking-wider">Botlar</span>
+                         <span className="font-bold text-foreground text-sm">{planLimits?.max_chatbots || 1} Adet</span>
+                       </div>
+                     </div>
+                     <div className="flex items-center gap-3.5 group">
+                       <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100 group-hover:scale-110 transition-transform duration-300"><Database className="w-5 h-5" /></div>
+                       <div className="flex flex-col gap-0.5">
+                         <span className="text-[10px] text-muted-foreground/70 uppercase font-black tracking-wider">Depolama</span>
+                         <span className="font-bold text-foreground text-sm">{planFeatures?.files.total_storage_mb || 0} MB</span>
+                       </div>
+                     </div>
+                     <div className="flex items-center gap-3.5 group">
+                       <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 ring-1 ring-purple-100 group-hover:scale-110 transition-transform duration-300"><Sparkles className="w-5 h-5" /></div>
+                       <div className="flex flex-col gap-0.5">
+                         <span className="text-[10px] text-muted-foreground/70 uppercase font-black tracking-wider">AI Model</span>
+                         <span className="font-bold text-foreground text-sm truncate max-w-[100px]">{planFeatures?.chat.allowed_models[0] || 'GPT-3.5'}</span>
+                       </div>
+                     </div>
                   </div>
                 </div>
               </div>
-              <FeatureRow
-                label="RAG Context (Bağlam) Penceresi"
-                value={`${planFeatures?.chat.rag.max_context_tokens.toLocaleString()} token`}
-              />
-            </div>
-          </SectionCard>
+            </motion.div>
 
-          {/* Security & Branding */}
-          <SectionCard
-            icon={Shield}
-            title="Marka & Güvenlik"
-            description="Widget özelleştirme ve erişim denetimi"
-          >
-            <div className="divide-y divide-border/10">
-              <FeatureRow
-                label="Güvenli Embed (Domain Kilidi)"
-                enabled={planFeatures?.security?.secure_embed_enabled}
-              />
-              <FeatureRow
-                label="Botla Markasını Kaldırma"
-                enabled={planFeatures?.branding?.can_hide_branding}
-              />
-              <FeatureRow
-                label="Özel Logo ve Link Ayarları"
-                enabled={planFeatures?.branding?.can_custom_branding}
-              />
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* Refined API Usage Section */}
-        <SectionCard
-          icon={Clock}
-          title="Sistem API & Kaynak Kullanımı"
-          description="Altyapı kotaları ve teknik limitler"
-        >
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-4">
-            <UsageResourceCard 
-              icon={FileText} 
-              label="Kaynak Ekleme" 
-              current={usage?.ingestions_used ?? 0} 
-              max={planLimits?.max_monthly_ingestions ?? 0} 
-            />
-            <UsageResourceCard 
-              icon={Database} 
-              label="Embedding Token" 
-              current={usage?.ingestion_embedding_tokens ?? 0} 
-              max={planLimits?.max_monthly_embedding_tokens ?? 0} 
-              isNumber 
-            />
-            <UsageResourceCard 
-              icon={Zap} 
-              label="API Limit (Dakikalık)" 
-              current={rateLimit.limit ? (rateLimit.limit - (rateLimit.remaining ?? 0)) : 0} 
-              max={rateLimit.limit ?? 0} 
-              progressValue={rateLimitPercentage}
-              progressLabel={`%${Math.round(rateLimitPercentage)} kullanıldı`}
-            />
+            {/* 2. HEALTH & STATUS CARD */}
+            <motion.div variants={itemVariants} className="lg:col-span-1">
+              <Card className="h-full border-border/50 shadow-lg bg-card/40 backdrop-blur-xl flex flex-col">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    Kullanım Özeti
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col justify-center items-center gap-6 py-2">
+                   <div className="grid grid-cols-2 gap-x-8 gap-y-6 w-full px-4">
+                      <CircularProgress 
+                        value={usage?.chatbots_count ?? 0} 
+                        max={planLimits?.max_chatbots ?? 1} 
+                        label="Chatbots"
+                        subLabel={`${usage?.chatbots_count} / ${planLimits?.max_chatbots}`}
+                        color="#f59e0b"
+                      />
+                      <CircularProgress 
+                        value={usage?.storage_used_mb ?? 0} 
+                        max={planFeatures?.files.total_storage_mb ?? 0} 
+                        label="Depolama"
+                        subLabel={`${usage?.storage_used_mb}MB`}
+                        color="#3b82f6"
+                      />
+                      <CircularProgress 
+                        value={usage?.tokens_used ?? 0} 
+                        max={planFeatures?.chat.max_monthly_tokens ?? 0} 
+                        label="AI Token"
+                        subLabel="Bu Ay"
+                        color="#8b5cf6"
+                      />
+                      <CircularProgress 
+                        value={rateLimitUsed} 
+                        max={rateLimitMax} 
+                        label="İstek Limiti"
+                        subLabel="Kullanım"
+                        color="#ef4444"
+                      />
+                   </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
-        </SectionCard>
+
+          {/* DETAILED FEATURES GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* AI CAPABILITIES */}
+            <motion.div variants={itemVariants}>
+              <Card className="h-full hover:shadow-lg transition-shadow duration-500 border-border/60">
+                <CardHeader className="pb-4 border-b border-border/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-violet-500/10 rounded-xl text-violet-600">
+                        <Cpu className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Yapay Zeka &amp; Modeller</CardTitle>
+                        <CardDescription>Erişilebilir modeller ve zeka kapasitesi</CardDescription>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  {/* Token Usage Bar */}
+                  <LimitBar 
+                    label="Aylık Token Tüketimi" 
+                    icon={Zap} 
+                    current={usage?.tokens_used || 0} 
+                    max={planFeatures?.chat.max_monthly_tokens || 0} 
+                  />
+
+                  {/* Feature Tiles */}
+                  <div className="grid grid-cols-3 gap-3 pt-2">
+                    {planFeatures?.chat.allowed_models.map((model) => (
+                      <FeatureTile 
+                        key={model} 
+                        label="Model" 
+                        value={model} 
+                        icon={Bot} 
+                        enabled={true} 
+                      />
+                    ))}
+                    <FeatureTile 
+                      label="RAG Context" 
+                      value={`${(planFeatures?.chat.rag.max_context_tokens || 0) / 1000}k Token`} 
+                      icon={Database} 
+                      enabled={true} 
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* DATA & SCRAPING */}
+            <motion.div variants={itemVariants}>
+              <Card className="h-full hover:shadow-lg transition-shadow duration-500 border-border/60">
+                 <CardHeader className="pb-4 border-b border-border/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-600">
+                        <Globe className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Veri &amp; Web Tarama</CardTitle>
+                        <CardDescription>Web kazıma ve veri işleme limitleri</CardDescription>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="space-y-4">
+                    <LimitBar 
+                      label="Web Kaynakları (URL)" 
+                      icon={Globe} 
+                      current={usage?.urls_count || 0} 
+                      max={(planFeatures?.scraping.max_urls_per_bot || 0) + (planFeatures?.scraping.max_pages_per_crawl || 0)} 
+                    />
+                    <LimitBar 
+                      label="Yüklenen Dosyalar" 
+                      icon={FileText} 
+                      current={usage?.files_count || 0} 
+                      max={planFeatures?.files.max_files_total || 0} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 pt-2">
+                     <FeatureTile 
+                       label="Dinamik Tarama" 
+                       enabled={planFeatures?.scraping.dynamic_enabled} 
+                       icon={Zap} 
+                       tooltip="Javascript tabanlı siteleri tarayabilme (Puppeteer)"
+                     />
+                     <FeatureTile 
+                       label="Max Dosya Boyutu" 
+                       value={`${planFeatures?.files.max_size_mb} MB`} 
+                       icon={HardDrive} 
+                       enabled={true}
+                     />
+                     <FeatureTile 
+                       label="Oto Yenileme" 
+                       enabled={planFeatures?.refresh?.enabled} 
+                       icon={Clock} 
+                       tooltip="Veri kaynaklarını otomatik güncelleme"
+                     />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* SECURITY & INFRASTRUCTURE */}
+            <motion.div variants={itemVariants} className="md:col-span-2">
+              <Card className="hover:shadow-lg transition-shadow duration-500 border-border/60 bg-gradient-to-r from-card to-muted/20">
+                <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                  
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-600 shrink-0">
+                      <Shield className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold">Güvenlik &amp; Marka</h3>
+                      <p className="text-sm text-muted-foreground">Widget güvenliği ve özelleştirme seçenekleriniz</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap justify-center gap-3">
+                     <div className="flex items-center gap-2 px-4 py-2 bg-background border rounded-lg shadow-sm">
+                        {planFeatures?.branding?.can_hide_branding ? <Check className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4 text-orange-500" />}
+                        <span className="text-sm font-medium">No-Branding</span>
+                     </div>
+                     <div className="flex items-center gap-2 px-4 py-2 bg-background border rounded-lg shadow-sm">
+                        {planFeatures?.branding?.can_custom_branding ? <Check className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4 text-orange-500" />}
+                        <span className="text-sm font-medium">Özel Logo</span>
+                     </div>
+                     <div className="flex items-center gap-2 px-4 py-2 bg-background border rounded-lg shadow-sm">
+                        {planFeatures?.security?.secure_embed_enabled ? <Check className="w-4 h-4 text-emerald-500" /> : <Lock className="w-4 h-4 text-orange-500" />}
+                        <span className="text-sm font-medium">Domain Kilidi</span>
+                     </div>
+                  </div>
+
+                </CardContent>
+              </Card>
+            </motion.div>
+
+          </div>
+        </motion.div>
       </div>
     </TooltipProvider>
-  )
-}
-
-const UsageResourceCard = ({ 
-  icon: Icon, 
-  label, 
-  current, 
-  max, 
-  isNumber = false,
-  progressValue,
-  progressLabel
-}: { 
-  icon: any, 
-  label: string, 
-  current: number, 
-  max: number,
-  isNumber?: boolean,
-  progressValue?: number,
-  progressLabel?: string
-}) => {
-  const percentage = max > 0 ? (current / max) * 100 : 0
-  const actualProgress = progressValue !== undefined ? progressValue : percentage
-  
-  return (
-    <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-border/50">
-      <div className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        <Icon className="w-3.5 h-3.5 text-foreground/70" />
-        {label}
-      </div>
-      <div className="space-y-2.5">
-        <div className="flex justify-between items-baseline">
-          <span className="text-xl font-black">
-            {isNumber ? current.toLocaleString() : current}
-          </span>
-          <span className="text-xs font-bold text-muted-foreground/60">
-            /{isNumber ? max.toLocaleString() : max}
-          </span>
-        </div>
-        <Progress
-          value={actualProgress}
-          className="h-1.5 bg-muted"
-        />
-        {progressLabel && (
-          <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-tight">
-            {progressLabel}
-          </p>
-        )}
-      </div>
-    </div>
   )
 }
 

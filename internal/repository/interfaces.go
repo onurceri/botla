@@ -291,7 +291,7 @@ type AnalyticsRepository interface {
 	IncrementFeedback(ctx context.Context, chatbotID string, oldThumbsUp *bool, newThumbsUp bool) error
 
 	// UpdateMessageFeedback updates feedback for a message and returns affected chatbot ID.
-	UpdateMessageFeedback(ctx context.Context, messageID string, thumbsUp bool) (string, bool, error)
+	UpdateMessageFeedback(ctx context.Context, messageID string, thumbsUp bool) (string, *bool, error)
 }
 
 // PrivacyRepository defines the interface for privacy data access operations.

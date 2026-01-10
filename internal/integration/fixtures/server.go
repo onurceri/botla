@@ -205,7 +205,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.Handle("/api/v1/chatbots/{id}", protected(http.HandlerFunc(ch.ByID)))
 
 	// Sources
-	router.RegisterSourceRoutes(mux, cfg.JWT_SECRET, sh, tjh)
+	router.RegisterSourceRoutes(mux, cfg.JWT_SECRET, userRepo, log, sh, tjh)
 
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

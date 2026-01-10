@@ -69,7 +69,7 @@ export const landing = {
       actions: {
         title: 'Akıllı Aksiyonlar',
         description:
-          'Dış API entegrasyonu ile chatbotunuzu güçlendirin. Sipariş sorgulama, randevu alma ve daha fazlası.',
+          'Webhook ve API çağrıları ile chatbotunuzu güçlendirin. Form gönderimi, bildirim ve basit entegrasyonlar.',
       },
       guardrails: {
         title: 'Güvenlik Önlemleri',
@@ -97,34 +97,34 @@ export const landing = {
   // Use Cases Section
   useCases: {
     badge: 'Kullanım Alanları',
-    title: 'Her Sektör İçin',
-    titleHighlight: 'Çözümler',
+    title: 'Verilerinizden',
+    titleHighlight: 'Öğrenen Asistan',
     subtitle:
-      'E-ticaretten SaaS platformlarına, müşteri desteğinden dahili dokümantasyona kadar her ihtiyaca uygun.',
+      'Web siteniz, PDF\'leriniz veya metin içerikleriniz ile eğitilen bir asistan oluşturun.',
     items: {
-      ecommerce: {
-        title: 'E-Ticaret',
+      website: {
+        title: 'Web Sitesi SSS',
         description:
-          'Ürün bilgileri, sipariş takibi, iade politikaları ve stok sorgulama ile müşterilerinize 7/24 destek.',
-        features: ['Ürün önerileri', 'Sipariş durumu', 'Canlı stok bilgisi'],
+          'Web sitenizin içeriğini tarayarak ziyaretçilerinizin sorularını otomatik yanıtlayın.',
+        features: ['URL tarama', 'Otomatik güncelleme', '7/24 yanıt'],
       },
-      saas: {
-        title: 'SaaS Platformları',
+      docs: {
+        title: 'Doküman Asistanı',
         description:
-          'Dokümantasyon, API rehberleri ve sık sorulan sorular ile teknik destek yükünü azaltın.',
-        features: ['API entegrasyonu', 'Kod örnekleri', 'Versiyon bilgisi'],
+          'PDF ve metin dosyalarınızı yükleyin, içeriklerinden sorulara anında yanıt alın.',
+        features: ['PDF yükleme', 'Metin içeriği', 'Anlık yanıt'],
       },
       support: {
-        title: 'Müşteri Desteği',
+        title: 'Destek Botu',
         description:
-          'Sık sorulan soruları otomatik yanıtlayın, karmaşık talepleri insan temsilciye aktarın.',
-        features: ['7/24 hizmet', 'Çoklu dil', 'Destek aktarma'],
+          'Sık sorulan soruları otomatik yanıtlayın, gerektiğinde e-posta ile yönlendirin.',
+        features: ['SSS yanıtları', 'E-posta toplama', 'Geri bildirim'],
       },
-      internal: {
-        title: 'Dahili Bilgi Bankası',
+      brand: {
+        title: 'Markanıza Özel',
         description:
-          'Şirket politikaları, prosedürler ve eğitim materyalleri için merkezi bilgi erişimi.',
-        features: ['HR politikaları', 'Onboarding', 'Prosedürler'],
+          'Widget renklerini, fontları ve mesajları tamamen özelleştirin, sitenize uyumlu hale getirin.',
+        features: ['Renk teması', 'Özel mesajlar', 'Logo ekleme'],
       },
     },
   },
@@ -204,8 +204,8 @@ export const landing = {
     },
     cta: {
       free: 'Ücretsiz Başla',
-      pro: "Pro'ya Geç",
-      ultra: 'İletişime Geç',
+      pro: 'Yakında',
+      ultra: 'Yakında',
       authenticated: "Dashboard'a Git",
     },
     plans: {
