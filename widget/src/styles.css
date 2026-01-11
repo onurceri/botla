@@ -2,16 +2,16 @@
   /* Reset all inherited styles from parent page */
   all: initial !important;
   
-  /* Ensure proper display and positioning */
+  /* Minimal host element - let container handle positioning */
+  /* Use 0 dimensions with overflow visible to not interfere with page layout */
   display: block !important;
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: 0 !important;
+  height: 0 !important;
   
-  /* Prevent parent page interference */
-  pointer-events: none !important;
+  /* Allow clicks to pass through to shadow DOM children */
   overflow: visible !important;
   visibility: visible !important;
   opacity: 1 !important;
