@@ -37,6 +37,7 @@ function ensureHost(): HTMLElement {
   }
   // Reset ALL inherited styles and set explicit values to prevent CSS conflicts
   // This protects against: global resets, inherited styles, box-sizing issues, etc.
+  // NOTE: Do NOT use pointer-events: none on host - it blocks clicks in shadow DOM
   host.style.cssText = `
     all: initial !important;
     display: block !important;
@@ -45,10 +46,9 @@ function ensureHost(): HTMLElement {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
+    width: 0 !important;
+    height: 0 !important;
     z-index: 2147483647 !important;
-    pointer-events: none !important;
     overflow: visible !important;
     visibility: visible !important;
     opacity: 1 !important;
