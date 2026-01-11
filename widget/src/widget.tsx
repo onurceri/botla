@@ -35,6 +35,33 @@ function ensureHost(): HTMLElement {
     host.id = id
     document.body.appendChild(host)
   }
+  // Reset ALL inherited styles and set explicit values to prevent CSS conflicts
+  // This protects against: global resets, inherited styles, box-sizing issues, etc.
+  host.style.cssText = `
+    all: initial !important;
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 2147483647 !important;
+    pointer-events: none !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-sizing: border-box !important;
+    font-size: 16px !important;
+    line-height: normal !important;
+    direction: ltr !important;
+  `
   return host
 }
 
