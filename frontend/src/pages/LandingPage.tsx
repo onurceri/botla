@@ -1371,7 +1371,15 @@ export default function LandingPage() {
   }, [])
 
   useEffect(() => {
-    if (authenticated) return
+    // Don't show widget for authenticated users
+    if (authenticated) {
+      // Clean up widget if user becomes authenticated
+      const existingScript = document.querySelector('script[data-bot]')
+      if (existingScript) existingScript.remove()
+      const widgetHost = document.getElementById('chatbot-widget-host')
+      if (widgetHost) widgetHost.remove()
+      return
+    }
 
     const chatbotId = import.meta.env.VITE_LANDING_CHATBOT_ID
     const widgetUrl = import.meta.env.VITE_WIDGET_SCRIPT_URL
@@ -1390,11 +1398,7 @@ export default function LandingPage() {
     script.async = true
     document.body.appendChild(script)
 
-    return () => {
-      script.remove()
-      const widgetHost = document.getElementById('chatbot-widget-host')
-      if (widgetHost) widgetHost.remove()
-    }
+    // No cleanup - widget persists while unauthenticated
   }, [authenticated])
 
   return (
