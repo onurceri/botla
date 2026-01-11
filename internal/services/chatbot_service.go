@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -217,10 +218,43 @@ func (s *ChatbotService) UpdateModelSettings(ctx context.Context, bot *models.Ch
 	})
 }
 
+// FlexibleStringSlice can unmarshal from either a JSON string (comma-separated) or a JSON array.
+type FlexibleStringSlice []string
+
+func (f *FlexibleStringSlice) UnmarshalJSON(data []byte) error {
+	// Try array first
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err == nil {
+		*f = arr
+		return nil
+	}
+
+	// Try string (comma-separated)
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		if str == "" {
+			*f = []string{}
+			return nil
+		}
+		parts := strings.Split(str, ",")
+		result := make([]string, 0, len(parts))
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		*f = result
+		return nil
+	}
+
+	return nil
+}
+
 type SecuritySettingsRequest struct {
-	SecureEmbedEnabled *bool    `json:"secure_embed_enabled"`
-	AllowedDomains     []string `json:"allowed_domains"`
-	EmbedSecret        *string  `json:"embed_secret"`
+	SecureEmbedEnabled *bool               `json:"secure_embed_enabled"`
+	AllowedDomains     FlexibleStringSlice `json:"allowed_domains"`
+	EmbedSecret        *string             `json:"embed_secret"`
 }
 
 func (s *ChatbotService) UpdateSecuritySettings(ctx context.Context, bot *models.Chatbot, req SecuritySettingsRequest) (*models.Chatbot, *validation.FeatureError) {
