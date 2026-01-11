@@ -84,7 +84,7 @@ func (h *ChatbotHandlers) UpdateSecuritySettings(w http.ResponseWriter, r *http.
 
 	var req services.SecuritySettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body: " + err.Error()})
 		return
 	}
 
