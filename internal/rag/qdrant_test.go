@@ -145,6 +145,8 @@ func TestEnsureEmbeddingsCollection_Create(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			created = true
+		case r.Method == http.MethodPut && r.URL.Path == "/collections/embeddings/index":
+			w.WriteHeader(http.StatusOK)
 		default:
 			http.NotFound(w, r)
 		}
@@ -165,6 +167,10 @@ func TestEnsureEmbeddingsCollection_AuthHeader(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == "/collections/embeddings" {
 			got = r.Header.Get("api-key")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodPut && r.URL.Path == "/collections/embeddings/index" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -260,6 +266,8 @@ func TestEnsureEmbeddingsCollection_CustomCollection(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			created = true
+		case r.Method == http.MethodPut && r.URL.Path == "/collections/test_collection/index":
+			w.WriteHeader(http.StatusOK)
 		default:
 			http.NotFound(w, r)
 		}
