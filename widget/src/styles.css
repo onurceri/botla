@@ -1,5 +1,44 @@
 :host {
-  all: initial;
+  /* Reset all inherited styles from parent page */
+  all: initial !important;
+  
+  /* Ensure proper display and positioning */
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  
+  /* Prevent parent page interference */
+  pointer-events: none !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 2147483647 !important;
+  
+  /* Reset box model */
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+  
+  /* Reset typography to prevent inheritance */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  color: #111827 !important;
+  direction: ltr !important;
+  text-align: left !important;
+  
+  /* Reset transforms that break fixed positioning */
+  transform: none !important;
+  perspective: none !important;
+  filter: none !important;
+  
+  /* Ensure proper stacking context */
+  isolation: isolate !important;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -44,7 +83,22 @@
   pointer-events: none; /* Let clicks pass through container area */
 }
 
-.cbw-container * { box-sizing: border-box; pointer-events: auto; }
+/* Universal reset for all widget elements - prevents parent page CSS from leaking in */
+.cbw-container *,
+.cbw-container *::before,
+.cbw-container *::after {
+  box-sizing: border-box !important;
+  pointer-events: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+  line-height: inherit;
+  text-decoration: none;
+  list-style: none;
+}
 
 /* -------------------------------------------------------------------------- */
 /*                               Launcher Bubble                              */
