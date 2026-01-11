@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -88,6 +89,10 @@ func (c *QdrantClient) EnsureEmbeddingsCollection(ctx context.Context) error {
 	res, err := c.http.Do(req)
 	if err == nil && res.StatusCode == http.StatusOK {
 		_ = res.Body.Close()
+		// Collection exists, ensure indexes are created
+		if idxErr := c.ensurePayloadIndexes(ctx); idxErr != nil {
+			return fmt.Errorf("ensure payload indexes: %w", idxErr)
+		}
 		return nil
 	}
 	if res != nil {
@@ -107,7 +112,49 @@ func (c *QdrantClient) EnsureEmbeddingsCollection(ctx context.Context) error {
 	if res2.StatusCode != http.StatusOK {
 		return fmt.Errorf("create collection failed with status %s", res2.Status)
 	}
+	// Create indexes for new collection
+	if err := c.ensurePayloadIndexes(ctx); err != nil {
+		return fmt.Errorf("ensure payload indexes: %w", err)
+	}
 	return nil
+}
+
+type createIndexRequest struct {
+	FieldName   string `json:"field_name"`
+	FieldSchema string `json:"field_schema"`
+}
+
+func (c *QdrantClient) ensurePayloadIndexes(ctx context.Context) error {
+	indexes := []string{"chatbot_id", "source_id"}
+	for _, field := range indexes {
+		if err := c.createPayloadIndex(ctx, field); err != nil {
+			return fmt.Errorf("create index for %s: %w", field, err)
+		}
+	}
+	return nil
+}
+
+func (c *QdrantClient) createPayloadIndex(ctx context.Context, fieldName string) error {
+	url := fmt.Sprintf("%s/collections/%s/index", c.baseURL, c.collectionName)
+	body := createIndexRequest{FieldName: fieldName, FieldSchema: "keyword"}
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(b))
+	setJSONHeaders(req, c.apiKey)
+	res, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	// 200 OK = created, 400 with "already exists" is also fine
+	if res.StatusCode == http.StatusOK {
+		return nil
+	}
+	respBody, _ := io.ReadAll(res.Body)
+	// Qdrant returns 400 if index already exists, which is fine
+	if res.StatusCode == http.StatusBadRequest && bytes.Contains(respBody, []byte("already exists")) {
+		return nil
+	}
+	return fmt.Errorf("create index failed: status=%s, response=%s", res.Status, string(respBody))
 }
 
 type upsertPointsRequest struct {
@@ -236,7 +283,10 @@ func (c *QdrantClient) ScrollChunks(ctx context.Context, sourceID string, limit 
 		Limit:       limit,
 		WithPayload: true,
 		WithVector:  false,
-		Offset:      offset,
+	}
+
+	if offset != nil {
+		reqBody.Offset = offset
 	}
 
 	b, _ := json.Marshal(reqBody)
@@ -246,22 +296,27 @@ func (c *QdrantClient) ScrollChunks(ctx context.Context, sourceID string, limit 
 
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("scroll chunks request failed: %w", err)
+		return nil, nil, fmt.Errorf("scroll chunks request failed: source_id=%s, collection=%s, url=%s, body=%s, error=%w",
+			sourceID, c.collectionName, url, string(b), err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("scroll failed: %s", res.Status)
+		respBody, _ := io.ReadAll(res.Body)
+		return nil, nil, fmt.Errorf("scroll failed: source_id=%s, collection=%s, status_code=%d, status=%s, request_body=%s, response_body=%s",
+			sourceID, c.collectionName, res.StatusCode, res.Status, string(b), string(respBody))
 	}
 
 	var qres qdrantResponse
 	if err := json.NewDecoder(res.Body).Decode(&qres); err != nil {
-		return nil, nil, fmt.Errorf("decoding scroll response: %w", err)
+		return nil, nil, fmt.Errorf("decoding scroll response: source_id=%s, collection=%s, status_code=%d, error=%w",
+			sourceID, c.collectionName, res.StatusCode, err)
 	}
 
 	var result scrollResult
 	if err := json.Unmarshal(qres.Result, &result); err != nil {
-		return nil, nil, fmt.Errorf("unmarshaling scroll result: %w", err)
+		return nil, nil, fmt.Errorf("unmarshaling scroll result: source_id=%s, collection=%s, raw_result=%s, error=%w",
+			sourceID, c.collectionName, string(qres.Result), err)
 	}
 
 	var nextOffset *string
