@@ -1,17 +1,64 @@
 import { useEffect, useRef } from 'react'
 import { Message as MsgComp } from './Message'
 import { Suggestions } from './Suggestions'
+import { ConfirmModal } from './ConfirmModal'
 import type { ChatMessage, CustomBranding } from '../types'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL || 'https://botla.app'
+const LONG_CONVERSATION_THRESHOLD = 15 // Show warning after 15 user messages
 
-export function ChatDrawer(
-  { messages, loading, input, setInput, onSend, onClose, botName, botIcon, suggestions, onPickSuggestion, maxChars = 1000, hideBranding = false, customBranding, onFeedback, onSubmitEmail, isPreviewMode = false }:
-  { messages: ChatMessage[]; loading: boolean; input: string; setInput: (v: string) => void; onSend: () => void; onClose: () => void; botName?: string; botIcon?: string; suggestions?: string[]; onPickSuggestion?: (q: string) => void; maxChars?: number; hideBranding?: boolean; customBranding?: CustomBranding; onFeedback?: (id: string, isPositive: boolean) => void; onSubmitEmail?: (requestId: string, email: string) => Promise<void>; isPreviewMode?: boolean }
-) {
+interface ChatDrawerProps {
+  messages: ChatMessage[]
+  loading: boolean
+  input: string
+  setInput: (v: string) => void
+  onSend: () => void
+  onClose: () => void
+  onResetSession?: () => void
+  showResetConfirm?: boolean
+  onResetConfirm?: () => void
+  onResetCancel?: () => void
+  botName?: string
+  botIcon?: string
+  suggestions?: string[]
+  onPickSuggestion?: (q: string) => void
+  maxChars?: number
+  hideBranding?: boolean
+  customBranding?: CustomBranding
+  onFeedback?: (id: string, isPositive: boolean) => void
+  onSubmitEmail?: (requestId: string, email: string) => Promise<void>
+  isPreviewMode?: boolean
+}
+
+export function ChatDrawer({
+  messages,
+  loading,
+  input,
+  setInput,
+  onSend,
+  onClose,
+  onResetSession,
+  showResetConfirm = false,
+  onResetConfirm,
+  onResetCancel,
+  botName,
+  botIcon,
+  suggestions,
+  onPickSuggestion,
+  maxChars = 1000,
+  hideBranding = false,
+  customBranding,
+  onFeedback,
+  onSubmitEmail,
+  isPreviewMode = false
+}: ChatDrawerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const MAX_CHARS = maxChars
+
+  // Count user messages for long conversation warning
+  const userMessageCount = messages.filter(m => m.role === 'user').length
+  const showLongConversationWarning = userMessageCount >= LONG_CONVERSATION_THRESHOLD
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -81,14 +128,46 @@ export function ChatDrawer(
             )}
             <span>{botName || 'Chatbot'}</span>
         </div>
-        <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        <div className="cbw-header-actions">
+          {onResetSession && (
+            <button className="cbw-reset-btn" onClick={onResetSession} aria-label="Yeni Konuşma" title="Yeni Konuşma Başlat">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M16 16h5v5" />
+              </svg>
+            </button>
+          )}
+          <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
       <div className="cbw-messages">
+        {/* Long conversation warning */}
+        {showLongConversationWarning && onResetSession && (
+          <div className="cbw-conversation-warning">
+            <div className="cbw-conversation-warning-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+              </svg>
+            </div>
+            <div className="cbw-conversation-warning-content">
+              <span className="cbw-conversation-warning-text">
+                Daha iyi sonuçlar için yeni konuşma başlatabilirsiniz.
+              </span>
+            </div>
+            <button className="cbw-conversation-warning-action" onClick={onResetSession}>
+              Yeni
+            </button>
+          </div>
+        )}
         {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} botIcon={botIcon} />)}
         {(!messages || (messages.filter(m => m.role === 'user').length === 0 && !messages.some(m => m.type === 'handoff'))) && suggestions && suggestions.length > 0 && (
           <div className="cbw-suggestions-container">
@@ -163,6 +242,18 @@ export function ChatDrawer(
       <style>{`
         /* Local overrides if needed */
       `}</style>
+      {showResetConfirm && onResetConfirm && onResetCancel && (
+        <ConfirmModal
+          isOpen={showResetConfirm}
+          icon="refresh"
+          title="Yeni Konuşma Başlat"
+          message="Mevcut konuşmanız silinecek."
+          confirmText="Başlat"
+          cancelText="Vazgeç"
+          onConfirm={onResetConfirm}
+          onCancel={onResetCancel}
+        />
+      )}
     </div>
   )
 }

@@ -31,12 +31,14 @@ export function WidgetApp(props: WidgetAppProps) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const panelRef = useRef<HTMLDivElement | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
   const [config, setConfig] = useState<ChatbotConfig | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sid, setSid] = useState<string>('')
   const [embedToken, setEmbedToken] = useState<string>('')
   const [unread, setUnread] = useState(0)
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const onOpenChangeRef = useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
@@ -214,12 +216,17 @@ export function WidgetApp(props: WidgetAppProps) {
       return nm
     })
     setLoading(true)
+    
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+    
     try {
       const base = apiBase || ''
       const url = `${base}/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}/chat`
       let token = embedToken
       if (!token && embedTokenUrl) {
-        try { const tr = await fetch(embedTokenUrl); if (tr.ok) { const t = await tr.text(); token = t; setEmbedToken(t) } } catch (e) { logger.warn('Embed token fetch failed', e) }
+        try { const tr = await fetch(embedTokenUrl, { signal }); if (tr.ok) { const t = await tr.text(); token = t; setEmbedToken(t) } } catch (e) { if ((e as Error).name !== 'AbortError') logger.warn('Embed token fetch failed', e) }
       }
       let captchaToken = ''
       if (captchaSiteKey && (window as any).getCaptchaToken) {
@@ -233,6 +240,7 @@ export function WidgetApp(props: WidgetAppProps) {
         method: 'POST',
         headers,
         body: JSON.stringify({ message: text, session_id: ensureSession(chatbotId, sid, setSid), captcha_token: captchaToken }),
+        signal,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -258,6 +266,12 @@ export function WidgetApp(props: WidgetAppProps) {
       })
       if (!open) setUnread((u) => u + 1)
     } catch (e: any) {
+      // Ignore abort errors - they're expected when session is reset
+      if ((e as Error).name === 'AbortError') {
+        logger.debug('Chat request aborted')
+        return
+      }
+      
       const error = e instanceof Error ? e : new Error(String(e))
       logger.error('Chat request failed', error)
       emitEvent('ERROR', { type: 'chat_error', message: error.message })
@@ -273,6 +287,7 @@ export function WidgetApp(props: WidgetAppProps) {
       })
       if (!open) setUnread((u) => u + 1)
     } finally {
+      abortControllerRef.current = null
       setLoading(false)
     }
   }
@@ -280,9 +295,7 @@ export function WidgetApp(props: WidgetAppProps) {
   const pickSuggestion = (q: string) => {
     if (loading) return
     setInput(q)
-    setTimeout(() => {
-      if (!loading) send()
-    }, 0)
+    // Only fill the input, don't auto-send. User can press Enter or click send button.
   }
 
   const handleFeedback = async (id: string, isPositive: boolean) => {
@@ -326,6 +339,34 @@ export function WidgetApp(props: WidgetAppProps) {
     // onOpenChange handled by effect
     return nv
   })
+
+  const handleResetSessionRequest = () => setShowResetConfirm(true)
+
+  const handleResetSessionConfirm = () => {
+    // Abort any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    setLoading(false)
+    
+    clearSession(chatbotId)
+    const newSession = getSession(chatbotId)
+    setSid(newSession.sessionId)
+    
+    const msg = welcome || config?.welcome_message
+    if (msg) {
+      const wm = { role: 'assistant', content: msg, ts: Date.now(), type: 'welcome' } as ChatMessage
+      setMessages([wm])
+      saveSession(chatbotId, { sessionId: newSession.sessionId, messages: [wm] })
+    } else {
+      setMessages([])
+    }
+    
+    setShowResetConfirm(false)
+    logger.debug('Session reset by user')
+    emitEvent('SESSION_RESET')
+  }
 
   // Preview mode container styles
   const previewContainerStyle = previewMode ? {
@@ -375,6 +416,10 @@ export function WidgetApp(props: WidgetAppProps) {
           onFeedback={handleFeedback}
           onSubmitEmail={submitHandoffEmail}
           isPreviewMode={previewMode}
+          onResetSession={handleResetSessionRequest}
+          showResetConfirm={showResetConfirm}
+          onResetConfirm={handleResetSessionConfirm}
+          onResetCancel={() => setShowResetConfirm(false)}
         />
       )}
     </div>

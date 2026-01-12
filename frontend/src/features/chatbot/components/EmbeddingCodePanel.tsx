@@ -169,7 +169,14 @@ export default function EmbeddingCodePanel({
                 </p>
                 <Input
                   value={allowedDomains}
-                  onChange={(e) => onDomainsChange(e.target.value)}
+                  onChange={(e) => {
+                    // Sanitize: remove quotes from each domain
+                    const sanitized = e.target.value
+                      .split(',')
+                      .map((d) => d.trim().replace(/^["']|["']$/g, ''))
+                      .join(', ')
+                    onDomainsChange(sanitized)
+                  }}
                   placeholder="ornek.com, digersite.com"
                   className="bg-background"
                 />

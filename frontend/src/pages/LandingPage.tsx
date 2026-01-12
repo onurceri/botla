@@ -386,19 +386,19 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
           className="mt-20 relative max-w-4xl mx-auto"
         >
           {/* Glow Effect */}
-          <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-orange-500/20 to-primary/20 rounded-[2rem] blur-3xl opacity-60" />
+          <div className="absolute -inset-4 bg-gradient-to-r from-orange-500/20 via-primary/20 to-orange-500/20 rounded-[2rem] blur-3xl opacity-60" />
           
           {/* Browser Frame */}
-          <div className="relative bg-card rounded-2xl shadow-2xl border border-border/50 overflow-hidden">
+          <div className="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 overflow-hidden">
             {/* Browser Header */}
-            <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border/50">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-400" />
-                <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                <div className="w-3 h-3 rounded-full bg-green-400" />
+            <div className="flex items-center gap-2 px-6 py-4 bg-white/50 border-b border-black/5">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
+                <div className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
+                <div className="w-3 h-3 rounded-full bg-[#28C840]" />
               </div>
               <div className="flex-1 flex justify-center">
-                <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-background text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-md text-sm text-gray-400 font-medium">
                   <Lock className="w-3 h-3" />
                   <span>yourwebsite.com</span>
                 </div>
@@ -406,17 +406,22 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
             </div>
 
             {/* Website Content Area */}
-            <div className="relative h-[320px] sm:h-[440px] bg-gradient-to-br from-slate-50 to-slate-100 p-6 sm:p-8">
-              {/* Placeholder Website Content */}
-              <div className="space-y-3">
-                <div className="h-6 w-40 bg-slate-200 rounded-lg" />
-                <div className="h-3 w-full bg-slate-200 rounded" />
-                <div className="h-3 w-3/4 bg-slate-200 rounded" />
-                <div className="h-3 w-5/6 bg-slate-200 rounded hidden sm:block" />
-                <div className="grid grid-cols-3 gap-3 mt-6 hidden sm:grid">
-                  <div className="h-20 bg-slate-200 rounded-xl" />
-                  <div className="h-20 bg-slate-200 rounded-xl" />
-                  <div className="h-20 bg-slate-200 rounded-xl" />
+            <div className="relative h-[400px] sm:h-[500px] bg-[#F8F9FC] p-8 sm:p-12 overflow-hidden">
+              <div className="flex flex-col gap-6 opacity-60">
+                {/* Header placeholders */}
+                <div className="w-1/4 h-8 bg-slate-200/80 rounded-full" />
+                <div className="w-full h-4 bg-slate-200/80 rounded-full" />
+                
+                {/* Hero text placeholders */}
+                <div className="space-y-3 mt-4">
+                  <div className="w-3/4 h-4 bg-slate-200/80 rounded-full" />
+                  <div className="w-5/6 h-4 bg-slate-200/80 rounded-full" />
+                </div>
+
+                {/* Content blocks */}
+                <div className="grid grid-cols-2 gap-6 mt-8">
+                  <div className="h-32 bg-slate-200/80 rounded-3xl" />
+                  <div className="h-32 bg-slate-200/80 rounded-3xl" />
                 </div>
               </div>
 
@@ -425,78 +430,65 @@ const Hero = ({ authenticated }: { authenticated: boolean }) => {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 1, duration: 0.5 }}
-                className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 w-[260px] sm:w-[300px]"
+                className="absolute bottom-8 right-8 w-[340px] shadow-2xl rounded-[2rem]"
               >
                 {/* Chat Window */}
-                <div className="bg-white rounded-2xl shadow-2xl border border-border/50 overflow-hidden">
+                <div className="bg-white rounded-[2rem] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100">
                   {/* Chat Header */}
-                  <div className="bg-gradient-to-r from-primary to-orange-500 px-4 py-2.5 sm:py-3 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-white" />
+                  <div className="bg-[#FF8800] px-6 py-5 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                      <Bot className="w-5 h-5 text-white" />
                     </div>
-                    <div className="flex-1">
-                      <div className="text-white font-semibold text-sm">Destek Asistanı</div>
-                      <div className="text-white/70 text-xs flex items-center gap-1.5">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                        </span>
+                    <div>
+                      <h3 className="text-white font-bold text-base leading-tight">Destek Asistanı</h3>
+                      <div className="flex items-center gap-1.5 text-white/90 text-xs mt-0.5 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-[#4ADE80]" />
                         Çevrimiçi
                       </div>
                     </div>
                   </div>
 
                   {/* Chat Messages */}
-                  <div className="p-3 space-y-2.5 bg-slate-50 h-[130px] sm:h-[170px]">
-                    {/* Bot Message */}
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 1.3 }}
-                      className="flex gap-2"
-                    >
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Bot className="w-3 h-3 text-primary" />
+                  <div className="p-6 space-y-5 bg-white">
+                    {/* Bot Greeting */}
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#FF8800]/10 flex items-center justify-center shrink-0 mt-1">
+                        <Bot className="w-4 h-4 text-[#FF8800]" />
                       </div>
-                      <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm text-xs max-w-[85%]">
+                      <div className="bg-gray-50 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-gray-700 shadow-sm border border-gray-100">
                         Merhaba! 👋 Size nasıl yardımcı olabilirim?
                       </div>
-                    </motion.div>
+                    </div>
 
-                    {/* User Message */}
-                    <motion.div
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 1.8 }}
-                      className="flex gap-2 justify-end"
-                    >
-                      <div className="bg-primary text-white rounded-2xl rounded-tr-sm px-3 py-2 text-xs max-w-[85%]">
+                    {/* User Question */}
+                    <div className="flex justify-end">
+                      <div className="bg-[#FF8800] text-white rounded-2xl rounded-tr-none px-4 py-3 text-sm font-medium shadow-md shadow-orange-500/20">
                         Çalışma saatleriniz nedir?
                       </div>
-                    </motion.div>
+                    </div>
 
-                    {/* Bot Response */}
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 2.3 }}
-                      className="flex gap-2"
-                    >
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Bot className="w-3 h-3 text-primary" />
+                    {/* Bot Answer */}
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#FF8800]/10 flex items-center justify-center shrink-0 mt-1">
+                        <Bot className="w-4 h-4 text-[#FF8800]" />
                       </div>
-                      <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm text-xs max-w-[85%]">
+                      <div className="bg-gray-50 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-gray-700 shadow-sm border border-gray-100">
                         Hafta içi 09:00-18:00 arası hizmetinizdeyiz! 🕐
                       </div>
-                    </motion.div>
+                    </div>
                   </div>
 
-                  {/* Input */}
-                  <div className="px-3 py-2 border-t border-border/50 bg-white">
-                    <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-1.5">
-                      <span className="text-xs text-muted-foreground flex-1">Mesajınızı yazın...</span>
-                      <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center">
-                        <ArrowRight className="w-3 h-3 text-white" />
+                  {/* Input Area */}
+                  <div className="p-4 pt-2 pb-6 bg-white">
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        disabled
+                        placeholder="Mesajınızı yazın..." 
+                        className="w-full bg-gray-100 text-gray-500 text-sm rounded-full pl-5 pr-12 py-3.5 focus:outline-none"
+                      />
+                      <div className="absolute right-1.5 top-1.5 bottom-1.5 aspect-square rounded-full bg-[#FF8800] flex items-center justify-center shadow-lg shadow-orange-500/20">
+                        <ArrowRight className="w-4 h-4 text-white" />
                       </div>
                     </div>
                   </div>
@@ -1390,9 +1382,7 @@ export default function LandingPage() {
     if (existingScript) return
 
     const script = document.createElement('script')
-    const widgetUrlWithReset = new URL(widgetUrl)
-    widgetUrlWithReset.searchParams.set('reset-session', '1')
-    script.src = widgetUrlWithReset.toString()
+    script.src = widgetUrl
     script.type = 'module'
     script.setAttribute('data-bot', chatbotId)
     script.async = true
