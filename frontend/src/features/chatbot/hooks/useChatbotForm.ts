@@ -111,7 +111,14 @@ export function useChatbotForm() {
     setSendButtonColor(data.send_button_color || 'rgba(235, 184, 0, 1)')
     setBotIcon(data.bot_icon || '')
     setBotDisplayName(data.bot_display_name || '')
-    setAllowedDomains(data.allowed_domains || '')
+    // Sanitize allowed_domains: remove quotes from each domain
+    const rawDomains = data.allowed_domains || ''
+    const sanitizedDomains = rawDomains
+      .split(',')
+      .map((d: string) => d.trim().replace(/^["']|["']$/g, ''))
+      .filter((d: string) => d)
+      .join(', ')
+    setAllowedDomains(sanitizedDomains)
     setEmbedSecret(data.embed_secret || '')
     setSecureEmbedEnabled(!!data.secure_embed_enabled)
     setSuggestionsEnabled(!!data.suggestions_enabled)
