@@ -37,7 +37,6 @@ function ensureHost(): HTMLElement {
   }
   // Reset ALL inherited styles and set explicit values to prevent CSS conflicts
   // This protects against: global resets, inherited styles, box-sizing issues, etc.
-  // NOTE: Do NOT use pointer-events: none on host - it blocks clicks in shadow DOM
   host.style.cssText = `
     all: initial !important;
     display: block !important;
@@ -46,9 +45,10 @@ function ensureHost(): HTMLElement {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 0 !important;
-    height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     z-index: 2147483647 !important;
+    pointer-events: none !important;
     overflow: visible !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -69,6 +69,80 @@ function injectStyles(shadow: ShadowRoot) {
   const style = document.createElement('style')
   style.textContent = styles
   shadow.appendChild(style)
+}
+
+/**
+ * Dynamically calculates and sets safe area top margin to prevent panel from
+ * touching browser chrome or fixed headers on customer websites.
+ * 
+ * This function:
+ * 1. Detects fixed/sticky elements at the top of the page (headers, navbars)
+ * 2. Uses Visual Viewport API when available for accurate measurements
+ * 3. Falls back to reasonable defaults
+ * 4. Updates the --cbw-custom-safe-area-top CSS variable on the container
+ */
+function setupDynamicSafeArea(container: HTMLElement) {
+  const MIN_SAFE_AREA = 20 // Minimum margin even without detected obstructions
+  const MAX_SAFE_AREA = 120 // Cap to prevent excessive margin
+  
+  const calculateSafeArea = () => {
+    let safeAreaTop = MIN_SAFE_AREA
+    
+    // Try to detect fixed/sticky headers on the customer's website
+    try {
+      const elements = document.querySelectorAll('header, nav, [role="banner"], [role="navigation"]')
+      elements.forEach((el) => {
+        const style = window.getComputedStyle(el)
+        const position = style.position
+        if (position === 'fixed' || position === 'sticky') {
+          const rect = el.getBoundingClientRect()
+          // Only consider elements at the top of the viewport
+          if (rect.top <= 10 && rect.bottom > 0) {
+            safeAreaTop = Math.max(safeAreaTop, rect.bottom + 10)
+          }
+        }
+      })
+    } catch {
+      // Ignore errors from cross-origin iframes or other security restrictions
+    }
+    
+    // Use Visual Viewport API if available (better for mobile)
+    // This accounts for on-screen keyboards and browser UI
+    if (window.visualViewport) {
+      const vvOffset = window.visualViewport.offsetTop
+      if (vvOffset > 0) {
+        safeAreaTop = Math.max(safeAreaTop, vvOffset + 10)
+      }
+    }
+    
+    // Cap the safe area to prevent excessive margin
+    safeAreaTop = Math.min(safeAreaTop, MAX_SAFE_AREA)
+    
+    // Update the CSS custom property
+    container.style.setProperty('--cbw-custom-safe-area-top', `${safeAreaTop}px`)
+  }
+  
+  // Calculate immediately
+  calculateSafeArea()
+  
+  // Recalculate on resize and orientation change
+  const recalcDebounced = debounce(calculateSafeArea, 150)
+  window.addEventListener('resize', recalcDebounced)
+  window.addEventListener('orientationchange', recalcDebounced)
+  
+  // Also listen to Visual Viewport changes (mobile browser UI)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', recalcDebounced)
+  }
+}
+
+// Simple debounce utility
+function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+  let timeout: ReturnType<typeof setTimeout> | null = null
+  return ((...args: unknown[]) => {
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(() => fn(...args), delay)
+  }) as T
 }
 
 export function mount() {
@@ -134,6 +208,9 @@ export function mount() {
   injectStyles(shadow)
   const root = document.createElement('div')
   shadow.appendChild(root)
+  
+  // Setup dynamic safe area detection to avoid browser chrome and fixed headers
+  setupDynamicSafeArea(root)
   
   // Global state tracker for preserving open state during config updates
   let currentOpenState: boolean | undefined = undefined

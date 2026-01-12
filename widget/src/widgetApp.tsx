@@ -344,11 +344,20 @@ export function WidgetApp(props: WidgetAppProps) {
 
   return (
     <div 
-      className={`cbw-container ${previewMode ? 'cbw-preview-mode' : ''} ${posClass}`} 
+      className={`cbw-container ${previewMode ? 'cbw-preview-mode' : ''} ${posClass} ${open ? 'cbw-open' : ''}`} 
       ref={panelRef} 
       style={previewContainerStyle}
     >
-      {open ? (
+      {/* Always show the bubble - it acts as toggle/minimize button */}
+      <ChatBubble 
+        color={color} 
+        unread={unread} 
+        onClick={toggle} 
+        icon={botIcon} 
+        isOpen={open}
+      />
+      {/* Show panel when open */}
+      {open && (
         <ChatDrawer 
           messages={messages} 
           loading={loading} 
@@ -367,8 +376,6 @@ export function WidgetApp(props: WidgetAppProps) {
           onSubmitEmail={submitHandoffEmail}
           isPreviewMode={previewMode}
         />
-      ) : (
-        <ChatBubble color={color} unread={unread} onClick={toggle} icon={botIcon} />
       )}
     </div>
   )

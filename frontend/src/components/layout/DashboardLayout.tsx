@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { OrganizationSwitcher } from '@/features/organization/components/OrganizationSwitcher'
 import { usePlan, useProfile } from '@/hooks/queries/useProfile'
+import { useAuth } from '@/contexts/AuthContext'
 
 /**
  * Premium sidebar navigation item with animated indicator
@@ -89,7 +90,10 @@ const DashboardLayout = () => {
     window.localStorage.setItem('botla_sidebar_mode', next)
   }
 
-  const handleLogout = () => {
+  const { logout } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 
