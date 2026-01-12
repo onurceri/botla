@@ -6,6 +6,7 @@ import { OrganizationProvider } from '@/features/organization/context/Organizati
 import { ToastProvider } from '@/components/ui/toast'
 import { api } from '@/api/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 // Mock api
 vi.mock('@/api/client', () => ({
@@ -13,6 +14,7 @@ vi.mock('@/api/client', () => ({
     get: vi.fn(),
     post: vi.fn(),
   },
+  _setWasAuthenticated: vi.fn(),
 }))
 
 // Mock organization api
@@ -52,15 +54,17 @@ describe('DashboardLayout', () => {
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={initialEntries}>
           <ToastProvider>
-            <OrganizationProvider>
-              <Routes>
-                <Route path="/" element={<DashboardLayout />}>
-                  <Route index element={<div>Dashboard Content</div>} />
-                  <Route path="chatbots" element={<div>Chatbots Content</div>} />
-                </Route>
-                <Route path="/login" element={<h1>Login Page</h1>} />
-              </Routes>
-            </OrganizationProvider>
+            <AuthProvider>
+              <OrganizationProvider>
+                <Routes>
+                  <Route path="/" element={<DashboardLayout />}>
+                    <Route index element={<div>Dashboard Content</div>} />
+                    <Route path="chatbots" element={<div>Chatbots Content</div>} />
+                  </Route>
+                  <Route path="/login" element={<h1>Login Page</h1>} />
+                </Routes>
+              </OrganizationProvider>
+            </AuthProvider>
           </ToastProvider>
         </MemoryRouter>
       </QueryClientProvider>,
