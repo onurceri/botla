@@ -29,6 +29,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	conversationRepo := repository.NewPostgresConversationRepo(pool)
 	analyticsRepo := repository.NewPostgresAnalyticsRepo(pool)
 	privacyRepo := repository.NewPostgresPrivacyRepo(pool)
+	privacyRepo.Log = log
 	handoffRepo := repository.NewPostgresHandoffRepo(pool)
 	sourceRepo := repository.NewPostgresSourceRepo(pool)
 	userRepo := repository.NewPostgresUserRepo(pool)
@@ -130,7 +131,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	aqh := handlers.NewAdminQueueHandlers(adminSvc, queueRepo, repository.NewPostgresSourceRepo(pool))
 	aeh := handlers.NewAdminErrorHandlers(adminRepo)
 	aah := handlers.NewAdminAuditHandlers(adminRepo)
-	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc, PrivacyRepo: privacyRepo}
+	aph := &handlers.PrivacyHandlers{DB: pool, PrivacyService: privacySvc, AdminService: adminSvc, PrivacyRepo: privacyRepo, Log: log}
 	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc, UserRepo: userRepo, PrivacyRepo: privacyRepo}
 
 	// PlanService with Redis caching for all plan operations

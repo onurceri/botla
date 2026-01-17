@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // PrivacyRequest represents a user privacy request (deletion, export, correction).
@@ -136,6 +137,7 @@ type UserConsent struct {
 // PostgresPrivacyRepo implements PrivacyRepository using PostgreSQL.
 type PostgresPrivacyRepo struct {
 	pool *sql.DB
+	Log  *logger.Logger
 }
 
 // Compile-time check that PostgresPrivacyRepo implements PrivacyRepository.
@@ -339,8 +341,23 @@ func (r *PostgresPrivacyRepo) GetPrivacyRequest(ctx context.Context, requestID s
 // ListPrivacyRequests retrieves privacy requests with optional status filter and pagination.
 // Excludes soft-deleted requests.
 func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status string, limit, offset int) ([]PrivacyRequest, int, error) {
+	if r.Log != nil {
+		r.Log.Debug("privacy_list_repo_start", map[string]any{
+			"status": status,
+			"limit":  limit,
+			"offset": offset,
+		})
+	}
+
 	limit64, offset64, err := ValidatePagination(limit, offset)
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("privacy_list_repo_pagination_error", map[string]any{
+				"error":  err.Error(),
+				"limit":  limit,
+				"offset": offset,
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
 	}
 
@@ -364,11 +381,23 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 		Offset(offset64).
 		ToSql()
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("privacy_list_repo_query_build_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "build list privacy requests query")
 	}
 
 	rows, err := r.pool.QueryContext(ctx, query, args...)
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("privacy_list_repo_query_error", map[string]any{
+				"error":   err.Error(),
+				"query":   query,
+				"argsLen": len(args),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "list privacy requests")
 	}
 	defer func() { _ = rows.Close() }()
@@ -382,11 +411,21 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 			&req.CompletedAt, &req.ExportURL, &req.ExportExpiresAt, &req.CreatedAt,
 		)
 		if err != nil {
+			if r.Log != nil {
+				r.Log.Error("privacy_list_repo_scan_error", map[string]any{
+					"error": err.Error(),
+				})
+			}
 			return nil, 0, pkgerrors.Wrapf(err, "scan privacy request")
 		}
 		requests = append(requests, req)
 	}
 	if err := rows.Err(); err != nil {
+		if r.Log != nil {
+			r.Log.Error("privacy_list_repo_rows_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "privacy requests rows error")
 	}
 
@@ -397,13 +436,33 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 		Where(whereClause).
 		ToSql()
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("privacy_list_repo_count_query_build_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "build count query")
 	}
 
 	var totalCount int
 	err = r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("privacy_list_repo_count_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "count privacy requests")
+	}
+
+	if r.Log != nil {
+		r.Log.Debug("privacy_list_repo_success", map[string]any{
+			"count":  len(requests),
+			"total":  totalCount,
+			"status": status,
+			"limit":  limit,
+			"offset": offset,
+		})
 	}
 
 	return requests, totalCount, nil
