@@ -175,12 +175,11 @@ export default function PlaygroundPreview(props: Props) {
   // Send config when iframe loads
   const handleIframeLoad = useCallback(() => {
     configSentRef.current = false
-    // Delay to ensure widget script is fully loaded and ChatbotWidget is available
-    // 500ms accounts for network latency and script parsing time
+    // Small delay to ensure widget is ready
     setTimeout(() => {
       sendConfig()
       configSentRef.current = true
-    }, 500)
+    }, 100)
   }, [sendConfig])
 
   // Send config updates when props change (after initial load)
