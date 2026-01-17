@@ -353,9 +353,6 @@
   display: flex;
   flex-direction: column;
 }
-.cbw-container.cbw-preview-mode .cbw-bubble {
-  display: none !important; /* Hide bubble in preview mode */
-}
 .cbw-container.cbw-preview-mode .cbw-panel {
   position: absolute !important;
   height: 100% !important;
