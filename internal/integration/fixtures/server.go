@@ -245,7 +245,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DownloadMyPrivacyExport))))
 	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DownloadMyDataExport))))
 
-	adh := handlers.NewAdminHandlers(adminSvc, userRepo, organizationRepo)
+	adh := handlers.NewAdminHandlers(adminSvc, userRepo, organizationRepo, log)
 	adhh := handlers.NewAdminHealthHandlers(pool, nil, cfg) // nil Redis client for tests
 	aqh := handlers.NewAdminQueueHandlers(adminSvc, queueRepo, sourceRepo)
 	aeh := handlers.NewAdminErrorHandlers(adminRepo)
