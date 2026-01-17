@@ -9,6 +9,7 @@ import (
 	"github.com/onurceri/botla-app/internal/api"
 	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/logger"
 	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
@@ -16,13 +17,15 @@ type AdminHandlers struct {
 	AdminService     *services.AdminService
 	UserRepo         repository.UserRepository
 	OrganizationRepo repository.OrganizationRepository
+	Log              *logger.Logger
 }
 
-func NewAdminHandlers(adminSvc *services.AdminService, userRepo repository.UserRepository, orgRepo repository.OrganizationRepository) *AdminHandlers {
+func NewAdminHandlers(adminSvc *services.AdminService, userRepo repository.UserRepository, orgRepo repository.OrganizationRepository, log *logger.Logger) *AdminHandlers {
 	return &AdminHandlers{
 		AdminService:     adminSvc,
 		UserRepo:         userRepo,
 		OrganizationRepo: orgRepo,
+		Log:              log,
 	}
 }
 
@@ -139,10 +142,39 @@ func (h *AdminHandlers) ListOrganizations(w http.ResponseWriter, r *http.Request
 		filter.PlanID = &planID
 	}
 
+	// DEBUG: Log request details
+	if h.Log != nil {
+		userID, _ := middleware.UserIDFromContext(r.Context())
+		h.Log.DebugCtx(r.Context(), "admin_list_orgs_request", map[string]any{
+			"limit":   limit,
+			"offset":  offset,
+			"filter":  filter,
+			"user_id": userID,
+		})
+	}
+
 	orgs, total, err := h.OrganizationRepo.AdminList(r.Context(), filter, limit, offset)
 	if err != nil {
+		// DEBUG: Log the actual error
+		if h.Log != nil {
+			h.Log.ErrorCtx(r.Context(), "admin_list_orgs_error", map[string]any{
+				"error":  err.Error(),
+				"limit":  limit,
+				"offset": offset,
+			})
+		}
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
+	}
+
+	// DEBUG: Log success
+	if h.Log != nil {
+		h.Log.DebugCtx(r.Context(), "admin_list_orgs_success", map[string]any{
+			"count":  len(orgs),
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		})
 	}
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{

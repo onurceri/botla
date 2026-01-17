@@ -9,11 +9,13 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/onurceri/botla-app/internal/models"
 	pkgerrors "github.com/onurceri/botla-app/pkg/errors"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // PostgresOrganizationRepo implements OrganizationRepository using PostgreSQL.
 type PostgresOrganizationRepo struct {
 	pool *sql.DB
+	Log  *logger.Logger
 }
 
 // Compile-time check that PostgresOrganizationRepo implements OrganizationRepository.
@@ -31,6 +33,11 @@ func (r *PostgresOrganizationRepo) scanOrganization(rows *sql.Rows) (*models.Org
 		&o.ID, &o.Name, &o.Slug, &o.OwnerID, &o.PlanID,
 		&o.CreatedAt, &o.UpdatedAt, &o.UserCount, &o.ChatbotCount,
 	); err != nil {
+		if r.Log != nil {
+			r.Log.Error("org_scan_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, pkgerrors.Wrapf(err, "scan organization")
 	}
 	return &o, nil
@@ -65,8 +72,23 @@ func (r *PostgresOrganizationRepo) GetByID(ctx context.Context, id string) (*mod
 
 // AdminList returns a paginated list of organizations for admin views.
 func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter OrganizationFilter, limit, offset int) ([]*models.Organization, int, error) {
+	if r.Log != nil {
+		r.Log.Debug("org_admin_list_start", map[string]any{
+			"limit":  limit,
+			"offset": offset,
+			"filter": filter,
+		})
+	}
+
 	limit64, offset64, err := ValidatePagination(limit, offset)
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("org_admin_list_pagination_error", map[string]any{
+				"error":  err.Error(),
+				"limit":  limit,
+				"offset": offset,
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
 	}
 
@@ -89,12 +111,22 @@ func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter Organiz
 	// Get total count
 	countQuery, countArgs, err := query.ToSql()
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("org_admin_list_count_query_build_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "build count query")
 	}
 	countQuery = fmt.Sprintf("SELECT COUNT(*) FROM (%s) as sub", countQuery)
 
 	var total int
 	if err := r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		if r.Log != nil {
+			r.Log.Error("org_admin_list_count_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "count organizations")
 	}
 
@@ -103,11 +135,23 @@ func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter Organiz
 
 	sqlQuery, args, err := query.ToSql()
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("org_admin_list_query_build_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "build list query")
 	}
 
 	rows, err := r.pool.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
+		if r.Log != nil {
+			r.Log.Error("org_admin_list_query_error", map[string]any{
+				"error":   err.Error(),
+				"query":   sqlQuery,
+				"argsLen": len(args),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "query organizations")
 	}
 	defer func() { _ = rows.Close() }()
@@ -116,12 +160,31 @@ func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter Organiz
 	for rows.Next() {
 		o, err := r.scanOrganization(rows)
 		if err != nil {
+			if r.Log != nil {
+				r.Log.Error("org_admin_list_scan_error", map[string]any{
+					"error": err.Error(),
+				})
+			}
 			return nil, 0, err
 		}
 		orgs = append(orgs, o)
 	}
 	if err := rows.Err(); err != nil {
+		if r.Log != nil {
+			r.Log.Error("org_admin_list_rows_error", map[string]any{
+				"error": err.Error(),
+			})
+		}
 		return nil, 0, pkgerrors.Wrapf(err, "scan organizations")
+	}
+
+	if r.Log != nil {
+		r.Log.Debug("org_admin_list_success", map[string]any{
+			"count":  len(orgs),
+			"total":  total,
+			"limit":  limit64,
+			"offset": offset64,
+		})
 	}
 
 	return orgs, total, nil

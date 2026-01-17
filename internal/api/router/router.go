@@ -37,6 +37,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	trainingJobRepo := repository.NewPostgresTrainingJobRepo(pool)
 	suggestionJobRepo := repository.NewPostgresSuggestionJobRepo(pool)
 	organizationRepo := repository.NewPostgresOrganizationRepo(pool)
+	organizationRepo.Log = log
 	adminRepo := repository.NewPostgresAdminRepo(pool)
 
 	// Services
@@ -124,7 +125,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	ph := &handlers.PublicHandlers{ChatService: chatSvc, Log: log, ChatbotRepo: chatbotRepo, PlanRepo: planRepo, UsageRepo: usageRepo, AnalyticsRepo: analyticsRepo}
 	oh := &handlers.OrganizationHandlers{OrgService: orgSvc, UserRepo: userRepo}
 	wh := &handlers.WorkspaceHandlers{WorkspaceService: workspaceSvc}
-	adh := handlers.NewAdminHandlers(adminSvc, userRepo, organizationRepo)
+	adh := handlers.NewAdminHandlers(adminSvc, userRepo, organizationRepo, log)
 	adhh := handlers.NewAdminHealthHandlers(pool, redisClient, cfg)
 	aqh := handlers.NewAdminQueueHandlers(adminSvc, queueRepo, repository.NewPostgresSourceRepo(pool))
 	aeh := handlers.NewAdminErrorHandlers(adminRepo)
