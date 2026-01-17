@@ -175,11 +175,12 @@ export default function PlaygroundPreview(props: Props) {
   // Send config when iframe loads
   const handleIframeLoad = useCallback(() => {
     configSentRef.current = false
-    // Small delay to ensure widget is ready
+    // Delay to ensure widget script is fully loaded and ChatbotWidget is available
+    // 500ms accounts for network latency and script parsing time
     setTimeout(() => {
       sendConfig()
       configSentRef.current = true
-    }, 100)
+    }, 500)
   }, [sendConfig])
 
   // Send config updates when props change (after initial load)
@@ -194,16 +195,52 @@ export default function PlaygroundPreview(props: Props) {
     return () => clearTimeout(timeoutId)
   }, [sendConfig, refreshKey, buildConfig])
 
-  // Listen for messages from iframe (optional - for debugging)
+  // Listen for messages from iframe and handle acknowledgment
+  // If no acknowledgment received, retry sending config
   useEffect(() => {
+    let retryCount = 0
+    const maxRetries = 3
+    let retryTimeoutId: ReturnType<typeof setTimeout> | null = null
+    let configApplied = false
+
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'WIDGET_CONFIG_APPLIED') {
-        // Config applied successfully
+        configApplied = true
+        if (retryTimeoutId) {
+          clearTimeout(retryTimeoutId)
+          retryTimeoutId = null
+        }
       }
     }
+
+    // Start retry mechanism after initial config is sent
+    const startRetryMechanism = () => {
+      if (configApplied || !configSentRef.current || retryCount >= maxRetries) return
+      
+      retryTimeoutId = setTimeout(() => {
+        if (!configApplied && retryCount < maxRetries) {
+          retryCount++
+          sendConfig()
+          startRetryMechanism()
+        }
+      }, 800) // Wait 800ms for acknowledgment before retrying
+    }
+
     window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [])
+    
+    // Start retry mechanism after initial delay
+    const initialDelay = setTimeout(() => {
+      if (configSentRef.current) {
+        startRetryMechanism()
+      }
+    }, 600) // Start after initial config send
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      if (retryTimeoutId) clearTimeout(retryTimeoutId)
+      clearTimeout(initialDelay)
+    }
+  }, [sendConfig])
 
   return (
     <div className="w-full h-full relative overflow-hidden">
