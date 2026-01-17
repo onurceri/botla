@@ -15,7 +15,8 @@ func buildDSN(cfg *config.Config) string {
 	if cfg == nil {
 		return ""
 	}
-	base := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME, cfg.DB_SSLMODE)
+	// Use simple protocol to avoid prepared statement name collisions in connection pools
+	base := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s&default_exec_mode=simple_protocol", cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME, cfg.DB_SSLMODE)
 	if cfg.DB_SCHEMA != "" && cfg.DB_SCHEMA != "public" {
 		return fmt.Sprintf("%s&options=-c%%20search_path%%3D%s", base, cfg.DB_SCHEMA)
 	}
