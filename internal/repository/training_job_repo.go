@@ -76,7 +76,7 @@ func (r *PostgresTrainingJobRepo) GetBySourceID(ctx context.Context, sourceID st
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query job by source")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	if !rows.Next() {
 		return nil, nil
@@ -96,7 +96,7 @@ func (r *PostgresTrainingJobRepo) GetByID(ctx context.Context, id string) (*mode
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query training job")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	if !rows.Next() {
 		return nil, nil
@@ -119,7 +119,7 @@ func (r *PostgresTrainingJobRepo) GetByChatbotID(ctx context.Context, chatbotID 
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query jobs by chatbot")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var jobs []*models.TrainingJob
 	for rows.Next() {
@@ -189,7 +189,7 @@ func (r *PostgresTrainingJobRepo) UpdateJobStatus(ctx context.Context, id string
 func (r *PostgresTrainingJobRepo) ResetForRetry(ctx context.Context, id string) error {
 	_, err := r.pool.ExecContext(ctx, `
 		UPDATE training_jobs
-		SET status = 'pending', retry_count = retry_count + 1,
+		SET status = 'pending', retry_count = 0,
 		    error_code = NULL, error_message = NULL, failed_step = NULL,
 		    started_at = NULL, completed_at = NULL
 		WHERE id = $1
@@ -231,7 +231,7 @@ func (r *PostgresTrainingJobRepo) GetPendingJobs(ctx context.Context, limit int)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get pending jobs")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var jobs []*models.TrainingJob
 	for rows.Next() {
@@ -402,7 +402,7 @@ func (r *PostgresTrainingJobRepo) GetRetryableJobs(ctx context.Context, maxRetri
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get retryable jobs")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var jobs []*models.TrainingJob
 	for rows.Next() {
@@ -432,7 +432,7 @@ func (r *PostgresTrainingJobRepo) GetRunningJobs(ctx context.Context, limit int)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get running jobs")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var jobs []*models.TrainingJob
 	for rows.Next() {

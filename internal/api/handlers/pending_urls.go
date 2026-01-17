@@ -159,10 +159,11 @@ func (h *PendingURLsHandlers) ApprovePendingURLs(w http.ResponseWriter, r *http.
 	sourcesCreated := 0
 	for _, pu := range pendingURLs {
 		newID, err2 := h.SourceRepo.Create(r.Context(), &models.DataSource{
-			ChatbotID:  chatbotID,
-			SourceType: "url",
-			Status:     "pending",
-			SourceURL:  &pu.URL,
+			ChatbotID:    chatbotID,
+			SourceType:   "url",
+			Status:       "pending",
+			SourceURL:    &pu.URL,
+			IsDiscovered: true, // Mark as discovered so it won't crawl further
 		})
 		if err2 == nil {
 			sourcesCreated++

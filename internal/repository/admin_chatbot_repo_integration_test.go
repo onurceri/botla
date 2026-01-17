@@ -234,9 +234,10 @@ func TestAdminChatbotRepo_ListChatbots_NegativeOffset(t *testing.T) {
 	filter := repository.AdminChatbotFilter{}
 	chatbots, total, err := repo.ListChatbots(ctx, filter, 10, -10)
 
-	require.NoError(t, err)
-	assert.Equal(t, 1, total)
-	assert.Len(t, chatbots, 1, "should default to offset of 0")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "validate pagination")
+	assert.Equal(t, 0, total)
+	assert.Nil(t, chatbots)
 }
 
 // TestAdminChatbotRepo_ListChatbots_SubqueryResults tests source and message count subqueries.

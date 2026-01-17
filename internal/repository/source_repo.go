@@ -122,7 +122,7 @@ func (r *PostgresSourceRepo) GetByID(ctx context.Context, id string) (*models.Da
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	sources, err := r.scanSources(rows)
 	if err != nil {
@@ -156,7 +156,7 @@ func (r *PostgresSourceRepo) GetByChatbot(ctx context.Context, chatbotID string)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query sources")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return r.scanSources(rows)
 }
 
@@ -181,7 +181,7 @@ func (r *PostgresSourceRepo) GetURLSources(ctx context.Context, chatbotID string
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query url sources")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return r.scanSourcesMinimal(rows)
 }
 
@@ -343,7 +343,7 @@ func (r *PostgresSourceRepo) GetByHash(ctx context.Context, chatbotID, hash stri
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source by hash")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		return r.scanSourceByHash(rows)
@@ -523,7 +523,7 @@ func (r *PostgresSourceRepo) GetSourceSuggestions(ctx context.Context, chatbotID
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source suggestions")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []SourceSuggestion
 	for rows.Next() {
@@ -564,7 +564,7 @@ func (r *PostgresSourceRepo) GetCapabilitySummaries(ctx context.Context, chatbot
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query capability summaries")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []string
 	for rows.Next() {

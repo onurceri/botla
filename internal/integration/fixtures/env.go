@@ -20,6 +20,7 @@ import (
 	"github.com/onurceri/botla-app/internal/processing"
 	"github.com/onurceri/botla-app/internal/rag"
 	"github.com/onurceri/botla-app/internal/scraper"
+	"github.com/onurceri/botla-app/internal/testdb"
 	"github.com/onurceri/botla-app/internal/workers"
 	"github.com/onurceri/botla-app/pkg/config"
 	"github.com/onurceri/botla-app/pkg/middleware"
@@ -277,8 +278,8 @@ func setupTestEnvCommon(useMocks bool, override ConfigOverride) (*TestEnv, error
 	RestorePlans(db)
 
 	// Relax rate limits and limits for free plan in test environment
-	_ = updatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "rate_limits_requests_per_minute", 1000)
-	_ = updatePlanLimitField(context.Background(), db, policy.PlanFree.String(), "max_chatbots", 100)
+	_ = testdb.UpdatePlanLimit(context.Background(), db, policy.PlanFree.String(), "rate_limits_requests_per_minute", 1000)
+	_ = testdb.UpdatePlanLimit(context.Background(), db, policy.PlanFree.String(), "max_chatbots", 100)
 
 	// Insert dummy data for stub sources to prevent foreign key violations
 	dummyUUID := "00000000-0000-0000-0000-000000000001"
@@ -501,59 +502,48 @@ func RestorePlans(db *sql.DB) {
 // updatePlanLimits updates all fields in plan_limits for a given plan code.
 func updatePlanLimits(ctx context.Context, db *sql.DB, code string, limits models.PlanLimits) {
 	// Use the db package helper for all fields
-	_ = updatePlanLimitField(ctx, db, code, "max_chatbots", limits.MaxChatbots)
-	_ = updatePlanLimitField(ctx, db, code, "max_monthly_ingestions", limits.MaxMonthlyIngestions)
-	_ = updatePlanLimitField(ctx, db, code, "max_monthly_embedding_tokens", limits.MaxMonthlyEmbeddingTokens)
-	_ = updatePlanLimitField(ctx, db, code, "min_readd_cooldown_minutes", limits.MinReAddCooldownMinutes)
-	_ = updatePlanLimitField(ctx, db, code, "scraping_dynamic_enabled", limits.ScrapingDynamicEnabled)
-	_ = updatePlanLimitField(ctx, db, code, "scraping_max_urls_per_bot", limits.ScrapingMaxURLsPerBot)
-	_ = updatePlanLimitField(ctx, db, code, "scraping_max_pages_per_crawl", limits.ScrapingMaxPagesPerCrawl)
-	_ = updatePlanLimitField(ctx, db, code, "files_max_size_mb", limits.FilesMaxSizeMB)
-	_ = updatePlanLimitField(ctx, db, code, "files_max_files_per_bot", limits.FilesMaxFilesPerBot)
-	_ = updatePlanLimitField(ctx, db, code, "files_max_files_total", limits.FilesMaxFilesTotal)
-	_ = updatePlanLimitField(ctx, db, code, "files_total_storage_mb", limits.FilesTotalStorageMB)
-	_ = updatePlanLimitField(ctx, db, code, "files_max_text_length", limits.FilesMaxTextLength)
-	_ = updatePlanLimitField(ctx, db, code, "chat_default_model", limits.ChatDefaultModel)
-	_ = updatePlanLimitField(ctx, db, code, "chat_max_monthly_tokens", limits.ChatMaxMonthlyTokens)
-	_ = updatePlanLimitField(ctx, db, code, "chat_rag_top_k", limits.ChatRAGTopK)
-	_ = updatePlanLimitField(ctx, db, code, "chat_rag_max_context_tokens", limits.ChatRAGMaxContextTokens)
-	_ = updatePlanLimitField(ctx, db, code, "chat_max_suggested_questions", limits.ChatMaxSuggestedQuestions)
-	_ = updatePlanLimitField(ctx, db, code, "chat_max_manual_questions", limits.ChatMaxManualQuestions)
-	_ = updatePlanLimitField(ctx, db, code, "chat_min_response_token_limit", limits.ChatMinResponseTokenLimit)
-	_ = updatePlanLimitField(ctx, db, code, "chat_max_response_token_limit", limits.ChatMaxResponseTokenLimit)
-	_ = updatePlanLimitField(ctx, db, code, "refresh_enabled", limits.RefreshEnabled)
-	_ = updatePlanLimitField(ctx, db, code, "refresh_max_monthly", limits.RefreshMaxMonthly)
-	_ = updatePlanLimitField(ctx, db, code, "security_secure_embed_enabled", limits.SecuritySecureEmbedEnabled)
-	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_customize_thresholds", limits.GuardrailsCanCustomizeThresholds)
-	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_use_smart_fallback", limits.GuardrailsCanUseSmartFallback)
-	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_use_escalate_fallback", limits.GuardrailsCanUseEscalateFallback)
-	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_manage_topics", limits.GuardrailsCanManageTopics)
-	_ = updatePlanLimitField(ctx, db, code, "guardrails_can_customize_messages", limits.GuardrailsCanCustomizeMessages)
-	_ = updatePlanLimitField(ctx, db, code, "branding_can_hide_branding", limits.BrandingCanHideBranding)
-	_ = updatePlanLimitField(ctx, db, code, "branding_can_custom_branding", limits.BrandingCanCustomBranding)
-	_ = updatePlanLimitField(ctx, db, code, "rate_limits_requests_per_minute", limits.RateLimitsRequestsPerMinute)
-	_ = updatePlanLimitField(ctx, db, code, "rate_limits_window_seconds", limits.RateLimitsWindowSeconds)
-	_ = updatePlanLimitField(ctx, db, code, "rate_limits_chat_rpm", limits.RateLimitsChatRPM)
-	_ = updatePlanLimitField(ctx, db, code, "rate_limits_chat_window", limits.RateLimitsChatWindow)
-	_ = updatePlanLimitField(ctx, db, code, "rate_limits_sources_rpm", limits.RateLimitsSourcesRPM)
-	_ = updatePlanLimitField(ctx, db, code, "rate_limits_sources_window", limits.RateLimitsSourcesWindow)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "max_chatbots", limits.MaxChatbots)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "max_monthly_ingestions", limits.MaxMonthlyIngestions)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "max_monthly_embedding_tokens", limits.MaxMonthlyEmbeddingTokens)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "min_readd_cooldown_minutes", limits.MinReAddCooldownMinutes)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "scraping_dynamic_enabled", limits.ScrapingDynamicEnabled)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "scraping_max_urls_per_bot", limits.ScrapingMaxURLsPerBot)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "scraping_max_pages_per_crawl", limits.ScrapingMaxPagesPerCrawl)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "files_max_size_mb", limits.FilesMaxSizeMB)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "files_max_files_per_bot", limits.FilesMaxFilesPerBot)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "files_max_files_total", limits.FilesMaxFilesTotal)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "files_total_storage_mb", limits.FilesTotalStorageMB)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "files_max_text_length", limits.FilesMaxTextLength)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_default_model", limits.ChatDefaultModel)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_max_monthly_tokens", limits.ChatMaxMonthlyTokens)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_rag_top_k", limits.ChatRAGTopK)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_rag_max_context_tokens", limits.ChatRAGMaxContextTokens)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_max_suggested_questions", limits.ChatMaxSuggestedQuestions)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_max_manual_questions", limits.ChatMaxManualQuestions)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_min_response_token_limit", limits.ChatMinResponseTokenLimit)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "chat_max_response_token_limit", limits.ChatMaxResponseTokenLimit)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "refresh_enabled", limits.RefreshEnabled)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "refresh_max_monthly", limits.RefreshMaxMonthly)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "security_secure_embed_enabled", limits.SecuritySecureEmbedEnabled)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "guardrails_can_customize_thresholds", limits.GuardrailsCanCustomizeThresholds)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "guardrails_can_use_smart_fallback", limits.GuardrailsCanUseSmartFallback)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "guardrails_can_use_escalate_fallback", limits.GuardrailsCanUseEscalateFallback)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "guardrails_can_manage_topics", limits.GuardrailsCanManageTopics)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "guardrails_can_customize_messages", limits.GuardrailsCanCustomizeMessages)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "branding_can_hide_branding", limits.BrandingCanHideBranding)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "branding_can_custom_branding", limits.BrandingCanCustomBranding)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "rate_limits_requests_per_minute", limits.RateLimitsRequestsPerMinute)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "rate_limits_window_seconds", limits.RateLimitsWindowSeconds)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "rate_limits_chat_rpm", limits.RateLimitsChatRPM)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "rate_limits_chat_window", limits.RateLimitsChatWindow)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "rate_limits_sources_rpm", limits.RateLimitsSourcesRPM)
+	_ = testdb.UpdatePlanLimit(ctx, db, code, "rate_limits_sources_window", limits.RateLimitsSourcesWindow)
 }
 
 // UpdatePlanLimit updates a single limit field for a plan. This is a convenience
-// wrapper around updatePlanLimitField for use in tests.
+// wrapper around testdb.UpdatePlanLimit for use in tests.
 func (te *TestEnv) UpdatePlanLimit(planCode, field string, value any) error {
-	return updatePlanLimitField(context.Background(), te.DB, planCode, field, value)
+	return testdb.UpdatePlanLimit(context.Background(), te.DB, planCode, field, value)
 }
 
-// updatePlanLimitField updates a single field in the plan_limits table for a given plan code.
-// This is a local implementation that replaces the deprecated db.UpdatePlanLimitField.
-func updatePlanLimitField(ctx context.Context, db *sql.DB, planCode, field string, value any) error {
-	// Build dynamic SET clause using the field name as column name
-	query := fmt.Sprintf(`
-		UPDATE plan_limits
-		SET %s = $1, updated_at = NOW()
-		WHERE plan_id = (SELECT id FROM plans WHERE code = $2)
-	`, field)
-	_, err := db.ExecContext(ctx, query, value, planCode)
-	return err
-}
+

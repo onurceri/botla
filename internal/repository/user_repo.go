@@ -81,7 +81,7 @@ func (r *PostgresUserRepo) GetByID(ctx context.Context, id string) (*models.User
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query user")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	users, err := r.scanUsers(rows)
 	if err != nil {
@@ -95,6 +95,11 @@ func (r *PostgresUserRepo) GetByID(ctx context.Context, id string) (*models.User
 
 // AdminListUsers returns a paginated list of users for admin views.
 func (r *PostgresUserRepo) AdminListUsers(ctx context.Context, filter UserFilter, limit, offset int) ([]*models.User, int, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	query := psql.
 		Select(
 			"id", "email", "full_name", "avatar_url", "plan_id", "preferred_language_id",
@@ -127,7 +132,7 @@ func (r *PostgresUserRepo) AdminListUsers(ctx context.Context, filter UserFilter
 	}
 
 	// Add pagination
-	query = query.OrderBy("created_at DESC").Limit(uint64(limit)).Offset(uint64(offset))
+	query = query.OrderBy("created_at DESC").Limit(limit64).Offset(offset64)
 
 	sqlQuery, args, err := query.ToSql()
 	if err != nil {
@@ -138,7 +143,7 @@ func (r *PostgresUserRepo) AdminListUsers(ctx context.Context, filter UserFilter
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query users")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	users, err := r.scanUsers(rows)
 	if err != nil {
@@ -199,7 +204,7 @@ func (r *PostgresUserRepo) GetByEmail(ctx context.Context, email string) (*model
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query user by email")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	users, err := r.scanUsers(rows)
 	if err != nil {

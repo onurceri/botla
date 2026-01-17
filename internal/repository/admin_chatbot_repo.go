@@ -35,8 +35,11 @@ func (r *PostgresAdminChatbotRepo) ListChatbots(ctx context.Context, filter Admi
 	if limit <= 0 {
 		limit = 20
 	}
-	if offset < 0 {
-		offset = 0
+	// offset checks are handled by ValidatePagination
+
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
 	}
 
 	// Build COUNT query
@@ -97,7 +100,7 @@ func (r *PostgresAdminChatbotRepo) ListChatbots(ctx context.Context, filter Admi
 	}
 
 	// Sorting and pagination
-	dataQuery = dataQuery.OrderBy("c.created_at DESC").Limit(uint64(int64(limit))).Offset(uint64(int64(offset))) // #nosec G115 -- limit/offset validated to be non-negative above
+	dataQuery = dataQuery.OrderBy("c.created_at DESC").Limit(limit64).Offset(offset64)
 
 	dataSQL, dataArgs, err := dataQuery.ToSql()
 	if err != nil {

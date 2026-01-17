@@ -217,8 +217,9 @@ func initProcessing(cfg *config.Config, log *logger.Logger, pool *sql.DB, storag
 	chatbotRepo := repository.NewPostgresChatbotRepo(pool)
 	planRepo := repository.NewPostgresPlanRepo(pool, nil)
 	usageRepo := repository.NewPostgresUsageRepo(pool)
+	pendingURLRepo := repository.NewPostgresPendingURLRepo(pool)
 
-	q, err := processing.StartSourceQueue(trainingJobRepo, sourceRepo, chatbotRepo, planRepo, usageRepo, storageService, oaiClient, qdrantClient, scrp, tokLoader, cfg.WORKER_COUNT)
+	q, err := processing.StartSourceQueue(trainingJobRepo, sourceRepo, chatbotRepo, planRepo, usageRepo, pendingURLRepo, storageService, oaiClient, qdrantClient, scrp, tokLoader, cfg.WORKER_COUNT)
 	if err != nil {
 		log.Error("source_queue_init_failed", map[string]any{"error": err.Error()})
 		return nil, fmt.Errorf("init source queue: %w", err)
@@ -323,7 +324,7 @@ func (app *application) start() {
 		middleware.SecurityHeadersMiddleware()(
 			middleware.RecoveryMiddleware(app.log, app.cfg.GO_ENV)(
 				middleware.RequestLogger(app.log)(
-					middleware.MaxBytesMiddleware(1 * 1024 * 1024)( // 1MB limit
+					middleware.MaxBytesMiddleware(52 * 1024 * 1024)( // 52MB limit - allows plan-level file size checks
 						planLoader(
 							deletedAccountCheck(
 								middleware.RateLimitMiddleware(app.rateLimiter)(mux))))))))

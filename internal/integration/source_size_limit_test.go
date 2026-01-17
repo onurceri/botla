@@ -14,15 +14,15 @@ import (
 
 // SRC-006: Upload exceeding size limit
 func TestSources_SizeLimitExceeded(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
 
-	// Set max size to 1MB for free plan
-	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"max_size_mb": 1}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
+	// Set max size to 1MB for free plan (update plan_limits table)
+	_, _ = te.DB.Exec(`UPDATE plan_limits SET files_max_size_mb = 1 WHERE plan_id = (SELECT id FROM plans WHERE code = $1)`, policy.PlanFree.String())
 
 	token := authToken(t, te.Server.URL, "sizelimit@example.com")
 
@@ -66,7 +66,7 @@ t.Parallel()
 }
 
 func TestSources_PDFLimitPerBot(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
@@ -125,14 +125,16 @@ t.Parallel()
 }
 
 func TestSources_StorageLimitExceeded(t *testing.T) {
-t.Parallel()
+	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
 	if err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	defer fixtures.TeardownTestEnv(te)
 
-	_, _ = te.DB.Exec(`UPDATE plans SET config = config || '{"files": {"total_storage_mb": 10, "max_size_mb": 10}}'::jsonb WHERE code = $1`, policy.PlanFree.String())
+	// Set storage limits (update plan_limits table)
+	// Also set file count limit high enough to allow multiple uploads
+	_, _ = te.DB.Exec(`UPDATE plan_limits SET files_total_storage_mb = 10, files_max_size_mb = 10, files_max_files_per_bot = 100 WHERE plan_id = (SELECT id FROM plans WHERE code = $1)`, policy.PlanFree.String())
 
 	email := "storagelimit@example.com"
 	token := authToken(t, te.Server.URL, email)

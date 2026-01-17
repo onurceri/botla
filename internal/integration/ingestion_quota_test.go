@@ -35,15 +35,20 @@ func TestMonthlyIngestionQuota_AndDuplicateURL(t *testing.T) {
 	// Allow localhost URLs for testing
 	te.SourcesHandlers.SSRFValidator.SetAllowPrivate(true)
 
-	// Set plan config with low ingestion quota and cooldown
-	_, _ = te.DB.Exec(`UPDATE plans SET config = jsonb_build_object(
-        'max_monthly_ingestions', 1,
-        'max_monthly_embedding_tokens', 250000,
-        'min_readd_cooldown_minutes', 60,
-        'scraping', jsonb_build_object('dynamic_enabled', false, 'max_urls_per_bot', 5, 'max_pages_per_crawl', 0),
-        'files', jsonb_build_object('max_size_mb', 10, 'max_files_per_bot', 5, 'max_files_total', 100, 'total_storage_mb', 100),
-        'chat', jsonb_build_object('allowed_models', jsonb_build_array('gpt-4o-mini'), 'max_monthly_tokens', 100000, 'rag', jsonb_build_object('top_k',3,'max_context_tokens',1024))
-    ) WHERE code=$1`, policy.PlanFree.String())
+	// Configure plan limits for this test
+	_, _ = te.DB.Exec(`UPDATE plan_limits SET
+		max_monthly_ingestions = 1,
+		max_monthly_embedding_tokens = 250000,
+		min_readd_cooldown_minutes = 60,
+		scraping_dynamic_enabled = false,
+		scraping_max_urls_per_bot = 10,
+		scraping_max_pages_per_crawl = 0,
+		files_max_size_mb = 10,
+		files_max_files_per_bot = 5,
+		files_max_files_total = 100,
+		files_total_storage_mb = 100,
+		files_max_text_length = 400000
+	WHERE plan_id = (SELECT id FROM plans WHERE code = $1)`, policy.PlanFree.String())
 
 	token := authToken(t, te.Server.URL, "quota@example.com")
 	// Ensure user is on free plan

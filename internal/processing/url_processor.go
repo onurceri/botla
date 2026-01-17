@@ -43,7 +43,7 @@ type URLProcessor struct {
 }
 
 // NewURLProcessor creates a new URLProcessor.
-func NewURLProcessor(sourceRepo repository.SourceRepository, usageRepo repository.UsageRepository, planRepo repository.PlanRepository, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper, loader *tokenizer.Loader) *URLProcessor {
+func NewURLProcessor(sourceRepo repository.SourceRepository, usageRepo repository.UsageRepository, pendingURLRepo repository.PendingURLRepository, planRepo repository.PlanRepository, oai rag.LLMClient, vc rag.VectorClient, log *logger.Logger, s scraper.Scraper, loader *tokenizer.Loader) *URLProcessor {
 	// Create EmbeddingService if we have an EmbeddingClient
 	var embSvc *rag.EmbeddingService
 	if emb, ok := oai.(rag.EmbeddingClient); ok {
@@ -52,6 +52,7 @@ func NewURLProcessor(sourceRepo repository.SourceRepository, usageRepo repositor
 	return &URLProcessor{
 		sourceRepo:       sourceRepo,
 		usageRepo:        usageRepo,
+		pendingURLRepo:   pendingURLRepo,
 		OpenAIClient:     oai,
 		VectorClient:     vc,
 		Log:              log,
@@ -271,6 +272,17 @@ func (p *URLProcessor) ProcessWithSteps(ctx context.Context, jobID string, s *mo
 		"chunk_count":  len(rc),
 		"total_tokens": tokens,
 	})
+
+	// Save hash for new sources (refresh will use it to skip unchanged content)
+	if s.Hash == nil {
+		if err := p.sourceRepo.UpdateSourceHash(ctx, s.ID, newHash); err != nil {
+			p.logWarn("url_processing_hash_update_failed", map[string]any{
+				"source_id": s.ID,
+				"error":     err.Error(),
+			})
+			// Don't fail the whole processing for hash update failure
+		}
+	}
 
 	return ProcessResult{ChunkCount: len(rc)}
 }

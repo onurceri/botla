@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,16 +17,6 @@ import (
 	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
-// updatePlanLimitField is a test helper that updates a plan limit field
-func updatePlanLimitField(ctx context.Context, db *sql.DB, planCode, field string, value any) error {
-	query := fmt.Sprintf(`
-		UPDATE plan_limits
-		SET %s = $1, updated_at = NOW()
-		WHERE plan_id = (SELECT id FROM plans WHERE code = $2)
-	`, field)
-	_, err := db.ExecContext(ctx, query, value, planCode)
-	return err
-}
 
 func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 	dbConn := testdb.OpenTestDB(t)
@@ -36,8 +25,8 @@ func TestChatbot_Update_DiscoveryMode_Forbidden_OnZeroCrawlLimit(t *testing.T) {
 	if err := dbConn.QueryRow(`SELECT id FROM plans WHERE code='free'`).Scan(&freePlanID); err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	// Use updatePlanLimitField to update the plan limit (new pattern)
-	if err := updatePlanLimitField(context.Background(), dbConn, "free", "scraping_max_pages_per_crawl", 0); err != nil {
+	// Use testdb.UpdatePlanLimit to update the plan limit (new pattern)
+	if err := testdb.UpdatePlanLimit(context.Background(), dbConn, "free", "scraping_max_pages_per_crawl", 0); err != nil {
 		t.Fatalf("update plan: %v", err)
 	}
 
