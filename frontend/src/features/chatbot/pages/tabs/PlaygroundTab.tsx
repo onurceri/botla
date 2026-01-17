@@ -333,7 +333,7 @@ export default function PlaygroundTab() {
             refreshKey={previewRefreshKey}
             hideBranding={hideBranding}
             customBranding={customBranding}
-            autoOpen={false}
+            autoOpen={true}
             panelHeight="100%"
             panelWidth="100%"
           />
