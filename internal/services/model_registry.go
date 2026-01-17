@@ -26,9 +26,7 @@ func (s *ModelService) GetAvailableModels(ctx context.Context, allowedModels []s
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query models")
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
+	defer func() { _ = rows.Close() }()
 
 	var allModels []models.ModelInfo
 	for rows.Next() {

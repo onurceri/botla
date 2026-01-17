@@ -223,13 +223,18 @@ func (r *PostgresActionRepo) Delete(ctx context.Context, id string) error {
 
 // GetLogs retrieves action execution logs for a chatbot with pagination.
 func (r *PostgresActionRepo) GetLogs(ctx context.Context, chatbotID string, limit, offset int) ([]*models.ActionExecutionLog, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	query, args, err := psql.
 		Select("id", "chatbot_id", "action_id", "conversation_id", "message_id", "status", "request_payload", "response_payload", "error_message", "duration_ms", "created_at").
 		From("action_execution_logs").
 		Where(sq.Eq{"chatbot_id": chatbotID}).
 		OrderBy("created_at DESC").
-		Limit(uint64(limit)).
-		Offset(uint64(offset)).
+		Limit(limit64).
+		Offset(offset64).
 		ToSql()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "build get action logs query")

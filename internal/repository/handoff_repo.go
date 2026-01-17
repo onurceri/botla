@@ -178,12 +178,17 @@ func (r *PostgresHandoffRepo) CountPendingHandoffRequests(ctx context.Context, c
 }
 
 func (r *PostgresHandoffRepo) ListHandoffMessages(ctx context.Context, conversationID string, limit int) ([]models.Message, error) {
+	limit64, err := ValidateLimit(limit)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "validate limit")
+	}
+
 	query, args, err := psql.
 		Select("id", "conversation_id", "role", "content", "tokens_used", "thumbs_up", "created_at", "type").
 		From("messages").
 		Where(sq.Eq{"conversation_id": conversationID}).
 		OrderBy("created_at ASC").
-		Limit(uint64(limit)).
+		Limit(limit64).
 		ToSql()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "build list handoff messages query")

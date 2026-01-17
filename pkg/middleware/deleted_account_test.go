@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/onurceri/botla-app/internal/models"
@@ -72,7 +73,7 @@ func TestDeletedAccountMiddleware(t *testing.T) {
 			t.Errorf("Expected 403 for deleted user, got %d", w.Code)
 		}
 
-		body := w.Body.String()
+		body := strings.TrimSpace(w.Body.String())
 		if body != `{"code":"ERR_ACCOUNT_DELETED","status":403}` {
 			t.Errorf("Expected ERR_ACCOUNT_DELETED response, got %s", body)
 		}

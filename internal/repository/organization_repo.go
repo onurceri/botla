@@ -65,9 +65,16 @@ func (r *PostgresOrganizationRepo) GetByID(ctx context.Context, id string) (*mod
 
 // AdminList returns a paginated list of organizations for admin views.
 func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter OrganizationFilter, limit, offset int) ([]*models.Organization, int, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	query := psql.
 		Select(
 			"o.id", "o.name", "o.slug", "o.owner_id", "o.plan_id", "o.created_at", "o.updated_at",
+			"(SELECT COUNT(*) FROM memberships m WHERE m.organization_id = o.id) as user_count",
+			"(SELECT COUNT(*) FROM chatbots c WHERE c.organization_id = o.id) as chatbot_count",
 		).
 		From("organizations o").
 		Where(sq.Expr("1=1"))
@@ -92,7 +99,7 @@ func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter Organiz
 	}
 
 	// Add pagination
-	query = query.OrderBy("o.created_at DESC").Limit(uint64(limit)).Offset(uint64(offset))
+	query = query.OrderBy("o.created_at DESC").Limit(limit64).Offset(offset64)
 
 	sqlQuery, args, err := query.ToSql()
 	if err != nil {
@@ -103,7 +110,7 @@ func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter Organiz
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query organizations")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var orgs []*models.Organization
 	for rows.Next() {

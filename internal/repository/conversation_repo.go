@@ -102,13 +102,18 @@ func (r *PostgresConversationRepo) CreateMessage(ctx context.Context, msg *model
 // GetMessages retrieves messages for a conversation with pagination.
 // Messages are ordered by created_at ascending (chronological order).
 func (r *PostgresConversationRepo) GetMessages(ctx context.Context, conversationID string, limit, offset int) ([]models.Message, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	query, args, err := psql.
 		Select("id", "conversation_id", "role", "content", "tokens_used", "thumbs_up", "created_at", "type").
 		From("messages").
 		Where(sq.Eq{"conversation_id": conversationID}).
 		OrderBy("created_at ASC").
-		Limit(uint64(limit)).
-		Offset(uint64(offset)).
+		Limit(limit64).
+		Offset(offset64).
 		ToSql()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "build get messages query")
@@ -157,12 +162,17 @@ func (r *PostgresConversationRepo) IncrementMessageCount(ctx context.Context, co
 
 // ListRecentMessages retrieves recent messages for a conversation.
 func (r *PostgresConversationRepo) ListRecentMessages(ctx context.Context, conversationID string, limit int) ([]models.Message, error) {
+	limit64, err := ValidateLimit(limit)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "validate limit")
+	}
+
 	query, args, err := psql.
 		Select("id", "conversation_id", "role", "content", "tokens_used", "thumbs_up", "created_at", "type").
 		From("messages").
 		Where(sq.Eq{"conversation_id": conversationID}).
 		OrderBy("created_at DESC").
-		Limit(uint64(limit)).
+		Limit(limit64).
 		ToSql()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "build list recent messages query")

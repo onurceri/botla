@@ -41,6 +41,7 @@ type JobProcessorConfig struct {
 	ChatbotRepo      repository.ChatbotRepository
 	PlanRepo         repository.PlanRepository
 	UsageRepo        repository.UsageRepository
+	PendingURLRepo   repository.PendingURLRepository
 	Storage          storage.StorageService
 	OpenAIClient     rag.LLMClient
 	VectorClient     rag.VectorClient
@@ -56,7 +57,7 @@ func NewJobProcessor(cfg JobProcessorConfig) *JobProcessor {
 	processors := cfg.Processors
 	if processors == nil {
 		processors = map[string]SourceProcessor{
-			"url":  NewURLProcessor(cfg.SourceRepo, cfg.UsageRepo, cfg.PlanRepo, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Scraper, cfg.Loader),
+			"url":  NewURLProcessor(cfg.SourceRepo, cfg.UsageRepo, cfg.PendingURLRepo, cfg.PlanRepo, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Scraper, cfg.Loader),
 			"pdf":  NewPDFProcessor(cfg.SourceRepo, cfg.UsageRepo, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
 			"text": NewTextProcessor(cfg.SourceRepo, cfg.UsageRepo, cfg.Storage, cfg.OpenAIClient, cfg.VectorClient, cfg.Log, cfg.Loader),
 		}

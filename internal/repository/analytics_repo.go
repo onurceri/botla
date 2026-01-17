@@ -243,13 +243,18 @@ func (r *PostgresAnalyticsRepo) TrackUnansweredQuery(ctx context.Context, chatbo
 
 // GetUnansweredQueries returns unanswered queries for a chatbot with pagination.
 func (r *PostgresAnalyticsRepo) GetUnansweredQueries(ctx context.Context, chatbotID string, limit, offset int) ([]string, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	query, args, err := psql.
 		Select("query").
 		From("unanswered_queries").
 		Where(sq.Eq{"chatbot_id": chatbotID}).
 		OrderBy("occurrence_count DESC, last_occurred_at DESC").
-		Limit(uint64(limit)).
-		Offset(uint64(offset)).
+		Limit(limit64).
+		Offset(offset64).
 		ToSql()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "build get unanswered queries query")
@@ -367,6 +372,7 @@ func (r *PostgresAnalyticsRepo) GetGlobalAnalytics(ctx context.Context, userID s
 		args = append(args, userID)
 	}
 
+	//nolint:gosec // whereClause is constructed from hardcoded strings based on input flags
 	query := fmt.Sprintf(`
 		WITH dates AS (
 			SELECT generate_series(

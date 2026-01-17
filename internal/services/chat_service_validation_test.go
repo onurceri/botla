@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/onurceri/botla-app/internal/models"
@@ -23,7 +22,7 @@ func TestChatService_ProcessChatWithValidation_TokenQuotaExceeded(t *testing.T) 
 	dbConn := testdb.OpenParallelTestDB(t)
 
 	// Create a plan with strict token limit
-	_ = updatePlanLimitField(context.Background(), dbConn, policy.PlanFree.String(), "chat_max_monthly_tokens", 100)
+	_ = testdb.UpdatePlanLimit(context.Background(), dbConn, policy.PlanFree.String(), "chat_max_monthly_tokens", 100)
 
 	// Create User on 'free' plan
 	user := testdb.CreateUser(t, dbConn, testdb.UserFixture{
@@ -81,7 +80,7 @@ func TestChatService_ProcessChatWithValidation_DelegationAndRefund(t *testing.T)
 	dbConn := testdb.OpenParallelTestDB(t)
 
 	// Update plan to have quota
-	_ = updatePlanLimitField(context.Background(), dbConn, policy.PlanFree.String(), "chat_max_monthly_tokens", 1000)
+	_ = testdb.UpdatePlanLimit(context.Background(), dbConn, policy.PlanFree.String(), "chat_max_monthly_tokens", 1000)
 
 	var err error
 
@@ -148,16 +147,6 @@ func TestChatService_ProcessChatWithValidation_DelegationAndRefund(t *testing.T)
 }
 
 // Helper functions to replace deprecated db package calls
-func updatePlanLimitField(ctx context.Context, db *sql.DB, planCode, field string, value any) error {
-	query := fmt.Sprintf(`
-		UPDATE plan_limits
-		SET value = $1, updated_at = NOW()
-		WHERE plan_id = (SELECT id FROM plans WHERE code = $2)
-		  AND field = $3
-	`)
-	_, err := db.ExecContext(ctx, query, value, planCode, field)
-	return err
-}
 
 func reserveChatTokens(ctx context.Context, db *sql.DB, userID string, estimatedTokens, maxMonthlyTokens int) error {
 	query := `SELECT reserve_chat_tokens($1, $2, $3)`

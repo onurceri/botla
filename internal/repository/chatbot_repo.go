@@ -178,7 +178,7 @@ func (r *PostgresChatbotRepo) GetByID(ctx context.Context, id string) (*models.C
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbot")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	chatbots, err := r.scanChatbots(rows)
 	if err != nil {
@@ -208,7 +208,7 @@ func (r *PostgresChatbotRepo) GetByUserID(ctx context.Context, userID string) ([
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbots")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return r.scanChatbots(rows)
 }
 
@@ -230,7 +230,7 @@ func (r *PostgresChatbotRepo) GetByWorkspace(ctx context.Context, workspaceID st
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbots")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return r.scanChatbots(rows)
 }
 
@@ -569,7 +569,7 @@ func (r *PostgresChatbotRepo) GetDueForRefresh(ctx context.Context, now time.Tim
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbots due for refresh")
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return r.scanChatbots(rows)
 }
 

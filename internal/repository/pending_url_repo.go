@@ -46,14 +46,19 @@ func (r *PostgresPendingURLRepo) InsertPendingURL(ctx context.Context, chatbotID
 
 // ListPendingURLs returns pending URLs for a chatbot with pagination.
 func (r *PostgresPendingURLRepo) ListPendingURLs(ctx context.Context, chatbotID string, limit, offset int) ([]models.PendingURL, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	query, args, err := psql.
 		Select("id", "chatbot_id", "source_id", "url", "discovered_at", "status").
 		From("pending_discovered_urls").
 		Where(sq.Eq{"chatbot_id": chatbotID}).
 		Where(sq.Eq{"status": "pending"}).
 		OrderBy("discovered_at DESC").
-		Limit(uint64(limit)).
-		Offset(uint64(offset)).
+		Limit(limit64).
+		Offset(offset64).
 		ToSql()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "build list pending urls query")

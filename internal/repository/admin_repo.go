@@ -53,8 +53,13 @@ func (r *PostgresAdminRepo) ListAuditLogs(ctx context.Context, filter AuditFilte
 	if limit <= 0 {
 		limit = 50
 	}
-	if offset < 0 {
-		offset = 0
+	if limit <= 0 {
+		limit = 50
+	}
+	
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
 	}
 
 	query := psql.Select(
@@ -83,8 +88,8 @@ func (r *PostgresAdminRepo) ListAuditLogs(ctx context.Context, filter AuditFilte
 	}
 
 	query = query.OrderBy("created_at DESC").
-		Limit(uint64(limit)).   // #nosec G115 -- limit validated above
-		Offset(uint64(offset)) // #nosec G115 -- offset validated above
+		Limit(limit64).
+		Offset(offset64)
 
 	sqlQuery, args, err := query.ToSql()
 	if err != nil {
@@ -137,6 +142,11 @@ func (r *PostgresAdminRepo) ListAuditLogs(ctx context.Context, filter AuditFilte
 
 // AdminListSources returns a paginated list of all data sources with metadata.
 func (r *PostgresAdminRepo) AdminListSources(ctx context.Context, filter AdminSourceFilter, limit, offset int) ([]AdminSource, int, error) {
+	limit64, offset64, valErr := ValidatePagination(limit, offset)
+	if valErr != nil {
+		return nil, 0, pkgerrors.Wrapf(valErr, "validate pagination")
+	}
+
 	// Count query
 	countQuery := `
 		SELECT COUNT(*)
@@ -185,7 +195,7 @@ func (r *PostgresAdminRepo) AdminListSources(ctx context.Context, filter AdminSo
 		LIMIT $5 OFFSET $6
 	`
 
-	rows, err := r.pool.QueryContext(ctx, dataQuery, filter.ChatbotID, filter.SourceType, filter.Status, filter.OwnerID, limit, offset)
+	rows, err := r.pool.QueryContext(ctx, dataQuery, filter.ChatbotID, filter.SourceType, filter.Status, filter.OwnerID, limit64, offset64)
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query admin sources")
 	}
@@ -389,6 +399,11 @@ func (r *PostgresAdminRepo) AdminReprocessSource(ctx context.Context, id string)
 
 // ListErrorLogs returns a paginated list of error logs with optional severity filtering.
 func (r *PostgresAdminRepo) ListErrorLogs(ctx context.Context, severity string, limit, offset int) ([]ErrorLogEntry, int, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	query := `
 		SELECT id, error_type, message, stack_trace, request_path, request_method, 
 		       user_id, chatbot_id, organization_id, severity, context, created_at,
@@ -399,7 +414,7 @@ func (r *PostgresAdminRepo) ListErrorLogs(ctx context.Context, severity string, 
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.pool.QueryContext(ctx, query, severity, limit, offset)
+	rows, err := r.pool.QueryContext(ctx, query, severity, limit64, offset64)
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query error logs")
 	}

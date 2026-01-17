@@ -339,6 +339,11 @@ func (r *PostgresPrivacyRepo) GetPrivacyRequest(ctx context.Context, requestID s
 // ListPrivacyRequests retrieves privacy requests with optional status filter and pagination.
 // Excludes soft-deleted requests.
 func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status string, limit, offset int) ([]PrivacyRequest, int, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	baseQuery := psql.
 		Select(
 			"id", "user_id", "user_email", "request_type", "status", "reason",
@@ -355,8 +360,8 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 	query, args, err := baseQuery.
 		Where(whereClause).
 		OrderBy("created_at DESC").
-		Limit(uint64(limit)).
-		Offset(uint64(offset)).
+		Limit(limit64).
+		Offset(offset64).
 		ToSql()
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "build list privacy requests query")
@@ -763,6 +768,11 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 // ListPrivacyRequestsByUserID retrieves privacy requests for a specific user with pagination and optional request type filter.
 // Excludes soft-deleted requests.
 func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, userID, requestType string, limit, offset int) ([]PrivacyRequest, int, error) {
+	limit64, offset64, err := ValidatePagination(limit, offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
 	var whereClause sq.Sqlizer = sq.And{
 		sq.Eq{"user_id": userID},
 		sq.Eq{"deleted_at": nil},
@@ -780,8 +790,8 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, u
 		From("privacy_requests").
 		Where(whereClause).
 		OrderBy("created_at DESC").
-		Limit(uint64(limit)).
-		Offset(uint64(offset)).
+		Limit(limit64).
+		Offset(offset64).
 		ToSql()
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "build list privacy requests by user query")

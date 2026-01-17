@@ -77,7 +77,7 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 
 	mh := handlers.NewMeHandlers(userRepo, orgSvc)
 	ph := handlers.NewPlanHandlers(userRepo, planRepo, pool)
-	onbh := &handlers.OnboardingHandlers{DB: pool}
+	onbh := &handlers.OnboardingHandlers{DB: pool, UserRepo: userRepo}
 	mux.Handle("/api/v1/me", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(mh.Me)))
 	mux.Handle("/api/v1/me/plan", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(ph.GetPlan)))
 
@@ -159,7 +159,8 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	// Initialize tokenizer loader for tests (mock storage)
 	tokLoader := tokenizer.NewLoader(memStore)
 
-	q, err := processing.StartSourceQueue(trainingJobRepo, sourceRepo, chatbotRepo, planRepo, usageRepo, memStore, actualLLM, actualVC, ms, tokLoader, 2)
+	pendingURLRepo := repository.NewPostgresPendingURLRepo(pool)
+	q, err := processing.StartSourceQueue(trainingJobRepo, sourceRepo, chatbotRepo, planRepo, usageRepo, pendingURLRepo, memStore, actualLLM, actualVC, ms, tokLoader, 2)
 	if err != nil {
 		logger.New("WARN").Warn("failed to start source queue in testmux", map[string]any{"error": err})
 	}
@@ -233,15 +234,16 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 
 	// User Privacy
 	uph := &handlers.UserPrivacyHandlers{DB: pool, PrivacyService: privacySvc, UserRepo: userRepo, PrivacyRepo: privacyRepo}
-	mux.Handle("GET /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyConsents)))
-	mux.Handle("PATCH /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.UpdateMyConsents)))
-	mux.Handle("POST /api/v1/me/privacy/export", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestMyDataExport)))
-	mux.Handle("POST /api/v1/me/privacy/correction", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestDataCorrection)))
-	mux.Handle("POST /api/v1/me/privacy/delete", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.RequestAccountDeletion)))
-	mux.Handle("GET /api/v1/me/privacy/requests", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.ListMyPrivacyRequests)))
-	mux.Handle("GET /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.GetMyPrivacyRequest)))
-	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyPrivacyExport)))
-	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(uph.DownloadMyDataExport)))
+	mux.Handle("GET /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.GetMyConsents))))
+	mux.Handle("PATCH /api/v1/me/privacy/consents", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.UpdateMyConsents))))
+	mux.Handle("POST /api/v1/me/privacy/export", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.RequestMyDataExport))))
+	mux.Handle("POST /api/v1/me/privacy/correction", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.RequestDataCorrection))))
+	mux.Handle("POST /api/v1/me/privacy/delete", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.RequestAccountDeletion))))
+	mux.Handle("GET /api/v1/me/privacy/requests", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.ListMyPrivacyRequests))))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.GetMyPrivacyRequest))))
+	mux.Handle("DELETE /api/v1/me/privacy/requests/{id}", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DeleteMyPrivacyRequest))))
+	mux.Handle("GET /api/v1/me/privacy/requests/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DownloadMyPrivacyExport))))
+	mux.Handle("GET /api/v1/me/privacy/exports/{id}/download", middleware.AuthMiddleware(cfg.JWT_SECRET)(middleware.DeletedAccountMiddleware(userRepo, log)(http.HandlerFunc(uph.DownloadMyDataExport))))
 
 	adh := handlers.NewAdminHandlers(adminSvc, userRepo, organizationRepo)
 	adhh := handlers.NewAdminHealthHandlers(pool, nil, cfg) // nil Redis client for tests
@@ -267,5 +269,5 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 
 	origins := strings.Split(cfg.CORS_ALLOWED_ORIGINS, ",")
 	cors := middleware.CORSMiddlewareAllowOrigins(origins)
-	return cors(middleware.RequestID(mux)), q, rl, workerPool, sh, ms
+	return cors(middleware.RequestID(middleware.MaxBytesMiddleware(52 * 1024 * 1024)(mux))), q, rl, workerPool, sh, ms
 }
