@@ -12,6 +12,7 @@ import (
 	"github.com/onurceri/botla-app/internal/api"
 	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/logger"
 	"github.com/onurceri/botla-app/pkg/middleware"
 )
 
@@ -20,6 +21,7 @@ type PrivacyHandlers struct {
 	PrivacyService *services.PrivacyService
 	AdminService   *services.AdminService
 	PrivacyRepo    repository.PrivacyRepository
+	Log            *logger.Logger
 }
 
 // ListPrivacyRequests returns pending/processed KVKK requests
@@ -35,10 +37,43 @@ func (h *PrivacyHandlers) ListPrivacyRequests(w http.ResponseWriter, r *http.Req
 	}
 	offset := (page - 1) * limit
 
+	// DEBUG: Log request details
+	if h.Log != nil {
+		userID, _ := middleware.UserIDFromContext(r.Context())
+		h.Log.DebugCtx(r.Context(), "privacy_list_requests_start", map[string]any{
+			"status":  status,
+			"page":    page,
+			"limit":   limit,
+			"offset":  offset,
+			"user_id": userID,
+		})
+	}
+
 	requests, total, err := h.PrivacyRepo.ListPrivacyRequests(r.Context(), status, limit, offset)
 	if err != nil {
+		// DEBUG: Log the actual error
+		if h.Log != nil {
+			h.Log.ErrorCtx(r.Context(), "privacy_list_requests_error", map[string]any{
+				"error":  err.Error(),
+				"status": status,
+				"page":   page,
+				"limit":  limit,
+				"offset": offset,
+			})
+		}
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
+	}
+
+	// DEBUG: Log success
+	if h.Log != nil {
+		h.Log.DebugCtx(r.Context(), "privacy_list_requests_success", map[string]any{
+			"count":  len(requests),
+			"total":  total,
+			"status": status,
+			"page":   page,
+			"limit":  limit,
+		})
 	}
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{
