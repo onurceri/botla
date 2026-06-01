@@ -91,3 +91,18 @@ data/sentences/
 .sisyphus/
 
 docs/temp/
+
+# Playwright test artifacts
+test-results/
+frontend/test-results/
+
+# Coverage reports
+widget/coverage/
+
+# Production env files (configure via hosting provider)
+frontend/.env.production
+widget/.env.production
+frontend/.env.local
+widget/.env.local
+.env.production
+widget/.env.production.local
