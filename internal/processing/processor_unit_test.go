@@ -12,6 +12,7 @@ import (
 	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/internal/scraper"
 	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -84,12 +85,14 @@ func TestURLProcessor_Unit(t *testing.T) {
 	t.Run("Uses injected mock scraper", func(t *testing.T) {
 		sourceRepo := repository.NewMockSourceRepo()
 		usageRepo := &MockUsageRepo{}
+		pendingURLRepo := &MockPendingURLRepo{}
 		planRepo := repository.NewMockPlanRepo()
 		mockOAI := &rag.MockLLMClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
+		loader := &tokenizer.Loader{}
 
-		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, mockScraper, nil)
+		p := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, mockScraper, loader)
 
 		assert.Equal(t, mockScraper, p.Scraper)
 	})
@@ -101,15 +104,17 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 	t.Run("Handles scraper error", func(t *testing.T) {
 		sourceRepo := repository.NewMockSourceRepo()
 		usageRepo := &MockUsageRepo{}
+		pendingURLRepo := &MockPendingURLRepo{}
 		planRepo := repository.NewMockPlanRepo()
 		mockOAI := &rag.MockLLMClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
+		loader := &tokenizer.Loader{}
 
 		testURL := "https://example.com/error"
 		mockScraper.SetError(testURL, errors.New("connection refused"))
 
-		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, mockScraper, nil)
+		p := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, mockScraper, loader)
 
 		source := &models.DataSource{
 			ID:         "src-2",
@@ -131,15 +136,17 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 	t.Run("Handles empty content returns ERR_DYNAMIC_REQUIRED", func(t *testing.T) {
 		sourceRepo := repository.NewMockSourceRepo()
 		usageRepo := &MockUsageRepo{}
+		pendingURLRepo := &MockPendingURLRepo{}
 		planRepo := repository.NewMockPlanRepo()
 		mockOAI := &rag.MockLLMClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
+		loader := &tokenizer.Loader{}
 
 		testURL := "https://example.com/empty"
 		mockScraper.SetResponse(testURL, "") // Empty content
 
-		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, mockScraper, nil)
+		p := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, mockScraper, loader)
 
 		source := &models.DataSource{
 			ID:         "src-3",
@@ -161,15 +168,17 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 	t.Run("Handles empty content returns ERR_EMPTY_CONTENT when dynamic enabled", func(t *testing.T) {
 		sourceRepo := repository.NewMockSourceRepo()
 		usageRepo := &MockUsageRepo{}
+		pendingURLRepo := &MockPendingURLRepo{}
 		planRepo := repository.NewMockPlanRepo()
 		mockOAI := &rag.MockLLMClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
+		loader := &tokenizer.Loader{}
 
 		testURL := "https://example.com/empty-dynamic"
 		mockScraper.SetResponse(testURL, "") // Empty content even with dynamic
 
-		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, mockScraper, nil)
+		p := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, mockScraper, loader)
 
 		source := &models.DataSource{
 			ID:         "src-3d",
@@ -191,10 +200,12 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 	t.Run("Successful scrape and processing", func(t *testing.T) {
 		sourceRepo := repository.NewMockSourceRepo()
 		usageRepo := &MockUsageRepo{}
+		pendingURLRepo := &MockPendingURLRepo{}
 		planRepo := repository.NewMockPlanRepo()
 		mockOAI := &rag.MockFullClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
+		loader := &tokenizer.Loader{}
 
 		testURL := "https://example.com/success"
 		mockScraper.SetResponse(testURL, "This is test content with enough words to generate embeddings properly for the test case.")
@@ -207,7 +218,7 @@ func TestURLProcessor_Process_WithMock(t *testing.T) {
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1, 0.2}}, nil).Once()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
-		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, mockScraper, nil)
+		p := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, mockScraper, loader)
 
 		source := &models.DataSource{
 			ID:         "src-4",
@@ -233,10 +244,12 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 	t.Run("Discovers links from HTML", func(t *testing.T) {
 		sourceRepo := repository.NewMockSourceRepo()
 		usageRepo := &MockUsageRepo{}
+		pendingURLRepo := &MockPendingURLRepo{}
 		planRepo := repository.NewMockPlanRepo()
 		mockOAI := &rag.MockFullClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
+		loader := &tokenizer.Loader{}
 
 		testURL := "https://example.com/discover"
 		mockScraper.SetResponse(testURL, "Test content for discovery page.")
@@ -253,7 +266,7 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Maybe()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
-		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, mockScraper, nil)
+		p := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, mockScraper, loader)
 
 		source := &models.DataSource{
 			ID:           "src-5",
@@ -280,10 +293,12 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 	t.Run("Skips discovery when MaxURLsPerBot is 1", func(t *testing.T) {
 		sourceRepo := repository.NewMockSourceRepo()
 		usageRepo := &MockUsageRepo{}
+		pendingURLRepo := &MockPendingURLRepo{}
 		planRepo := repository.NewMockPlanRepo()
 		mockOAI := &rag.MockFullClient{}
 		mockVC := &rag.MockVectorClient{}
 		mockScraper := scraper.NewMockScraper()
+		loader := &tokenizer.Loader{}
 
 		testURL := "https://example.com/single-url-plan"
 		mockScraper.SetResponse(testURL, "Test content for single url plan.")
@@ -299,7 +314,7 @@ func TestURLProcessor_Discovery_WithMock(t *testing.T) {
 		mockOAI.On("CreateEmbeddingsBatch", mock.Anything, mock.Anything).Return([][]float32{{0.1}}, nil).Maybe()
 		mockVC.On("UpsertEmbedding", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
-		p := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, mockScraper, nil)
+		p := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, mockScraper, loader)
 
 		source := &models.DataSource{
 			ID:           "src-6",

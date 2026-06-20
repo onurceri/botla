@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/onurceri/botla-app/internal/models"
 	"github.com/onurceri/botla-app/internal/rag"
 	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/pkg/storage"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 )
 
 func TestSourceProcessorInterface_Implementation(t *testing.T) {
@@ -16,21 +18,23 @@ func TestSourceProcessorInterface_Implementation(t *testing.T) {
 	// Create mock repositories for interface testing
 	sourceRepo := repository.NewMockSourceRepo()
 	usageRepo := &MockUsageRepo{}
+	pendingURLRepo := &MockPendingURLRepo{}
 	planRepo := repository.NewMockPlanRepo()
 	mockOAI := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
 	mockStorage := &storage.MockStorageService{}
+	loader := &tokenizer.Loader{}
 
 	t.Run("URLProcessor implements SourceProcessor", func(t *testing.T) {
-		var _ SourceProcessor = NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, nil, nil)
+		var _ SourceProcessor = NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, nil, loader)
 	})
 
 	t.Run("PDFProcessor implements SourceProcessor", func(t *testing.T) {
-		var _ SourceProcessor = NewPDFProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, nil)
+		var _ SourceProcessor = NewPDFProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, loader)
 	})
 
 	t.Run("TextProcessor implements SourceProcessor", func(t *testing.T) {
-		var _ SourceProcessor = NewTextProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, nil)
+		var _ SourceProcessor = NewTextProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, loader)
 	})
 }
 
@@ -39,15 +43,17 @@ func TestProcessorMap_Registry(t *testing.T) {
 
 	// Create mock repositories for interface testing
 	sourceRepo := repository.NewMockSourceRepo()
+	pendingURLRepo := &MockPendingURLRepo{}
 	planRepo := repository.NewMockPlanRepo()
 	usageRepo := &MockUsageRepo{}
 	mockOAI := &rag.MockFullClient{}
 	mockVC := &rag.MockVectorClient{}
 	mockStorage := &storage.MockStorageService{}
+	loader := &tokenizer.Loader{}
 
-	urlProc := NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, nil, nil, nil)
-	pdfProc := NewPDFProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, nil)
-	textProc := NewTextProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, nil)
+	urlProc := NewURLProcessor(sourceRepo, usageRepo, pendingURLRepo, planRepo, mockOAI, mockVC, nil, nil, loader)
+	pdfProc := NewPDFProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, loader)
+	textProc := NewTextProcessor(sourceRepo, usageRepo, mockStorage, mockOAI, mockVC, nil, loader)
 
 	processors := map[string]SourceProcessor{
 		"url":  urlProc,
@@ -124,6 +130,33 @@ func TestProcessorMap_EdgeCases(t *testing.T) {
 			t.Error("empty map should not return true for any key")
 		}
 	})
+}
+
+// MockPendingURLRepo is a minimal mock for PendingURLRepository
+type MockPendingURLRepo struct{}
+
+func (m *MockPendingURLRepo) InsertPendingURL(ctx context.Context, chatbotID string, sourceID *string, url string) error {
+	return nil
+}
+
+func (m *MockPendingURLRepo) ListPendingURLs(ctx context.Context, chatbotID string, limit, offset int) ([]models.PendingURL, error) {
+	return nil, nil
+}
+
+func (m *MockPendingURLRepo) CountPendingURLs(ctx context.Context, chatbotID string) (int, error) {
+	return 0, nil
+}
+
+func (m *MockPendingURLRepo) UpdatePendingURLStatus(ctx context.Context, chatbotID string, urlIDs []string, status string) (int, error) {
+	return 0, nil
+}
+
+func (m *MockPendingURLRepo) GetPendingURLsByIDs(ctx context.Context, chatbotID string, urlIDs []string) ([]models.PendingURL, error) {
+	return nil, nil
+}
+
+func (m *MockPendingURLRepo) DeletePendingURLsByChatbot(ctx context.Context, chatbotID string) (int, error) {
+	return 0, nil
 }
 
 // MockUsageRepo is a minimal mock for UsageRepository

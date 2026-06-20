@@ -14,6 +14,7 @@ import (
 	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/internal/scraper"
 	"github.com/onurceri/botla-app/pkg/logger"
+	"github.com/onurceri/botla-app/pkg/tokenizer"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -46,11 +47,13 @@ func TestEnqueueSource_CreatesJob(t *testing.T) {
 		ChatbotRepo:     chatbotRepo,
 		PlanRepo:        planRepo,
 		UsageRepo:       usageRepo,
+		PendingURLRepo:  &MockPendingURLRepo{},
 		OpenAIClient:    mockOAI,
 		VectorClient:    mockVC,
 		Log:             log,
+		Loader:          &tokenizer.Loader{},
 		Processors: map[string]SourceProcessor{
-			"url": NewURLProcessor(sourceRepo, usageRepo, planRepo, mockOAI, mockVC, log, &testMockScraper{}, nil),
+			"url": NewURLProcessor(sourceRepo, usageRepo, &MockPendingURLRepo{}, planRepo, mockOAI, mockVC, log, &testMockScraper{}, &tokenizer.Loader{}),
 		},
 	})
 
