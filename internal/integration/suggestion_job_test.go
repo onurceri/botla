@@ -68,9 +68,13 @@ func TestSuggestionRegenerationPolling_FullFlow(t *testing.T) {
 	sourceID := sourceResult.Source.ID
 
 	suggestions := []string{"Source Question 1", "Source Question 2"}
+	suggestionsJSON, err := json.Marshal(suggestions)
+	if err != nil {
+		t.Fatalf("marshal suggestions: %v", err)
+	}
 	_, err = te.DB.ExecContext(ctx, `
 		UPDATE data_sources SET suggested_questions = $1 WHERE id = $2
-	`, suggestions, sourceID)
+	`, string(suggestionsJSON), sourceID)
 	if err != nil {
 		t.Fatalf("failed to set source suggestions: %v", err)
 	}

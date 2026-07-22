@@ -385,4 +385,3 @@ func (r *PostgresUsageRepo) IncrementChatTokens(ctx context.Context, userID stri
 	}
 	return nil
 }
-

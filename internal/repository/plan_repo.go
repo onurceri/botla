@@ -166,7 +166,7 @@ func (r *PostgresPlanRepo) GetAll(ctx context.Context) ([]models.Plan, error) {
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query all plans")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var plans []models.Plan
 	for rows.Next() {

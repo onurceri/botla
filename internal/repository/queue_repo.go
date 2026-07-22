@@ -115,7 +115,7 @@ func (r *PostgresQueueRepo) GetStuckJobs(ctx context.Context, threshold time.Dur
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query stuck jobs")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var stuckJobs []StuckJob
 	for rows.Next() {

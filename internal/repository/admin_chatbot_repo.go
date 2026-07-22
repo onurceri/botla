@@ -111,7 +111,7 @@ func (r *PostgresAdminChatbotRepo) ListChatbots(ctx context.Context, filter Admi
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query admin chatbots")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var chatbots []AdminChatbot
 	for rows.Next() {
@@ -258,7 +258,7 @@ func (r *PostgresAdminChatbotRepo) GetSourceIDs(ctx context.Context, chatbotID s
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source ids")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var ids []string
 	for rows.Next() {

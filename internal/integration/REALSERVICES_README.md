@@ -73,10 +73,12 @@ Tests use environment variables or defaults:
 | `REDIS_URL` | `redis://localhost:6380` | Redis URL (integration) |
 | `QDRANT_URL` | `http://localhost:6334` | Qdrant URL (integration) |
 | `OPENAI_API_KEY` | (optional) | OpenAI API key for optional tests |
+| `TEST_INTEGRATION` | (unset) | **Required to run** these tests; set to `1`. When unset the tests skip, so a plain `go test ./...` won't fail if the stack is down. The `make test-integration-*` targets set it. |
 
 ## CI/CD
 
-Tests run weekly via GitHub Actions: `.github/workflows/integration-tests.yml`
+Tests run weekly (Mondays) and on-demand via GitHub Actions: `.github/workflows/integration-tests.yml`.
+The workflow starts `docker-compose.integration.yml`, waits for the services to be healthy, then runs `make test-integration-real`.
 
 ## Notes
 
@@ -84,4 +86,4 @@ Tests run weekly via GitHub Actions: `.github/workflows/integration-tests.yml`
 - Redis uses separate keys with random prefixes
 - Qdrant creates temporary collections for test isolation
 - All tests clean up after themselves
-- Use `-short` flag to skip integration tests during unit test runs
+- These tests are opt-in: they skip unless `TEST_INTEGRATION=1` is set (or `-short` is passed), so a plain `go test ./...` won't fail when the integration stack is down

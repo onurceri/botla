@@ -99,7 +99,7 @@ func (r *PostgresAnalyticsRepo) GetTrends(ctx context.Context, chatbotID string,
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query analytics trends")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var results []models.DailyAnalytics
 	for rows.Next() {
@@ -264,7 +264,7 @@ func (r *PostgresAnalyticsRepo) GetUnansweredQueries(ctx context.Context, chatbo
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query unanswered queries")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var queries []string
 	for rows.Next() {
@@ -405,7 +405,7 @@ func (r *PostgresAnalyticsRepo) GetGlobalAnalytics(ctx context.Context, userID s
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query global analytics")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var data []AnalyticsPoint
 	for rows.Next() {
@@ -442,7 +442,7 @@ func (r *PostgresAnalyticsRepo) GetSourceUsageStats(ctx context.Context, chatbot
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source usage stats")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var stats []SourceUsageStat
 	for rows.Next() {
@@ -472,7 +472,7 @@ func (r *PostgresAnalyticsRepo) UpdateMessageFeedback(ctx context.Context, messa
 		SELECT m.thumbs_up, c.chatbot_id
 		FROM messages m
 		JOIN conversations c ON m.conversation_id = c.id
-		WHERE m.id = $1 FOR UPDATE
+		WHERE m.id = $1 FOR UPDATE OF m
 	`, messageID).Scan(&oldThumbsUpVar, &chatbotIDVar)
 	if err != nil {
 		return "", nil, pkgerrors.Wrapf(err, "query current feedback state")

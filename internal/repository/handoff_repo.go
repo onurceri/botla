@@ -80,7 +80,7 @@ func (r *PostgresHandoffRepo) GetHandoffRequestsByBotID(ctx context.Context, cha
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query handoff requests")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var requests []*models.HandoffRequest
 	for rows.Next() {
@@ -198,7 +198,7 @@ func (r *PostgresHandoffRepo) ListHandoffMessages(ctx context.Context, conversat
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query handoff messages")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var messages []models.Message
 	for rows.Next() {

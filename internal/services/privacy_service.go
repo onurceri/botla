@@ -19,6 +19,14 @@ var ErrActiveRequestExists = errors.New("active request already exists")
 
 var ErrRateLimitExceeded = errors.New("rate limit exceeded: please wait 24 hours between export requests")
 
+// ErrPrivacyRequestNotFound is returned when a privacy request does not exist.
+var ErrPrivacyRequestNotFound = errors.New("privacy request not found")
+
+// ErrPrivacyRequestNotOwned is returned when a privacy request belongs to another user.
+// Handlers map both this and ErrPrivacyRequestNotFound to 404 so cross-user access
+// does not reveal whether a request exists.
+var ErrPrivacyRequestNotOwned = errors.New("privacy request does not belong to user")
+
 type PrivacyService struct {
 	PrivacyRepo repository.PrivacyRepository
 	Log         *logger.Logger
@@ -53,6 +61,11 @@ func (s *PrivacyService) ExportUserData(ctx context.Context, userID string, requ
 
 	// Run export in background to avoid timeout
 	go func(expID string) {
+		defer func() {
+			if r := recover(); r != nil && s.Log != nil {
+				s.Log.Error("export_panic", map[string]any{"export_id": expID, "panic": r})
+			}
+		}()
 		// Create a new context for background job
 		bgCtx := context.Background()
 
@@ -242,6 +255,11 @@ func (s *PrivacyService) ProcessExportRequest(ctx context.Context, requestID, ad
 	}
 
 	go func(expID, userID, prID string) {
+		defer func() {
+			if r := recover(); r != nil && s.Log != nil {
+				s.Log.Error("export_panic", map[string]any{"export_id": expID, "panic": r})
+			}
+		}()
 		bgCtx := context.Background()
 		downloadURL, expiresAt, _, err := s.processExport(bgCtx, expID, userID)
 		if err != nil {
@@ -333,10 +351,10 @@ func (s *PrivacyService) DeleteMyPrivacyRequest(ctx context.Context, requestID, 
 		return pkgerrors.Wrapf(err, "get privacy request")
 	}
 	if req == nil {
-		return fmt.Errorf("request not found")
+		return ErrPrivacyRequestNotFound
 	}
 	if req.UserID == nil || *req.UserID != userID {
-		return fmt.Errorf("unauthorized: request does not belong to user")
+		return ErrPrivacyRequestNotOwned
 	}
 
 	// If it's an export request with a file, delete the file from storage

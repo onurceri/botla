@@ -75,6 +75,11 @@ func (q *QueueManager) Enqueue(jobID string) bool {
 // This is used for retry backoff.
 func (q *QueueManager) EnqueueWithDelay(jobID string, delay time.Duration) {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil && q.log != nil {
+				q.log.Error("enqueue_delay_panic", map[string]any{"job_id": jobID, "panic": r})
+			}
+		}()
 		time.Sleep(delay)
 		q.Enqueue(jobID)
 	}()

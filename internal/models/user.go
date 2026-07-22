@@ -32,13 +32,19 @@ type OnboardingData struct {
 	CreatedBotID   string `json:"created_bot_id,omitempty"`
 }
 
-// Value implements driver.Valuer for OnboardingData
+// Value implements driver.Valuer for OnboardingData.
+//
+// It returns the JSON as a string (not []byte). With pgx's simple query protocol
+// (used by db.New via default_query_exec_mode=simple_protocol), a []byte value is
+// encoded as a bytea hex literal and Postgres rejects it for a jsonb column with
+// "invalid input syntax for type json". A string is sent as an untyped literal that
+// Postgres correctly parses as jsonb under both the simple and extended protocols.
 func (o OnboardingData) Value() (driver.Value, error) {
 	b, err := json.Marshal(o)
 	if err != nil {
 		return nil, fmt.Errorf("marshal onboarding data: %w", err)
 	}
-	return b, nil
+	return string(b), nil
 }
 
 // Scan implements sql.Scanner for OnboardingData

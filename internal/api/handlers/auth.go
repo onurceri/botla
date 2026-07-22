@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/onurceri/botla-app/internal/api"
 	"github.com/onurceri/botla-app/internal/auth"
 	"github.com/onurceri/botla-app/internal/services"
@@ -114,7 +116,7 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var existing string
-	err := h.DB.QueryRowContext(r.Context(), "SELECT id FROM users WHERE email=$1", req.Email).Scan(&existing)
+	err := h.DB.QueryRowContext(r.Context(), "SELECT id FROM users WHERE email=$1 AND deleted_at IS NULL", req.Email).Scan(&existing)
 	if err == nil && existing != "" {
 		api.WriteErrorCode(w, http.StatusConflict, api.ErrEmailExists)
 		return
@@ -142,6 +144,13 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		}(),
 	).Scan(&userID)
 	if err != nil {
+		// A concurrent registration can win the race between the email pre-check above
+		// and this INSERT; map the unique-violation to 409 instead of a generic 500.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			api.WriteErrorCode(w, http.StatusConflict, api.ErrEmailExists)
+			return
+		}
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrFailedToCreateUser)
 		return
 	}
@@ -195,7 +204,7 @@ func (h *AuthHandlers) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var userID string
 	var hash string
 	var isPlatformAdmin bool
-	err := h.DB.QueryRowContext(r.Context(), "SELECT id, password_hash, is_platform_admin FROM users WHERE LOWER(email) = LOWER($1)", req.Email).Scan(&userID, &hash, &isPlatformAdmin)
+	err := h.DB.QueryRowContext(r.Context(), "SELECT id, password_hash, is_platform_admin FROM users WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL", req.Email).Scan(&userID, &hash, &isPlatformAdmin)
 	if err == sql.ErrNoRows {
 		api.WriteErrorCode(w, http.StatusUnauthorized, api.ErrInvalidCredentials)
 		return

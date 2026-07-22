@@ -4,6 +4,8 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/onurceri/botla-app/internal/models"
@@ -123,7 +125,7 @@ func (r *PostgresConversationRepo) GetMessages(ctx context.Context, conversation
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query messages")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var messages []models.Message
 	for rows.Next() {
@@ -182,7 +184,7 @@ func (r *PostgresConversationRepo) ListRecentMessages(ctx context.Context, conve
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query recent messages")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var messages []models.Message
 	for rows.Next() {
@@ -207,34 +209,32 @@ func (r *PostgresConversationRepo) SaveMessageSources(ctx context.Context, messa
 		return nil
 	}
 
-	tx, err := r.pool.BeginTx(ctx, nil)
-	if err != nil {
-		return pkgerrors.Wrapf(err, "begin tx")
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	stmt, err := tx.PrepareContext(ctx, `
-        INSERT INTO message_sources (message_id, source_id, chunk_index, source_type, relevance_score)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (message_id, source_id, chunk_index) DO NOTHING
-    `)
-	if err != nil {
-		return pkgerrors.Wrapf(err, "prepare stmt")
-	}
-	defer func() { _ = stmt.Close() }()
-
+	// Persist all sources in a single multi-row INSERT instead of one round-trip per
+	// source. Entries without a source ID are skipped (nothing to reference).
+	var sb strings.Builder
+	args := make([]interface{}, 0, len(sources)*5)
+	sb.WriteString(`INSERT INTO message_sources (message_id, source_id, chunk_index, source_type, relevance_score) VALUES `)
+	argIdx := 1
+	rows := 0
 	for _, src := range sources {
 		if src.SourceID == "" {
 			continue
 		}
-		_, err = stmt.ExecContext(ctx, messageID, src.SourceID, src.ChunkIndex, src.SourceType, src.Score)
-		if err != nil {
-			return pkgerrors.Wrapf(err, "exec stmt")
+		if rows > 0 {
+			sb.WriteString(", ")
 		}
+		fmt.Fprintf(&sb, "($%d, $%d, $%d, $%d, $%d)", argIdx, argIdx+1, argIdx+2, argIdx+3, argIdx+4)
+		args = append(args, messageID, src.SourceID, src.ChunkIndex, src.SourceType, src.Score)
+		argIdx += 5
+		rows++
 	}
+	if rows == 0 {
+		return nil
+	}
+	sb.WriteString(" ON CONFLICT (message_id, source_id, chunk_index) DO NOTHING")
 
-	if err := tx.Commit(); err != nil {
-		return pkgerrors.Wrapf(err, "commit tx")
+	if _, err := r.pool.ExecContext(ctx, sb.String(), args...); err != nil {
+		return pkgerrors.Wrapf(err, "insert message sources")
 	}
 	return nil
 }

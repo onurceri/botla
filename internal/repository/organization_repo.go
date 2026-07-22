@@ -154,7 +154,7 @@ func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter Organiz
 		}
 		return nil, 0, pkgerrors.Wrapf(err, "query organizations")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var orgs []*models.Organization
 	for rows.Next() {

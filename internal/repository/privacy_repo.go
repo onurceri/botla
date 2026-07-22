@@ -158,7 +158,7 @@ func (r *PostgresPrivacyRepo) GetUserConsents(ctx context.Context, userID string
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "get user consents")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var consents []UserConsent
 	for rows.Next() {
@@ -400,7 +400,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 		}
 		return nil, 0, pkgerrors.Wrapf(err, "list privacy requests")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var requests []PrivacyRequest
 	for rows.Next() {
@@ -593,7 +593,7 @@ func (r *PostgresPrivacyRepo) GetUserFilesForDeletion(ctx context.Context, userI
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbot icons")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	for rows.Next() {
 		var icon string
@@ -860,7 +860,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, u
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "list privacy requests by user")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var requests []PrivacyRequest
 	for rows.Next() {

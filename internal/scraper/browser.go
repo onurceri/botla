@@ -17,6 +17,7 @@ type BrowserPool struct {
 	browsers    []*rod.Browser
 	mu          sync.Mutex
 	idx         int
+	size        int
 	sem         chan struct{}
 	idleTTL     time.Duration
 	lastUse     time.Time
@@ -30,6 +31,7 @@ func NewBrowserPool(size int, idleTTL time.Duration, browserPath string) (*Brows
 		size = 2
 	}
 	bp := &BrowserPool{
+		size:        size,
 		sem:         make(chan struct{}, size),
 		idleTTL:     idleTTL,
 		stop:        make(chan struct{}),
@@ -37,17 +39,22 @@ func NewBrowserPool(size int, idleTTL time.Duration, browserPath string) (*Brows
 		browserPath: browserPath,
 	}
 	for i := 0; i < size; i++ {
-		l := launcher.New().Headless(true)
-		if browserPath != "" {
-			l = l.Bin(browserPath)
-		}
-		u := l.MustLaunch()
-		b := rod.New().ControlURL(u).MustConnect()
-		bp.browsers = append(bp.browsers, b)
+		bp.browsers = append(bp.browsers, launchBrowser(browserPath))
 	}
 	bp.wg.Add(1)
 	go bp.reaper()
 	return bp, nil
+}
+
+// launchBrowser starts a headless browser and connects to it. Extracted so the
+// initial pool fill and the post-reap refill share one implementation.
+func launchBrowser(browserPath string) *rod.Browser {
+	l := launcher.New().Headless(true)
+	if browserPath != "" {
+		l = l.Bin(browserPath)
+	}
+	u := l.MustLaunch()
+	return rod.New().ControlURL(u).MustConnect()
 }
 
 func (bp *BrowserPool) reaper() {
@@ -103,15 +110,14 @@ func (bp *BrowserPool) nextBrowser() *rod.Browser {
 	defer bp.mu.Unlock()
 	bp.lastUse = time.Now()
 	if len(bp.browsers) == 0 {
-		l := launcher.New().Headless(true)
-		if bp.browserPath != "" {
-			l = l.Bin(bp.browserPath)
+		// The pool was reaped while idle; refill to the configured size rather than
+		// a single browser, otherwise it stays stuck at size 1 until restart.
+		// Holding bp.mu here is safe: callers acquire the size-bounded semaphore
+		// before calling nextBrowser, so they are already serialized.
+		for i := 0; i < bp.size; i++ {
+			bp.browsers = append(bp.browsers, launchBrowser(bp.browserPath))
 		}
-		u := l.MustLaunch()
-		b := rod.New().ControlURL(u).MustConnect()
-		bp.browsers = append(bp.browsers, b)
 		bp.idx = 0
-		return b
 	}
 	b := bp.browsers[bp.idx%len(bp.browsers)]
 	bp.idx++

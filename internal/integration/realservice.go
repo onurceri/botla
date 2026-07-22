@@ -35,6 +35,13 @@ func SetupRealServices(t *testing.T) *RealServiceTestEnv {
 	if testing.Short() {
 		t.Skip("Skipping real service integration test in short mode")
 	}
+	// Real-service tests require the dedicated integration stack (see
+	// docker-compose.integration.yml). They are opt-in via TEST_INTEGRATION so that a
+	// plain `go test ./...` skips them instead of failing without the stack. The
+	// `make test-integration-*` targets set TEST_INTEGRATION=1 and start the stack.
+	if os.Getenv("TEST_INTEGRATION") == "" {
+		t.Skip("Skipping real service integration test; set TEST_INTEGRATION=1 to run")
+	}
 
 	cfg := buildTestConfig()
 
@@ -43,8 +50,14 @@ func SetupRealServices(t *testing.T) *RealServiceTestEnv {
 		t.Fatalf("Failed to create PostgreSQL pool: %v", err)
 	}
 
-	testDB := testdb.OpenParallelTestDB(t)
-	db := testDB
+	// Create the isolated test schema on the SAME database as the pool above.
+	// testdb.OpenParallelTestDB derives its target from the environment and defaults
+	// to botla_test:5432, whereas the pool targets the integration database
+	// (botla_integration:5433 by default) — so the two would diverge. Build the base
+	// DSN from cfg to keep env.DB and env.PGPool pointed at the same database.
+	baseDSN := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_NAME, cfg.DB_SSLMODE)
+	db := testdb.OpenParallelTestDBWithBaseDSN(t, baseDSN)
 
 	var schema string
 	err = db.QueryRow("SELECT current_schema()").Scan(&schema)

@@ -68,7 +68,7 @@ func (r *PostgresPendingURLRepo) ListPendingURLs(ctx context.Context, chatbotID 
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query pending urls")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var urls []models.PendingURL
 	for rows.Next() {
@@ -142,7 +142,7 @@ func (r *PostgresPendingURLRepo) GetPendingURLsByIDs(ctx context.Context, chatbo
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query pending urls by ids")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var urls []models.PendingURL
 	for rows.Next() {

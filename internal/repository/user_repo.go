@@ -81,7 +81,7 @@ func (r *PostgresUserRepo) GetByID(ctx context.Context, id string) (*models.User
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query user")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	users, err := r.scanUsers(rows)
 	if err != nil {
@@ -143,7 +143,7 @@ func (r *PostgresUserRepo) AdminListUsers(ctx context.Context, filter UserFilter
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query users")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	users, err := r.scanUsers(rows)
 	if err != nil {
@@ -204,7 +204,7 @@ func (r *PostgresUserRepo) GetByEmail(ctx context.Context, email string) (*model
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query user by email")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	users, err := r.scanUsers(rows)
 	if err != nil {

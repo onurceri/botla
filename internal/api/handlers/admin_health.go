@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -42,11 +43,17 @@ type DetailedHealth struct {
 
 // AdminHealthHandlers handles detailed health check endpoints for platform admins.
 type AdminHealthHandlers struct {
-	DB        *sql.DB
-	Redis     *redis.Client
-	Cfg       *config.Config
-	StartTime time.Time
+	DB         *sql.DB
+	Redis      *redis.Client
+	Cfg        *config.Config
+	StartTime  time.Time
+	HTTPClient *http.Client
 }
+
+// defaultHealthHTTPClient is the fallback for handlers built without an explicit
+// HTTPClient (e.g. unit tests that construct AdminHealthHandlers directly). Handlers
+// created via NewAdminHealthHandlers always get a shared, connection-pooling client.
+var defaultHealthHTTPClient = &http.Client{Timeout: 5 * time.Second}
 
 // NewAdminHealthHandlers creates a new AdminHealthHandlers.
 func NewAdminHealthHandlers(db *sql.DB, redis *redis.Client, cfg *config.Config) *AdminHealthHandlers {
@@ -55,7 +62,27 @@ func NewAdminHealthHandlers(db *sql.DB, redis *redis.Client, cfg *config.Config)
 		Redis:     redis,
 		Cfg:       cfg,
 		StartTime: time.Now(),
+		// Shared, connection-pooling client so the health checks reuse connections
+		// instead of creating a new client (and pool) per check, which can exhaust
+		// ephemeral ports under frequent polling.
+		HTTPClient: &http.Client{
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        20,
+				MaxIdleConnsPerHost: 5,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
 	}
+}
+
+// httpClient returns the handler's shared client, or a default fallback when the
+// handler was constructed without one.
+func (h *AdminHealthHandlers) httpClient() *http.Client {
+	if h.HTTPClient != nil {
+		return h.HTTPClient
+	}
+	return defaultHealthHTTPClient
 }
 
 // GetDetailedHealth returns comprehensive health status of all system dependencies.
@@ -81,20 +108,38 @@ func (h *AdminHealthHandlers) GetDetailedHealth(w http.ResponseWriter, r *http.R
 	var wg sync.WaitGroup
 	results := make(chan DependencyStatus, 6) // buffer for all checks
 
-	checks := []func(context.Context) DependencyStatus{
-		h.checkPostgres,
-		h.checkRedis,
-		h.checkQdrant,
-		h.checkOpenAI,
-		h.checkOpenRouter,
-		h.checkStorage,
+	checks := []struct {
+		name string
+		fn   func(context.Context) DependencyStatus
+	}{
+		{"postgres", h.checkPostgres},
+		{"redis", h.checkRedis},
+		{"qdrant", h.checkQdrant},
+		{"openai", h.checkOpenAI},
+		{"openrouter", h.checkOpenRouter},
+		{"storage", h.checkStorage},
 	}
 
 	for _, check := range checks {
 		wg.Add(1)
-		go func(fn func(context.Context) DependencyStatus) {
+		go func(c struct {
+			name string
+			fn   func(context.Context) DependencyStatus
+		}) {
 			defer wg.Done()
-			results <- fn(ctx)
+			// Recover so a panicking check cannot crash the process; report the
+			// dependency as down instead.
+			defer func() {
+				if r := recover(); r != nil {
+					results <- DependencyStatus{
+						Name:      c.name,
+						Status:    "down",
+						Message:   fmt.Sprintf("panic during health check: %v", r),
+						CheckedAt: time.Now(),
+					}
+				}
+			}()
+			results <- c.fn(ctx)
 		}(check)
 	}
 
@@ -241,7 +286,7 @@ func (h *AdminHealthHandlers) checkQdrant(ctx context.Context) DependencyStatus 
 		CheckedAt: start,
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := h.httpClient()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.Cfg.QDRANT_URL+"/healthz", nil)
 	if err != nil {
 		status.Status = "down"
@@ -296,7 +341,7 @@ func (h *AdminHealthHandlers) checkOpenAI(ctx context.Context) DependencyStatus 
 		return status
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := h.httpClient()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.Cfg.OPENAI_API_BASE+"/v1/models", nil)
 	if err != nil {
 		status.Status = "down"
@@ -349,7 +394,7 @@ func (h *AdminHealthHandlers) checkOpenRouter(ctx context.Context) DependencySta
 		return status
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := h.httpClient()
 	// OpenRouter auth key endpoint (validates the key)
 	// We use /auth/key instead of /models because /models is public and returns 200 even with an invalid key.
 	url := h.Cfg.OPENROUTER_API_BASE + "/auth/key"

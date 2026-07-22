@@ -34,7 +34,7 @@ func (r *PostgresAdminRepo) InsertAuditLog(ctx context.Context, entry AuditLogEn
 	query, args, err := psql.
 		Insert("admin_audit_logs").
 		Columns("admin_user_id", "action", "target_type", "target_id", "details", "ip_address", "user_agent").
-		Values(entry.AdminUserID, entry.Action, entry.TargetType, entry.TargetID, detailsJSON, entry.IPAddress, entry.UserAgent).
+		Values(entry.AdminUserID, entry.Action, entry.TargetType, entry.TargetID, string(detailsJSON), entry.IPAddress, entry.UserAgent).
 		ToSql()
 	if err != nil {
 		return pkgerrors.Wrapf(err, "build insert audit log query")
@@ -56,7 +56,7 @@ func (r *PostgresAdminRepo) ListAuditLogs(ctx context.Context, filter AuditFilte
 	if limit <= 0 {
 		limit = 50
 	}
-	
+
 	limit64, offset64, err := ValidatePagination(limit, offset)
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
@@ -100,7 +100,7 @@ func (r *PostgresAdminRepo) ListAuditLogs(ctx context.Context, filter AuditFilte
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query audit logs")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var logs []AuditLogEntry
 	var totalCount int
@@ -199,7 +199,7 @@ func (r *PostgresAdminRepo) AdminListSources(ctx context.Context, filter AdminSo
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query admin sources")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var sources []AdminSource
 	for rows.Next() {
@@ -345,7 +345,7 @@ func (r *PostgresAdminRepo) AdminGetSourceStats(ctx context.Context) (*SourceSta
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source stats")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	stats := &SourceStats{
 		StatusCounts: make(map[string]int),
@@ -418,7 +418,7 @@ func (r *PostgresAdminRepo) ListErrorLogs(ctx context.Context, severity string, 
 	if err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "query error logs")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var logs []ErrorLogEntry
 	total := 0
@@ -523,7 +523,7 @@ func (r *PostgresAdminRepo) GetErrorStats(ctx context.Context) (*ErrorStats, err
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query error stats")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	stats := &ErrorStats{
 		SeverityCounts: make(map[string]int),

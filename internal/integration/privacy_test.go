@@ -217,6 +217,12 @@ func TestPrivacyFlow(t *testing.T) {
 	})
 
 	t.Run("Admin Deny Request with Reason", func(t *testing.T) {
+		// Fresh user: the shared user already has a pending export request, which
+		// would make this POST fail with a 409 duplicate conflict.
+		denyEmail := fmt.Sprintf("deny_%d@example.com", time.Now().UnixNano())
+		registerUser(t, te.DB, te.Server.URL, denyEmail, "Test@123")
+		denyToken := loginUser(t, te.Server.URL, denyEmail, "Test@123")
+
 		// Create a new request to deny
 		body := map[string]string{
 			"reason": "Test reason",
@@ -224,10 +230,13 @@ func TestPrivacyFlow(t *testing.T) {
 		b, err := json.Marshal(body)
 		require.NoError(t, err)
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/export", bytes.NewReader(b))
-		req.Header.Set("Authorization", "Bearer "+userToken)
-		resp, _ := testHTTPClient().Do(req)
+		req.Header.Set("Authorization", "Bearer "+denyToken)
+		resp, err := testHTTPClient().Do(req)
+		require.NoError(t, err)
+		require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.StatusCode)
 		var pr repository.PrivacyRequest
-		json.NewDecoder(resp.Body).Decode(&pr)
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&pr))
+		require.NotEmpty(t, pr.ID)
 		drainBody(resp)
 
 		// Deny it
@@ -345,25 +354,27 @@ func TestPrivacyFlow(t *testing.T) {
 	})
 
 	t.Run("User List Privacy Requests with Pagination", func(t *testing.T) {
-		// Create multiple privacy requests to test pagination
-		// Use different request types to bypass the active request rate limit
-		requestTypes := []string{"correction", "deletion"}
-		for i := 0; i < 15; i++ {
-			body := map[string]string{
-				"reason": fmt.Sprintf("Test %s %d", requestTypes[i%len(requestTypes)], i),
-			}
-			b, err := json.Marshal(body)
+		// Fresh user: the shared user's account is deleted by "Admin Process Request".
+		pagEmail := fmt.Sprintf("pag_%d@example.com", time.Now().UnixNano())
+		pagUserID := registerUser(t, te.DB, te.Server.URL, pagEmail, "Test@123")
+		pagToken := loginUser(t, te.Server.URL, pagEmail, "Test@123")
+
+		// Seed >10 requests directly in the DB so the list spans two pages. We bypass
+		// the API here because duplicate-prevention limits a user to one active request
+		// per type, which could never reach the >10 rows needed to exercise pagination.
+		seedTypes := []string{"correction", "deletion", "export"}
+		for i := 0; i < 12; i++ {
+			_, err := te.DB.Exec(
+				`INSERT INTO privacy_requests (user_id, user_email, request_type, status, reason)
+				 VALUES ($1, $2, $3, 'completed', $4)`,
+				pagUserID, pagEmail, seedTypes[i%len(seedTypes)], fmt.Sprintf("seed %d", i),
+			)
 			require.NoError(t, err)
-			req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/"+requestTypes[i%len(requestTypes)], bytes.NewReader(b))
-			req.Header.Set("Authorization", "Bearer "+userToken)
-			resp, err := testHTTPClient().Do(req)
-			require.NoError(t, err)
-			drainBody(resp)
 		}
 
 		// Test first page with limit 10
 		req1, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/privacy/requests?page=1&limit=10", nil)
-		req1.Header.Set("Authorization", "Bearer "+userToken)
+		req1.Header.Set("Authorization", "Bearer "+pagToken)
 
 		resp1, err := testHTTPClient().Do(req1)
 		require.NoError(t, err)
@@ -387,7 +398,7 @@ func TestPrivacyFlow(t *testing.T) {
 
 		// Test second page
 		req2, _ := http.NewRequest(http.MethodGet, te.Server.URL+"/api/v1/me/privacy/requests?page=2&limit=10", nil)
-		req2.Header.Set("Authorization", "Bearer "+userToken)
+		req2.Header.Set("Authorization", "Bearer "+pagToken)
 
 		resp2, err := testHTTPClient().Do(req2)
 		require.NoError(t, err)
@@ -409,6 +420,12 @@ func TestPrivacyFlow(t *testing.T) {
 	})
 
 	t.Run("User Delete Privacy Request", func(t *testing.T) {
+		// Fresh user: the shared user's account is deleted by "Admin Process Request",
+		// and it already has pending requests that would cause duplicate conflicts.
+		delEmail := fmt.Sprintf("del_%d@example.com", time.Now().UnixNano())
+		registerUser(t, te.DB, te.Server.URL, delEmail, "Test@123")
+		delToken := loginUser(t, te.Server.URL, delEmail, "Test@123")
+
 		// Create a new privacy request to delete
 		body := map[string]string{
 			"reason": "Test for deletion",
@@ -416,19 +433,21 @@ func TestPrivacyFlow(t *testing.T) {
 		b, err := json.Marshal(body)
 		require.NoError(t, err)
 		req, _ := http.NewRequest(http.MethodPost, te.Server.URL+"/api/v1/me/privacy/correction", bytes.NewReader(b))
-		req.Header.Set("Authorization", "Bearer "+userToken)
+		req.Header.Set("Authorization", "Bearer "+delToken)
 
 		resp, err := testHTTPClient().Do(req)
 		require.NoError(t, err)
 		defer drainBody(resp)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var pr repository.PrivacyRequest
 		err = json.NewDecoder(resp.Body).Decode(&pr)
 		require.NoError(t, err)
+		require.NotEmpty(t, pr.ID)
 
 		// Delete the request
 		deleteReq, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/me/privacy/requests/"+pr.ID, nil)
-		deleteReq.Header.Set("Authorization", "Bearer "+userToken)
+		deleteReq.Header.Set("Authorization", "Bearer "+delToken)
 
 		deleteResp, err := testHTTPClient().Do(deleteReq)
 		require.NoError(t, err)
@@ -443,6 +462,11 @@ func TestPrivacyFlow(t *testing.T) {
 	})
 
 	t.Run("User Cannot Delete Another User's Request", func(t *testing.T) {
+		// Fresh actor user: the shared user's account is deleted by "Admin Process Request".
+		actorEmail := fmt.Sprintf("actor_%d@example.com", time.Now().UnixNano())
+		registerUser(t, te.DB, te.Server.URL, actorEmail, "Test@123")
+		actorToken := loginUser(t, te.Server.URL, actorEmail, "Test@123")
+
 		// Create another user
 		otherUserEmail := fmt.Sprintf("other_%d@example.com", time.Now().UnixNano())
 		registerUser(t, te.DB, te.Server.URL, otherUserEmail, "Test@123")
@@ -464,10 +488,11 @@ func TestPrivacyFlow(t *testing.T) {
 		var pr repository.PrivacyRequest
 		err = json.NewDecoder(resp.Body).Decode(&pr)
 		require.NoError(t, err)
+		require.NotEmpty(t, pr.ID)
 
-		// Try to delete with the first user's token
+		// Try to delete with the actor's token (the request belongs to the other user)
 		deleteReq, _ := http.NewRequest(http.MethodDelete, te.Server.URL+"/api/v1/me/privacy/requests/"+pr.ID, nil)
-		deleteReq.Header.Set("Authorization", "Bearer "+userToken)
+		deleteReq.Header.Set("Authorization", "Bearer "+actorToken)
 
 		deleteResp, err := testHTTPClient().Do(deleteReq)
 		require.NoError(t, err)

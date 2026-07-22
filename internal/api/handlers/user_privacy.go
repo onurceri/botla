@@ -452,6 +452,12 @@ func (h *UserPrivacyHandlers) DeleteMyPrivacyRequest(w http.ResponseWriter, r *h
 	}
 
 	if err := h.PrivacyService.DeleteMyPrivacyRequest(r.Context(), id, userID); err != nil {
+		// Map not-found and not-owned to 404 so cross-user access does not reveal
+		// whether a request exists (matches GetMyPrivacyRequest's convention).
+		if errors.Is(err, services.ErrPrivacyRequestNotFound) || errors.Is(err, services.ErrPrivacyRequestNotOwned) {
+			api.WriteErrorCode(w, http.StatusNotFound, api.ErrCodeNotFound)
+			return
+		}
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}

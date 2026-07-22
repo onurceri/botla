@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/onurceri/botla-app/pkg/config"
 )
@@ -13,6 +14,7 @@ import (
 type ClientFactory struct {
 	customClients map[string]LLMClient
 	cfg           *config.Config
+	cbMu          sync.Mutex // guards cbManager against concurrent lazy-init and reads
 	cbManager     *CircuitBreakerManager
 }
 
@@ -27,57 +29,63 @@ func NewClientFactory(cfg *config.Config) *ClientFactory {
 
 // InitCircuitBreakers initializes circuit breakers for all configured providers
 func (f *ClientFactory) InitCircuitBreakers() error {
-	f.cbManager = NewCircuitBreakerManager()
-
-	// Register OpenRouter if configured
-	if f.IsProviderConfigured("openrouter") {
-		client, err := f.GetClient("openrouter")
-		if err == nil {
-			f.cbManager.RegisterClient("openrouter", client)
-		}
-	}
-
-	// Register OpenAI if configured
-	if f.IsProviderConfigured("openai") {
-		client, err := f.GetClient("openai")
-		if err == nil {
-			f.cbManager.RegisterClient("openai", client)
-		}
-	}
-
+	m := NewCircuitBreakerManager()
+	f.registerConfiguredProviders(m)
+	f.setCBManager(m)
 	return nil
 }
 
 // InitCircuitBreakersWithSettings initializes circuit breakers with custom settings
 func (f *ClientFactory) InitCircuitBreakersWithSettings(settings CircuitBreakerSettings) error {
-	f.cbManager = NewCircuitBreakerManagerWithSettings(settings)
-
-	if f.IsProviderConfigured("openrouter") {
-		client, err := f.GetClient("openrouter")
-		if err == nil {
-			f.cbManager.RegisterClient("openrouter", client)
-		}
-	}
-
-	if f.IsProviderConfigured("openai") {
-		client, err := f.GetClient("openai")
-		if err == nil {
-			f.cbManager.RegisterClient("openai", client)
-		}
-	}
-
+	m := NewCircuitBreakerManagerWithSettings(settings)
+	f.registerConfiguredProviders(m)
+	f.setCBManager(m)
 	return nil
+}
+
+// registerConfiguredProviders registers all configured providers on the given manager.
+// It does not touch f.cbManager and is safe to call with or without f.cbMu held.
+func (f *ClientFactory) registerConfiguredProviders(m *CircuitBreakerManager) {
+	// Register OpenRouter if configured
+	if f.IsProviderConfigured("openrouter") {
+		if client, err := f.GetClient("openrouter"); err == nil {
+			m.RegisterClient("openrouter", client)
+		}
+	}
+
+	// Register OpenAI if configured
+	if f.IsProviderConfigured("openai") {
+		if client, err := f.GetClient("openai"); err == nil {
+			m.RegisterClient("openai", client)
+		}
+	}
+}
+
+// setCBManager publishes the manager, guarding the pointer write.
+func (f *ClientFactory) setCBManager(m *CircuitBreakerManager) {
+	f.cbMu.Lock()
+	f.cbManager = m
+	f.cbMu.Unlock()
+}
+
+// getCBManager returns the manager, lazily initializing it under the lock so that
+// concurrent first-callers cannot trigger a double init (or read a half-written pointer).
+func (f *ClientFactory) getCBManager() *CircuitBreakerManager {
+	f.cbMu.Lock()
+	defer f.cbMu.Unlock()
+	if f.cbManager == nil {
+		m := NewCircuitBreakerManager()
+		f.registerConfiguredProviders(m)
+		f.cbManager = m
+	}
+	return f.cbManager
 }
 
 // GetCircuitBreakerClient returns a circuit breaker wrapped client for the provider
 func (f *ClientFactory) GetCircuitBreakerClient(provider string) (*CircuitBreakerClient, error) {
-	if f.cbManager == nil {
-		if err := f.InitCircuitBreakers(); err != nil {
-			return nil, err
-		}
-	}
+	m := f.getCBManager()
 
-	client, ok := f.cbManager.GetClient(provider)
+	client, ok := m.GetClient(provider)
 	if !ok {
 		return nil, errors.New("no circuit breaker registered for provider: " + provider)
 	}
@@ -86,18 +94,24 @@ func (f *ClientFactory) GetCircuitBreakerClient(provider string) (*CircuitBreake
 
 // GetCircuitBreakerStatus returns the current status of all circuit breakers
 func (f *ClientFactory) GetCircuitBreakerStatus() map[string]ProviderStatus {
-	if f.cbManager == nil {
+	f.cbMu.Lock()
+	m := f.cbManager
+	f.cbMu.Unlock()
+	if m == nil {
 		return make(map[string]ProviderStatus)
 	}
-	return f.cbManager.GetAllProviderStatus()
+	return m.GetAllProviderStatus()
 }
 
 // GetLLMMetrics returns the LLM metrics if circuit breakers are initialized
 func (f *ClientFactory) GetLLMMetrics() *LLMMetrics {
-	if f.cbManager == nil {
+	f.cbMu.Lock()
+	m := f.cbManager
+	f.cbMu.Unlock()
+	if m == nil {
 		return nil
 	}
-	return f.cbManager.GetMetrics()
+	return m.GetMetrics()
 }
 
 // RegisterClient registers a custom client (useful for mocking)

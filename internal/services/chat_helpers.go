@@ -238,6 +238,15 @@ func (s *ChatService) trackAnalyticsAsync(cc *chatContext, messageID string) {
 	if s.SyncAnalytics {
 		fn()
 	} else {
-		go fn()
+		// Wrap in panic recovery so a panic inside fn (e.g. a nil AnalyticsRepo)
+		// cannot crash the whole process. Mirrors the LI-001 pattern in handoff_service.go.
+		go func() {
+			defer func() {
+				if r := recover(); r != nil && s.Log != nil {
+					s.Log.Error("async_analytics_panic", map[string]any{"panic": r})
+				}
+			}()
+			fn()
+		}()
 	}
 }

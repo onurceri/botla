@@ -42,6 +42,41 @@ var migrationOnce = struct {
 	migrated map[string]bool
 }{migrated: make(map[string]bool)}
 
+// migrationLockID serializes test-database bootstrap (schema creation + migrations)
+// across concurrently-running test processes that share the same database.
+//
+// The migrations contain database-global statements — `CREATE EXTENSION IF NOT
+// EXISTS ...` — whose IF NOT EXISTS guard is NOT safe under concurrency: two
+// sessions can both observe the extension as absent and then race to insert into
+// pg_extension, and the loser fails with a pg_extension_name_index unique
+// violation. Holding one database-scoped advisory lock for the whole bootstrap
+// prevents that race. Advisory locks are per-database, so other databases are
+// unaffected.
+const migrationLockID int64 = 54320001
+
+// withMigrationLock pins a single connection from db, acquires the database-level
+// migration advisory lock on it, runs fn with that pinned connection, and releases
+// the lock. A single pinned connection is required because pg_advisory_lock is
+// session-scoped: running statements through the *sql.DB pool directly could execute
+// the lock and the subsequent statements on different sessions, releasing the lock
+// prematurely.
+func withMigrationLock(ctx context.Context, db *sql.DB, fn func(conn *sql.Conn) error) error {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("acquire conn: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	if _, err := conn.ExecContext(ctx, "SELECT pg_advisory_lock($1)", migrationLockID); err != nil {
+		return fmt.Errorf("acquire migration lock: %w", err)
+	}
+	defer func() {
+		_, _ = conn.ExecContext(ctx, "SELECT pg_advisory_unlock($1)", migrationLockID)
+	}()
+
+	return fn(conn)
+}
+
 // registerActiveSchema marks a schema as in-use by this process
 func registerActiveSchema(schema string) {
 	activeSchemas.Lock()
@@ -150,21 +185,25 @@ func OpenTestDBWithSchema(t *testing.T, schema string) *sql.DB {
 	alreadyMigrated := migrationOnce.migrated[schema]
 	migrationOnce.Unlock()
 
-	// Create schema if it doesn't exist
+	// Create schema if it doesn't exist. Serialized via the migration advisory lock
+	// so concurrent processes cannot race on CREATE SCHEMA for the same name.
 	baseDSN := getTestDSN("")
 	baseDB, err := sql.Open("pgx", baseDSN)
 	if err != nil {
 		t.Fatalf("open base db for schema creation: %v", err)
 	}
-	if _, err = baseDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema)); err != nil {
-		_ = baseDB.Close()
+	err = withMigrationLock(context.Background(), baseDB, func(conn *sql.Conn) error {
+		_, e := conn.ExecContext(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema))
+		return e
+	})
+	_ = baseDB.Close()
+	if err != nil {
 		t.Fatalf("create schema %s: %v", schema, err)
 	}
-	_ = baseDB.Close()
 
 	// Run migrations only if not already done
 	if !alreadyMigrated {
-		runMigrations(t, schema)
+		runMigrations(t, schema, envDSNResolver())
 		migrationOnce.Lock()
 		migrationOnce.migrated[schema] = true
 		migrationOnce.Unlock()
@@ -196,6 +235,33 @@ func OpenTestDBWithSchema(t *testing.T, schema string) *sql.DB {
 	return db
 }
 
+// dsnResolver returns a connection DSN for the given schema. An empty schema means
+// the base database (no search_path). This lets the schema/migration machinery run
+// against either the environment-derived test database (the default) or an
+// explicitly-provided database (e.g. the dedicated integration database) without
+// mutating process environment — which would be unsafe for parallel tests.
+type dsnResolver func(schema string) string
+
+// envDSNResolver resolves DSNs from the environment / defaults (existing behavior).
+func envDSNResolver() dsnResolver {
+	return func(schema string) string { return getTestDSN(schema) }
+}
+
+// baseDSNResolver resolves DSNs from an explicit base DSN (no schema), appending the
+// per-schema search_path option as needed.
+func baseDSNResolver(baseDSN string) dsnResolver {
+	return func(schema string) string {
+		if schema == "" {
+			return baseDSN
+		}
+		sep := "?"
+		if strings.Contains(baseDSN, "?") {
+			sep = "&"
+		}
+		return baseDSN + sep + "options=-c%20search_path%3D" + url.QueryEscape(schema)
+	}
+}
+
 // OpenParallelTestDB creates an isolated schema for parallel test execution.
 // Each call creates a unique schema that is dropped when the test ends.
 // Use this for tests that need true parallel execution.
@@ -212,6 +278,22 @@ func OpenTestDBWithSchema(t *testing.T, schema string) *sql.DB {
 //	}
 func OpenParallelTestDB(t *testing.T) *sql.DB {
 	t.Helper()
+	return openParallelTestDB(t, envDSNResolver())
+}
+
+// OpenParallelTestDBWithBaseDSN behaves like OpenParallelTestDB but creates the
+// isolated schema on the database identified by baseDSN (a full postgres DSN without
+// a schema/search_path) instead of the environment-derived default. Use this when a
+// test already knows which database it must target — e.g. the real-service
+// integration tests, whose connection pool and test schema must point at the same
+// (integration) database rather than diverging onto the default test database.
+func OpenParallelTestDBWithBaseDSN(t *testing.T, baseDSN string) *sql.DB {
+	t.Helper()
+	return openParallelTestDB(t, baseDSNResolver(baseDSN))
+}
+
+func openParallelTestDB(t *testing.T, resolve dsnResolver) *sql.DB {
+	t.Helper()
 
 	// Generate unique schema name
 	schema := generateUniqueSchema(t)
@@ -223,11 +305,11 @@ func OpenParallelTestDB(t *testing.T) *sql.DB {
 	// Create the schema (needs lock to prevent race in schema creation)
 	schemaCreationLock.Lock()
 	defer schemaCreationLock.Unlock()
-	db := createSchemaAndConnect(t, schema)
+	db := createSchemaAndConnect(t, schema, resolve)
 
 	// Register cleanup to drop schema when test ends
 	t.Cleanup(func() {
-		dropSchema(t, db, schema)
+		dropSchema(t, db, schema, resolve)
 		unregisterActiveSchema(schema)
 	})
 
@@ -245,28 +327,31 @@ func generateUniqueSchema(t *testing.T) string {
 }
 
 // createSchemaAndConnect creates a new schema, runs migrations, and returns a connection
-func createSchemaAndConnect(t *testing.T, schema string) *sql.DB {
+func createSchemaAndConnect(t *testing.T, schema string, resolve dsnResolver) *sql.DB {
 	t.Helper()
 
 	// First, connect without schema to create it
-	baseDSN := getTestDSN("")
+	baseDSN := resolve("")
 	baseDB, err := sql.Open("pgx", baseDSN)
 	if err != nil {
 		t.Fatalf("open base db: %v", err)
 	}
 
-	// Create the schema
-	if _, err = baseDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema)); err != nil {
-		_ = baseDB.Close()
+	// Create the schema (serialized across processes; see withMigrationLock).
+	err = withMigrationLock(context.Background(), baseDB, func(conn *sql.Conn) error {
+		_, e := conn.ExecContext(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema))
+		return e
+	})
+	_ = baseDB.Close()
+	if err != nil {
 		t.Fatalf("create schema %s: %v", schema, err)
 	}
-	_ = baseDB.Close()
 
 	// Run migrations for the new schema (this seeds plans/languages via migration)
-	runMigrations(t, schema)
+	runMigrations(t, schema, resolve)
 
 	// Connect with the new schema
-	dsn := getTestDSN(schema)
+	dsn := resolve(schema)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Fatalf("open test db with schema %s: %v", schema, err)
@@ -288,7 +373,7 @@ func createSchemaAndConnect(t *testing.T, schema string) *sql.DB {
 }
 
 // dropSchema drops the test schema and cleans up
-func dropSchema(t *testing.T, db *sql.DB, schema string) {
+func dropSchema(t *testing.T, db *sql.DB, schema string, resolve dsnResolver) {
 	t.Helper()
 
 	// Close the connection first
@@ -297,7 +382,7 @@ func dropSchema(t *testing.T, db *sql.DB, schema string) {
 	}
 
 	// Connect without schema to drop it
-	baseDSN := getTestDSN("")
+	baseDSN := resolve("")
 	baseDB, err := sql.Open("pgx", baseDSN)
 	if err != nil {
 		t.Logf("warning: failed to open base db for schema cleanup: %v", err)
@@ -308,7 +393,7 @@ func dropSchema(t *testing.T, db *sql.DB, schema string) {
 	// Terminate any active connections to this schema before dropping.
 	// WARNING: We previously killed all connections to current_database(), which
 	// broke parallel tests running in different schemas on the same DB.
-	// We rely on the test closing its own connection. 
+	// We rely on the test closing its own connection.
 	// If DROP SCHEMA fails, we retry, which catches transient locks.
 
 	// Drop the schema with retries
@@ -324,7 +409,7 @@ func dropSchema(t *testing.T, db *sql.DB, schema string) {
 	}
 }
 
-func runMigrations(t *testing.T, schema string) {
+func runMigrations(t *testing.T, schema string, resolve dsnResolver) {
 	t.Helper()
 
 	wd, _ := os.Getwd()
@@ -342,72 +427,88 @@ func runMigrations(t *testing.T, schema string) {
 	}
 	migrationsPath := filepath.Join(projectRoot, "db/migrations")
 
-	baseDSN := getTestDSN(schema)
+	baseDSN := resolve(schema)
 	baseDB, err := sql.Open("pgx", baseDSN)
 	if err != nil {
 		t.Fatalf("open db for migration: %v", err)
 	}
 	defer func() { _ = baseDB.Close() }()
 
-	// Explicit search_path setting is handled by DSN connection options
+	// Hold the database-level migration advisory lock for the entire run so that
+	// concurrently-running test processes sharing this database cannot execute
+	// database-global migration statements (CREATE EXTENSION ...) at the same time —
+	// `IF NOT EXISTS` is not concurrency-safe there and otherwise fails with a
+	// pg_extension_name_index unique violation. Every statement below runs on the
+	// single pinned connection that holds the lock (advisory locks are session-scoped).
+	err = withMigrationLock(context.Background(), baseDB, func(conn *sql.Conn) error {
+		ctx := context.Background()
 
-	_, _ = baseDB.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
-		version VARCHAR(255) PRIMARY KEY,
-		dirty BOOLEAN NOT NULL DEFAULT false
-	)`)
-
-	entries, err := os.ReadDir(migrationsPath)
-	if err != nil {
-		t.Fatalf("read migrations dir: %v", err)
-	}
-
-	var migrationFiles []string
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".up.sql") {
-			migrationFiles = append(migrationFiles, e.Name())
+		if _, err := conn.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
+			version VARCHAR(255) PRIMARY KEY,
+			dirty BOOLEAN NOT NULL DEFAULT false
+		)`); err != nil {
+			return fmt.Errorf("create schema_migrations: %w", err)
 		}
-	}
-	sort.Strings(migrationFiles)
 
-	for _, mf := range migrationFiles {
-		migrationNum := mf[:6]
-
-		var count int
-		err = baseDB.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migrationNum).Scan(&count)
+		entries, err := os.ReadDir(migrationsPath)
 		if err != nil {
-			// Retry once on connection errors during migration check
-			time.Sleep(100 * time.Millisecond)
-			err = baseDB.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migrationNum).Scan(&count)
+			return fmt.Errorf("read migrations dir: %w", err)
+		}
+
+		var migrationFiles []string
+		for _, e := range entries {
+			if strings.HasSuffix(e.Name(), ".up.sql") {
+				migrationFiles = append(migrationFiles, e.Name())
+			}
+		}
+		sort.Strings(migrationFiles)
+
+		for _, mf := range migrationFiles {
+			migrationNum := mf[:6]
+
+			var count int
+			err := conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migrationNum).Scan(&count)
 			if err != nil {
-				t.Fatalf("check migration version: %v", err)
-			}
-		}
-		if count > 0 {
-			continue
-		}
-
-		//nolint:gosec // mf comes from os.ReadDir, not user input
-		migrationContent, err := os.ReadFile(filepath.Join(migrationsPath, mf))
-		if err != nil {
-			t.Fatalf("read migration %s: %v", mf, err)
-		}
-
-		_, err = baseDB.Exec(string(migrationContent))
-		if err != nil {
-			outputStr := fmt.Sprintf("migration %s failed: %v", mf, err)
-			if dirtyVersion := extractDirtyVersion(outputStr); dirtyVersion > 0 {
-				t.Logf("detected dirty database version %d, forcing version to %d", dirtyVersion, dirtyVersion-1)
-				if forceErr := forceMigrationVersion(migrationsPath, getTestDSN(schema), dirtyVersion-1); forceErr != nil {
-					t.Logf("warning: failed to force migration version: %v", forceErr)
-				} else {
-					_, _ = baseDB.Exec(string(migrationContent))
+				// Retry once on connection errors during migration check
+				time.Sleep(100 * time.Millisecond)
+				err = conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations WHERE version = $1", migrationNum).Scan(&count)
+				if err != nil {
+					return fmt.Errorf("check migration version: %w", err)
 				}
-			} else {
-				t.Fatalf("migration %s failed: %v", mf, err)
+			}
+			if count > 0 {
+				continue
+			}
+
+			//nolint:gosec // mf comes from os.ReadDir, not user input
+			migrationContent, err := os.ReadFile(filepath.Join(migrationsPath, mf))
+			if err != nil {
+				return fmt.Errorf("read migration %s: %w", mf, err)
+			}
+
+			if _, err := conn.ExecContext(ctx, string(migrationContent)); err != nil {
+				outputStr := fmt.Sprintf("migration %s failed: %v", mf, err)
+				if dirtyVersion := extractDirtyVersion(outputStr); dirtyVersion > 0 {
+					t.Logf("detected dirty database version %d, forcing version to %d", dirtyVersion, dirtyVersion-1)
+					if forceErr := forceMigrationVersion(migrationsPath, resolve(schema), dirtyVersion-1); forceErr != nil {
+						t.Logf("warning: failed to force migration version: %v", forceErr)
+					} else if _, retryErr := conn.ExecContext(ctx, string(migrationContent)); retryErr != nil {
+						return fmt.Errorf("migration %s failed after force: %w", mf, retryErr)
+					}
+				} else {
+					return fmt.Errorf("migration %s failed: %w", mf, err)
+				}
+			}
+
+			if _, err := conn.ExecContext(ctx, "INSERT INTO schema_migrations (version, dirty) VALUES ($1, false) ON CONFLICT (version) DO NOTHING", migrationNum); err != nil {
+				return fmt.Errorf("record migration %s: %w", mf, err)
 			}
 		}
 
-		_, _ = baseDB.Exec("INSERT INTO schema_migrations (version, dirty) VALUES ($1, false) ON CONFLICT (version) DO NOTHING", migrationNum)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("run migrations: %v", err)
 	}
 }
 

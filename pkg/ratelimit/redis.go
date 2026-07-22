@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -13,6 +14,9 @@ import (
 type RedisLimiter struct {
 	client *redis.Client
 	config Config
+	// now is the clock used for window timestamps; injectable for deterministic
+	// tests. Defaults to time.Now.
+	now func() time.Time
 }
 
 // NewRedisLimiter creates a new Redis-backed rate limiter
@@ -20,6 +24,7 @@ func NewRedisLimiter(client *redis.Client, config Config) *RedisLimiter {
 	return &RedisLimiter{
 		client: client,
 		config: config,
+		now:    time.Now,
 	}
 }
 
@@ -31,7 +36,7 @@ func (r *RedisLimiter) Allow(ctx context.Context, key string) (*Result, error) {
 // AllowN checks if N requests should be allowed for the given key
 // Uses a sliding window log algorithm with Redis sorted sets
 func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, error) {
-	now := time.Now()
+	now := r.now()
 	windowStart := now.Add(-r.config.WindowSize)
 
 	// Lua script for atomic sliding window check
@@ -43,20 +48,23 @@ func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, 
 		local max_requests = tonumber(ARGV[3])
 		local window_size = tonumber(ARGV[4])
 		local n = tonumber(ARGV[5])
-		
+		local nonce = ARGV[6]
+
 		-- Remove old entries outside the sliding window
 		redis.call('ZREMRANGEBYSCORE', key, 0, window_start)
-		
+
 		-- Count current requests in the window
 		local current = redis.call('ZCARD', key)
-		
+
 		-- Check if we can allow N more requests
 		if current + n <= max_requests then
-			-- Add N entries with current timestamp
+			-- Add N entries. Each member carries a per-call nonce so concurrent
+			-- requests in the same second don't collide: now has second precision,
+			-- so without the nonce members like "<epoch>:1" would be identical and
+			-- ZADD would overwrite them, under-counting the window.
 			for i = 1, n do
-				-- Use microsecond precision to handle concurrent requests
 				local score = now + (i / 1000000)
-				redis.call('ZADD', key, score, now .. ':' .. i)
+				redis.call('ZADD', key, score, now .. ':' .. nonce .. ':' .. i)
 			end
 			
 			-- Set expiration to window size + small buffer
@@ -77,7 +85,9 @@ func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, 
 		end
 	`)
 
-	// Execute the Lua script
+	// Execute the Lua script. The per-call nonce keeps sorted-set members unique
+	// across concurrent requests in the same second (see the script comment).
+	nonce := uuid.New().String()
 	result, err := script.Run(
 		ctx,
 		r.client,
@@ -87,6 +97,7 @@ func (r *RedisLimiter) AllowN(ctx context.Context, key string, n int) (*Result, 
 		r.config.RequestsPerWindow,
 		int(r.config.WindowSize.Seconds()),
 		n,
+		nonce,
 	).Result()
 
 	if err != nil {

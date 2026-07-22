@@ -122,7 +122,7 @@ func (r *PostgresSourceRepo) GetByID(ctx context.Context, id string) (*models.Da
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	sources, err := r.scanSources(rows)
 	if err != nil {
@@ -156,7 +156,7 @@ func (r *PostgresSourceRepo) GetByChatbot(ctx context.Context, chatbotID string)
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query sources")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 	return r.scanSources(rows)
 }
 
@@ -181,7 +181,7 @@ func (r *PostgresSourceRepo) GetURLSources(ctx context.Context, chatbotID string
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query url sources")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 	return r.scanSourcesMinimal(rows)
 }
 
@@ -343,7 +343,7 @@ func (r *PostgresSourceRepo) GetByHash(ctx context.Context, chatbotID, hash stri
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source by hash")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	for rows.Next() {
 		return r.scanSourceByHash(rows)
@@ -455,13 +455,13 @@ func (r *PostgresSourceRepo) UpdateSourceCapability(ctx context.Context, id stri
 
 // UpdateSourceSuggestions updates the suggested questions for a source.
 func (r *PostgresSourceRepo) UpdateSourceSuggestions(ctx context.Context, id string, suggestions []string) error {
-	var js []byte
-	var err error
+	var js interface{}
 	if suggestions != nil {
-		js, err = json.Marshal(suggestions)
+		b, err := json.Marshal(suggestions)
 		if err != nil {
 			return pkgerrors.Wrapf(err, "marshal suggestions")
 		}
+		js = string(b)
 	}
 
 	query, args, err := psql.
@@ -523,7 +523,7 @@ func (r *PostgresSourceRepo) GetSourceSuggestions(ctx context.Context, chatbotID
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query source suggestions")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var result []SourceSuggestion
 	for rows.Next() {
@@ -564,7 +564,7 @@ func (r *PostgresSourceRepo) GetCapabilitySummaries(ctx context.Context, chatbot
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query capability summaries")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var result []string
 	for rows.Next() {

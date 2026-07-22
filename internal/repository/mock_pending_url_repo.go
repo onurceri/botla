@@ -30,11 +30,11 @@ type MockPendingURLRepo struct {
 
 	// Invocation tracking for test assertions
 	Calls struct {
-		InsertPendingURL         []MockInsertPendingURLCall
-		ListPendingURLs          []MockListPendingURLsCall
-		CountPendingURLs         []MockCountPendingURLsCall
-		UpdatePendingURLStatus   []MockUpdatePendingURLStatusCall
-		GetPendingURLsByIDs      []MockGetPendingURLsByIDsCall
+		InsertPendingURL           []MockInsertPendingURLCall
+		ListPendingURLs            []MockListPendingURLsCall
+		CountPendingURLs           []MockCountPendingURLsCall
+		UpdatePendingURLStatus     []MockUpdatePendingURLStatusCall
+		GetPendingURLsByIDs        []MockGetPendingURLsByIDsCall
 		DeletePendingURLsByChatbot []MockDeletePendingURLsByChatbotCall
 	}
 }

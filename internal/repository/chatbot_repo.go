@@ -178,7 +178,7 @@ func (r *PostgresChatbotRepo) GetByID(ctx context.Context, id string) (*models.C
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbot")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	chatbots, err := r.scanChatbots(rows)
 	if err != nil {
@@ -208,7 +208,7 @@ func (r *PostgresChatbotRepo) GetByUserID(ctx context.Context, userID string) ([
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbots")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 	return r.scanChatbots(rows)
 }
 
@@ -230,7 +230,7 @@ func (r *PostgresChatbotRepo) GetByWorkspace(ctx context.Context, workspaceID st
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbots")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 	return r.scanChatbots(rows)
 }
 
@@ -250,25 +250,26 @@ func (r *PostgresChatbotRepo) Create(ctx context.Context, bot *models.Chatbot) (
 		bot.SendButtonColor = "#ebb800"
 	}
 
-	// Serialize JSONB fields
+	// Serialize JSONB fields. jsonbString returns a string (not []byte) so the values
+	// are encoded as jsonb under pgx's simple query protocol (see jsonb.go).
 	var sqJSON, mqJSON, tcJSON, fmJSON, trJSON, hcJSON interface{}
 	if bot.SuggestedQuestions != nil {
-		sqJSON, _ = json.Marshal(bot.SuggestedQuestions)
+		sqJSON = jsonbString(bot.SuggestedQuestions)
 	}
 	if bot.ManualQuestions != nil {
-		mqJSON, _ = json.Marshal(bot.ManualQuestions)
+		mqJSON = jsonbString(bot.ManualQuestions)
 	}
 	if bot.ThresholdConfig != nil {
-		tcJSON, _ = json.Marshal(bot.ThresholdConfig)
+		tcJSON = jsonbString(bot.ThresholdConfig)
 	}
 	if bot.FallbackMessages != nil {
-		fmJSON, _ = json.Marshal(bot.FallbackMessages)
+		fmJSON = jsonbString(bot.FallbackMessages)
 	}
 	if bot.TopicRestrictions != nil {
-		trJSON, _ = json.Marshal(bot.TopicRestrictions)
+		trJSON = jsonbString(bot.TopicRestrictions)
 	}
 	if bot.HandoffConfig != nil {
-		hcJSON, _ = json.Marshal(bot.HandoffConfig)
+		hcJSON = jsonbString(bot.HandoffConfig)
 	}
 
 	// Get language_id from normalized locale code
@@ -324,31 +325,33 @@ func (r *PostgresChatbotRepo) Create(ctx context.Context, bot *models.Chatbot) (
 
 // Update modifies an existing chatbot's fields.
 func (r *PostgresChatbotRepo) Update(ctx context.Context, bot *models.Chatbot) error {
-	// suggested_questions and manual_questions are JSONB, so marshal to JSON
-	var sj, mqj []byte
+	// suggested_questions and manual_questions are JSONB, so marshal to JSON.
+	// jsonbString returns a string (not []byte) for pgx simple-protocol jsonb safety;
+	// a nil interface{} (SQL NULL) is passed when the field is absent.
+	var sj, mqj interface{}
 	if bot.SuggestedQuestions != nil {
-		sj, _ = json.Marshal(bot.SuggestedQuestions)
+		sj = jsonbString(bot.SuggestedQuestions)
 	}
 	if bot.ManualQuestions != nil {
-		mqj, _ = json.Marshal(bot.ManualQuestions)
+		mqj = jsonbString(bot.ManualQuestions)
 	}
 
 	// For struct pointer fields (JSONB), use explicit type handling
-	var cbj, tcj, fmj, trj, hcj []byte
+	var cbj, tcj, fmj, trj, hcj interface{}
 	if bot.CustomBranding != nil {
-		cbj, _ = json.Marshal(bot.CustomBranding)
+		cbj = jsonbString(bot.CustomBranding)
 	}
 	if bot.ThresholdConfig != nil {
-		tcj, _ = json.Marshal(bot.ThresholdConfig)
+		tcj = jsonbString(bot.ThresholdConfig)
 	}
 	if bot.FallbackMessages != nil {
-		fmj, _ = json.Marshal(bot.FallbackMessages)
+		fmj = jsonbString(bot.FallbackMessages)
 	}
 	if bot.TopicRestrictions != nil {
-		trj, _ = json.Marshal(bot.TopicRestrictions)
+		trj = jsonbString(bot.TopicRestrictions)
 	}
 	if bot.HandoffConfig != nil {
-		hcj, _ = json.Marshal(bot.HandoffConfig)
+		hcj = jsonbString(bot.HandoffConfig)
 	}
 
 	// Get language_id from normalized locale code
@@ -535,7 +538,7 @@ func (r *PostgresChatbotRepo) UpdateSuggestedQuestions(ctx context.Context, id s
 
 	query, args, err := psql.
 		Update("chatbots").
-		Set("suggested_questions", js).
+		Set("suggested_questions", string(js)).
 		Set("updated_at", sq.Expr("NOW()")).
 		Where(sq.Eq{"id": id}).
 		ToSql()
@@ -569,7 +572,7 @@ func (r *PostgresChatbotRepo) GetDueForRefresh(ctx context.Context, now time.Tim
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query chatbots due for refresh")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 	return r.scanChatbots(rows)
 }
 

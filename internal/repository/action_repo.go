@@ -44,7 +44,7 @@ func (r *PostgresActionRepo) List(ctx context.Context, chatbotID string) ([]*mod
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query actions")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var actions []*models.ChatbotAction
 	for rows.Next() {
@@ -79,7 +79,7 @@ func (r *PostgresActionRepo) ListEnabled(ctx context.Context, chatbotID string) 
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query enabled actions")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var actions []*models.ChatbotAction
 	for rows.Next() {
@@ -244,7 +244,7 @@ func (r *PostgresActionRepo) GetLogs(ctx context.Context, chatbotID string, limi
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query action logs")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	var logs []*models.ActionExecutionLog
 	for rows.Next() {

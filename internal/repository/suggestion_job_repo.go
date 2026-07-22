@@ -128,7 +128,7 @@ func (r *PostgresSuggestionJobRepo) GetLatestForChatbot(ctx context.Context, cha
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "query latest suggestion job")
 	}
-	defer func() { _ = rows.Close() }()
+	defer closeRows(rows)
 
 	if !rows.Next() {
 		return nil, nil

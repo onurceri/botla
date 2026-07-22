@@ -1,0 +1,40 @@
+name: Integration Tests
+
+# Runs the real-service integration tests (internal/integration/{database,redis,
+# qdrant,scenarios}) against a dedicated integration stack. These tests are opt-in
+# via TEST_INTEGRATION=1 (set by `make test-integration-real`) and need PostgreSQL,
+# Redis, and Qdrant from docker-compose.integration.yml.
+on:
+  schedule:
+    # Weekly, Mondays at 03:17 UTC.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  integration:
+    name: Real-service integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Start integration services and wait for healthy
+        run: docker compose -f docker-compose.integration.yml up -d --wait --wait-timeout 120
+
+      - name: Run integration tests
+        run: make test-integration-real
+
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.integration.yml logs --tail=200
+
+      - name: Stop integration services
+        if: always()
+        run: docker compose -f docker-compose.integration.yml down -v

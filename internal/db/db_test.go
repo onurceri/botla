@@ -16,7 +16,7 @@ func TestBuildDSN(t *testing.T) {
 		DB_SSLMODE:  "disable",
 	}
 	dsn := buildDSN(cfg)
-	expected := "postgres://u:p@h:5432/n?sslmode=disable"
+	expected := "postgres://u:p@h:5432/n?sslmode=disable&default_query_exec_mode=simple_protocol"
 	if dsn != expected {
 		t.Fatalf("dsn mismatch: got %q want %q", dsn, expected)
 	}

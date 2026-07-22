@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/onurceri/botla-app/internal/models"
@@ -131,8 +132,11 @@ func (c *CircuitBreakerClient) UnwrappedClient() LLMClient {
 	return c.client
 }
 
-// CircuitBreakerManager manages multiple circuit breakers for different providers
+// CircuitBreakerManager manages multiple circuit breakers for different providers.
+// The breakers map is guarded by mu: provider registration (startup) and concurrent
+// reads from request paths and the health endpoint must not race.
 type CircuitBreakerManager struct {
+	mu       sync.RWMutex
 	breakers map[string]*CircuitBreakerClient
 	metrics  *LLMMetrics
 	settings CircuitBreakerSettings
@@ -159,13 +163,17 @@ func NewCircuitBreakerManagerWithSettings(settings CircuitBreakerSettings) *Circ
 // RegisterClient registers a client with circuit breaker protection
 func (m *CircuitBreakerManager) RegisterClient(name string, client LLMClient) *CircuitBreakerClient {
 	cbClient := NewCircuitBreakerClient(name, client, m.settings, m.metrics)
+	m.mu.Lock()
 	m.breakers[name] = cbClient
+	m.mu.Unlock()
 	return cbClient
 }
 
 // GetClient returns the circuit breaker client for a provider
 func (m *CircuitBreakerManager) GetClient(name string) (*CircuitBreakerClient, bool) {
+	m.mu.RLock()
 	client, ok := m.breakers[name]
+	m.mu.RUnlock()
 	return client, ok
 }
 
@@ -176,8 +184,15 @@ func (m *CircuitBreakerManager) GetMetrics() *LLMMetrics {
 
 // GetAllStates returns the state of all circuit breakers
 func (m *CircuitBreakerManager) GetAllStates() map[string]string {
-	states := make(map[string]string)
+	m.mu.RLock()
+	entries := make(map[string]*CircuitBreakerClient, len(m.breakers))
 	for name, cb := range m.breakers {
+		entries[name] = cb
+	}
+	m.mu.RUnlock()
+
+	states := make(map[string]string, len(entries))
+	for name, cb := range entries {
 		states[name] = cb.State()
 	}
 	return states
@@ -191,8 +206,15 @@ type ProviderStatus struct {
 
 // GetAllProviderStatus returns status for all registered providers
 func (m *CircuitBreakerManager) GetAllProviderStatus() map[string]ProviderStatus {
-	status := make(map[string]ProviderStatus)
+	m.mu.RLock()
+	entries := make(map[string]*CircuitBreakerClient, len(m.breakers))
 	for name, cb := range m.breakers {
+		entries[name] = cb
+	}
+	m.mu.RUnlock()
+
+	status := make(map[string]ProviderStatus, len(entries))
+	for name, cb := range entries {
 		status[name] = ProviderStatus{
 			Circuit: cb.State(),
 			Metrics: m.metrics.GetProviderMetrics(name),
