@@ -3,6 +3,8 @@ package services
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/onurceri/botla-app/internal/models"
 )
 
 func TestFlexibleStringSlice_UnmarshalJSON(t *testing.T) {
@@ -79,6 +81,45 @@ func TestFlexibleStringSlice_UnmarshalJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestApplyUpdates_IsPublic(t *testing.T) {
+	t.Parallel()
+
+	s := &ChatbotService{}
+
+	t.Run("set false", func(t *testing.T) {
+		t.Parallel()
+		c := botWithPublic(true)
+		isPublic := false
+		s.applyUpdates(c, ChatbotUpdateRequest{IsPublic: &isPublic})
+		if c.IsPublic {
+			t.Fatal("expected IsPublic to be updated to false")
+		}
+	})
+
+	t.Run("set true", func(t *testing.T) {
+		t.Parallel()
+		c := botWithPublic(false)
+		isPublic := true
+		s.applyUpdates(c, ChatbotUpdateRequest{IsPublic: &isPublic})
+		if !c.IsPublic {
+			t.Fatal("expected IsPublic to be updated to true")
+		}
+	})
+
+	t.Run("nil leaves unchanged", func(t *testing.T) {
+		t.Parallel()
+		c := botWithPublic(true)
+		s.applyUpdates(c, ChatbotUpdateRequest{})
+		if !c.IsPublic {
+			t.Fatal("expected IsPublic to remain true when request omits it")
+		}
+	})
+}
+
+func botWithPublic(isPublic bool) *models.Chatbot {
+	return &models.Chatbot{ID: "bot-1", IsPublic: isPublic}
 }
 
 func TestSecuritySettingsRequest_UnmarshalJSON(t *testing.T) {

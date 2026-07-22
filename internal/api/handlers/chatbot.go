@@ -74,4 +74,5 @@ type createChatbotRequest struct {
 	HandoffType          *string                  `json:"handoff_type"`
 	HandoffConfig        *models.HandoffConfig    `json:"handoff_config"`
 	ThresholdConfig      *models.ThresholdConfig  `json:"threshold_config"`
+	IsPublic             *bool                    `json:"is_public"`
 }

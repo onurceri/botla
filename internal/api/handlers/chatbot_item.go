@@ -124,6 +124,7 @@ func (h *ChatbotHandlers) convertToServiceRequest(req createChatbotRequest) serv
 		HandoffEnabled:       req.HandoffEnabled,
 		HandoffType:          req.HandoffType,
 		HandoffConfig:        req.HandoffConfig,
+		IsPublic:             req.IsPublic,
 	}
 
 	// Handle temperature conversion (float32 -> float64)

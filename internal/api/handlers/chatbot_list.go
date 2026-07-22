@@ -200,5 +200,6 @@ func (h *ChatbotHandlers) buildNewChatbot(userID string, wsID, orgID *string, re
 		HandoffEnabled:       boolValue(req.HandoffEnabled, false),
 		HandoffType:          defaultString(req.HandoffType, ""),
 		HandoffConfig:        req.HandoffConfig,
+		IsPublic:             boolValue(req.IsPublic, true),
 	}
 }

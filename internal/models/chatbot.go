@@ -58,6 +58,7 @@ type Chatbot struct {
 	HandoffEnabled       bool              `json:"handoff_enabled"`
 	HandoffType          string            `json:"handoff_type"`
 	HandoffConfig        *HandoffConfig    `json:"handoff_config,omitempty"`
+	IsPublic             bool              `json:"is_public"`
 }
 
 // ThresholdConfig represents tiered confidence threshold configuration

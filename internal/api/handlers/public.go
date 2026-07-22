@@ -72,7 +72,8 @@ func PublicChatbotConfig(chatbotRepo repository.ChatbotRepository) http.HandlerF
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if c == nil {
+		// Information hiding: non-public chatbots are indistinguishable from missing ones.
+		if c == nil || !c.IsPublic {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -189,7 +190,8 @@ func (h *PublicHandlers) PublicChat(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if cbot == nil {
+	// Information hiding: non-public chatbots are indistinguishable from missing ones.
+	if cbot == nil || !cbot.IsPublic {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -381,6 +383,19 @@ func (h *PublicHandlers) SubmitFeedback(w http.ResponseWriter, r *http.Request) 
 	if !httputil.IsValidUUID(botID) {
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidIDFormat)
 		return
+	}
+
+	// Information hiding: non-public chatbots are indistinguishable from missing ones.
+	if h.ChatbotRepo != nil {
+		bot, err := h.ChatbotRepo.GetByID(r.Context(), botID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if bot == nil || !bot.IsPublic {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 	}
 
 	var req struct {

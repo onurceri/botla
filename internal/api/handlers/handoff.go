@@ -72,9 +72,9 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Get chatbot
+	// Get chatbot — information hiding: non-public chatbots return 404.
 	bot, err := h.ChatbotRepo.GetByID(r.Context(), botID)
-	if err != nil || bot == nil {
+	if err != nil || bot == nil || !bot.IsPublic {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -220,9 +220,9 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Verify bot exists
+	// Verify bot exists — information hiding: non-public chatbots return 404.
 	bot, err := h.ChatbotRepo.GetByID(r.Context(), botID)
-	if err != nil || bot == nil {
+	if err != nil || bot == nil || !bot.IsPublic {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}

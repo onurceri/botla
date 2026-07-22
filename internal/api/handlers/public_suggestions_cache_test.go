@@ -48,6 +48,7 @@ func TestPublicChatbotConfig_SuggestionsCacheKeyedByUpdatedAt(t *testing.T) {
 		ChatBackgroundColor:  "#ffffff",
 		SuggestedQuestions:   []string{"A", "B"},
 		SuggestionsEnabled:   true,
+		IsPublic:             true,
 	}
 	bid, err := repository.NewPostgresChatbotRepo(pool).Create(context.Background(), bot)
 	if err != nil {

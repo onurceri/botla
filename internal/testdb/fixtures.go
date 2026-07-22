@@ -410,6 +410,7 @@ func CreateChatbot(t *testing.T, dbConn *sql.DB, fixture ...ChatbotFixture) *Cha
 		HandoffType:          "email",
 		SuggestedQuestions:   f.SuggestedQuestions,
 		SuggestionsEnabled:   f.SuggestionsEnabled,
+		IsPublic:             true,
 	}
 
 	// Use the repository's Create function

@@ -62,6 +62,7 @@ func (r *PostgresChatbotRepo) scanChatbot(rows *sql.Rows) (*models.Chatbot, erro
 		&c.HideBranding, &cbj,
 		&c.ConfidenceThreshold, &tcj, &fmj, &trj,
 		&c.HandoffEnabled, &c.HandoffType, &hcj,
+		&c.IsPublic,
 	); err != nil {
 		return nil, pkgerrors.Wrapf(err, "scan chatbot")
 	}
@@ -157,6 +158,7 @@ func (r *PostgresChatbotRepo) chatbotColumns() []string {
 		"COALESCE(c.hide_branding, false)", "c.custom_branding",
 		"c.confidence_threshold", "c.threshold_config", "c.fallback_messages", "c.topic_restrictions",
 		"COALESCE(c.handoff_enabled, false)", "COALESCE(c.handoff_type, 'email')", "c.handoff_config",
+		"COALESCE(c.is_public, true)",
 	}
 }
 
@@ -293,7 +295,7 @@ func (r *PostgresChatbotRepo) Create(ctx context.Context, bot *models.Chatbot) (
 			"include_paths", "exclude_paths", "selector_whitelist", "discovery_mode",
 			"refresh_policy", "refresh_frequency", "next_refresh_at", "last_refresh_at",
 			"confidence_threshold", "threshold_config", "fallback_messages", "topic_restrictions",
-			"handoff_enabled", "handoff_type", "handoff_config",
+			"handoff_enabled", "handoff_type", "handoff_config", "is_public",
 		).
 		Values(
 			bot.UserID, bot.WorkspaceID, bot.OrganizationID, bot.Name, bot.Description, bot.CustomInstruction,
@@ -307,7 +309,7 @@ func (r *PostgresChatbotRepo) Create(ctx context.Context, bot *models.Chatbot) (
 			pq.Array(bot.IncludePaths), pq.Array(bot.ExcludePaths), pq.Array(bot.SelectorWhitelist), bot.DiscoveryMode,
 			bot.RefreshPolicy, bot.RefreshFrequency, bot.NextRefreshAt, bot.LastRefreshAt,
 			bot.ConfidenceThreshold, tcJSON, fmJSON, trJSON,
-			bot.HandoffEnabled, bot.HandoffType, hcJSON,
+			bot.HandoffEnabled, bot.HandoffType, hcJSON, bot.IsPublic,
 		).
 		Suffix("RETURNING id").
 		ToSql()
@@ -409,6 +411,7 @@ func (r *PostgresChatbotRepo) Update(ctx context.Context, bot *models.Chatbot) e
 		Set("handoff_enabled", bot.HandoffEnabled).
 		Set("handoff_type", bot.HandoffType).
 		Set("handoff_config", hcj).
+		Set("is_public", bot.IsPublic).
 		Set("updated_at", sq.Expr("NOW()")).
 		Where(sq.Eq{"id": bot.ID}).
 		ToSql()

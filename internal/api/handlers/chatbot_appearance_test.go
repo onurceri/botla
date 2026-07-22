@@ -127,6 +127,7 @@ func TestPublicChatbotConfig_NewFields(t *testing.T) {
 		InputBackgroundColor: "#abcdef",
 		InputTextColor:       "#123456",
 		SendButtonColor:      "#654321",
+		IsPublic:             true,
 	}
 	botID, err := repository.NewPostgresChatbotRepo(pool).Create(context.Background(), bot)
 	if err != nil {

@@ -82,6 +82,7 @@ type ChatbotUpdateRequest struct {
 	HandoffEnabled         *bool                    `json:"handoff_enabled,omitempty"`
 	HandoffType            *string                  `json:"handoff_type,omitempty"`
 	HandoffConfig          *models.HandoffConfig    `json:"handoff_config,omitempty"`
+	IsPublic               *bool                    `json:"is_public,omitempty"`
 }
 
 // Update validates and applies updates to a chatbot.
@@ -480,6 +481,9 @@ func (s *ChatbotService) applyUpdates(c *models.Chatbot, req ChatbotUpdateReques
 	}
 	if req.HandoffConfig != nil {
 		c.HandoffConfig = req.HandoffConfig
+	}
+	if req.IsPublic != nil {
+		c.IsPublic = *req.IsPublic
 	}
 }
 
