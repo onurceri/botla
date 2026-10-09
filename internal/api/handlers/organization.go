@@ -133,6 +133,10 @@ func (h *OrganizationHandlers) DeleteOrganization(w http.ResponseWriter, r *http
 			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
+		if errors.Is(err, services.ErrOrgHasChatbots) {
+			api.WriteErrorCode(w, http.StatusConflict, api.ErrOrgHasChatbots)
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

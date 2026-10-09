@@ -152,7 +152,9 @@ func (s *OrganizationService) GetOrganization(ctx context.Context, id string) (*
 	return &org, nil
 }
 
-// DeleteOrganization deletes an organization
+// DeleteOrganization deletes an organization. It returns ErrLastOrganization
+// for the owner's only organization and ErrOrgHasChatbots while the
+// organization (directly or via its workspaces) still has chatbots.
 func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string) error {
 	// Get owner_id
 	var ownerID string
@@ -170,6 +172,23 @@ func (s *OrganizationService) DeleteOrganization(ctx context.Context, id string)
 
 	if count <= 1 {
 		return ErrLastOrganization
+	}
+
+	// Deleting an organization cascades to its workspaces and chatbots (and their
+	// sources, conversations, ...). Refuse while live chatbots remain so a stray
+	// delete cannot wipe them; soft-deleted chatbots do not block.
+	var chatbots int
+	err = s.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM chatbots c
+		WHERE c.deleted_at IS NULL
+		  AND (c.organization_id = $1
+		       OR c.workspace_id IN (SELECT w.id FROM workspaces w WHERE w.organization_id = $1))
+	`, id).Scan(&chatbots)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "counting organization chatbots")
+	}
+	if chatbots > 0 {
+		return ErrOrgHasChatbots
 	}
 
 	_, err = s.DB.ExecContext(ctx, "DELETE FROM organizations WHERE id = $1", id)
