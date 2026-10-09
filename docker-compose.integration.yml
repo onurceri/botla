@@ -1,7 +1,8 @@
-version: '3.8'
-
-# Docker Compose for real service integration tests
-# Uses separate ports to avoid conflicts with dev environment
+# Docker Compose for real service integration tests.
+# Uses its own project name and host ports (Postgres 5433, Redis 6380, Qdrant
+# 6334) so it can run next to the dev stack. Run the suites with
+# `make test-integration-real` and tear down with `make test-integration-down`.
+name: botla-integration
 
 services:
   postgres-integration:
@@ -37,10 +38,12 @@ services:
     ports:
       - "6334:6333"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/healthz"]
-      interval: 10s
+      # The qdrant image ships neither wget nor curl, so probe /readyz with bash's
+      # /dev/tcp and require an HTTP 200.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && printf 'GET /readyz HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 5s
       timeout: 5s
-      retries: 3
+      retries: 12
     volumes:
       - qdrant_integration_data:/qdrant/storage
 
