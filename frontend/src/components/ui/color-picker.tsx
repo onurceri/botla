@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { RgbaColorPicker } from 'react-colorful'
 import * as Popover from '@radix-ui/react-popover'
 import { parseColor, formatRgba, type RgbaColor } from '@/lib/color-utils'
@@ -12,40 +12,13 @@ interface ColorPickerProps {
 }
 
 export function ColorPicker({ value, onChange, id, className, label }: ColorPickerProps) {
-  const [internalValue, setInternalValue] = useState(value)
   const [isOpen, setIsOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   // Parse the current color value
   const rgbaColor = parseColor(value)
 
-  // Sync internal value with external value
-  useEffect(() => {
-    setInternalValue(value)
-  }, [value])
-
   const handleColorChange = (color: RgbaColor) => {
-    const formatted = formatRgba(color)
-    setInternalValue(formatted)
-    onChange(formatted)
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    setInternalValue(newValue)
-    // Only update if valid color
-    const parsed = parseColor(newValue)
-    if (parsed.r !== 0 || parsed.g !== 0 || parsed.b !== 0 || newValue.startsWith('#') || newValue.startsWith('rgb')) {
-      onChange(newValue)
-    }
-  }
-
-  const handleInputBlur = () => {
-    // On blur, normalize the value
-    const parsed = parseColor(internalValue)
-    const formatted = formatRgba(parsed)
-    setInternalValue(formatted)
-    onChange(formatted)
+    onChange(formatRgba(color))
   }
 
   return (
@@ -53,6 +26,7 @@ export function ColorPicker({ value, onChange, id, className, label }: ColorPick
       <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
         <Popover.Trigger asChild>
           <button
+            id={id}
             type="button"
             aria-label={label || 'Renk seç'}
             className="group relative w-14 h-10 rounded-full overflow-hidden border-2 border-slate-200/60 bg-white shrink-0 cursor-pointer transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 focus:outline-none focus:ring-4 focus:ring-primary/10 active:scale-95"

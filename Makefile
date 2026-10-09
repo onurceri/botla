@@ -2,7 +2,7 @@ SHELL := /bin/sh
 
 EVAL_FLAGS ?=
 
-.PHONY: eval eval-quick eval-up eval-down eval-retrieval eval-calibrate eval-baseline eval-test up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover
+.PHONY: eval eval-quick eval-up eval-down eval-retrieval eval-calibrate eval-baseline eval-test up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover test-integration test-integration-up test-integration-down test-integration-real test-integration-real-race test-integration-db test-integration-redis test-integration-qdrant test-integration-full docker-compose-up-integration docker-compose-down-integration docker-compose-logs-integration
 
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
 MIGRATIONS_DIR ?= db/migrations
@@ -111,9 +111,6 @@ test-no-pdf:
 test-fast:
 	go test ./internal/... ./pkg/... -short -parallel 8 -timeout 60s
 
-# Integration tests with parallelism
-test-integration:
-	go test ./internal/integration/... -parallel 8 -timeout 300s
 
 cover-html:
 	 @[ -f coverage.out ] || (echo "coverage.out not found. Run 'make test-all' first." && exit 1)
@@ -178,40 +175,63 @@ test-cover:
 	 go test ./... -coverprofile=coverage.out
 	 go tool cover -func=coverage.out
 
-# Integration tests with real services
-test-integration-real:
-	docker compose -f docker-compose.integration.yml up -d
-	TEST_INTEGRATION=1 go test -v ./internal/integration/database/... ./internal/integration/redis/... ./internal/integration/qdrant/... ./internal/integration/scenarios/... -timeout=5m
+# Integration tests with real services (docker-compose.integration.yml).
+# One command starts the stack, waits until every service is healthy and runs
+# the suites:   make test-integration-real
+# Tear it down (and drop its volumes) with:   make test-integration-down
+# The connection settings below match the compose file's host ports; override
+# them on the command line if you remap the ports.
+INTEGRATION_COMPOSE := docker compose -f docker-compose.integration.yml
+INTEGRATION_DB_HOST ?= localhost
+INTEGRATION_DB_PORT ?= 5433
+INTEGRATION_DB_NAME ?= botla_integration
+INTEGRATION_DB_USER ?= botla
+INTEGRATION_DB_PASSWORD ?= botla
+INTEGRATION_REDIS_URL ?= redis://localhost:6380
+INTEGRATION_QDRANT_URL ?= http://localhost:6334
+INTEGRATION_ENV = TEST_INTEGRATION=1 \
+	DB_HOST=$(INTEGRATION_DB_HOST) DB_PORT=$(INTEGRATION_DB_PORT) DB_NAME=$(INTEGRATION_DB_NAME) \
+	DB_USER=$(INTEGRATION_DB_USER) DB_PASSWORD=$(INTEGRATION_DB_PASSWORD) \
+	REDIS_URL=$(INTEGRATION_REDIS_URL) QDRANT_URL=$(INTEGRATION_QDRANT_URL)
+INTEGRATION_PKGS := ./internal/integration/database/... ./internal/integration/redis/... ./internal/integration/qdrant/... ./internal/integration/scenarios/...
 
-test-integration-real-race:
-	docker compose -f docker-compose.integration.yml up -d
-	TEST_INTEGRATION=1 go test -race -v ./internal/integration/database/... ./internal/integration/redis/... ./internal/integration/qdrant/... ./internal/integration/scenarios/... -timeout=10m
+test-integration-up:
+	$(INTEGRATION_COMPOSE) up -d --wait --wait-timeout 120
 
-test-integration-db:
-	docker compose -f docker-compose.integration.yml up -d
-	TEST_INTEGRATION=1 go test -v ./internal/integration/database/... -timeout=2m
+test-integration-down:
+	$(INTEGRATION_COMPOSE) down -v
 
-test-integration-redis:
-	docker compose -f docker-compose.integration.yml up -d
-	TEST_INTEGRATION=1 go test -v ./internal/integration/redis/... -timeout=2m
+# Every integration package (the in-process API suite plus the real-service suites)
+# against the integration stack.
+test-integration: test-integration-up
+	$(INTEGRATION_ENV) go test ./internal/integration/... -parallel 8 -timeout 600s
 
-test-integration-qdrant:
-	docker compose -f docker-compose.integration.yml up -d
-	TEST_INTEGRATION=1 go test -v ./internal/integration/qdrant/... -timeout=2m
+test-integration-real: test-integration-up
+	$(INTEGRATION_ENV) go test -v $(INTEGRATION_PKGS) -timeout=5m
 
-test-integration-full:
-	docker compose -f docker-compose.integration.yml up -d
-	TEST_INTEGRATION=1 go test -v ./internal/integration/scenarios/... -timeout=5m
+test-integration-real-race: test-integration-up
+	$(INTEGRATION_ENV) go test -race -v $(INTEGRATION_PKGS) -timeout=10m
+
+test-integration-db: test-integration-up
+	$(INTEGRATION_ENV) go test -v ./internal/integration/database/... -timeout=2m
+
+test-integration-redis: test-integration-up
+	$(INTEGRATION_ENV) go test -v ./internal/integration/redis/... -timeout=2m
+
+test-integration-qdrant: test-integration-up
+	$(INTEGRATION_ENV) go test -v ./internal/integration/qdrant/... -timeout=2m
+
+test-integration-full: test-integration-up
+	$(INTEGRATION_ENV) go test -v ./internal/integration/scenarios/... -timeout=5m
 
 # Docker management for integration tests
-docker-compose-up-integration:
-	docker compose -f docker-compose.integration.yml up -d
+docker-compose-up-integration: test-integration-up
 
 docker-compose-down-integration:
-	docker compose -f docker-compose.integration.yml down
+	$(INTEGRATION_COMPOSE) down
 
 docker-compose-logs-integration:
-	docker compose -f docker-compose.integration.yml logs -f
+	$(INTEGRATION_COMPOSE) logs -f
 
 # --- RAG evaluation suite (see evals/README.md) ---------------------------
 # Needs OPENAI_API_KEY (embeddings + generation + default judge). Qdrant comes

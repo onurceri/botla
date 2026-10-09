@@ -48,7 +48,6 @@ export interface Source {
 
 interface SourceCardProps {
   source: Source
-  userPlan: string
   refreshAllowed?: boolean
   onDelete: (id: string) => void
   onRefresh: (id: string) => void
@@ -118,7 +117,6 @@ const getStatusConfig = (status: string) => {
 
 export default function SourceCard({
   source,
-  userPlan,
   refreshAllowed = false,
   onDelete,
   onRefresh,

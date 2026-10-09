@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, type QueryObserverResult } from '@tanstack/react-query'
 import { api, _setWasAuthenticated } from '@/api/client'
 import type { User } from '@/types/user'
 
@@ -35,7 +35,8 @@ interface AuthContextValue {
   isAuthenticated: boolean
   error: Error | null
   logout: () => Promise<void>
-  refetch: () => void
+  /** Re-fetch /api/v1/me; resolves with the updated query result. */
+  refetch: () => Promise<QueryObserverResult<User | null, Error>>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)

@@ -140,7 +140,9 @@ func (h *AuthHandlers) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var existing string
-	err := h.DB.QueryRowContext(r.Context(), "SELECT id FROM users WHERE email=$1 AND deleted_at IS NULL", req.Email).Scan(&existing)
+	// Match case-insensitively, like login does, so Foo@x.com and foo@x.com
+	// cannot become two accounts.
+	err := h.DB.QueryRowContext(r.Context(), "SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL LIMIT 1", req.Email).Scan(&existing)
 	if err == nil && existing != "" {
 		api.WriteErrorCode(w, http.StatusConflict, api.ErrEmailExists)
 		return

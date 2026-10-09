@@ -57,7 +57,7 @@ func CleanupAllIntegrationSchemas() error {
 		getEnvOrDefault("DB_PASSWORD", "botla"),
 		getEnvOrDefault("DB_HOST", "localhost"),
 		getEnvOrDefault("DB_PORT", "5432"),
-		"botla_test",
+		getEnvOrDefault("DB_NAME", "botla_test"),
 	)
 
 	db, err := sql.Open("pgx", dbURL)
@@ -140,17 +140,20 @@ func SetupTestEnvWithConfigAndMocks(override ConfigOverride, useMocks bool) (*Te
 
 // defaultTestConfig returns a Config struct with test values.
 // This avoids t.Setenv() calls, enabling parallel test execution.
+// Service endpoints (DB_*, REDIS_URL, QDRANT_URL) come from the environment when
+// set, so the suite can target another stack such as docker-compose.integration.yml;
+// the defaults match the dev stack (docker-compose.dev.yml) and CI.
 func defaultTestConfig() *config.Config {
 	return &config.Config{
-		DB_HOST:                "localhost",
-		DB_PORT:                "5432",
-		DB_NAME:                "botla_test",
-		DB_USER:                "botla",
-		DB_PASSWORD:            "botla",
+		DB_HOST:                getEnvOrDefault("DB_HOST", "localhost"),
+		DB_PORT:                getEnvOrDefault("DB_PORT", "5432"),
+		DB_NAME:                getEnvOrDefault("DB_NAME", "botla_test"),
+		DB_USER:                getEnvOrDefault("DB_USER", "botla"),
+		DB_PASSWORD:            getEnvOrDefault("DB_PASSWORD", "botla"),
 		DB_SCHEMA:              "public",
 		DB_SSLMODE:             "disable",
-		REDIS_URL:              "redis://localhost:6379",
-		QDRANT_URL:             "http://localhost:6333",
+		REDIS_URL:              getEnvOrDefault("REDIS_URL", "redis://localhost:6379"),
+		QDRANT_URL:             getEnvOrDefault("QDRANT_URL", "http://localhost:6333"),
 		QDRANT_API_KEY:         "",
 		OPENAI_API_KEY:         "test-key",
 		OPENAI_API_BASE:        "https://api.openai.com",
@@ -443,7 +446,7 @@ func dropIntegrationSchema(schema string) {
 		getEnvOrDefault("DB_PASSWORD", "botla"),
 		getEnvOrDefault("DB_HOST", "localhost"),
 		getEnvOrDefault("DB_PORT", "5432"),
-		"botla_test",
+		getEnvOrDefault("DB_NAME", "botla_test"),
 	)
 
 	db, err := sql.Open("pgx", dbURL)

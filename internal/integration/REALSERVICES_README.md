@@ -24,23 +24,22 @@ go test -v ./internal/integration/qdrant/... -short
 
 ### Full Test (with services)
 ```bash
-# Start integration services
-docker compose -f docker-compose.integration.yml up -d
-
-# Wait for services to be healthy
-docker compose -f docker-compose.integration.yml ps
-
-# Run all integration tests
+# One command: starts docker-compose.integration.yml, waits until every service is
+# healthy, then runs the database/redis/qdrant/scenarios suites against it
 make test-integration-real
 
-# Run specific service tests
+# Run specific service tests (each also starts the stack)
 make test-integration-db
 make test-integration-redis
 make test-integration-qdrant
 make test-integration-full
 
-# Stop services when done
-docker compose -f docker-compose.integration.yml down
+# Every package under internal/integration (in-process API suite included),
+# also against the integration stack; needs the golang-migrate CLI on PATH
+make test-integration
+
+# Stop services and drop their volumes when done
+make test-integration-down
 ```
 
 ## Test Structure
@@ -63,7 +62,12 @@ docker compose -f docker-compose.integration.yml down
 
 ## Configuration
 
-Tests use environment variables or defaults:
+Tests use environment variables or defaults. The `make test-integration*` targets
+pass the values below (the integration stack's host ports); override them with
+`INTEGRATION_DB_PORT=...`, `INTEGRATION_REDIS_URL=...` and so on. The in-process
+suite in `internal/integration` (`fixtures/env.go`) reads the same variables but
+defaults to the dev stack (`DB_PORT=5432`, `DB_NAME=botla_test`, Redis `6379`,
+Qdrant `6333`) when they are unset.
 
 | Variable | Default | Description |
 |-----------|---------|-------------|
@@ -78,7 +82,7 @@ Tests use environment variables or defaults:
 ## CI/CD
 
 Tests run weekly (Mondays) and on-demand via GitHub Actions: `.github/workflows/integration-tests.yml`.
-The workflow starts `docker-compose.integration.yml`, waits for the services to be healthy, then runs `make test-integration-real`.
+The workflow runs `make test-integration-up` (start the stack and wait for it to be healthy), then `make test-integration-real`, then `make test-integration-down`.
 
 ## Notes
 

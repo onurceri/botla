@@ -234,7 +234,7 @@ CI (`.github/workflows/rag-evals.yml`) runs on manual dispatch, or on PRs touchi
 
 ## Known limitations
 
-- **No real numbers yet** (see above).
+- **One recorded baseline.** The numbers above come from a single 3-repeat run (2026-10-09) with one generator and judge pair (`gpt-4o-mini`, `anthropic/claude-haiku-5.5`). There is no history over time or across models yet.
 - **Small sample.** 45 cases and 21 calibration labels give wide confidence intervals. The gate catches large regressions, not 2-point drifts.
 - **Single annotator.** The calibration labels were written by one person, the author of the fixtures, so there is no inter-human agreement figure. That figure is the ceiling for judge-human agreement. A second annotator is the most valuable next step.
 - **Single-turn only.** Conversation history, handoff and custom actions (tool calls to customer APIs) are not exercised. Built-in tools are offered to the model, as in production.

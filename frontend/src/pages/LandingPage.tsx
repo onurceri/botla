@@ -672,7 +672,12 @@ const FeatureCard = ({
 )
 
 const Features = () => {
-  const features = [
+  const features: Array<{
+    icon: React.ElementType
+    title: string
+    description: string
+    className?: string
+  }> = [
     { icon: Search, ...t.features.items.rag, className: "md:col-span-2 bg-gradient-to-br from-white to-gray-50" },
     { icon: Database, ...t.features.items.sources },
     { icon: Palette, ...t.features.items.widget },
@@ -971,7 +976,7 @@ const PricingCard = ({
     {/* Header */}
     <div className="text-center mb-10">
       <div className="flex justify-center mb-6">
-        <PlanBadge plan={title.toLowerCase() as PlanTier} size="lg" variant={recommended ? "default" : "soft"} />
+        <PlanBadge plan={title.toLowerCase() as PlanTier} size="lg" variant={recommended ? "solid" : "soft"} />
       </div>
       {description && <p className="text-muted-foreground mb-6 font-medium">{description}</p>}
       <div className="flex items-baseline justify-center gap-1">

@@ -26,6 +26,7 @@ const MockChatbotProvider = ({ children }: { children: React.ReactNode }) => {
         userPlan: 'free',
         availableModels: mockAvailableModels,
         isLoading: false,
+        refetchChatbot: vi.fn(),
       }}
     >
       {children}

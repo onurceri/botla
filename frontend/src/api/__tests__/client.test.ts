@@ -248,6 +248,10 @@ describe('axios refresh interceptor', () => {
     
     const redirectMock = vi.fn()
     redirectService.setRedirectFn(redirectMock)
+
+    // The interceptor calls the logout endpoint before scheduling the
+    // redirect; stub it so no real request is made.
+    const logoutSpy = vi.spyOn(axios, 'post').mockResolvedValueOnce({ data: {} } as any)
     
     // Set some localStorage data
     window.localStorage.setItem('botla_user', '{"email":"test@example.com"}')
@@ -276,7 +280,9 @@ describe('axios refresh interceptor', () => {
     // 2. localStorage was cleared
     expect(window.localStorage.getItem('botla_user')).toBeNull()
     expect(window.localStorage.getItem('botla_last_org_id')).toBeNull()
-    // 3. Redirect was called
+    // 3. Logout endpoint was called to clear the HttpOnly cookies
+    expect(logoutSpy).toHaveBeenCalledWith(expect.stringContaining('/api/v1/auth/logout'), {}, { withCredentials: true })
+    // 4. Redirect was called
     expect(redirectMock).toHaveBeenCalled()
     
     window.removeEventListener('account-deleted', eventSpy)

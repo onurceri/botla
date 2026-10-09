@@ -69,22 +69,21 @@ describe('PlanPage hidden limits', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Plan ve Kullanım' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Plan & Limitler' })).toBeInTheDocument()
     })
 
-    // Debug the DOM to see what's actually rendered
-    // screen.debug()
+    // Each limit is rendered as a LimitBar: label, then "current / max".
+    const limitRow = (label: string) =>
+      screen.getByText(label).closest('div.space-y-2') as HTMLElement
 
-    const ingestCard = (await screen.findAllByText('Aylık Kaynak Ekleme'))[0].closest('.glass-card')
-    
-    expect(ingestCard).toBeInTheDocument()
-    // Find '7' within THIS card specifically
-    expect(within(ingestCard as HTMLElement).getByText('7')).toBeInTheDocument()
-    expect(within(ingestCard as HTMLElement).getByText(/\/ 50/)).toBeInTheDocument()
+    const ingestRow = await waitFor(() => limitRow('Aylık Kaynak Ekleme'))
+    expect(ingestRow).toBeInTheDocument()
+    expect(within(ingestRow).getByText('7')).toBeInTheDocument()
+    expect(within(ingestRow).getByText(/\/ 50$/)).toBeInTheDocument()
 
-    const embedCard = screen.getByText('Embedding Token').closest('.glass-card')
-    expect(embedCard).toBeInTheDocument()
-    expect(within(embedCard as HTMLElement).getByText(/12[.,]345/)).toBeInTheDocument()
-    expect(within(embedCard as HTMLElement).getByText(/\/250[.,]000/)).toBeInTheDocument()
+    const embedRow = limitRow('Embedding Token')
+    expect(embedRow).toBeInTheDocument()
+    expect(within(embedRow).getByText(/12[.,]345/)).toBeInTheDocument()
+    expect(within(embedRow).getByText(/\/ 250[.,]000/)).toBeInTheDocument()
   })
 })

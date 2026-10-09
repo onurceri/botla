@@ -60,6 +60,25 @@ export interface WizardActions {
   canProceed: () => boolean
 }
 
+/** Plan limits the wizard reads (subset of GET /api/v1/me/plan `limits`) */
+export interface WizardPlanLimits {
+  max_chatbots?: number
+  max_monthly_ingestions?: number
+}
+
+/** Plan features the wizard reads (subset of GET /api/v1/me/plan `features`) */
+export interface WizardPlanFeatures {
+  files?: { max_size_mb?: number; max_text_length?: number; max_files_per_bot?: number }
+  scraping?: { max_urls_per_bot?: number }
+}
+
+/** Plan information exposed by useOnboardingWizard alongside the actions */
+export interface WizardPlanInfo {
+  planCode: string
+  planLimits: WizardPlanLimits
+  planFeatures: WizardPlanFeatures
+}
+
 /** Default values for the wizard */
 export const DEFAULT_SYSTEM_PROMPT =
   'Sen yardımsever ve samimi bir müşteri destek asistanısın. Kısa ve öz cevaplar ver.'

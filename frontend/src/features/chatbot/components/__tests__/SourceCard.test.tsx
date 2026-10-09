@@ -38,7 +38,7 @@ describe('SourceCard', () => {
     const onDelete = vi.fn()
     const onRefresh = vi.fn()
     const { container } = render(
-      <SourceCard source={mockSource()} userPlan="pro" onDelete={onDelete} onRefresh={onRefresh} />,
+      <SourceCard source={mockSource()} onDelete={onDelete} onRefresh={onRefresh} />,
       { wrapper: createWrapper() },
     )
 
@@ -58,7 +58,6 @@ describe('SourceCard', () => {
           source_url: 'https://example.com',
           original_filename: undefined,
         })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -76,7 +75,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ source_type: 'text', original_filename: 'My Notes' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -94,7 +92,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ status: 'completed' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -111,7 +108,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ status: 'processing' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -128,7 +124,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ status: 'failed' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -145,7 +140,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ status: 'queued' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -161,7 +155,7 @@ describe('SourceCard', () => {
     const onDelete = vi.fn()
     const onRefresh = vi.fn()
     const { container } = render(
-      <SourceCard source={mockSource()} userPlan="pro" onDelete={onDelete} onRefresh={onRefresh} />,
+      <SourceCard source={mockSource()} onDelete={onDelete} onRefresh={onRefresh} />,
       { wrapper: createWrapper() },
     )
 
@@ -184,7 +178,7 @@ describe('SourceCard', () => {
     const onDelete = vi.fn()
     const onRefresh = vi.fn()
     const { container } = render(
-      <SourceCard source={mockSource()} userPlan="pro" onDelete={onDelete} onRefresh={onRefresh} />,
+      <SourceCard source={mockSource()} onDelete={onDelete} onRefresh={onRefresh} />,
       { wrapper: createWrapper() },
     )
 
@@ -207,7 +201,6 @@ describe('SourceCard', () => {
     const { container: pdfContainer } = render(
       <SourceCard
         source={mockSource({ source_type: 'pdf' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -220,7 +213,6 @@ describe('SourceCard', () => {
     const { container: urlContainer } = render(
       <SourceCard
         source={mockSource({ source_type: 'url', source_url: 'https://example.com' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -230,13 +222,13 @@ describe('SourceCard', () => {
     expect(within(urlCard as HTMLElement).getByLabelText('Kaynağı Yenile')).toBeInTheDocument()
   })
 
-  it('disables refresh button for free plan', () => {
+  it('disables refresh button when the plan does not allow refresh', () => {
     const onDelete = vi.fn()
     const onRefresh = vi.fn()
     const { container } = render(
       <SourceCard
         source={mockSource({ source_type: 'url', source_url: 'https://example.com' })}
-        userPlan="free"
+        refreshAllowed={false}
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -255,7 +247,7 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ source_type: 'url', source_url: 'https://example.com' })}
-        userPlan="pro"
+        refreshAllowed
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -276,7 +268,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ capability_summary: 'This source contains information about...' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -296,7 +287,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ capability_summary: undefined })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -313,7 +303,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ chunk_count: 42 })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,
@@ -331,7 +320,6 @@ describe('SourceCard', () => {
     const { container } = render(
       <SourceCard
         source={mockSource({ status: 'processing' })}
-        userPlan="pro"
         onDelete={onDelete}
         onRefresh={onRefresh}
       />,

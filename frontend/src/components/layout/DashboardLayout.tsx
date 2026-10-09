@@ -173,6 +173,8 @@ const DashboardLayout = () => {
               size="icon"
               className="hidden lg:inline-flex h-7 w-7 rounded-md text-muted-foreground hover:bg-black/5 hover:text-foreground transition-all duration-200"
               onClick={toggleSidebarMode}
+              title={sidebarMode === 'pinned' ? 'Sabit → Hover' : 'Hover → Sabit'}
+              aria-label={sidebarMode === 'pinned' ? 'Sabit → Hover' : 'Hover → Sabit'}
             >
               {sidebarMode === 'pinned' ? (
                 <Pin className="w-3.5 h-3.5" />

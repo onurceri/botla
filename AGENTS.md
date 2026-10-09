@@ -206,7 +206,7 @@ go test -race ./...                                         # race detector
 ### Test Structure & Gating
 - Unit tests: `*_unit_test.go` / `*_test.go` alongside source files; table-driven preferred.
 - Integration tests live in `internal/integration/` and are **skipped under `-short`**.
-- Real-service suites (`internal/integration/{database,redis,qdrant,scenarios}`) additionally require `TEST_INTEGRATION=1` and the `docker-compose.integration.yml` stack — use `make test-integration-real`.
+- Real-service suites (`internal/integration/{database,redis,qdrant,scenarios}`) additionally require `TEST_INTEGRATION=1` and the `docker-compose.integration.yml` stack — use `make test-integration-real`, which starts the stack, waits for it to be healthy and passes its ports (Postgres 5433, Redis 6380, Qdrant 6334) to the tests. `make test-integration-down` removes it.
 - Use `internal/testdb` for DB test utilities.
 
 ## Code Quality

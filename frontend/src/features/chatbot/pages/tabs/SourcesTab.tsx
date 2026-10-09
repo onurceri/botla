@@ -52,7 +52,6 @@ export default function SourcesTab() {
   } = useSourceOps(id, isNew)
 
   const {
-    userPlan,
     planConfig,
     discoveryMode,
     setDiscoveryMode,
@@ -476,7 +475,6 @@ export default function SourcesTab() {
                 <SourceCard
                   key={source.id}
                   source={source as Source}
-                  userPlan={userPlan}
                   onDelete={handleDeleteSource}
                   onRefresh={handleRefreshSource}
                   refreshAllowed={planConfig?.refresh?.enabled}

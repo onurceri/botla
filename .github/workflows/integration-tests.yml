@@ -26,8 +26,10 @@ jobs:
           cache: true
 
       - name: Start integration services and wait for healthy
-        run: docker compose -f docker-compose.integration.yml up -d --wait --wait-timeout 120
+        run: make test-integration-up
 
+      # The Makefile passes the stack's host ports (5433/6380/6334) and database
+      # (botla_integration) to the tests, matching docker-compose.integration.yml.
       - name: Run integration tests
         run: make test-integration-real
 
@@ -37,4 +39,4 @@ jobs:
 
       - name: Stop integration services
         if: always()
-        run: docker compose -f docker-compose.integration.yml down -v
+        run: make test-integration-down

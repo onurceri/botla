@@ -6,7 +6,7 @@ import { createConfigMessageHandler, getDashboardOrigins, validateApiBase } from
 const defaultHostId = 'chatbot-widget-host'
 
 function currentParams() {
-  const p = (window as any).__CBW_PARAMS
+  const p = window.__CBW_PARAMS
   if (p && typeof p === 'object') return new URLSearchParams(p)
   
   // document.currentScript is null for ES modules, so find script by src or data-bot
@@ -345,6 +345,4 @@ if (!skipMount) {
   }
 }
 
-declare global { interface Window { ChatbotWidget: { mount: typeof mount; unmount: typeof unmount } } }
-// @ts-ignore
 window.ChatbotWidget = { mount, unmount }

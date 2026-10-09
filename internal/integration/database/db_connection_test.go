@@ -188,7 +188,9 @@ func TestRealDatabase_MigrationIntegrity(t *testing.T) {
 			index string
 		}{
 			{"users", "users_pkey"},
-			{"users", "idx_users_email"},
+			// Partial unique index on active users' email (migration 000003
+			// replaced the UNIQUE constraint and dropped idx_users_email).
+			{"users", "users_email_key"},
 			{"organizations", "organizations_pkey"},
 			{"chatbots", "chatbots_pkey"},
 			{"data_sources", "data_sources_pkey"},
@@ -209,6 +211,17 @@ func TestRealDatabase_MigrationIntegrity(t *testing.T) {
 			assert.NoError(t, err)
 			assert.True(t, exists, "Index %s on %s should exist", idx.index, idx.table)
 		}
+
+		// users_email_key must stay unique among active users only, so a
+		// soft-deleted user's email can be reused.
+		var indexDef string
+		err := env.DB.QueryRowContext(ctx, `
+			SELECT indexdef FROM pg_indexes
+			WHERE schemaname = $1 AND tablename = 'users' AND indexname = 'users_email_key'
+		`, env.Schema).Scan(&indexDef)
+		assert.NoError(t, err)
+		assert.Contains(t, indexDef, "UNIQUE")
+		assert.Contains(t, indexDef, "WHERE (deleted_at IS NULL)")
 	})
 
 	t.Run("all required foreign keys exist", func(t *testing.T) {
