@@ -31,6 +31,9 @@ describe('widget WIDGET_CONFIG listener', () => {
 
   beforeAll(async () => {
     vi.stubGlobal('fetch', fetchMock)
+    // Pin the trusted dashboard origin so a developer's widget/.env
+    // (e.g. VITE_DASHBOARD_URL=http://localhost:5173) cannot change the result.
+    vi.stubEnv('VITE_DASHBOARD_URL', 'https://botla.app')
     window.__CBW_PARAMS = { 'skip-auto-mount': '1' }
     widget = await import('../widget')
   })
@@ -38,6 +41,7 @@ describe('widget WIDGET_CONFIG listener', () => {
   afterAll(() => {
     widget.unmount()
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   beforeEach(() => {

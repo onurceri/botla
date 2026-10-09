@@ -34,7 +34,6 @@ export function WidgetApp(props: WidgetAppProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const [config, setConfig] = useState<ChatbotConfig | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sid, setSid] = useState<string>('')
   const [embedToken, setEmbedToken] = useState<string>('')
   const [unread, setUnread] = useState(0)
@@ -49,6 +48,10 @@ export function WidgetApp(props: WidgetAppProps) {
   const emitEvent = (type: string, payload?: unknown) => {
     postWidgetEvent(type, payload, getEventTargetOrigins(parentOrigin))
   }
+  // The config fetch below should only re-run when the chatbot changes, so it
+  // reads the latest emitEvent through a ref instead of listing it as a dep.
+  const emitEventRef = useRef(emitEvent)
+  emitEventRef.current = emitEvent
 
   // Report open state to parent on change (initial and updates)
   useEffect(() => {
@@ -66,14 +69,14 @@ export function WidgetApp(props: WidgetAppProps) {
       .then((data: ChatbotConfig) => {
         setConfig(data)
         logger.debug('Config loaded', data)
-        emitEvent('CONFIG_LOADED', data)
+        emitEventRef.current('CONFIG_LOADED', data)
         if (Array.isArray(data.suggested_questions)) {
           if (!useOverrides) setSuggestions(data.suggested_questions as string[])
         }
       })
       .catch((error) => {
         logger.error('Failed to load config', error)
-        emitEvent('ERROR', { type: 'config_load_error', message: error.message })
+        emitEventRef.current('ERROR', { type: 'config_load_error', message: error.message })
       })
   }, [chatbotId, apiBase, useOverrides])
 
@@ -230,8 +233,9 @@ export function WidgetApp(props: WidgetAppProps) {
         try { const tr = await fetch(embedTokenUrl, { signal }); if (tr.ok) { const t = await tr.text(); token = t; setEmbedToken(t) } } catch (e) { if ((e as Error).name !== 'AbortError') logger.warn('Embed token fetch failed', e) }
       }
       let captchaToken = ''
-      if (captchaSiteKey && (window as any).getCaptchaToken) {
-        try { captchaToken = await (window as any).getCaptchaToken(captchaSiteKey) } catch (e) { logger.warn('Captcha token fetch failed', e) }
+      const getCaptchaToken = window.getCaptchaToken
+      if (captchaSiteKey && getCaptchaToken) {
+        try { captchaToken = await getCaptchaToken(captchaSiteKey) } catch (e) { logger.warn('Captcha token fetch failed', e) }
       }
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (token) {
@@ -266,7 +270,7 @@ export function WidgetApp(props: WidgetAppProps) {
         return nm
       })
       if (!open) setUnread((u) => u + 1)
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Ignore abort errors - they're expected when session is reset
       if ((e as Error).name === 'AbortError') {
         logger.debug('Chat request aborted')
