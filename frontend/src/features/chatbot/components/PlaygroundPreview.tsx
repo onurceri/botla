@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
+import { getWidgetOrigin, getWidgetUrl, isWidgetMessage } from '@/lib/widgetOrigin'
 
 type Props = {
   id: string
@@ -31,8 +32,6 @@ type Props = {
   panelWidth?: string
 }
 
-// Get widget URL from environment, fallback to localhost for development
-const WIDGET_URL = import.meta.env.VITE_WIDGET_URL || 'http://localhost:5174'
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 /**
@@ -162,13 +161,17 @@ export default function PlaygroundPreview(props: Props) {
     const iframe = iframeRef.current
     if (!iframe?.contentWindow) return
 
+    // Deliver only to the widget origin so config never reaches another document
+    const targetOrigin = getWidgetOrigin()
+    if (!targetOrigin) return
+
     const config = buildConfig()
     iframe.contentWindow.postMessage(
       {
         type: 'WIDGET_CONFIG',
         config,
       },
-      '*',
+      targetOrigin,
     )
   }, [buildConfig])
 
@@ -203,6 +206,8 @@ export default function PlaygroundPreview(props: Props) {
     let configApplied = false
 
     const handleMessage = (event: MessageEvent) => {
+      // Only trust acknowledgements from the preview iframe on the widget origin
+      if (!isWidgetMessage(event, iframeRef.current?.contentWindow ?? null)) return
       if (event.data?.type === 'WIDGET_CONFIG_APPLIED') {
         configApplied = true
         if (retryTimeoutId) {
@@ -215,7 +220,7 @@ export default function PlaygroundPreview(props: Props) {
     // Start retry mechanism after initial config is sent
     const startRetryMechanism = () => {
       if (configApplied || !configSentRef.current || retryCount >= maxRetries) return
-      
+
       retryTimeoutId = setTimeout(() => {
         if (!configApplied && retryCount < maxRetries) {
           retryCount++
@@ -226,7 +231,7 @@ export default function PlaygroundPreview(props: Props) {
     }
 
     window.addEventListener('message', handleMessage)
-    
+
     // Start retry mechanism after initial delay
     const initialDelay = setTimeout(() => {
       if (configSentRef.current) {
@@ -283,7 +288,10 @@ export default function PlaygroundPreview(props: Props) {
         {/* Content Grid */}
         <div className="px-4 grid grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white/40 rounded-xl p-3 space-y-2 border border-slate-200/30">
+            <div
+              key={i}
+              className="bg-white/40 rounded-xl p-3 space-y-2 border border-slate-200/30"
+            >
               <div className="w-full h-12 bg-slate-200/40 rounded-lg" />
               <div className="w-3/4 h-2 bg-slate-200/50 rounded-full" />
               <div className="w-1/2 h-2 bg-slate-200/40 rounded-full" />
@@ -302,7 +310,7 @@ export default function PlaygroundPreview(props: Props) {
       {/* Widget iframe - on top of the mockup */}
       <iframe
         ref={iframeRef}
-        src={`${WIDGET_URL}/preview.html`}
+        src={`${getWidgetUrl()}/preview.html`}
         onLoad={handleIframeLoad}
         title="Chatbot Önizlemesi"
         className="absolute inset-0 w-full h-full border-0 bg-transparent"

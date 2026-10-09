@@ -89,7 +89,7 @@ describe('PlaygroundPreview', () => {
           position: 'bottom-right',
         }),
       }),
-      '*',
+      'http://localhost:5174',
     )
   })
 
@@ -121,7 +121,7 @@ describe('PlaygroundPreview', () => {
           suggestions: JSON.stringify(suggestions),
         }),
       }),
-      '*',
+      'http://localhost:5174',
     )
   })
 
@@ -150,7 +150,7 @@ describe('PlaygroundPreview', () => {
           'custom-branding': JSON.stringify(customBranding),
         }),
       }),
-      '*',
+      'http://localhost:5174',
     )
   })
 
@@ -201,6 +201,79 @@ describe('PlaygroundPreview', () => {
     const lastCall = mockPostMessage.mock.calls[mockPostMessage.mock.calls.length - 1]
     expect(lastCall[0].config['welcome']).toBe('Hello')
 
+    vi.useRealTimers()
+  })
+
+  it('never posts config with a wildcard target origin', async () => {
+    const mockPostMessage = vi.fn()
+    const { container } = render(<PlaygroundPreview {...defaultProps} />)
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement
+    Object.defineProperty(iframe, 'contentWindow', {
+      value: { postMessage: mockPostMessage },
+      writable: true,
+    })
+
+    iframe.dispatchEvent(new Event('load'))
+    await new Promise((resolve) => setTimeout(resolve, 150))
+
+    expect(mockPostMessage).toHaveBeenCalled()
+    for (const call of mockPostMessage.mock.calls) {
+      expect(call[1]).toBe('http://localhost:5174')
+    }
+  })
+
+  it.each([
+    ['foreign origin', 'https://evil.example', 'iframe'],
+    ['lookalike origin', 'http://localhost:5174.evil.example', 'iframe'],
+    ['wrong source window', 'http://localhost:5174', 'other'],
+  ])('ignores WIDGET_CONFIG_APPLIED from a %s and keeps retrying', async (_label, origin, src) => {
+    vi.useFakeTimers()
+    const mockPostMessage = vi.fn()
+    const { container } = render(<PlaygroundPreview {...defaultProps} />)
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement
+    const contentWindow = { postMessage: mockPostMessage }
+    Object.defineProperty(iframe, 'contentWindow', { value: contentWindow, writable: true })
+
+    iframe.dispatchEvent(new Event('load'))
+    vi.advanceTimersByTime(150)
+    const afterLoad = mockPostMessage.mock.calls.length
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin,
+        source: (src === 'iframe' ? contentWindow : window) as unknown as Window,
+        data: { type: 'WIDGET_CONFIG_APPLIED' },
+      }),
+    )
+
+    // Spoofed ack must not stop the retry mechanism
+    vi.advanceTimersByTime(2000)
+    expect(mockPostMessage.mock.calls.length).toBeGreaterThan(afterLoad)
+    vi.useRealTimers()
+  })
+
+  it('accepts WIDGET_CONFIG_APPLIED from the preview iframe and stops retrying', async () => {
+    vi.useFakeTimers()
+    const mockPostMessage = vi.fn()
+    const { container } = render(<PlaygroundPreview {...defaultProps} />)
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement
+    const contentWindow = { postMessage: mockPostMessage }
+    Object.defineProperty(iframe, 'contentWindow', { value: contentWindow, writable: true })
+
+    iframe.dispatchEvent(new Event('load'))
+    vi.advanceTimersByTime(150)
+    const afterLoad = mockPostMessage.mock.calls.length
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'http://localhost:5174',
+        source: contentWindow as unknown as Window,
+        data: { type: 'WIDGET_CONFIG_APPLIED' },
+      }),
+    )
+
+    vi.advanceTimersByTime(2000)
+    expect(mockPostMessage.mock.calls.length).toBe(afterLoad)
     vi.useRealTimers()
   })
 })

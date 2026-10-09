@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import PlaygroundConsole from '../PlaygroundConsole'
+import { getWidgetOrigin } from '@/lib/widgetOrigin'
+
+const WIDGET_ORIGIN = getWidgetOrigin() as string
 
 describe('PlaygroundConsole', () => {
   beforeEach(() => {
@@ -42,6 +45,7 @@ describe('PlaygroundConsole', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: WIDGET_ORIGIN,
           data: {
             type: 'WIDGET_EVENT_MESSAGE_SENT',
             payload: { content: 'Merhaba bot' },
@@ -56,6 +60,7 @@ describe('PlaygroundConsole', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: WIDGET_ORIGIN,
           data: {
             type: 'WIDGET_EVENT_RESPONSE_RECEIVED',
             payload: { content: 'Size nasıl yardımcı olabilirim?' },
@@ -73,6 +78,7 @@ describe('PlaygroundConsole', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: WIDGET_ORIGIN,
           data: { type: 'WIDGET_EVENT_CONFIG_LOADED', payload: {} },
         }),
       )
@@ -92,6 +98,7 @@ describe('PlaygroundConsole', () => {
     act(() => {
       window.dispatchEvent(
         new MessageEvent('message', {
+          origin: WIDGET_ORIGIN,
           data: { type: 'WIDGET_EVENT_CONFIG_LOADED', payload: {} },
         }),
       )
@@ -124,11 +131,33 @@ describe('PlaygroundConsole', () => {
       act(() => {
         window.dispatchEvent(
           new MessageEvent('message', {
+            origin: WIDGET_ORIGIN,
             data: { type: `WIDGET_EVENT_${event.type}`, payload: event.payload },
           }),
         )
       })
       expect(screen.getByText(event.expected)).toBeInTheDocument()
     })
+  })
+
+  it.each([
+    ['foreign origin', 'https://evil.example'],
+    ['lookalike origin', `${WIDGET_ORIGIN}.evil.example`],
+    ['missing origin', ''],
+  ])('ignores widget events from a %s', (_label, origin) => {
+    render(<PlaygroundConsole />)
+    fireEvent.click(screen.getByText(/Hata Ayıklama Konsolu/i))
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin,
+          data: { type: 'WIDGET_EVENT_MESSAGE_SENT', payload: { content: 'spoofed' } },
+        }),
+      )
+    })
+
+    expect(screen.queryByText(/spoofed/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Henüz olay kaydedilmedi/i)).toBeInTheDocument()
   })
 })
