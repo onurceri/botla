@@ -4,14 +4,13 @@ Botla is an AI chatbot platform: it ingests content (URLs, sitemaps, PDFs, raw t
 
 ## Monorepo Layout
 
-This is an **npm-workspaces monorepo** with a Go backend at the root plus three JS workspaces:
+This is an **npm-workspaces monorepo** with a Go backend at the root plus two JS workspaces:
 
 | Path | Stack | Purpose |
 |---|---|---|
 | `cmd/`, `internal/`, `pkg/` | Go 1.25 | Backend HTTP API + ingestion workers |
 | `frontend/` | React 19, Vite, TS, TanStack Query | Management dashboard |
 | `widget/` | Preact, Vite | Embeddable chat widget (deployed to Cloudflare Pages) |
-| `packages/ui-shared/` | TS | UI components shared by frontend + widget (`@botla/ui-shared`) |
 
 Detailed conventions live in **per-area `AGENTS.md` files** — read the relevant one before working in that area: `frontend/AGENTS.md`, `internal/api/handlers/AGENTS.md`, `internal/services/AGENTS.md`, `internal/rag/AGENTS.md`, `internal/integration/AGENTS.md`.
 

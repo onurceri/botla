@@ -2,7 +2,6 @@
     "name": "botla-app",
     "private": true,
     "workspaces": [
-        "packages/*",
         "frontend",
         "widget"
     ],

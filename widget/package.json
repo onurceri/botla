@@ -17,7 +17,6 @@
     "ci": "npm run typecheck && npm run lint && npm run test:coverage"
   },
   "dependencies": {
-    "@botla/ui-shared": "file:../packages/ui-shared",
     "preact": "^10.27.2",
     "react-markdown": "^10.1.0",
     "rehype-sanitize": "^6.0.0",
