@@ -87,7 +87,7 @@ func (h *ChatbotHandlers) createChatbot(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if plan != nil && plan.Limits.MaxChatbots > 0 {
+	if plan != nil && plan.Limits != nil && plan.Limits.MaxChatbots > 0 {
 		count, countErr := h.ChatbotRepo.CountByUserID(r.Context(), userID)
 		if countErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
