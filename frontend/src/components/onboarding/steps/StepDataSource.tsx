@@ -9,7 +9,7 @@ import { Upload, Type, Globe, FileText, Info, SkipForward } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import type { SourceType } from '../types'
+import type { SourceType, WizardPlanFeatures } from '../types'
 import { MIN_TEXT_LENGTH } from '../types'
 
 interface StepDataSourceProps {
@@ -17,7 +17,7 @@ interface StepDataSourceProps {
   textContent: string
   urlContent: string
   pdfFile: File | null
-  planData?: any
+  planData?: WizardPlanFeatures
   planCode?: string
   onSourceTypeChange: (type: SourceType) => void
   onTextContentChange: (content: string) => void
@@ -80,7 +80,6 @@ export function StepDataSource({
   const maxTextLength = planData?.files?.max_text_length || 10000
   const maxFileSizeMB = planData?.files?.max_size_mb || 10
   const maxURLs = planData?.scraping?.max_urls_per_bot || 1
-  const maxFiles = planData?.files?.max_files_per_bot || 1
   
   const isFreePlan = planCode === 'free'
   const planName = planCode.charAt(0).toUpperCase() + planCode.slice(1)

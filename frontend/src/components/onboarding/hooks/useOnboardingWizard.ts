@@ -13,6 +13,9 @@ import type {
   WizardActions,
   StepNumber,
   SourceType,
+  WizardPlanInfo,
+  WizardPlanLimits,
+  WizardPlanFeatures,
 } from '../types'
 import {
   DEFAULT_SYSTEM_PROMPT,
@@ -38,17 +41,19 @@ const initialState: WizardState = {
  * Manages all onboarding wizard state, navigation, and API interactions.
  * Returns a tuple of [state, actions] for use in wizard components.
  */
-export function useOnboardingWizard(): [WizardState, WizardActions & { planLimits: any }] {
+export function useOnboardingWizard(): [WizardState, WizardActions & WizardPlanInfo] {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { data: planData } = usePlan()
   
-  const planLimits = planData?.limits || {
+  const planCode: string = planData?.code || 'free'
+
+  const planLimits: WizardPlanLimits = planData?.limits || {
     max_chatbots: 1,
     max_monthly_ingestions: 100,
   }
-  
-  const planFeatures = planData?.features || {
+
+  const planFeatures: WizardPlanFeatures = planData?.features || {
     files: { max_size_mb: 5, max_text_length: 10000 }
   }
 
@@ -313,6 +318,7 @@ export function useOnboardingWizard(): [WizardState, WizardActions & { planLimit
       setWelcomeMessage,
       handleFileSelect,
       canProceed,
+      planCode,
       planLimits,
       planFeatures,
     },

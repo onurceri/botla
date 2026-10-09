@@ -45,7 +45,7 @@ function StepContent({
           urlContent={state.urlContent}
           pdfFile={state.pdfFile}
           planData={actions.planFeatures}
-          planCode={actions.planLimits?.code || 'free'}
+          planCode={actions.planCode}
           onSourceTypeChange={actions.setSourceType}
           onTextContentChange={actions.setTextContent}
           onUrlContentChange={actions.setUrlContent}

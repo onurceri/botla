@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '@/components/ui/toast'
+import { createTestQueryClient } from '@/test-utils'
 import OnboardingWizard from '../OnboardingWizard'
 import { api } from '@/api/client'
 
@@ -17,12 +19,15 @@ vi.mock('react-router-dom', async () => {
 })
 
 const renderOnboarding = () => {
+  // The wizard reads plan limits through usePlan (React Query).
   return render(
-    <ToastProvider>
-      <MemoryRouter>
-        <OnboardingWizard />
-      </MemoryRouter>
-    </ToastProvider>,
+    <QueryClientProvider client={createTestQueryClient()}>
+      <ToastProvider>
+        <MemoryRouter>
+          <OnboardingWizard />
+        </MemoryRouter>
+      </ToastProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -50,6 +55,15 @@ describe('OnboardingWizard', () => {
     vi.spyOn(api, 'get').mockImplementation((url) => {
       if (url === '/api/v1/me/onboarding') {
         return Promise.resolve({ data: { step: 0, data: {} } })
+      }
+      if (url === '/api/v1/me/plan') {
+        return Promise.resolve({
+          data: {
+            code: 'free',
+            limits: { max_chatbots: 1, max_monthly_ingestions: 100 },
+            features: { files: { max_size_mb: 5, max_text_length: 10000 } },
+          },
+        })
       }
       return Promise.reject(new Error('Unexpected GET ' + url))
     })
