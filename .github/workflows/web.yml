@@ -1,0 +1,59 @@
+name: Web
+
+# Lint, typecheck, unit-test and build the dashboard (frontend/) and the
+# embeddable widget (widget/). Both are npm workspaces installed from the root
+# package-lock.json. Playwright e2e suites are run locally (see README).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'widget/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'widget/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/web.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ${{ matrix.workspace }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [frontend, widget]
+    defaults:
+      run:
+        working-directory: ${{ matrix.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install
+        working-directory: .
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npx vitest run
+      - name: Build
+        run: npm run build
