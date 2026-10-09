@@ -21,7 +21,10 @@ type HandoffService struct {
 	HandoffRepo      repository.HandoffRepository
 	ConversationRepo repository.ConversationRepository
 	AnalyticsRepo    repository.AnalyticsRepository
-	Log              *logger.Logger
+	// EmailSender delivers handoff notifications. Defaults to NoopEmailSender
+	// (log only) because no mail provider is integrated yet.
+	EmailSender EmailSender
+	Log         *logger.Logger
 }
 
 // NewHandoffService creates a new HandoffService instance
@@ -30,6 +33,7 @@ func NewHandoffService(handoffRepo repository.HandoffRepository, conversationRep
 		HandoffRepo:      handoffRepo,
 		ConversationRepo: conversationRepo,
 		AnalyticsRepo:    analyticsRepo,
+		EmailSender:      NoopEmailSender{Log: log},
 		Log:              log,
 	}
 }
@@ -97,18 +101,17 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	// Handle based on handoff type
 	switch bot.HandoffType {
 	case string(models.HandoffTypeEmail):
-		err = s.handleEmailHandoff(ctx, bot, requestID, conversationID, notes)
-		if err != nil {
-			result.ErrorMessage = err.Error()
+		sent, emailErr := s.handleEmailHandoff(ctx, bot, requestID, conversationID, notes)
+		if emailErr != nil {
+			result.ErrorMessage = emailErr.Error()
 			if s.Log != nil {
 				s.Log.Warn("handoff_email_failed", map[string]any{
 					"request_id": requestID,
-					"error":      err.Error(),
+					"error":      emailErr.Error(),
 				})
 			}
-		} else {
-			result.EmailSent = true
 		}
+		result.EmailSent = sent
 	default:
 		// Log unsupported type but don't fail - request is still created
 		if s.Log != nil {
@@ -132,15 +135,21 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	return result, nil
 }
 
-// handleEmailHandoff sends an email notification for handoff
-func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Chatbot, requestID, conversationID, notes string) error {
+// errHandoffEmailSendFailed is the user-facing error when the transport fails;
+// the underlying error is logged, not returned to the widget.
+var errHandoffEmailSendFailed = errors.New("failed to send handoff email")
+
+// handleEmailHandoff notifies the chatbot's operator address about a handoff.
+// It reports whether an email was actually delivered: with no mail provider
+// configured (ErrEmailNotConfigured) the request still succeeds but sent=false.
+func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Chatbot, requestID, conversationID, notes string) (bool, error) {
 	lc := strings.TrimSpace(bot.LanguageCode)
 	if i := strings.Index(lc, "-"); i > 0 {
 		lc = lc[:i]
 	}
 	cfg := langconfig.Get(lc)
 	if bot.HandoffConfig == nil || bot.HandoffConfig.EmailTo == "" {
-		return errors.New(cfg.UserMessages.Errors["HANDOFF_EMAIL_NOT_CONFIGURED"])
+		return false, errors.New(cfg.UserMessages.Errors["HANDOFF_EMAIL_NOT_CONFIGURED"])
 	}
 
 	// Load conversation messages (last 50 messages should be enough for handoff)
@@ -150,7 +159,7 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		if msg == "" {
 			msg = "failed to load conversation"
 		}
-		return pkgerrors.Wrapf(err, "%s", msg)
+		return false, pkgerrors.Wrapf(err, "%s", msg)
 	}
 
 	// Build email body
@@ -166,7 +175,6 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		subject = fmt.Sprintf(tmpl, bot.Name)
 	}
 
-	// Log the handoff request (email sending to be implemented with SMTP service)
 	if s.Log != nil {
 		s.Log.Info("handoff_email_request", map[string]any{
 			"request_id":      requestID,
@@ -196,11 +204,32 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		}
 	}()
 
-	// TODO: Implement actual email sending when SMTP service is available
-	// For now, we just log the request and consider it successful
-	// This allows the feature to work (creates handoff request) without email infra
-
-	return nil
+	sender := s.EmailSender
+	if sender == nil {
+		sender = NoopEmailSender{Log: s.Log}
+	}
+	err = sender.Send(ctx, EmailMessage{
+		To:      []string{bot.HandoffConfig.EmailTo},
+		Subject: subject,
+		Body:    emailBody,
+	})
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, ErrEmailNotConfigured):
+		// No mail provider integrated: the request is stored and visible in the
+		// dashboard, it just is not emailed.
+		return false, nil
+	default:
+		if s.Log != nil {
+			s.Log.Error("handoff_email_send_failed", map[string]any{
+				"request_id": requestID,
+				"chatbot_id": bot.ID,
+				"error":      err.Error(),
+			})
+		}
+		return false, errHandoffEmailSendFailed
+	}
 }
 
 // buildHandoffEmailBody creates the email body with conversation transcript
