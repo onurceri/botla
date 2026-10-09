@@ -195,7 +195,7 @@ The dashboard and widget take `VITE_*` variables; see `frontend/.env.example` an
 |---|---|---|
 | Go unit tests | `make test-fast` | Repository and service tests use the PostgreSQL from `make up` |
 | Go checks | `make ci` | `go vet`, golangci-lint, then the tests |
-| Go integration tests | `make test-integration-real` | Starts `docker-compose.integration.yml` (PostgreSQL, Redis, Qdrant) |
+| Go integration tests | `make test-integration-real` | Starts `docker-compose.integration.yml` (PostgreSQL, Redis, Qdrant), waits for it to be healthy and runs the suites; `make test-integration-down` removes it |
 | Dashboard | `npm run ci --workspace=frontend` | ESLint, `tsc`, Vitest with coverage |
 | Widget | `npm run ci --workspace=widget` | `tsc`, ESLint, Vitest with coverage |
 | End-to-end | `npm run e2e --workspace=frontend`<br/>`npm run test:e2e --workspace=widget` | Playwright; start the dashboard dev server or build the widget first |
