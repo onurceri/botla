@@ -2,7 +2,7 @@
 
 An offline-reproducible evaluation harness for Botla's RAG chatbot. It measures retrieval quality, uses an LLM judge to check answer faithfulness (hallucination), correctness, refusal and prompt-injection resistance, measures how far that judge can be trusted, and fails CI when quality regresses.
 
-> **Status: no baseline recorded yet.** The framework, fixtures and tests are complete. The one real run attempted while building this failed preflight because the OpenAI and OpenRouter keys available at the time were rejected (HTTP 401). No metric in this repository came from a real model. `evals/baseline.json` says `not_recorded` until someone runs `make eval-baseline` with valid keys. See [Results](#results).
+> **Status: baseline recorded on 2026-10-09** (generator `gpt-4o-mini`, judge `anthropic/claude-haiku-5.5`, both via OpenRouter; embeddings `text-embedding-3-small`; real Qdrant). Full report: [`reports/baseline.md`](reports/baseline.md).
 
 ## What runs, and why it is the product's code
 
@@ -61,15 +61,43 @@ The gate has a floor of `calibration.judge_kappa ≥ 0.60`. A judge that does no
 
 ## Results
 
-**Not yet recorded.** The labels were written before any judge run, so there is nothing to report and no number has been filled in by hand. After the first real run, `evals/reports/baseline.md` holds the full report (per-case answers, judge rationales, disagreements, cost). Summarise kappa here and link it.
+Baseline run of 2026-10-09: 45 golden cases and 21 calibration items. Generator `gpt-4o-mini` (the product default) at temperature 0, judge `anthropic/claude-haiku-5.5` (a different vendor, to limit self-preference bias), real Qdrant. Metered spend for the whole run: **$0.065**. Full per-case report: [`reports/baseline.md`](reports/baseline.md).
 
-A smoke run with an offline fake provider confirmed that the whole pipeline executes: ingestion into real Qdrant, retrieval, `ProcessChat`, judge, calibration, report and gate. Its numbers are meaningless by construction and were discarded.
+**Judge reliability, measured against the 21 human labels:**
+
+| Metric | Value |
+|---|---|
+| Accuracy / Cohen's kappa | 0.952 / **0.901** |
+| Accuracy by rubric | faithfulness 1.00, refusal 1.00, injection 1.00, correctness 0.83 |
+| Flip rate across 3 repeats | 0.00 |
+| Flip rate with claim-free padding (verbosity bias) | 0.00 |
+
+The judge is weakest on *correctness*, where partial answers are hardest to grade. Kappa is high, but the set has only 21 items labelled by one annotator, so treat it as a sanity check rather than a precise estimate.
+
+**Retrieval** (34 cases with expected sources): recall@5 0.971, hit@1 0.912, MRR 0.951. Only 25% of unanswerable questions land in the low-confidence tier, so the tier is a weak signal for "I don't know".
+
+**Generation:**
+
+| Slice | Case pass rate |
+|---|---|
+| Answerable (18) | 0.944 |
+| Unanswerable, refuses correctly (8) | 0.875 |
+| Adversarial, prompt injection (9) | 0.778 |
+| Multi-hop (10) | **0.500** |
+| Overall (45) | 0.800 |
+
+Faithfulness pass rate 0.867 (mean 0.962), injection resistance 0.889, generation p95 2.5 s.
+
+**What it found:** multi-hop questions are the clear weak spot, and the cause is split. In 3 of the 5 failed multi-hop cases, one of the required documents never reached the model's context. It ranked 5th, 6th and 10th, while the context holds 3 to 5 documents (the medium tier kept only 3, so even rank 5 was cut). Multi-hop recall@1 is 0.50, versus 0.79 overall. In the other 2, the context was complete and the model failed to combine the facts. So the first fix belongs in retrieval and context assembly (query decomposition, or more and more diverse documents for multi-part questions), then in the prompt. The gate will show whether either change helps.
 
 ## Running
 
 ```bash
 make eval-up                       # Qdrant on :6334 (docker-compose.integration.yml)
 export OPENAI_API_KEY=...          # or put it in .env
+# OpenRouter only (no OpenAI key): route the product's embedding client through OpenRouter
+#   export OPENAI_API_BASE=https://openrouter.ai/api OPENAI_API_KEY=$OPENROUTER_API_KEY
+#   make eval-baseline EVAL_FLAGS="-gen-provider openrouter -judge-provider openrouter -judge-model anthropic/claude-haiku-5.5"
 make eval                          # all suites → evals/reports/latest/report.{md,json}
 make eval EVAL_FLAGS="-vector memory"           # no Docker: exact in-process search
 make eval-retrieval                # retrieval only (embeddings only, ~free)
@@ -87,7 +115,7 @@ Useful flags (`go run ./cmd/eval -h`):
 
 Exit codes: `0` gate passed, `1` gate failed, `2` configuration or runtime error.
 
-**Cost.** Estimated, not measured: one full run is about 45 generations, about 100 judge calls, about 84 calibration judge calls, and a few hundred embedding calls. With `gpt-4o-mini` and a `gpt-4.1-mini` judge this should be well under $0.25. Cached re-runs only pay for generation. The report records the actual metered cost per phase and per model.
+**Cost.** Measured: the 2026-10-09 baseline cost $0.065 in total. One full run is about 45 generations, about 100 judge calls, about 84 calibration judge calls, and a few hundred embedding calls. With `gpt-4o-mini` and a `gpt-4.1-mini` judge this should be well under $0.25. Cached re-runs only pay for generation. The report records the actual metered cost per phase and per model.
 
 ## Regression gate
 
