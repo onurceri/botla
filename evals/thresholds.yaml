@@ -12,9 +12,9 @@
 # so generation tolerances are 1.5 case-equivalents: one case that flips in
 # every repeat (plus a partial flip elsewhere) passes, two consistent flips
 # fail. Measured noise supports this. The run-to-run std of single-run
-# faithfulness and correctness pass rates is about 0.02-0.03 (2026-10-09
-# baseline: per-repeat std 0.013 and 0.017; earlier single runs of the same
-# config ranged 0.822-0.889). The difference of two 3-repeat means then has a
+# faithfulness and correctness pass rates is about 0.02-0.03 (two 3-repeat
+# runs on 2026-10-09: per-repeat std 0.013-0.022 for faithfulness and
+# 0.017-0.029 for correctness; single runs ranged 0.822-0.889 on faithfulness). The difference of two 3-repeat means then has a
 # std of about 0.016-0.025, so the old 1-case tolerance (0.025) would fail on
 # noise roughly 1 run in 8. Refusal and injection showed zero spread in every
 # run; they use the same 1.5-case rule for consistency.
