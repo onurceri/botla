@@ -197,6 +197,35 @@ func LoadGolden(path string) (*GoldenSet, error) {
 	return &g, nil
 }
 
+// LoadGoldenFiles loads one or more golden set files and concatenates their
+// cases in order (e.g. golden.yaml plus a held-out file). With a single path
+// it is identical to LoadGolden. The combined hash covers every file, so a run
+// over a different set of files never shares a baseline identity with another.
+// Duplicate IDs across files are reported by Validate.
+func LoadGoldenFiles(paths ...string) (*GoldenSet, error) {
+	if len(paths) == 0 {
+		return nil, errors.New("no golden set files given")
+	}
+	if len(paths) == 1 {
+		return LoadGolden(paths[0])
+	}
+	out := &GoldenSet{}
+	h := sha256.New()
+	for _, p := range paths {
+		g, err := LoadGolden(p)
+		if err != nil {
+			return nil, err
+		}
+		if out.Version == 0 {
+			out.Version = g.Version
+		}
+		out.Cases = append(out.Cases, g.Cases...)
+		_, _ = fmt.Fprintf(h, "%s\n", g.hash)
+	}
+	out.hash = hex.EncodeToString(h.Sum(nil))[:16]
+	return out, nil
+}
+
 // Validate checks internal consistency and that every referenced document
 // exists in the corpus. It returns all problems at once.
 func (g *GoldenSet) Validate(c *Corpus) error {

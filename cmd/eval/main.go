@@ -46,7 +46,7 @@ type options struct {
 	genProvider, genModel, judgeProvider, judgeModel   string
 	genTemperature, judgeTemperature, maxCost          float64
 	concurrency, repeats, limit                        int
-	cases, categories, logLevel                        string
+	cases, categories, logLevel, golden                string
 	verbosityProbe, noCache, updateBaseline, preflight bool
 }
 
@@ -54,6 +54,7 @@ func parseFlags() options {
 	var o options
 	flag.StringVar(&o.suites, "suites", strings.Join(runner.AllSuites, ","), "comma-separated suites: retrieval,generation,calibration")
 	flag.StringVar(&o.evalsDir, "evals-dir", "evals", "directory with corpus/, golden.yaml, calibration/, thresholds.yaml, baseline.json, pricing.yaml")
+	flag.StringVar(&o.golden, "golden", "golden.yaml", "comma-separated golden set files in <evals-dir> (e.g. golden_holdout.yaml, or golden.yaml,golden_holdout.yaml)")
 	flag.StringVar(&o.judgeDir, "judge-dir", "", "judge prompt set directory (default <evals-dir>/judge/v1)")
 	flag.StringVar(&o.outDir, "out", "", "report output directory (default <evals-dir>/reports/latest)")
 	flag.StringVar(&o.cacheDir, "cache-dir", ".evalcache", "content-hash cache for embeddings, capability summaries and judge verdicts")
@@ -142,7 +143,11 @@ func loadFixtures(o options) (*fixtures, error) {
 	if f.corpus, err = dataset.LoadCorpus(filepath.Join(o.evalsDir, "corpus")); err != nil {
 		return nil, err
 	}
-	if f.golden, err = dataset.LoadGolden(filepath.Join(o.evalsDir, "golden.yaml")); err != nil {
+	var goldenPaths []string
+	for _, name := range splitList(o.golden) {
+		goldenPaths = append(goldenPaths, filepath.Join(o.evalsDir, name))
+	}
+	if f.golden, err = dataset.LoadGoldenFiles(goldenPaths...); err != nil {
 		return nil, err
 	}
 	if err = f.golden.Validate(f.corpus); err != nil {
@@ -365,6 +370,9 @@ func buildPipeline(ctx context.Context, o options, fx *fixtures, metered *http.C
 }
 
 func writeBaseline(o options, rep *runner.Report, fullSet bool, suites []string) error {
+	if o.golden != "golden.yaml" {
+		return errors.New("refusing to update the baseline from a run that is not over golden.yaml alone (held-out sets are for checking, not gating)")
+	}
 	if !fullSet || len(suites) != len(runner.AllSuites) {
 		return errors.New("refusing to update the baseline from a partial run (filters or suite subset)")
 	}

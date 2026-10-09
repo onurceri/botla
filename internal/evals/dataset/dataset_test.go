@@ -260,3 +260,42 @@ func TestRealFixtures(t *testing.T) {
 	assert.Positive(t, labels[LabelPass], "calibration needs both labels for kappa to be defined")
 	assert.Positive(t, labels[LabelFail])
 }
+
+func TestLoadGoldenFiles(t *testing.T) {
+	c := testCorpus(t)
+	dir := t.TempDir()
+	a := writeFile(t, dir, "a.yaml", validGolden)
+	b := writeFile(t, dir, "b.yaml", "version: 1\ncases:\n  - id: extra\n    category: unanswerable\n    question: Q5?\n")
+
+	single, err := LoadGoldenFiles(a)
+	require.NoError(t, err)
+	plain, err := LoadGolden(a)
+	require.NoError(t, err)
+	assert.Equal(t, plain.Hash(), single.Hash(), "one file behaves like LoadGolden")
+
+	both, err := LoadGoldenFiles(a, b)
+	require.NoError(t, err)
+	require.NoError(t, both.Validate(c))
+	assert.Len(t, both.Cases, 5)
+	assert.Equal(t, "extra", both.Cases[4].ID, "cases keep file order")
+	assert.Len(t, both.Hash(), 16)
+	assert.NotEqual(t, single.Hash(), both.Hash())
+
+	dup, err := LoadGoldenFiles(a, a)
+	require.NoError(t, err)
+	assert.ErrorContains(t, dup.Validate(c), "duplicate id")
+
+	_, err = LoadGoldenFiles()
+	assert.Error(t, err)
+	_, err = LoadGoldenFiles(a, filepath.Join(dir, "missing.yaml"))
+	assert.Error(t, err)
+}
+
+func TestRealHoldoutFixture(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "evals")
+	c, err := LoadCorpus(filepath.Join(root, "corpus"))
+	require.NoError(t, err)
+	g, err := LoadGoldenFiles(filepath.Join(root, "golden.yaml"), filepath.Join(root, "golden_holdout.yaml"))
+	require.NoError(t, err)
+	require.NoError(t, g.Validate(c), "held-out IDs must not collide with golden IDs")
+}
