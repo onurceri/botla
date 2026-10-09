@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/onurceri/botla-app/internal/api"
@@ -115,21 +116,55 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	api.WriteJSON(w, http.StatusOK, result)
 }
 
-// ListHandoffRequests handles GET /api/chatbots/:id/handoff-requests
+// ListHandoffRequests handles GET /api/v1/chatbots/:id/handoff-requests
+// Query params: page (1-based, default 1), limit (1..100, default 50),
+// status (pending|assigned|resolved, default all).
 func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Request) {
 	_, botID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
-	// Get handoff requests using injected service
-	requests, err := h.HandoffService.GetHandoffRequests(r.Context(), botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	q := r.URL.Query()
+	page, okPage := parseIntQuery(q.Get("page"), 1)
+	limit, okLimit := parseIntQuery(q.Get("limit"), services.DefaultHandoffListLimit)
+	if !okPage || !okLimit {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
-	api.WriteJSON(w, http.StatusOK, map[string]any{"requests": requests})
+	result, err := h.HandoffService.ListHandoffRequests(r.Context(), botID, strings.TrimSpace(q.Get("status")), page, limit)
+	if err != nil {
+		var invalid services.InvalidHandoffStatusError
+		switch {
+		case errors.As(err, &invalid):
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidStatus)
+		case errors.Is(err, services.ErrInvalidRequest):
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		default:
+			if h.Log != nil {
+				h.Log.Error("handoff_list_failed", map[string]any{"error": err.Error(), "bot_id": botID})
+			}
+			api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		}
+		return
+	}
+
+	api.WriteJSON(w, http.StatusOK, result)
+}
+
+// parseIntQuery parses an optional integer query value, returning def when it
+// is empty and ok=false when it is not a valid integer.
+func parseIntQuery(raw string, def int) (int, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return def, true
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // UpdateHandoffRequest handles PATCH /api/chatbots/:id/handoff-requests/:requestId

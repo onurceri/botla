@@ -261,24 +261,49 @@ func (s *HandoffService) buildHandoffEmailBody(botName, requestID string, messag
 	return sb.String()
 }
 
-// GetHandoffRequests returns all handoff requests for a chatbot
-func (s *HandoffService) GetHandoffRequests(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error) {
-	requests, err := s.HandoffRepo.GetHandoffRequestsByBotID(ctx, chatbotID)
-	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "get handoff requests")
+// Handoff list paging bounds.
+const (
+	DefaultHandoffListLimit = 50
+	MaxHandoffListLimit     = 100
+)
+
+// HandoffRequestPage is one page of a chatbot's handoff requests.
+type HandoffRequestPage struct {
+	Requests []*models.HandoffRequest `json:"requests"`
+	Total    int                      `json:"total"`
+	Page     int                      `json:"page"`
+	Limit    int                      `json:"limit"`
+}
+
+// ListHandoffRequests returns page (1-based) of a chatbot's handoff requests,
+// newest first. An empty status lists all statuses; an unknown status yields
+// InvalidHandoffStatusError. page < 1 and limit outside 1..MaxHandoffListLimit
+// are rejected with ErrInvalidRequest.
+func (s *HandoffService) ListHandoffRequests(ctx context.Context, chatbotID, status string, page, limit int) (*HandoffRequestPage, error) {
+	if status != "" && !models.IsValidHandoffStatus(status) {
+		return nil, InvalidHandoffStatusError{Status: status}
 	}
-	return requests, nil
+	if page < 1 || limit < 1 || limit > MaxHandoffListLimit {
+		return nil, ErrInvalidRequest
+	}
+
+	requests, total, err := s.HandoffRepo.ListHandoffRequestsByBotID(ctx, chatbotID, models.HandoffListFilter{
+		Status: status,
+		Limit:  limit,
+		Offset: (page - 1) * limit,
+	})
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "list handoff requests")
+	}
+	if requests == nil {
+		requests = []*models.HandoffRequest{}
+	}
+	return &HandoffRequestPage{Requests: requests, Total: total, Page: page, Limit: limit}, nil
 }
 
 // UpdateHandoffStatus updates the status of a handoff request
 func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, status string, assignedTo *string) error {
-	// Validate status
-	validStatuses := map[string]bool{
-		models.HandoffStatusPending:  true,
-		models.HandoffStatusAssigned: true,
-		models.HandoffStatusResolved: true,
-	}
-	if !validStatuses[status] {
+	if !models.IsValidHandoffStatus(status) {
 		return InvalidHandoffStatusError{Status: status}
 	}
 

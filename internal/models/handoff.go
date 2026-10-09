@@ -35,3 +35,20 @@ const (
 	HandoffStatusAssigned = "assigned"
 	HandoffStatusResolved = "resolved"
 )
+
+// IsValidHandoffStatus reports whether status is one of the known handoff statuses.
+func IsValidHandoffStatus(status string) bool {
+	switch status {
+	case HandoffStatusPending, HandoffStatusAssigned, HandoffStatusResolved:
+		return true
+	}
+	return false
+}
+
+// HandoffListFilter narrows and pages a chatbot's handoff request list.
+// An empty Status matches all statuses.
+type HandoffListFilter struct {
+	Status string
+	Limit  int
+	Offset int
+}

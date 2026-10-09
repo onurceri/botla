@@ -371,8 +371,9 @@ type HandoffRepository interface {
 	// CreateHandoffRequest creates a new handoff request and returns the generated ID.
 	CreateHandoffRequest(ctx context.Context, req *models.HandoffRequest) (string, error)
 
-	// GetHandoffRequestsByBotID returns all handoff requests for a chatbot.
-	GetHandoffRequestsByBotID(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error)
+	// ListHandoffRequestsByBotID returns one page of a chatbot's handoff requests
+	// (newest first, optionally filtered by status) and the total matching count.
+	ListHandoffRequestsByBotID(ctx context.Context, chatbotID string, filter models.HandoffListFilter) ([]*models.HandoffRequest, int, error)
 
 	// GetHandoffRequestByID returns a single handoff request by ID.
 	GetHandoffRequestByID(ctx context.Context, id string) (*models.HandoffRequest, error)

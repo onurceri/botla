@@ -76,35 +76,59 @@ func (r *PostgresHandoffRepo) CreateHandoffRequest(ctx context.Context, req *mod
 	return id, nil
 }
 
-func (r *PostgresHandoffRepo) GetHandoffRequestsByBotID(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error) {
+// ListHandoffRequestsByBotID returns one page of a chatbot's handoff requests,
+// newest first, optionally filtered by status, plus the total number of
+// requests matching the filter (ignoring paging).
+func (r *PostgresHandoffRepo) ListHandoffRequestsByBotID(ctx context.Context, chatbotID string, filter models.HandoffListFilter) ([]*models.HandoffRequest, int, error) {
+	limit, offset, err := ValidatePagination(filter.Limit, filter.Offset)
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "validate pagination")
+	}
+
+	where := sq.Eq{"chatbot_id": chatbotID}
+	if filter.Status != "" {
+		where["status"] = filter.Status
+	}
+
+	countQuery, countArgs, err := psql.Select("COUNT(*)").From("handoff_requests").Where(where).ToSql()
+	if err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "build count handoff requests query")
+	}
+	var total int
+	if err := r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, pkgerrors.Wrapf(err, "count handoff requests")
+	}
+
 	query, args, err := psql.
 		Select(handoffRequestColumns...).
 		From("handoff_requests").
-		Where(sq.Eq{"chatbot_id": chatbotID}).
-		OrderBy("created_at DESC").
+		Where(where).
+		OrderBy("created_at DESC", "id DESC").
+		Limit(limit).
+		Offset(offset).
 		ToSql()
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "build get handoff requests query")
+		return nil, 0, pkgerrors.Wrapf(err, "build list handoff requests query")
 	}
 
 	rows, err := r.pool.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "query handoff requests")
+		return nil, 0, pkgerrors.Wrapf(err, "query handoff requests")
 	}
 	defer closeRows(rows)
 
-	var requests []*models.HandoffRequest
+	requests := make([]*models.HandoffRequest, 0, limit)
 	for rows.Next() {
 		var req models.HandoffRequest
 		if err := rows.Scan(handoffRequestScanDest(&req)...); err != nil {
-			return nil, pkgerrors.Wrapf(err, "scan handoff request")
+			return nil, 0, pkgerrors.Wrapf(err, "scan handoff request")
 		}
 		requests = append(requests, &req)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, pkgerrors.Wrapf(err, "handoff requests rows error")
+		return nil, 0, pkgerrors.Wrapf(err, "handoff requests rows error")
 	}
-	return requests, nil
+	return requests, total, nil
 }
 
 func (r *PostgresHandoffRepo) GetHandoffRequestByID(ctx context.Context, id string) (*models.HandoffRequest, error) {
