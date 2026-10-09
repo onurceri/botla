@@ -5,6 +5,7 @@ import { useChatbotContext } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
 import { useUpdateSecuritySettings } from '@/hooks/mutations/useChatbotMutations'
+import { generateEmbedSecret } from '@/lib/embedSecret'
 
 export default function DeployTab() {
   const { id = '' } = useParams()
@@ -54,9 +55,7 @@ export default function DeployTab() {
         onToggleSecure={setSecureEmbedEnabled}
         onDomainsChange={setAllowedDomains}
         onSecretChange={setEmbedSecret}
-        onSecretRefresh={() =>
-          setEmbedSecret(Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2))
-        }
+        onSecretRefresh={() => setEmbedSecret(generateEmbedSecret())}
         onSecretClear={() => setEmbedSecret('')}
       />
     </div>

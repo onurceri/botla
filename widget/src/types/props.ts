@@ -52,6 +52,10 @@ export interface WidgetAppProps extends
   resetSession?: boolean
   sessionIdOverride?: string
   
+  // Integration
+  /** Origin of a framing page allowed to receive WIDGET_EVENT_* messages. */
+  parentOrigin?: string
+
   // Behavior
   autoOpen?: boolean
   useOverrides?: boolean

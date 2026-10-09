@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -375,59 +374,44 @@ func (r *PostgresPlanRepo) setCache(ctx context.Context, userID string, plan *mo
 	return nil
 }
 
-// UpdatePlanLimits updates the plan limits/features for a given plan.
-// The updates map contains field names (snake_case) mapped to new values.
-
 // UpdatePlanLimits updates plan limits/features for a given plan.
-// The updates map contains field names (snake_case) mapped to new values.
-// Only fields present in map will be updated (partial update).
+// The updates map contains column names (snake_case) mapped to new values.
+// Only fields present in the map are updated (partial update). Every key is
+// checked against the plan_limits allowlist in models before any SQL is built;
+// unknown or mistyped fields return an error wrapping
+// models.ErrInvalidPlanLimitUpdate.
 func (r *PostgresPlanRepo) UpdatePlanLimits(ctx context.Context, planID string, updates map[string]interface{}) error {
-	if len(updates) == 0 {
-		return nil
-	}
-
-	fmt.Printf("[DEBUG] UpdatePlanLimits - planID: %s, updates: %+v\n", planID, updates)
-
-	// Build update query using squirrel
-	query := psql.Update("plan_limits")
-
-	for field, value := range updates {
-		// Convert float64 to int for integer columns (JSON decoder produces float64 for numbers)
-		if f, ok := value.(float64); ok {
-			fmt.Printf("[DEBUG] Converting float64 to int for field %s: %v -> %v\n", field, value, int(f))
-			query = query.Set(field, int(f))
-		} else {
-			fmt.Printf("[DEBUG] Setting field %s with value %v (type: %T)\n", field, value, value)
-			query = query.Set(field, value)
-		}
-	}
-
-	query = query.Where(sq.Eq{"plan_id": planID})
-
-	sql, args, err := query.ToSql()
+	normalized, err := models.NormalizePlanLimitUpdates(updates)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to build query: %v\n", err)
+		return err
+	}
+
+	query := psql.Update("plan_limits")
+	for field, value := range normalized {
+		if arr, ok := value.([]string); ok {
+			query = query.Set(field, pq.Array(arr))
+			continue
+		}
+		query = query.Set(field, value)
+	}
+	query = query.Set("updated_at", sq.Expr("NOW()")).Where(sq.Eq{"plan_id": planID})
+
+	sqlStr, args, err := query.ToSql()
+	if err != nil {
 		return pkgerrors.Wrapf(err, "build update plan limits query")
 	}
 
-	fmt.Printf("[DEBUG] Generated SQL: %s, Args: %+v\n", sql, args)
-
-	result, err := r.pool.ExecContext(ctx, sql, args...)
+	result, err := r.pool.ExecContext(ctx, sqlStr, args...)
 	if err != nil {
-		fmt.Printf("[ERROR] Query execution failed: %v\n", err)
 		return pkgerrors.Wrapf(err, "update plan limits")
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to get rows affected: %v\n", err)
 		return pkgerrors.Wrapf(err, "get rows affected")
 	}
 	if rows == 0 {
-		fmt.Printf("[ERROR] No rows affected\n")
 		return errors.New("plan limits not found")
 	}
-
-	fmt.Printf("[DEBUG] Update successful, rows affected: %d\n", rows)
 	return nil
 }

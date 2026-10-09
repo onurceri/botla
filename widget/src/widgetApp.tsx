@@ -3,6 +3,7 @@ import { ChatBubble } from './components/ChatBubble'
 import { ChatDrawer } from './components/ChatDrawer'
 import { sanitizeUrl } from './utils/sanitize'
 import { logger } from './utils/logger'
+import { getEventTargetOrigins, postWidgetEvent } from './utils/postMessage'
 import type { ChatMessage, ChatbotConfig } from './types'
 import type { WidgetAppProps } from './types/props'
 import { getSession, saveSession, clearSession, ensureSession, setSessionId } from './utils/session'
@@ -23,7 +24,7 @@ export function WidgetApp(props: WidgetAppProps) {
     welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, 
     resetSession, sessionIdOverride, suggestions: suggestionsOverride, 
     hideBrandingOverride, customBrandingOverride, 
-    positionStrategy = 'fixed', previewMode = false, onOpenChange 
+    positionStrategy = 'fixed', previewMode = false, parentOrigin, onOpenChange 
   } = props
 
   const [open, setOpen] = useState(!!autoOpen)
@@ -43,10 +44,10 @@ export function WidgetApp(props: WidgetAppProps) {
   const onOpenChangeRef = useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
 
+  // Events go only to trusted origins (dashboard + optional parent-origin),
+  // never to '*', so an arbitrary framing page cannot read chat content.
   const emitEvent = (type: string, payload?: unknown) => {
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: `WIDGET_EVENT_${type.toUpperCase()}`, payload }, '*')
-    }
+    postWidgetEvent(type, payload, getEventTargetOrigins(parentOrigin))
   }
 
   // Report open state to parent on change (initial and updates)

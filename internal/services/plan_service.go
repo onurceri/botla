@@ -230,6 +230,15 @@ func (s *PlanService) ValidateAllPlans(ctx context.Context) error {
 // UpdatePlanLimits updates a plan's limits/features.
 // The updates map contains field names (snake_case) mapped to new values.
 // Only fields present in the map will be updated (partial update).
+// Fields are validated against the plan_limits allowlist first; invalid input
+// returns an error wrapping models.ErrInvalidPlanLimitUpdate.
 func (s *PlanService) UpdatePlanLimits(ctx context.Context, planID string, updates map[string]interface{}) error {
-	return s.planRepo.UpdatePlanLimits(ctx, planID, updates)
+	normalized, err := models.NormalizePlanLimitUpdates(updates)
+	if err != nil {
+		return err
+	}
+	if err := s.planRepo.UpdatePlanLimits(ctx, planID, normalized); err != nil {
+		return pkgerrors.Wrapf(err, "update plan limits for plan %s", planID)
+	}
+	return nil
 }

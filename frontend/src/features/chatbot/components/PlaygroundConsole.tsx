@@ -10,6 +10,7 @@ import {
   Bot,
   Cpu,
 } from 'lucide-react'
+import { isWidgetMessage } from '@/lib/widgetOrigin'
 
 type LogEntry = {
   id: string
@@ -26,6 +27,9 @@ export default function PlaygroundConsole() {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Only log events posted by the widget preview (exact origin match)
+      if (!isWidgetMessage(event)) return
+      if (!event.data || typeof event.data !== 'object') return
       const { type, payload } = event.data
       if (typeof type !== 'string' || !type.startsWith('WIDGET_EVENT_')) return
 

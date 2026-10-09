@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -21,6 +22,29 @@ import (
 	"github.com/onurceri/botla-app/pkg/middleware"
 	"github.com/onurceri/botla-app/pkg/policy"
 )
+
+// sqlExecer is the subset of *sql.DB / *sql.Tx used for single statements.
+type sqlExecer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+// revokeActiveRefreshToken marks the refresh token with the given hash as
+// revoked if, and only if, it is currently active. The conditional UPDATE is a
+// single atomic statement, so when several requests present the same token
+// concurrently exactly one of them observes ok == true.
+func revokeActiveRefreshToken(ctx context.Context, db sqlExecer, tokenHash string) (bool, error) {
+	res, err := db.ExecContext(ctx,
+		"UPDATE refresh_tokens SET revoked = true WHERE token_hash = $1 AND revoked IS NOT TRUE",
+		tokenHash)
+	if err != nil {
+		return false, fmt.Errorf("revoke refresh token: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("revoke refresh token rows affected: %w", err)
+	}
+	return n == 1, nil
+}
 
 // hashToken creates a SHA-256 hash of the token for secure storage
 func hashToken(token string) string {
@@ -249,23 +273,16 @@ func (h *AuthHandlers) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if token exists and is not revoked (lookup by hash)
-	var revoked bool
-	tokenHash := hashToken(req.RefreshToken)
-	err = h.DB.QueryRowContext(r.Context(), "SELECT revoked FROM refresh_tokens WHERE token_hash=$1", tokenHash).Scan(&revoked)
-	if err == sql.ErrNoRows || revoked {
+	// Rotation: atomically revoke the presented token. Only the request that
+	// flips revoked from false to true may mint a new token pair; unknown,
+	// already-revoked, or concurrently-rotated tokens are rejected.
+	ok, err := revokeActiveRefreshToken(r.Context(), h.DB, hashToken(req.RefreshToken))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Revoke old token (Rotation)
-	_, err = h.DB.ExecContext(r.Context(), "UPDATE refresh_tokens SET revoked=true WHERE token_hash=$1", tokenHash)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

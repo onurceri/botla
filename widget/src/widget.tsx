@@ -1,6 +1,7 @@
 import { render } from 'preact'
 import { WidgetApp } from './widgetApp'
 import styles from './styles.css?raw'
+import { createConfigMessageHandler, getDashboardOrigins, validateApiBase } from './utils/postMessage'
 
 const defaultHostId = 'chatbot-widget-host'
 
@@ -23,6 +24,9 @@ function currentParams() {
   const params = u.searchParams
   if (script && script.dataset.bot) {
     params.set('chatbot-id', script.dataset.bot)
+  }
+  if (script && script.dataset.parentOrigin) {
+    params.set('parent-origin', script.dataset.parentOrigin)
   }
   return params
 }
@@ -154,7 +158,11 @@ export function mount() {
   }
   // Use VITE_API_BASE_URL env var as default if available, otherwise undefined (which defaults to relative)
   const defaultApiBase = import.meta.env.VITE_API_BASE_URL || undefined
-  const apiBase = params.get('api-base') || defaultApiBase
+  const previewMode = params.get('preview-mode') === '1' || params.get('preview-mode') === 'true'
+  // In preview mode the params are relayed from the dashboard via postMessage,
+  // so api-base must pass the same validation as live WIDGET_CONFIG updates.
+  const rawApiBase = params.get('api-base')
+  const apiBase = (previewMode ? validateApiBase(rawApiBase) : rawApiBase) || defaultApiBase
   const themeColor = params.get('color') || undefined
   const welcome = params.get('welcome') || undefined
   const embedTokenUrl = params.get('embed-token-url') || undefined
@@ -182,11 +190,12 @@ export function mount() {
   const sendButtonColor = params.get('send-button-color') || undefined
   const resetSession = params.get('reset-session') === '1' || params.get('reset-session') === 'true'
   const sessionIdOverride = params.get('session-id') || undefined
+  // Optional: origin of a page that frames this one and should receive widget events
+  const parentOrigin = params.get('parent-origin') || undefined
   
   // Playground preview params
   const positionStrategyRaw = params.get('position-strategy') || undefined
   const positionStrategy = positionStrategyRaw === 'absolute' ? 'absolute' : 'fixed'
-  const previewMode = params.get('preview-mode') === '1' || params.get('preview-mode') === 'true'
   
   // Parse suggestions from JSON if provided
   let suggestionsOverride: string[] | undefined
@@ -216,77 +225,92 @@ export function mount() {
   let currentOpenState: boolean | undefined = undefined
   const setOpenState = (isOpen: boolean) => { currentOpenState = isOpen }
   
-  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, previewMode, onOpenChange: setOpenState }
+  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, previewMode, parentOrigin, onOpenChange: setOpenState }
   
   render(<WidgetApp {...props} />, root)
 
-  // Allowed origins for postMessage (Playground support)
-  const ALLOWED_ORIGINS = [
-    import.meta.env.VITE_DASHBOARD_URL,
-    import.meta.env.VITE_API_BASE_URL,
-  ].filter(Boolean) as string[]
+  // Live config updates (Playground support).
+  // Only enabled in preview mode, and only accepted from the parent window when
+  // its origin exactly matches a dashboard origin. Empty allowlist => reject all.
+  if (previewMode) {
+    const allowedOrigins = getDashboardOrigins()
+    const handler = createConfigMessageHandler({
+      allowedOrigins,
+      expectedSource: window.parent,
+      onReject: (reason, event) => {
+        console.warn('[Widget] Rejected WIDGET_CONFIG message:', reason, event.origin)
+      },
+      onConfig: (rawConfig, event) => {
+        const newConfig: Record<string, string> = {}
+        for (const [k, v] of Object.entries(rawConfig)) {
+          if (typeof v === 'string') newConfig[k] = v
+        }
 
-  // Listen for live config updates (Playground support)
-  window.addEventListener('message', (event) => {
-    // Origin validation - block unauthorized origins
-    if (ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.some(origin => event.origin.startsWith(origin))) {
-      console.warn('[Widget] Unauthorized postMessage origin:', event.origin)
-      return
-    }
-    
-    if (event.data?.type === 'WIDGET_CONFIG') {
-      const newConfig = event.data.config
-      
-      // Preserve the current open state if widget is already mounted
-      const preserveOpen = currentOpenState !== undefined ? currentOpenState : (newConfig['auto-open'] === '1')
-      
-      const updatedProps = {
-        ...props,
-        chatbotId: newConfig['chatbot-id'] || chatbotId,
-        apiBase: newConfig['api-base'] || apiBase,
-        themeColor: newConfig['color'] || themeColor,
-        headerColor: newConfig['header-color'] || headerColor,
-        headerTextColor: newConfig['header-text-color'] || headerTextColor,
-        botMessageColor: newConfig['bot-message-color'] || botMessageColor,
-        botMessageTextColor: newConfig['bot-message-text-color'] || botMessageTextColor,
-        userMessageColor: newConfig['user-message-color'] || userMessageColor,
-        userMessageTextColor: newConfig['user-message-text-color'] || userMessageTextColor,
-        fontFamily: newConfig['font-family'] || fontFamily,
-        position: (newConfig['position'] === 'bottom-left' ? 'bottom-left' : newConfig['position'] === 'bottom-right' ? 'bottom-right' : position) as "bottom-left" | "bottom-right" | undefined,
-        botNameOverride: newConfig['bot-name'] || botName,
-        botIconOverride: newConfig['bot-icon'] || botIcon,
-        welcome: newConfig['welcome'] || welcome,
-        chatBg: newConfig['chat-bg-color'] || chatBg,
-        panelBg: newConfig['panel-bg-color'] || panelBg,
-        inputBg: newConfig['input-bg-color'] || inputBg,
-        inputText: newConfig['input-text-color'] || inputText,
-        bubbleRadius: newConfig['bubble-radius'] || bubbleRadius,
-        sendButtonColor: newConfig['send-button-color'] || sendButtonColor,
-        panelHeight: newConfig['panel-height'] || panelHeight,
-        panelWidth: newConfig['panel-width'] || panelWidth,
-        useOverrides: true, // Always override in playground
-        autoOpen: preserveOpen, // Use preserved open state instead of auto-open config
-        sessionIdOverride: newConfig['session-id'] || sessionIdOverride,
-        hideBrandingOverride: newConfig['hide-branding'] === '1',
-        positionStrategy: (newConfig['position-strategy'] || positionStrategy) as "fixed" | "absolute",
-        previewMode: newConfig['preview-mode'] === '1',
-        onOpenChange: setOpenState, // Keep the callback
-      }
-      
-      if (newConfig['suggestions']) {
-        try { updatedProps.suggestions = JSON.parse(newConfig['suggestions']) } catch {}
-      }
-      
-      if (newConfig['custom-branding']) {
-        try { updatedProps.customBrandingOverride = JSON.parse(newConfig['custom-branding']) } catch {}
-      }
+        // api-base redirects all chat traffic, so it must be a valid https URL
+        // (http allowed only for localhost). Invalid values are ignored.
+        let nextApiBase = apiBase
+        if (newConfig['api-base']) {
+          const validated = validateApiBase(newConfig['api-base'])
+          if (validated) {
+            nextApiBase = validated
+          } else {
+            console.warn('[Widget] Ignoring invalid api-base from WIDGET_CONFIG')
+          }
+        }
 
-      render(<WidgetApp {...updatedProps} />, root)
-      
-      // Notify parent that config was applied
-      window.parent.postMessage({ type: 'WIDGET_CONFIG_APPLIED' }, '*')
-    }
-  })
+        // Preserve the current open state if widget is already mounted
+        const preserveOpen = currentOpenState !== undefined ? currentOpenState : (newConfig['auto-open'] === '1')
+
+        const updatedProps = {
+          ...props,
+          chatbotId: newConfig['chatbot-id'] || chatbotId,
+          apiBase: nextApiBase,
+          themeColor: newConfig['color'] || themeColor,
+          headerColor: newConfig['header-color'] || headerColor,
+          headerTextColor: newConfig['header-text-color'] || headerTextColor,
+          botMessageColor: newConfig['bot-message-color'] || botMessageColor,
+          botMessageTextColor: newConfig['bot-message-text-color'] || botMessageTextColor,
+          userMessageColor: newConfig['user-message-color'] || userMessageColor,
+          userMessageTextColor: newConfig['user-message-text-color'] || userMessageTextColor,
+          fontFamily: newConfig['font-family'] || fontFamily,
+          position: (newConfig['position'] === 'bottom-left' ? 'bottom-left' : newConfig['position'] === 'bottom-right' ? 'bottom-right' : position) as "bottom-left" | "bottom-right" | undefined,
+          botNameOverride: newConfig['bot-name'] || botName,
+          botIconOverride: newConfig['bot-icon'] || botIcon,
+          welcome: newConfig['welcome'] || welcome,
+          chatBg: newConfig['chat-bg-color'] || chatBg,
+          panelBg: newConfig['panel-bg-color'] || panelBg,
+          inputBg: newConfig['input-bg-color'] || inputBg,
+          inputText: newConfig['input-text-color'] || inputText,
+          bubbleRadius: newConfig['bubble-radius'] || bubbleRadius,
+          sendButtonColor: newConfig['send-button-color'] || sendButtonColor,
+          panelHeight: newConfig['panel-height'] || panelHeight,
+          panelWidth: newConfig['panel-width'] || panelWidth,
+          useOverrides: true, // Always override in playground
+          autoOpen: preserveOpen, // Use preserved open state instead of auto-open config
+          sessionIdOverride: newConfig['session-id'] || sessionIdOverride,
+          hideBrandingOverride: newConfig['hide-branding'] === '1',
+          positionStrategy: (newConfig['position-strategy'] || positionStrategy) as "fixed" | "absolute",
+          previewMode: newConfig['preview-mode'] === '1',
+          onOpenChange: setOpenState, // Keep the callback
+        }
+
+        if (newConfig['suggestions']) {
+          try { updatedProps.suggestions = JSON.parse(newConfig['suggestions']) } catch {}
+        }
+
+        if (newConfig['custom-branding']) {
+          try { updatedProps.customBrandingOverride = JSON.parse(newConfig['custom-branding']) } catch {}
+        }
+
+        render(<WidgetApp {...updatedProps} />, root)
+
+        // Acknowledge to the sender only (never broadcast with '*')
+        const source = event.source as Window | null
+        source?.postMessage({ type: 'WIDGET_CONFIG_APPLIED' }, event.origin)
+      },
+    })
+    window.addEventListener('message', handler)
+  }
 }
 
 export function unmount() {

@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -10,13 +10,26 @@ import (
 	"github.com/onurceri/botla-app/internal/models"
 	"github.com/onurceri/botla-app/internal/repository"
 	"github.com/onurceri/botla-app/internal/services"
+	"github.com/onurceri/botla-app/pkg/logger"
 )
 
 // AdminPlanHandlers handles admin operations for plans and their limits/features.
 type AdminPlanHandlers struct {
 	PlanSvc  *services.PlanService
 	PlanRepo repository.PlanRepository
-	Logger   any
+	Logger   *logger.Logger
+}
+
+func (h *AdminPlanHandlers) logError(r *http.Request, msg string, fields map[string]any) {
+	if h.Logger != nil {
+		h.Logger.ErrorCtx(r.Context(), msg, fields)
+	}
+}
+
+func (h *AdminPlanHandlers) logWarn(r *http.Request, msg string, fields map[string]any) {
+	if h.Logger != nil {
+		h.Logger.WarnCtx(r.Context(), msg, fields)
+	}
 }
 
 // NewAdminPlanHandlers creates a new AdminPlanHandlers instance.
@@ -123,16 +136,13 @@ func (h *AdminPlanHandlers) UpdateLimits(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if len(updates) == 0 {
-		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
-		return
-	}
-
-	fmt.Printf("[DEBUG] UpdateLimits - planID: %s, updates: %+v\n", id, updates)
-
-	// Apply updates via service
+	// Apply updates via service (validates fields against the plan_limits allowlist)
 	if err := h.PlanSvc.UpdatePlanLimits(r.Context(), id, updates); err != nil {
-		fmt.Printf("[ERROR] UpdateLimits failed: %v\n", err)
+		if errors.Is(err, models.ErrInvalidPlanLimitUpdate) {
+			api.WriteErrorCodeWithDetails(w, http.StatusBadRequest, api.ErrCodeBadRequest, map[string]string{"message": err.Error()})
+			return
+		}
+		h.logError(r, "admin plan limits update failed", map[string]any{"plan_id": id, "error": err.Error()})
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
@@ -140,12 +150,11 @@ func (h *AdminPlanHandlers) UpdateLimits(w http.ResponseWriter, r *http.Request)
 	// Invalidate cache
 	if err := h.PlanSvc.InvalidateCache(r.Context(), plan.Code); err != nil {
 		// Log but don't fail request
-		fmt.Printf("[WARN] Failed to invalidate cache: %v\n", err)
+		h.logWarn(r, "admin plan cache invalidation failed", map[string]any{"plan_code": plan.Code, "error": err.Error()})
 	}
 
 	api.WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
-
 
 // InvalidateCache clears the cache for a specific plan.
 func (h *AdminPlanHandlers) InvalidateCache(w http.ResponseWriter, r *http.Request) {

@@ -66,5 +66,7 @@ describe('ChatbotDetailPage connect tab secret refresh', () => {
     ).value
     expect(after).not.toEqual(before)
     expect(after.length).toBeGreaterThan(0)
+    // Generated with crypto.getRandomValues: 32 bytes as hex
+    expect(after).toMatch(/^[0-9a-f]{64}$/)
   })
 })
