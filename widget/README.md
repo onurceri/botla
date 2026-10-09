@@ -1,16 +1,27 @@
-# React + Vite
+# Botla chat widget
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The embeddable chat widget: a Preact + TypeScript bundle that mounts into a Shadow DOM, so the host page's CSS can't affect it. It loads the bot's public configuration, then sends messages to the public chat API. Domain allowlists and optional signed embed tokens are enforced by the API.
 
-Currently, two official plugins are available:
+```html
+<script src="https://<your-widget-host>/widget.js" data-bot="<chatbot-id>"></script>
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Develop
 
-## React Compiler
+Install dependencies once from the repository root (`npm ci`), then:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cp .env.example .env     # VITE_API_BASE_URL, VITE_MARKETING_URL
+npm run dev              # Vite dev server; public/widget-test.html embeds the widget
+```
 
-## Expanding the ESLint configuration
+## Scripts
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Script | What it does |
+|---|---|
+| `npm run ci` | `tsc --noEmit`, ESLint, Vitest with coverage |
+| `npm run build` | Builds `dist/widget.js` |
+| `npm run test:e2e` | Playwright against `vite preview`; run `npm run build` first |
+| `npm run build:analyze` | Build and open a bundle-size report |
+
+Deploy to Cloudflare Pages with `make widget-deploy` from the repository root.
