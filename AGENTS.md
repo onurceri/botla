@@ -182,9 +182,9 @@ migrate create -ext sql -dir db/migrations -seq <migration_name>
 ### Docker / Test Database
 ```bash
 make migrate-up-docker         # migrate via the Docker network
-make migrate-up-test           # apply to test DB (botla_test, search_path=test)
 make create-test-schema        # CREATE SCHEMA IF NOT EXISTS test
 ```
+Tests migrate the test database themselves through `internal/testdb`; see Gotchas before touching `migrate-*-test`.
 
 ## Testing Instructions
 
@@ -236,10 +236,10 @@ make tidy             # go mod tidy
 
 ## Gotchas
 
+- **Do not run `make migrate-up-test`**: the golang-migrate CLI state conflicts with testdb's own migration handling. `internal/testdb` creates the schema and applies `db/migrations` itself, recording one row per file in its own `schema_migrations` format, which the CLI cannot read.
 - **`-tags fitz` + CGO** for anything touching PDF (`internal/pdf`, PDF ingestion tests). Without it, use the `*-no-pdf` make targets.
 - **Coverage gate is 90%** (`make cover-gate`); keep touched packages at/above it.
 - **Integration tests leak goroutines** if you use `res.Body.Close()` or `http.Get` directly — use `drainBody(res)` and the `testHTTP*` helpers (`internal/integration/http.go`). See `internal/integration/AGENTS.md`.
-- **`.bak` files** (e.g. `admin_plan.go.bak`) exist in the tree but are not compiled — ignore them.
 - LLM/topic-extraction prompts are **always written in English** (`services/chat_prompts.go`, `rag/topic_extractor.go`); output language is controlled by a directive, not prompt language.
 - **No sqlc/ORM** despite older docs — data access is the squirrel-based repository pattern (see Architecture above).
 
