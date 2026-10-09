@@ -2,7 +2,7 @@ SHELL := /bin/sh
 
 EVAL_FLAGS ?=
 
-.PHONY: eval eval-quick eval-up eval-down eval-retrieval eval-calibrate eval-baseline eval-test up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover check-coverage
+.PHONY: eval eval-quick eval-up eval-down eval-retrieval eval-calibrate eval-baseline eval-test up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover
 
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
 MIGRATIONS_DIR ?= db/migrations
@@ -177,9 +177,6 @@ clean:
 test-cover:
 	 go test ./... -coverprofile=coverage.out
 	 go tool cover -func=coverage.out
-
-check-coverage:
-	 bash scripts/check_coverage.sh
 
 # Integration tests with real services
 test-integration-real:

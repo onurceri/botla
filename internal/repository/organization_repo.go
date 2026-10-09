@@ -121,7 +121,7 @@ func (r *PostgresOrganizationRepo) AdminList(ctx context.Context, filter Organiz
 	countQuery = fmt.Sprintf("SELECT COUNT(*) FROM (%s) as sub", countQuery)
 
 	var total int
-	if err := r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+	if err = r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
 		if r.Log != nil {
 			r.Log.Error("org_admin_list_count_error", map[string]any{
 				"error": err.Error(),

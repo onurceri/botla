@@ -193,8 +193,10 @@ func OpenTestDBWithSchema(t *testing.T, schema string) *sql.DB {
 		t.Fatalf("open base db for schema creation: %v", err)
 	}
 	err = withMigrationLock(context.Background(), baseDB, func(conn *sql.Conn) error {
-		_, e := conn.ExecContext(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema))
-		return e
+		if _, e := conn.ExecContext(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema)); e != nil {
+			return fmt.Errorf("create schema %s: %w", schema, e)
+		}
+		return nil
 	})
 	_ = baseDB.Close()
 	if err != nil {
@@ -244,7 +246,7 @@ type dsnResolver func(schema string) string
 
 // envDSNResolver resolves DSNs from the environment / defaults (existing behavior).
 func envDSNResolver() dsnResolver {
-	return func(schema string) string { return getTestDSN(schema) }
+	return getTestDSN
 }
 
 // baseDSNResolver resolves DSNs from an explicit base DSN (no schema), appending the
@@ -339,8 +341,10 @@ func createSchemaAndConnect(t *testing.T, schema string, resolve dsnResolver) *s
 
 	// Create the schema (serialized across processes; see withMigrationLock).
 	err = withMigrationLock(context.Background(), baseDB, func(conn *sql.Conn) error {
-		_, e := conn.ExecContext(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema))
-		return e
+		if _, e := conn.ExecContext(context.Background(), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q", schema)); e != nil {
+			return fmt.Errorf("create schema %s: %w", schema, e)
+		}
+		return nil
 	})
 	_ = baseDB.Close()
 	if err != nil {
@@ -428,9 +432,9 @@ func runMigrations(t *testing.T, schema string, resolve dsnResolver) {
 	migrationsPath := filepath.Join(projectRoot, "db/migrations")
 
 	baseDSN := resolve(schema)
-	baseDB, err := sql.Open("pgx", baseDSN)
-	if err != nil {
-		t.Fatalf("open db for migration: %v", err)
+	baseDB, openErr := sql.Open("pgx", baseDSN)
+	if openErr != nil {
+		t.Fatalf("open db for migration: %v", openErr)
 	}
 	defer func() { _ = baseDB.Close() }()
 
@@ -440,7 +444,7 @@ func runMigrations(t *testing.T, schema string, resolve dsnResolver) {
 	// `IF NOT EXISTS` is not concurrency-safe there and otherwise fails with a
 	// pg_extension_name_index unique violation. Every statement below runs on the
 	// single pinned connection that holds the lock (advisory locks are session-scoped).
-	err = withMigrationLock(context.Background(), baseDB, func(conn *sql.Conn) error {
+	err := withMigrationLock(context.Background(), baseDB, func(conn *sql.Conn) error {
 		ctx := context.Background()
 
 		if _, err := conn.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (

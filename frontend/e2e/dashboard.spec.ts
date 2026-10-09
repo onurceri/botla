@@ -15,8 +15,7 @@ import {
  * Dashboard Layout E2E Tests
  * Comprehensive tests for sidebar navigation, top bar, breadcrumb navigation, and layout structure.
  *
- * Task: 06-dashboard-layout
- * Reference: docs/frontend/TEST_PATHS.md Section 3.1
+ * Conventions: e2e/TESTING_STANDARDS.md
  * 
  * NOTE: Uses HYBRID authentication:
  * - API requests use HttpOnly cookies (set by backend)

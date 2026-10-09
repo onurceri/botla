@@ -23,7 +23,7 @@ frontend/src/features/chatbot/
 - **Form handling**: `useChatbotForm` hook manages 50+ form fields with setters
 - **Auto-save**: `useAutoSave` hook debounces and retries saves with progress indicator
 - **Server state**: React Query hooks in `@/hooks/queries/` and mutations in `@/hooks/mutations/`
-- **Component naming**: PascalCase (`ChatbotSidebar.tsx`), test files `Component.test.tsx`
+- **Component naming**: PascalCase (`SaveIndicator.tsx`), test files `Component.test.tsx`
 - **Hook naming**: `use*` prefix, camelCase (`useSourceOps.ts`)
 - **Payload builders**: `buildPayload()`, `build*Payload()` functions convert form state to API format
 - **Path aliases**: Relative paths for local imports (`../../components/`, `../hooks/`)

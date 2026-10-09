@@ -1,271 +1,229 @@
 # Botla
 
-**AI-powered chatbot platform** that turns your website, PDFs, and text into a knowledgeable assistant you can embed anywhere.
+**Turn a website, PDFs or plain text into a grounded support chatbot you can embed with one script tag.**
 
-Botla crawls your content, indexes it in a vector database, and answers user questions in real time using a Retrieval-Augmented Generation (RAG) pipeline. You get a full dashboard for managing bots and an embeddable widget that drops into any site with a single script tag.
+[![Go](https://github.com/onurceri/botla/actions/workflows/go.yml/badge.svg)](https://github.com/onurceri/botla/actions/workflows/go.yml)
+[![Web](https://github.com/onurceri/botla/actions/workflows/web.yml/badge.svg)](https://github.com/onurceri/botla/actions/workflows/web.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Go version](https://img.shields.io/github/go-mod/go-version/onurceri/botla)](go.mod)
 
----
+Botla is a multi-tenant RAG chatbot platform. It crawls and extracts your content, chunks and embeds it into Qdrant, and answers visitor questions with an LLM that is given only the retrieved context. When retrieval confidence is low, it falls back to a refusal or a human handoff instead of guessing. The repo contains a Go API, a React dashboard for managing bots, an embeddable Preact widget, and an evaluation suite that scores answer quality with an LLM judge calibrated against human labels.
 
-## Highlights
+## Features
 
-- **Train on your data** — ingest URLs, sitemaps, PDFs, or raw text
-- **RAG pipeline** — vector search via Qdrant, LLM responses via OpenAI or OpenRouter
-- **Evaluated** — retrieval metrics, LLM-as-a-judge (faithfulness, correctness, refusal, injection resistance) with a calibrated judge and a CI regression gate ([`evals/`](./evals/README.md))
-- **Embeddable widget** — small Preact bundle, fully themable, drop-in `<script>` install
-- **Multi-tenant** — organizations, workspaces, role-based access
-- **Streaming chat** — Server-Sent Events for low-latency responses
-- **Tiered plans** — Free / Pro / Ultra with quotas, model access, and feature gates
-- **Analytics** — message volume, token usage, feedback, and conversation history
-- **Privacy-aware** — KVKK / GDPR data export and account deletion flows
-- **Multi-language** — English and Turkish UI out of the box
+- **Ingestion**: single URLs, sitemap discovery with an approve/reject queue for the pages it finds, bulk URL import, PDF upload and raw text. Pages are fetched with a static crawler (colly) or a headless Chromium pool (go-rod) for JavaScript-heavy sites. Sources can be re-ingested on a schedule.
+- **Retrieval**: sentence-aware chunking (512 tokens, ~15% overlap), OpenAI `text-embedding-3-small` embeddings with deterministic point IDs, and **tiered similarity search**: high, medium and low confidence tiers decide whether the bot answers normally, answers with a caveat, or falls back. Optional query decomposition for multi-part questions.
+- **Grounded answers**: a guarded system prompt, per-bot guardrails and topic rules, and a configurable fallback (static message, restricted "smart" fallback, or escalation to a human).
+- **Actions**: bots can call customer-defined HTTP actions through LLM function calling in an agentic loop, with execution logs.
+- **Human handoff**: visitors can ask for a person and leave an email address. The requests appear in the dashboard.
+- **Embeddable widget**: a Preact bundle rendered in a Shadow DOM, so host-page CSS can't leak in. Theming, suggested questions, feedback buttons, a per-bot domain allowlist and optional HMAC-signed embed tokens.
+- **Multi-tenant SaaS core**: organizations, workspaces and roles; Free, Pro and Ultra plans with quotas, model access and feature gates enforced in one place; Redis-backed rate limiting; an admin panel for users, organizations, plans, queues and system health.
+- **Analytics**: message volume, token usage, source usage and visitor feedback per bot.
+- **Privacy**: KVKK/GDPR-style data export, correction and deletion requests, plus a scheduled retention job.
+- **Measured quality**: a RAG eval suite with retrieval metrics, an LLM judge, judge-versus-human calibration and a regression gate ([see below](#rag-evaluation)).
 
----
+## Architecture
 
-## Tech Stack
+```mermaid
+flowchart LR
+    subgraph Clients
+        D["Dashboard<br/>React 19"]
+        W["Chat widget<br/>Preact, Shadow DOM"]
+    end
+
+    subgraph API["Go API (net/http)"]
+        MW["Middleware<br/>auth cookies, tenant, plan, rate limit"]
+        H["Handlers"]
+        S["Services<br/>chat, chatbots, plans, privacy"]
+        R["Repositories<br/>squirrel + pgx"]
+        Q["Source queue<br/>worker pool"]
+    end
+
+    PG[("PostgreSQL")]
+    RD[("Redis")]
+    QD[("Qdrant")]
+    R2[("Cloudflare R2")]
+    LLM["OpenAI / OpenRouter"]
+
+    D -- "REST, HttpOnly cookies" --> MW
+    W -- "public chat API" --> MW
+    MW --> H --> S --> R --> PG
+    MW -. "rate limits" .-> RD
+    S -- "enqueue ingestion" --> Q
+    S -. "uploads, exports" .-> R2
+
+    subgraph Ingestion["Ingestion pipeline"]
+        direction TB
+        I1["Fetch and extract<br/>crawler, headless Chromium,<br/>PDF text via MuPDF"] --> I2["Normalize and chunk<br/>512 tokens, ~15% overlap"] --> I3["Embed<br/>text-embedding-3-small"]
+    end
+    Q --> I1
+    I3 -- "upsert vectors" --> QD
+    I3 -.-> LLM
+
+    subgraph Chat["Chat path"]
+        direction TB
+        C1["Embed question"] --> C2["Tiered retrieval<br/>high / medium / low"] --> C3["LLM with tools<br/>agentic loop"] --> C4["Fallback or handoff<br/>when confidence is low"]
+    end
+    S --> C1
+    C2 -- "vector search" --> QD
+    C3 -.-> LLM
+```
+
+Handlers stay thin and the business logic lives in `internal/services`. LLM calls go through a circuit breaker. [`AGENTS.md`](AGENTS.md) documents the layering, the middleware order and the background jobs, and [`docs/system/vector-indexing-pipeline.md`](docs/system/vector-indexing-pipeline.md) walks through ingestion step by step.
+
+### A chat request
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant V as Visitor (widget)
+    participant A as Go API
+    participant P as PostgreSQL
+    participant E as OpenAI embeddings
+    participant Q as Qdrant
+    participant L as LLM
+
+    V->>A: POST /api/v1/public/chatbots/{id}/chat
+    A->>A: Rate limit, domain allowlist, embed token
+    A->>P: Load bot and plan limits, reserve token quota
+    A->>P: Save the visitor's message
+    A->>E: Embed the question
+    A->>Q: Similarity search, filtered to this bot
+    Q-->>A: Scored chunks
+    A->>A: Pick a confidence tier, fit context to the token budget
+    A->>L: System prompt, history, context and tools
+    L-->>A: Answer (after any tool calls)
+    A->>A: Fallback or handoff if the tier is low
+    A->>P: Save the answer and its sources, settle quota
+    A-->>V: JSON answer with sources
+```
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Backend | Go 1.25+, net/http, sqlc (no ORM) |
-| Database | PostgreSQL 15+ |
-| Cache / Queue | Redis 7 |
-| Vector DB | Qdrant |
-| Object Storage | Cloudflare R2 / S3-compatible |
-| Frontend | React 19, Vite, Tailwind CSS, Radix UI, TanStack Query |
-| Widget | Preact, Vite, Tailwind CSS |
-| LLM Providers | OpenAI, OpenRouter |
-| Auth | JWT (HttpOnly cookies) with refresh-token rotation |
-| Web Scraping | go-rod (Chromium), colly, sitemap parser |
-| PDF / OCR | go-fitz (Mumford), tesseract |
-| Infra | Docker Compose, Cloudflare Pages, Caddy |
+| Backend | Go 1.25, `net/http`, squirrel query builder over pgx (no ORM) |
+| Data | PostgreSQL, Redis 7, Qdrant |
+| Object storage | Cloudflare R2 (S3-compatible), optional |
+| AI | OpenAI embeddings and chat models, OpenRouter, gobreaker circuit breaker |
+| Ingestion | colly, go-rod (headless Chromium), sitemap parser, go-fitz (MuPDF) for PDF text |
+| Dashboard | React 19, Vite, TypeScript, TanStack Query, Tailwind CSS, Radix UI |
+| Widget | Preact, Vite, TypeScript, Shadow DOM; deployed to Cloudflare Pages |
+| Testing | Go `testing` and testify, Vitest, Testing Library, Playwright, a custom RAG eval harness |
+| Ops | Docker, Docker Compose, Caddy, GitHub Actions, golang-migrate |
 
----
+## Quick start
 
-## Repository Layout
+**Prerequisites:** Go 1.25+, Node.js 20.19+ with npm, Docker with Compose, and an OpenAI API key.
+
+```bash
+git clone https://github.com/onurceri/botla.git && cd botla
+
+# 1. Configure (the defaults match the local Docker stack)
+cp .env.example .env                  # then set OPENAI_API_KEY and JWT_SECRET
+cp frontend/.env.example frontend/.env
+
+# 2. Start PostgreSQL, Redis and Qdrant; the stack also applies the migrations
+make up
+
+# 3. Run the API on :8080
+make be-run-no-pdf                    # or `make be-run` for PDF support (needs CGO and MuPDF)
+
+# 4. In another terminal, install the JS workspaces and start the dashboard and widget
+npm ci
+npm run dev                           # dashboard on :5173, widget dev server on :5174
+```
+
+Open <http://localhost:5173>, register, create a chatbot, add a URL or some text, and try it in the playground. To reach the admin panel, promote your account with `make admin-promote email=you@example.com`.
+
+To put a bot on a site, copy the snippet from the dashboard's deploy tab. It looks like this:
+
+```html
+<script src="https://<your-widget-host>/widget.js" data-bot="<chatbot-id>"></script>
+```
+
+## Configuration
+
+The backend reads all settings from environment variables, loaded from `.env`. [`.env.example`](.env.example) lists every option with comments. The ones that matter first:
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | yes | PostgreSQL connection |
+| `REDIS_URL` | yes | Rate limiting; the server won't start without it |
+| `QDRANT_URL`, `QDRANT_API_KEY` | URL only | Vector database |
+| `JWT_SECRET` | yes | Signs auth tokens; use 32+ random characters |
+| `PORT` | yes | HTTP port |
+| `OPENAI_API_KEY` | for chat | Embeddings and chat models |
+| `OPENROUTER_API_KEY` | no | Route chat models through OpenRouter |
+| `CORS_ALLOWED_ORIGINS` | no | Origins allowed to call the API with credentials |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | no | Storage for uploads, privacy exports and tokenizer data |
+| `RAG_TOPK`, `RAG_MAX_CONTEXT_TOKENS`, `RAG_QUERY_DECOMPOSITION` | no | Retrieval tuning |
+| `GO_ENV` | no | `production` turns on Secure cookies and TLS to PostgreSQL |
+
+The dashboard and widget take `VITE_*` variables; see `frontend/.env.example` and `widget/.env.example`.
+
+## Project layout
 
 ```
 .
 ├── cmd/
-│   ├── server/          # HTTP API entrypoint
-│   └── cli/             # Admin CLI (promote/demote platform admins)
+│   ├── server/        # API entrypoint and dependency wiring
+│   ├── cli/           # Admin CLI (promote/demote platform admins)
+│   └── eval/          # RAG eval runner
 ├── internal/
-│   ├── api/             # HTTP handlers, router, middleware
-│   ├── auth/            # JWT, password hashing
-│   ├── db/              # sqlc-generated queries
-│   ├── models/          # Domain types
-│   ├── services/        # Business logic
-│   ├── processing/      # Background jobs, source queue
-│   ├── rag/             # Embeddings, vector search, LLM clients
-│   ├── scraper/         # Web crawling, sitemap, CSS selectors
-│   ├── pdf/             # PDF text extraction
-│   ├── repository/      # Data access
-│   ├── workers/         # Worker pool for async jobs
-│   ├── models/          # Domain entities
-│   ├── testdb/          # Test database utilities
-│   └── integration/     # Integration test suite
-├── pkg/                 # Public packages
-│   ├── config/          # Env-driven configuration
-│   ├── middleware/      # Auth, CORS, rate limiting
-│   ├── ratelimit/       # Redis-backed limiter
-│   ├── storage/         # S3/R2 abstraction
-│   ├── tokenizer/       # Sentence-aware token counting
-│   ├── logger/          # Structured logging
-│   └── urlutil/         # URL helpers + SSRF protection
-├── db/migrations/       # SQL migrations (golang-migrate)
-├── api/openapi.yaml     # Public API spec
-├── frontend/            # React dashboard
-├── widget/              # Embeddable Preact widget
-├── packages/ui-shared/  # Shared UI components
-└── docker-compose*.yml  # Local dev / integration stacks
+│   ├── api/           # Handlers, router, admin guards
+│   ├── services/      # Business logic: chat pipeline, plans, privacy, handoff
+│   ├── repository/    # SQL data access: interfaces, Postgres implementations, mocks
+│   ├── rag/           # Chunking, embeddings, Qdrant client, tiered search, LLM clients
+│   ├── processing/    # Source ingestion queue and per-type processors
+│   ├── scraper/       # Crawler, sitemap parser, headless browser pool
+│   ├── evals/         # Eval framework: dataset, metrics, judge, gate
+│   ├── integration/   # Integration tests
+│   └── ...            # auth, models, pdf, workers, testdb
+├── pkg/               # config, middleware, ratelimit, storage, tokenizer, urlutil, logger
+├── db/migrations/     # SQL migrations (golang-migrate)
+├── api/openapi.yaml   # OpenAPI 3 spec
+├── evals/             # Eval corpus, golden sets, judge rubrics, baseline
+├── frontend/          # React dashboard
+├── widget/            # Embeddable Preact widget
+└── docs/              # Feature specs and system notes
 ```
 
----
+## Testing
 
-## How It Works
+| Suite | Command | Notes |
+|---|---|---|
+| Go unit tests | `make test-fast` | Repository and service tests use the PostgreSQL from `make up` |
+| Go checks | `make ci` | `go vet`, golangci-lint, then the tests |
+| Go integration tests | `make test-integration-real` | Starts `docker-compose.integration.yml` (PostgreSQL, Redis, Qdrant) |
+| Dashboard | `npm run ci --workspace=frontend` | ESLint, `tsc`, Vitest with coverage |
+| Widget | `npm run ci --workspace=widget` | `tsc`, ESLint, Vitest with coverage |
+| End-to-end | `npm run e2e --workspace=frontend`<br/>`npm run test:e2e --workspace=widget` | Playwright; start the dashboard dev server or build the widget first |
+| RAG evals | `make eval-up && make eval` | Calls real models (`OPENAI_API_KEY`, or OpenRouter); a run costs a few cents |
 
-```
-  [Your site / PDFs / text]
-           |
-           v
-  +------------------+
-  |   Scraper / OCR  |   (URL crawl, sitemap, PDF text extraction)
-  +------------------+
-           |
-           v
-  +------------------+
-  |     Chunker      |   (sentence-aware, 512 tokens, ~15% overlap)
-  +------------------+
-           |
-           v
-  +------------------+
-  |   Embeddings     |   (OpenAI text-embedding-3)
-  +------------------+
-           |
-           v
-  +------------------+
-  |     Qdrant       |   (vector storage, per-chatbot collection)
-  +------------------+
-
-  User question ---> Embed ---> Vector search ---> Top-K chunks
-                                                       |
-                                                       v
-                                              LLM (OpenAI / OpenRouter)
-                                                       |
-                                                       v
-                                              Streamed answer
-```
-
-Every source is also summarized for **capability metadata** and **suggested questions**, surfaced to the end user as a carousel inside the chat.
-
----
-
-## Quick Start
-
-### Prerequisites
-- Go 1.25.4+
-- Docker and Docker Compose
-- Node.js 18+ (for the frontend and widget)
-
-### 1. Clone and configure
-```bash
-git clone https://github.com/onurceri/botla.git
-cd botla
-cp .env.example .env       # then edit secrets
-```
-
-### 2. Start dependencies
-```bash
-make up                    # PostgreSQL + Redis + Qdrant via docker-compose.dev.yml
-make migrate-up            # apply DB migrations
-```
-
-### 3. Run the backend
-```bash
-make be-run                # with PDF/OCR support (requires CGO)
-# or
-make be-run-no-pdf         # without CGO
-```
-
-### 4. Run the dashboard
-```bash
-cd frontend
-npm install
-npm run dev                # http://localhost:5173
-```
-
-### 5. Run the widget (for local embed testing)
-```bash
-cd widget
-npm install
-npm run dev                # http://localhost:5174
-```
-
-### 6. Open the app
-Visit `http://localhost:5173`, register an account, create a chatbot, add a URL or PDF source, and chat with it.
-
----
-
-## Environment Variables
-
-All configuration is environment-driven. See `.env.example` for the full list. Key variables:
-
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` / `DB_*` | PostgreSQL connection |
-| `REDIS_URL` | Redis for rate limiting and queues |
-| `QDRANT_URL` / `QDRANT_API_KEY` | Vector database |
-| `OPENAI_API_KEY` | Embeddings + LLM |
-| `OPENROUTER_API_KEY` | Optional alternative LLM provider |
-| `JWT_SECRET` | Token signing secret (32+ chars) |
-| `R2_*` | Cloudflare R2 / S3 credentials for source files |
-
-The frontend and widget have their own `.env.example` files for `VITE_API_BASE_URL` and related variables.
-
----
-
-## Development
-
-### Backend
-```bash
-make test          # unit tests
-make lint          # golangci-lint
-make vet           # go vet
-make ci            # vet + lint + tests
-make cover-gate    # enforce 90% coverage threshold
-```
-
-See [`AGENTS.md`](./AGENTS.md) for full backend conventions, the layered architecture, and the testing strategy.
+GitHub Actions runs the [Go](.github/workflows/go.yml) and [web](.github/workflows/web.yml) workflows on pull requests and on pushes to `main`. Real-service integration tests run weekly.
 
 ### RAG evaluation
-```bash
-make eval-up && make eval   # retrieval + LLM-as-a-judge + judge calibration + regression gate
-make eval-test              # offline unit tests for the eval framework
-```
 
-See [`evals/README.md`](./evals/README.md) for what is measured, judge-calibration results, and limitations.
+The [`evals/`](evals/README.md) suite drives Botla's real ingestion, retrieval and chat code over a fictional 13-document corpus and 45 golden cases (answerable, multi-hop, unanswerable and prompt-injection attacks), plus a 22-case held-out set. It reports retrieval metrics, including how much of the needed context actually reached the prompt, and uses an LLM judge with versioned rubrics for faithfulness, correctness, refusal and injection resistance.
 
-### Frontend
-```bash
-cd frontend
-npm run dev        # dev server
-npm run ci         # lint + typecheck + coverage
-npm run e2e        # Playwright e2e
-```
-
-See [`frontend/AGENTS.md`](./frontend/AGENTS.md) for frontend conventions and the HttpOnly-cookie auth model.
-
-### Widget
-```bash
-cd widget
-npm run dev
-npm run build      # build embeddable bundle
-```
-
-See [`widget/AGENTS.md`](./widget/AGENTS.md).
-
----
-
-## API
-
-A public OpenAPI 3.0 spec lives at [`api/openapi.yaml`](./api/openapi.yaml). Generate TypeScript types with:
+The judge is measured as well. It is **calibrated against 21 human-labelled answers** (Cohen's kappa 0.90 on the current baseline), checked for consistency across repeats and probed for verbosity bias, and the gate fails if its kappa drops below 0.60. A **regression gate** compares each run with a recorded baseline using per-slice tolerances, and a GitHub workflow runs it on demand or on pull requests labelled `run-evals`. The eval README has the results, the multi-hop experiments and the known limitations.
 
 ```bash
-cd frontend
-npm run generate-types
+make eval-test    # offline unit tests for the eval framework (no API keys)
+make eval-quick   # single-repeat smoke run against real models
 ```
 
----
+## Security
 
-## Architecture Notes
-
-- **No ORM** — type-safe queries via [sqlc](https://github.com/sqlc-dev/sqlc) over `database/sql`
-- **Layered structure** — handlers stay thin, business logic lives in `internal/services`
-- **Worker pool** — async ingestion jobs (scraping, embedding, refresh) run in a bounded goroutine pool
-- **SSRF protection** — `pkg/urlutil` blocks private IP ranges during URL ingestion
-- **Rate limiting** — Redis-backed, per-user and per-endpoint overrides
-- **Cookie-based auth** — `HttpOnly` + `Secure` cookies, automatic refresh-token rotation
-- **Plan enforcement** — every action checks quota / plan limits in one place
-
----
-
-## Roadmap Highlights
-
-Currently shipped: multi-tenant orgs/workspaces, RAG with tiered confidence, embeddings + vector search, embedded widget, KVKK export/delete, plan gating, analytics, human handoff (email capture).
-
-See the in-repo `docs/` for deeper feature, system, and admin references.
-
----
+Please report vulnerabilities privately; [SECURITY.md](SECURITY.md) explains how and what is in scope. Built-in protections include HttpOnly cookie auth with refresh-token rotation, tenant scoping on authenticated routes, SSRF protection for URL ingestion, per-bot domain allowlists and signed embed tokens for the widget, security headers, and plan-aware rate limiting.
 
 ## Contributing
 
-PRs welcome. Before opening one:
-
-1. Run `make ci` (backend) or `npm run ci` (frontend)
-2. Keep coverage at or above 90% for the package you touch
-3. Follow conventions in the per-area `AGENTS.md`
-4. Don't commit secrets — `.env` is gitignored, keep it that way
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks to run and the commit style. [AGENTS.md](AGENTS.md) and the per-area `AGENTS.md` files describe the codebase conventions.
 
 ## License
 
-See `LICENSE` if present, or contact the maintainers.
+Copyright (C) 2025-2026 Onur Ceri.
+
+Botla is free software under the [GNU Affero General Public License v3.0 or later](LICENSE). If you run a modified version as a network service, the AGPL requires you to offer that version's source code to its users.

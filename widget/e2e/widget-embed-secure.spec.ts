@@ -21,7 +21,7 @@ test.describe('Secure Embedding', () => {
     helper = new WidgetHelper(page)
   })
 
-  test('widget loads without embed token by default', async ({ page }) => {
+  test('widget loads without embed token by default', async () => {
     // Verify widget loads without auth requirements
     await helper.expectBubbleVisible()
     
@@ -144,9 +144,9 @@ test.describe('Secure Embedding - Captcha Integration', () => {
     
     // Mock captcha function
     await page.evaluate(() => {
-      (window as any).getCaptchaToken = async (siteKey: string) => {
-        return 'mock-captcha-token-' + siteKey
-      }
+      Object.assign(window, {
+        getCaptchaToken: async (siteKey: string) => 'mock-captcha-token-' + siteKey,
+      })
     })
     
     // Mock chat that verifies captcha token is sent
@@ -191,9 +191,11 @@ test.describe('Secure Embedding - Captcha Integration', () => {
     
     // Mock captcha failure
     await page.evaluate(() => {
-      (window as any).getCaptchaToken = async (_siteKey: string) => {
-        throw new Error('Captcha failed')
-      }
+      Object.assign(window, {
+        getCaptchaToken: async (_siteKey: string) => {
+          throw new Error('Captcha failed')
+        },
+      })
     })
     
     // Chat should still work (captcha optional)
@@ -300,8 +302,6 @@ test.describe('Secure Embedding - Embed Token URL', () => {
     
     // Mock chat that checks for embed token
     await page.route('**/api/v1/public/chatbots/test-chatbot/chat', async (route) => {
-      const headers = route.request().headers()
-      
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

@@ -405,7 +405,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 	var requests []PrivacyRequest
 	for rows.Next() {
 		var req PrivacyRequest
-		err := rows.Scan(
+		err = rows.Scan(
 			&req.ID, &req.UserID, &req.UserEmail, &req.RequestType, &req.Status,
 			&req.Reason, &req.DenialReason, &req.ProcessedBy, &req.ProcessedAt,
 			&req.CompletedAt, &req.ExportURL, &req.ExportExpiresAt, &req.CreatedAt,
@@ -420,7 +420,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequests(ctx context.Context, status st
 		}
 		requests = append(requests, req)
 	}
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		if r.Log != nil {
 			r.Log.Error("privacy_list_repo_rows_error", map[string]any{
 				"error": err.Error(),
@@ -657,7 +657,7 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 	defer func() { _ = orgsRows.Close() }()
 	for orgsRows.Next() {
 		var org ExportOrg
-		if err := orgsRows.Scan(&org.ID, &org.Name, &org.CreatedAt); err != nil {
+		if err = orgsRows.Scan(&org.ID, &org.Name, &org.CreatedAt); err != nil {
 			return nil, pkgerrors.Wrapf(err, "scan organization")
 		}
 		export.Organizations = append(export.Organizations, org)
@@ -682,7 +682,7 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 	chatbotMap := make(map[string]int)
 	for botsRows.Next() {
 		var bot ExportChatbot
-		if err := botsRows.Scan(&bot.ID, &bot.Name, &bot.CreatedAt); err != nil {
+		if err = botsRows.Scan(&bot.ID, &bot.Name, &bot.CreatedAt); err != nil {
 			return nil, pkgerrors.Wrapf(err, "scan chatbot")
 		}
 		chatbotMap[bot.ID] = len(export.Chatbots)
@@ -692,7 +692,9 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 
 	// 4. Get data sources for chatbots
 	if len(chatbotIDs) > 0 {
-		sourcesQuery, sourcesArgs, err := psql.
+		var sourcesQuery string
+		var sourcesArgs []interface{}
+		sourcesQuery, sourcesArgs, err = psql.
 			Select("chatbot_id", "source_type", "original_filename", "source_url", "created_at").
 			From("data_sources").
 			Where(sq.Eq{"chatbot_id": chatbotIDs}).
@@ -701,7 +703,8 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "build sources query")
 		}
-		sourcesRows, err := r.pool.QueryContext(ctx, sourcesQuery, sourcesArgs...)
+		var sourcesRows *sql.Rows
+		sourcesRows, err = r.pool.QueryContext(ctx, sourcesQuery, sourcesArgs...)
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "query sources")
 		}
@@ -710,7 +713,7 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 			var chatbotID string
 			var source ExportSource
 			var filename, url *string
-			if err := sourcesRows.Scan(&chatbotID, &source.Type, &filename, &url, &source.AddedAt); err != nil {
+			if err = sourcesRows.Scan(&chatbotID, &source.Type, &filename, &url, &source.AddedAt); err != nil {
 				return nil, pkgerrors.Wrapf(err, "scan source")
 			}
 			if filename != nil {
@@ -727,7 +730,9 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 
 	// 5. Get conversations for user's chatbots
 	if len(chatbotIDs) > 0 {
-		convsQuery, convsArgs, err := psql.
+		var convsQuery string
+		var convsArgs []interface{}
+		convsQuery, convsArgs, err = psql.
 			Select("id", "chatbot_id", "session_id", "created_at").
 			From("conversations").
 			Where(sq.Eq{"chatbot_id": chatbotIDs}).
@@ -735,7 +740,8 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "build conversations query")
 		}
-		convsRows, err := r.pool.QueryContext(ctx, convsQuery, convsArgs...)
+		var convsRows *sql.Rows
+		convsRows, err = r.pool.QueryContext(ctx, convsQuery, convsArgs...)
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "query conversations")
 		}
@@ -743,7 +749,7 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 		var convIDs []string
 		for convsRows.Next() {
 			var conv ExportConv
-			if err := convsRows.Scan(&conv.ID, &conv.ChatbotID, &conv.SessionID, &conv.CreatedAt); err != nil {
+			if err = convsRows.Scan(&conv.ID, &conv.ChatbotID, &conv.SessionID, &conv.CreatedAt); err != nil {
 				return nil, pkgerrors.Wrapf(err, "scan conversation")
 			}
 			export.Conversations = append(export.Conversations, conv)
@@ -752,7 +758,9 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 
 		// 6. Get messages
 		if len(convIDs) > 0 {
-			msgsQuery, msgsArgs, err := psql.
+			var msgsQuery string
+			var msgsArgs []interface{}
+			msgsQuery, msgsArgs, err = psql.
 				Select("id", "conversation_id", "role", "content", "created_at").
 				From("messages").
 				Where(sq.Eq{"conversation_id": convIDs}).
@@ -761,14 +769,15 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 			if err != nil {
 				return nil, pkgerrors.Wrapf(err, "build messages query")
 			}
-			msgsRows, err := r.pool.QueryContext(ctx, msgsQuery, msgsArgs...)
+			var msgsRows *sql.Rows
+			msgsRows, err = r.pool.QueryContext(ctx, msgsQuery, msgsArgs...)
 			if err != nil {
 				return nil, pkgerrors.Wrapf(err, "query messages")
 			}
 			defer func() { _ = msgsRows.Close() }()
 			for msgsRows.Next() {
 				var msg ExportMessage
-				if err := msgsRows.Scan(&msg.ID, &msg.ConversationID, &msg.Role, &msg.Content, &msg.CreatedAt); err != nil {
+				if err = msgsRows.Scan(&msg.ID, &msg.ConversationID, &msg.Role, &msg.Content, &msg.CreatedAt); err != nil {
 					return nil, pkgerrors.Wrapf(err, "scan message")
 				}
 				export.Messages = append(export.Messages, msg)
@@ -776,7 +785,9 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 		}
 
 		// 7. Get action execution logs
-		logsQuery, logsArgs, err := psql.
+		var logsQuery string
+		var logsArgs []interface{}
+		logsQuery, logsArgs, err = psql.
 			Select("id", "chatbot_id", "action_id", "status", "created_at").
 			From("action_execution_logs").
 			Where(sq.Eq{"chatbot_id": chatbotIDs}).
@@ -784,14 +795,15 @@ func (r *PostgresPrivacyRepo) GetUserDataForExport(ctx context.Context, userID s
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "build action logs query")
 		}
-		logsRows, err := r.pool.QueryContext(ctx, logsQuery, logsArgs...)
+		var logsRows *sql.Rows
+		logsRows, err = r.pool.QueryContext(ctx, logsQuery, logsArgs...)
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "query action logs")
 		}
 		defer func() { _ = logsRows.Close() }()
 		for logsRows.Next() {
 			var log ExportActionLog
-			if err := logsRows.Scan(&log.ID, &log.ChatbotID, &log.ActionID, &log.Status, &log.CreatedAt); err != nil {
+			if err = logsRows.Scan(&log.ID, &log.ChatbotID, &log.ActionID, &log.Status, &log.CreatedAt); err != nil {
 				return nil, pkgerrors.Wrapf(err, "scan action log")
 			}
 			export.ActionLogs = append(export.ActionLogs, log)
@@ -865,7 +877,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, u
 	var requests []PrivacyRequest
 	for rows.Next() {
 		var req PrivacyRequest
-		err := rows.Scan(
+		err = rows.Scan(
 			&req.ID, &req.UserID, &req.UserEmail, &req.RequestType, &req.Status,
 			&req.Reason, &req.DenialReason, &req.ProcessedBy, &req.ProcessedAt,
 			&req.CompletedAt, &req.ExportURL, &req.ExportExpiresAt, &req.CreatedAt,
@@ -875,7 +887,7 @@ func (r *PostgresPrivacyRepo) ListPrivacyRequestsByUserID(ctx context.Context, u
 		}
 		requests = append(requests, req)
 	}
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "privacy requests rows error")
 	}
 

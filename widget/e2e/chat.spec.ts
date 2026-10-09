@@ -26,7 +26,7 @@ test.describe('Chat Interactions', () => {
     helper = new WidgetHelper(page)
   })
 
-  test('widget bubble is visible on page load', async ({ page }) => {
+  test('widget bubble is visible on page load', async () => {
     await helper.expectBubbleVisible()
   })
 
@@ -40,7 +40,7 @@ test.describe('Chat Interactions', () => {
     await expect(page.locator('.cbw-msg').first()).toBeVisible()
   })
 
-  test('closes chat widget when close button is clicked', async ({ page }) => {
+  test('closes chat widget when close button is clicked', async () => {
     await helper.openWidget()
     
     // Verify panel is open
@@ -110,7 +110,7 @@ test.describe('Chat Interactions', () => {
     await helper.expectLoadingHidden()
   })
 
-  test('displays multiple messages in conversation', async ({ page }) => {
+  test('displays multiple messages in conversation', async () => {
     await helper.openWidget()
     
     // Send multiple messages
@@ -149,7 +149,7 @@ test.describe('Chat Interactions', () => {
     await helper.expectPanelToContainText('hata oluştu')
   })
 
-  test('preserves message history across widget open/close', async ({ page }) => {
+  test('preserves message history across widget open/close', async () => {
     await helper.openWidget()
     
     // Send a message
@@ -166,7 +166,7 @@ test.describe('Chat Interactions', () => {
     await helper.expectMessageWithContent(testMessage)
   })
 
-  test('does not send empty messages', async ({ page }) => {
+  test('does not send empty messages', async () => {
     await helper.openWidget()
     
     // Get initial message count
@@ -179,7 +179,7 @@ test.describe('Chat Interactions', () => {
     await helper.expectMessageCount(initialCount)
   })
 
-  test('disables send button when input is empty', async ({ page }) => {
+  test('disables send button when input is empty', async () => {
     await helper.openWidget()
     
     // Send button should be disabled with empty input
@@ -198,7 +198,7 @@ test.describe('Chat Interactions', () => {
     await helper.expectSendButtonDisabled()
   })
 
-  test('shows character limit counter', async ({ page }) => {
+  test('shows character limit counter', async () => {
     await helper.openWidget()
     
     // Character limit should be visible
@@ -212,7 +212,7 @@ test.describe('Chat Interactions', () => {
     await expect(helper.charLimit).toContainText(String(testMessage.length))
   })
 
-  test('truncates messages exceeding max length', async ({ page }) => {
+  test('truncates messages exceeding max length', async () => {
     await helper.openWidget()
     
     // Create a message longer than 1000 characters
@@ -223,7 +223,7 @@ test.describe('Chat Interactions', () => {
     await expect(helper.charLimit).toContainText('1000 / 1000')
   })
 
-  test('scrolls to bottom when new messages arrive', async ({ page }) => {
+  test('scrolls to bottom when new messages arrive', async () => {
     await helper.openWidget()
     
     // Send a message
@@ -234,7 +234,7 @@ test.describe('Chat Interactions', () => {
     await expect(lastMessage).toBeVisible()
   })
 
-  test('handles Enter key to send message', async ({ page }) => {
+  test('handles Enter key to send message', async () => {
     await helper.openWidget()
     
     // Type message and press Enter
@@ -244,7 +244,7 @@ test.describe('Chat Interactions', () => {
     await helper.expectMessageWithContent('Enter ile gönderilen mesaj')
   })
 
-  test('Shift+Enter creates new line in input', async ({ page }) => {
+  test('Shift+Enter creates new line in input', async () => {
     await helper.openWidget()
     
     // Type message with Shift+Enter for newline
@@ -255,7 +255,7 @@ test.describe('Chat Interactions', () => {
     expect(inputValue).toContain('\n')
   })
 
-  test('input field is focusable', async ({ page }) => {
+  test('input field is focusable', async () => {
     await helper.openWidget()
     
     // Input should be focusable
@@ -324,7 +324,7 @@ test.describe('Chat - Suggestion Tests', () => {
     await expect(suggestionItems).toHaveCount(3)
   })
 
-  test('clicking suggestion sends message', async ({ page }) => {
+  test('clicking suggestion sends message', async () => {
     await helper.openWidget()
     
     // Click first suggestion
@@ -334,7 +334,7 @@ test.describe('Chat - Suggestion Tests', () => {
     await helper.expectMessageWithContent('Nasıl yardımcı olabilirim?')
   })
 
-  test('suggestions hide after user sends message', async ({ page }) => {
+  test('suggestions hide after user sends message', async () => {
     await helper.openWidget()
     
     // Suggestions should be visible initially

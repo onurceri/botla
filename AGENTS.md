@@ -4,14 +4,13 @@ Botla is an AI chatbot platform: it ingests content (URLs, sitemaps, PDFs, raw t
 
 ## Monorepo Layout
 
-This is an **npm-workspaces monorepo** with a Go backend at the root plus three JS workspaces:
+This is an **npm-workspaces monorepo** with a Go backend at the root plus two JS workspaces:
 
 | Path | Stack | Purpose |
 |---|---|---|
 | `cmd/`, `internal/`, `pkg/` | Go 1.25 | Backend HTTP API + ingestion workers |
 | `frontend/` | React 19, Vite, TS, TanStack Query | Management dashboard |
 | `widget/` | Preact, Vite | Embeddable chat widget (deployed to Cloudflare Pages) |
-| `packages/ui-shared/` | TS | UI components shared by frontend + widget (`@botla/ui-shared`) |
 
 Detailed conventions live in **per-area `AGENTS.md` files** — read the relevant one before working in that area: `frontend/AGENTS.md`, `internal/api/handlers/AGENTS.md`, `internal/services/AGENTS.md`, `internal/rag/AGENTS.md`, `internal/integration/AGENTS.md`.
 
@@ -182,9 +181,9 @@ migrate create -ext sql -dir db/migrations -seq <migration_name>
 ### Docker / Test Database
 ```bash
 make migrate-up-docker         # migrate via the Docker network
-make migrate-up-test           # apply to test DB (botla_test, search_path=test)
 make create-test-schema        # CREATE SCHEMA IF NOT EXISTS test
 ```
+Tests migrate the test database themselves through `internal/testdb`; see Gotchas before touching `migrate-*-test`.
 
 ## Testing Instructions
 
@@ -236,10 +235,10 @@ make tidy             # go mod tidy
 
 ## Gotchas
 
+- **Do not run `make migrate-up-test`**: the golang-migrate CLI state conflicts with testdb's own migration handling. `internal/testdb` creates the schema and applies `db/migrations` itself, recording one row per file in its own `schema_migrations` format, which the CLI cannot read.
 - **`-tags fitz` + CGO** for anything touching PDF (`internal/pdf`, PDF ingestion tests). Without it, use the `*-no-pdf` make targets.
 - **Coverage gate is 90%** (`make cover-gate`); keep touched packages at/above it.
 - **Integration tests leak goroutines** if you use `res.Body.Close()` or `http.Get` directly — use `drainBody(res)` and the `testHTTP*` helpers (`internal/integration/http.go`). See `internal/integration/AGENTS.md`.
-- **`.bak` files** (e.g. `admin_plan.go.bak`) exist in the tree but are not compiled — ignore them.
 - LLM/topic-extraction prompts are **always written in English** (`services/chat_prompts.go`, `rag/topic_extractor.go`); output language is controlled by a directive, not prompt language.
 - **No sqlc/ORM** despite older docs — data access is the squirrel-based repository pattern (see Architecture above).
 
@@ -253,7 +252,7 @@ make admin-demote email=user@example.com    # revoke platform admin
 ## Environment Variables
 
 All config is env-driven (see `.env.example`). Key variables:
-- `DATABASE_URL` / `DB_*` — PostgreSQL connection
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — PostgreSQL connection (`DATABASE_URL` is only read by the Makefile `migrate-*` targets)
 - `REDIS_URL` — Redis (required to boot; rate limiting + queues)
 - `JWT_SECRET` — token signing secret (32+ chars)
 - `OPENAI_API_KEY` — embeddings + LLM

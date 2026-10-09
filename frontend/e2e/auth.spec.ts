@@ -22,7 +22,7 @@ import {
  * - Error handling
  * - Forgot password flow
  * 
- * Element IDs follow the naming convention from TEST_PATHS.md Section 2.1
+ * Element IDs follow the naming conventions in e2e/TESTING_STANDARDS.md
  */
 
 test.describe('Login Page', () => {

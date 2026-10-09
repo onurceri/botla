@@ -70,8 +70,7 @@ botla-app/                          # Module: github.com/onurceri/botla-app
 ├── db/migrations/                  # SQL migrations (golang-migrate, 2 versions)
 ├── api/openapi.yaml                # Public API spec
 ├── frontend/                       # React dashboard workspace
-├── widget/                         # Preact embeddable widget workspace
-└── packages/ui-shared/             # Shared UI components workspace (@botla/ui-shared)
+└── widget/                         # Preact embeddable widget workspace
 ```
 
 ---
@@ -730,7 +729,6 @@ During ingestion, each source undergoes:
 | **Markdown** | markdown-to-jsx |
 | **Color Picker** | react-colorful |
 | **Toast** | Sonner |
-| **Shared** | @botla/ui-shared (workspace) |
 
 ### 3.2 Routing Structure
 
@@ -875,7 +873,6 @@ Multi-step wizard with 4 steps: StepBotName, StepPersonality, StepDataSource, St
 | **Markdown** | react-markdown + remark-gfm + rehype-sanitize |
 | **Testing** | Vitest + Testing Library, Playwright E2E |
 | **Deployment** | Cloudflare Pages (wrangler) |
-| **Shared** | @botla/ui-shared (workspace) |
 
 ### 4.2 Architecture
 
