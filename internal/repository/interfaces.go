@@ -371,14 +371,20 @@ type HandoffRepository interface {
 	// CreateHandoffRequest creates a new handoff request and returns the generated ID.
 	CreateHandoffRequest(ctx context.Context, req *models.HandoffRequest) (string, error)
 
-	// GetHandoffRequestsByBotID returns all handoff requests for a chatbot.
-	GetHandoffRequestsByBotID(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error)
+	// ListHandoffRequestsByBotID returns one page of a chatbot's handoff requests
+	// (newest first, optionally filtered by status) and the total matching count.
+	ListHandoffRequestsByBotID(ctx context.Context, chatbotID string, filter models.HandoffListFilter) ([]*models.HandoffRequest, int, error)
 
 	// GetHandoffRequestByID returns a single handoff request by ID.
 	GetHandoffRequestByID(ctx context.Context, id string) (*models.HandoffRequest, error)
 
-	// UpdateHandoffRequestStatus updates the status of a handoff request.
-	UpdateHandoffRequestStatus(ctx context.Context, id, status string, assignedTo *string) error
+	// UpdateHandoffRequestStatus updates the status of a handoff request belonging
+	// to chatbotID. Returns sql.ErrNoRows if no such request exists for that chatbot.
+	UpdateHandoffRequestStatus(ctx context.Context, id, chatbotID, status string, assignedTo *string) error
+
+	// SetHandoffContactEmail stores the visitor's contact email and stamps contacted_at
+	// on a handoff request belonging to chatbotID. Returns sql.ErrNoRows if none matches.
+	SetHandoffContactEmail(ctx context.Context, id, chatbotID, email string) error
 
 	// ListHandoffMessages retrieves conversation messages for a handoff request.
 	ListHandoffMessages(ctx context.Context, conversationID string, limit int) ([]models.Message, error)

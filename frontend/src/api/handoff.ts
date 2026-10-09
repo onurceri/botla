@@ -8,6 +8,7 @@ export interface HandoffRequest {
   assigned_to?: string
   notes?: string
   user_email?: string
+  contacted_at?: string
   created_at: string
   resolved_at?: string
 }

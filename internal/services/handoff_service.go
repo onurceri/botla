@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -20,7 +21,10 @@ type HandoffService struct {
 	HandoffRepo      repository.HandoffRepository
 	ConversationRepo repository.ConversationRepository
 	AnalyticsRepo    repository.AnalyticsRepository
-	Log              *logger.Logger
+	// EmailSender delivers handoff notifications. Defaults to NoopEmailSender
+	// (log only) because no mail provider is integrated yet.
+	EmailSender EmailSender
+	Log         *logger.Logger
 }
 
 // NewHandoffService creates a new HandoffService instance
@@ -29,6 +33,7 @@ func NewHandoffService(handoffRepo repository.HandoffRepository, conversationRep
 		HandoffRepo:      handoffRepo,
 		ConversationRepo: conversationRepo,
 		AnalyticsRepo:    analyticsRepo,
+		EmailSender:      NoopEmailSender{Log: log},
 		Log:              log,
 	}
 }
@@ -96,18 +101,17 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	// Handle based on handoff type
 	switch bot.HandoffType {
 	case string(models.HandoffTypeEmail):
-		err = s.handleEmailHandoff(ctx, bot, requestID, conversationID, notes)
-		if err != nil {
-			result.ErrorMessage = err.Error()
+		sent, emailErr := s.handleEmailHandoff(ctx, bot, requestID, conversationID, notes)
+		if emailErr != nil {
+			result.ErrorMessage = emailErr.Error()
 			if s.Log != nil {
 				s.Log.Warn("handoff_email_failed", map[string]any{
 					"request_id": requestID,
-					"error":      err.Error(),
+					"error":      emailErr.Error(),
 				})
 			}
-		} else {
-			result.EmailSent = true
 		}
+		result.EmailSent = sent
 	default:
 		// Log unsupported type but don't fail - request is still created
 		if s.Log != nil {
@@ -131,15 +135,21 @@ func (s *HandoffService) RequestHandoff(ctx context.Context, bot *models.Chatbot
 	return result, nil
 }
 
-// handleEmailHandoff sends an email notification for handoff
-func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Chatbot, requestID, conversationID, notes string) error {
+// errHandoffEmailSendFailed is the user-facing error when the transport fails;
+// the underlying error is logged, not returned to the widget.
+var errHandoffEmailSendFailed = errors.New("failed to send handoff email")
+
+// handleEmailHandoff notifies the chatbot's operator address about a handoff.
+// It reports whether an email was actually delivered: with no mail provider
+// configured (ErrEmailNotConfigured) the request still succeeds but sent=false.
+func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Chatbot, requestID, conversationID, notes string) (bool, error) {
 	lc := strings.TrimSpace(bot.LanguageCode)
 	if i := strings.Index(lc, "-"); i > 0 {
 		lc = lc[:i]
 	}
 	cfg := langconfig.Get(lc)
 	if bot.HandoffConfig == nil || bot.HandoffConfig.EmailTo == "" {
-		return errors.New(cfg.UserMessages.Errors["HANDOFF_EMAIL_NOT_CONFIGURED"])
+		return false, errors.New(cfg.UserMessages.Errors["HANDOFF_EMAIL_NOT_CONFIGURED"])
 	}
 
 	// Load conversation messages (last 50 messages should be enough for handoff)
@@ -149,7 +159,7 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		if msg == "" {
 			msg = "failed to load conversation"
 		}
-		return pkgerrors.Wrapf(err, "%s", msg)
+		return false, pkgerrors.Wrapf(err, "%s", msg)
 	}
 
 	// Build email body
@@ -165,7 +175,6 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		subject = fmt.Sprintf(tmpl, bot.Name)
 	}
 
-	// Log the handoff request (email sending to be implemented with SMTP service)
 	if s.Log != nil {
 		s.Log.Info("handoff_email_request", map[string]any{
 			"request_id":      requestID,
@@ -195,11 +204,32 @@ func (s *HandoffService) handleEmailHandoff(ctx context.Context, bot *models.Cha
 		}
 	}()
 
-	// TODO: Implement actual email sending when SMTP service is available
-	// For now, we just log the request and consider it successful
-	// This allows the feature to work (creates handoff request) without email infra
-
-	return nil
+	sender := s.EmailSender
+	if sender == nil {
+		sender = NoopEmailSender{Log: s.Log}
+	}
+	err = sender.Send(ctx, EmailMessage{
+		To:      []string{bot.HandoffConfig.EmailTo},
+		Subject: subject,
+		Body:    emailBody,
+	})
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, ErrEmailNotConfigured):
+		// No mail provider integrated: the request is stored and visible in the
+		// dashboard, it just is not emailed.
+		return false, nil
+	default:
+		if s.Log != nil {
+			s.Log.Error("handoff_email_send_failed", map[string]any{
+				"request_id": requestID,
+				"chatbot_id": bot.ID,
+				"error":      err.Error(),
+			})
+		}
+		return false, errHandoffEmailSendFailed
+	}
 }
 
 // buildHandoffEmailBody creates the email body with conversation transcript
@@ -231,32 +261,111 @@ func (s *HandoffService) buildHandoffEmailBody(botName, requestID string, messag
 	return sb.String()
 }
 
-// GetHandoffRequests returns all handoff requests for a chatbot
-func (s *HandoffService) GetHandoffRequests(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error) {
-	requests, err := s.HandoffRepo.GetHandoffRequestsByBotID(ctx, chatbotID)
-	if err != nil {
-		return nil, pkgerrors.Wrapf(err, "get handoff requests")
-	}
-	return requests, nil
+// Handoff list paging bounds.
+const (
+	DefaultHandoffListLimit = 50
+	MaxHandoffListLimit     = 100
+)
+
+// HandoffRequestPage is one page of a chatbot's handoff requests.
+type HandoffRequestPage struct {
+	Requests []*models.HandoffRequest `json:"requests"`
+	Total    int                      `json:"total"`
+	Page     int                      `json:"page"`
+	Limit    int                      `json:"limit"`
 }
 
-// UpdateHandoffStatus updates the status of a handoff request
-func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, status string, assignedTo *string) error {
-	// Validate status
-	validStatuses := map[string]bool{
-		models.HandoffStatusPending:  true,
-		models.HandoffStatusAssigned: true,
-		models.HandoffStatusResolved: true,
+// ListHandoffRequests returns page (1-based) of a chatbot's handoff requests,
+// newest first. An empty status lists all statuses; an unknown status yields
+// InvalidHandoffStatusError. page < 1 and limit outside 1..MaxHandoffListLimit
+// are rejected with ErrInvalidRequest.
+func (s *HandoffService) ListHandoffRequests(ctx context.Context, chatbotID, status string, page, limit int) (*HandoffRequestPage, error) {
+	if status != "" && !models.IsValidHandoffStatus(status) {
+		return nil, InvalidHandoffStatusError{Status: status}
 	}
-	if !validStatuses[status] {
+	if page < 1 || limit < 1 || limit > MaxHandoffListLimit {
+		return nil, ErrInvalidRequest
+	}
+
+	requests, total, err := s.HandoffRepo.ListHandoffRequestsByBotID(ctx, chatbotID, models.HandoffListFilter{
+		Status: status,
+		Limit:  limit,
+		Offset: (page - 1) * limit,
+	})
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "list handoff requests")
+	}
+	if requests == nil {
+		requests = []*models.HandoffRequest{}
+	}
+	return &HandoffRequestPage{Requests: requests, Total: total, Page: page, Limit: limit}, nil
+}
+
+// UpdateHandoffStatus updates the status of a handoff request of chatbotID.
+// A request that belongs to another chatbot is reported as ErrHandoffNotFound.
+func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, chatbotID, requestID, status string, assignedTo *string) error {
+	if !models.IsValidHandoffStatus(status) {
 		return InvalidHandoffStatusError{Status: status}
 	}
 
-	if err := s.HandoffRepo.UpdateHandoffRequestStatus(ctx, requestID, status, assignedTo); err != nil {
+	if err := s.HandoffRepo.UpdateHandoffRequestStatus(ctx, requestID, chatbotID, status, assignedTo); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrHandoffNotFound
 		}
 		return pkgerrors.Wrapf(err, "update handoff status")
+	}
+	return nil
+}
+
+// maxContactEmailLength is the RFC 5321 limit for a forward-path address.
+const maxContactEmailLength = 254
+
+// NormalizeContactEmail trims and validates a visitor-supplied contact email.
+// It accepts only a bare address (no display name such as "Bob <bob@x.io>"),
+// requires a dotted domain and enforces the 254-character limit.
+func NormalizeContactEmail(raw string) (string, error) {
+	email := strings.TrimSpace(raw)
+	if email == "" || len(email) > maxContactEmailLength {
+		return "", ErrInvalidContactEmail
+	}
+	addr, err := mail.ParseAddress(email)
+	if err != nil || addr.Name != "" || addr.Address != email {
+		return "", ErrInvalidContactEmail
+	}
+	at := strings.LastIndex(email, "@")
+	domain := email[at+1:]
+	if at <= 0 || !strings.Contains(domain, ".") || strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") {
+		return "", ErrInvalidContactEmail
+	}
+	return email, nil
+}
+
+// SubmitContactEmail records the visitor's contact email on a handoff request of
+// chatbotID and stamps contacted_at. Returns ErrInvalidContactEmail for a bad
+// address, ErrHandoffNotFound when the request does not exist or belongs to
+// another chatbot, and ErrHandoffClosed when it is already resolved.
+func (s *HandoffService) SubmitContactEmail(ctx context.Context, chatbotID, requestID, email string) error {
+	normalized, err := NormalizeContactEmail(email)
+	if err != nil {
+		return err
+	}
+
+	req, err := s.HandoffRepo.GetHandoffRequestByID(ctx, requestID)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "get handoff request")
+	}
+	if req == nil || req.ChatbotID != chatbotID {
+		return ErrHandoffNotFound
+	}
+	if req.Status == models.HandoffStatusResolved {
+		return ErrHandoffClosed
+	}
+
+	if err := s.HandoffRepo.SetHandoffContactEmail(ctx, requestID, chatbotID, normalized); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrHandoffNotFound
+		}
+		return pkgerrors.Wrapf(err, "set handoff contact email")
 	}
 	return nil
 }

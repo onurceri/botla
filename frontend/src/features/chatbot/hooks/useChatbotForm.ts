@@ -64,6 +64,7 @@ export function useChatbotForm() {
   const [secureEmbedEnabled, setSecureEmbedEnabled] = useState(false)
   const [allowedDomains, setAllowedDomains] = useState('')
   const [embedSecret, setEmbedSecret] = useState('')
+  const [isPublic, setIsPublic] = useState(true)
   const [suggestionsEnabled, setSuggestionsEnabled] = useState(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const [manualQuestions, setManualQuestions] = useState<string[]>([])
@@ -121,6 +122,7 @@ export function useChatbotForm() {
     setAllowedDomains(sanitizedDomains)
     setEmbedSecret(data.embed_secret || '')
     setSecureEmbedEnabled(!!data.secure_embed_enabled)
+    setIsPublic(data.is_public ?? true)
     setSuggestionsEnabled(!!data.suggestions_enabled)
     setSuggestedQuestions(Array.isArray(data.suggested_questions) ? data.suggested_questions : [])
     setManualQuestions(Array.isArray(data.manual_questions) ? data.manual_questions : [])
@@ -252,6 +254,10 @@ export function useChatbotForm() {
     }
   }
 
+  function buildVisibilityPayload() {
+    return { is_public: isPublic }
+  }
+
   function buildConnectPayload() {
     return {
       secure_embed_enabled: secureEmbedEnabled,
@@ -322,6 +328,8 @@ export function useChatbotForm() {
     setAllowedDomains,
     embedSecret,
     setEmbedSecret,
+    isPublic,
+    setIsPublic,
     suggestionsEnabled,
     setSuggestionsEnabled,
     suggestedQuestions,
@@ -352,6 +360,7 @@ export function useChatbotForm() {
     buildSuggestionsPayload,
     buildAppearancePayload,
     buildConnectPayload,
+    buildVisibilityPayload,
     buildSourceSettingsPayload,
     setFromServer,
     validate,

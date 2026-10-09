@@ -256,6 +256,9 @@ type SecuritySettingsRequest struct {
 	SecureEmbedEnabled *bool               `json:"secure_embed_enabled"`
 	AllowedDomains     FlexibleStringSlice `json:"allowed_domains"`
 	EmbedSecret        *string             `json:"embed_secret"`
+	// IsPublic controls whether the public widget endpoints serve this chatbot
+	// (false makes them respond 404). Omitted leaves it unchanged.
+	IsPublic *bool `json:"is_public"`
 }
 
 func (s *ChatbotService) UpdateSecuritySettings(ctx context.Context, bot *models.Chatbot, req SecuritySettingsRequest) (*models.Chatbot, *validation.FeatureError) {
@@ -263,6 +266,7 @@ func (s *ChatbotService) UpdateSecuritySettings(ctx context.Context, bot *models
 		SecureEmbedEnabled: req.SecureEmbedEnabled,
 		AllowedDomains:     req.AllowedDomains,
 		EmbedSecret:        req.EmbedSecret,
+		IsPublic:           req.IsPublic,
 	})
 }
 

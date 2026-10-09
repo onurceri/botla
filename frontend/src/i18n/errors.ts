@@ -105,6 +105,7 @@ export const errorMessages = {
     ERR_MEMBERSHIP_CHECK_ERROR: 'Failed to verify membership',
     ERR_GET_PLAN_ERROR: 'Failed to get plan details',
     ERR_CREATE_BOT_ERROR: 'Failed to create chatbot',
+    ERR_ORG_HAS_CHATBOTS: 'This organization still has chatbots. Delete or move them before deleting the organization.',
   },
   tr: {
     // HTTP standard errors
@@ -205,6 +206,7 @@ export const errorMessages = {
     ERR_MEMBERSHIP_CHECK_ERROR: 'Üyelik doğrulanamadı',
     ERR_GET_PLAN_ERROR: 'Plan detayları alınamadı',
     ERR_CREATE_BOT_ERROR: 'Chatbot oluşturulamadı',
+    ERR_ORG_HAS_CHATBOTS: 'Bu organizasyonda hâlâ chatbot var. Organizasyonu silmeden önce chatbotları silin veya taşıyın.',
   },
 } as const;
 

@@ -115,4 +115,5 @@ const (
 	ErrMembershipCheckError = "ERR_MEMBERSHIP_CHECK_ERROR"
 	ErrGetPlanError         = "ERR_GET_PLAN_ERROR"
 	ErrCreateBotError       = "ERR_CREATE_BOT_ERROR"
+	ErrOrgHasChatbots       = "ERR_ORG_HAS_CHATBOTS"
 )

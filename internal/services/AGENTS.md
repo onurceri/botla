@@ -8,7 +8,7 @@ OVERVIEW: Business logic layer implementing chat, chatbot, RAG, analytics, hando
 - **LLM behavior rules**: `chat_prompts.go` (DO NOT, NEVER, ALWAYS patterns)
 - **AI models**: `model_registry.go` (resolves model names to API IDs)
 - **Token quotas**: `quota_enforcer.go` (reserves/adjusts usage)
-- **Human handoff**: `handoff_service.go` (TODO: SMTP pending at line 194)
+- **Human handoff**: `handoff_service.go`; operator emails go through the `EmailSender` interface (`email_sender.go`). No mail provider is integrated yet, so the default `NoopEmailSender` only logs and `email_sent` is false
 - **Guardrails**: `guardrail_service.go` (topic restrictions)
 - **Analytics**: `analytics_service.go` (usage tracking)
 
@@ -27,4 +27,4 @@ OVERVIEW: Business logic layer implementing chat, chatbot, RAG, analytics, hando
 - DON'T return raw SQL errors to users; wrap with user-friendly messages
 - DON'T skip quota reservation before chat operations
 - DON'T hardcode model names; use `model_registry.go` lookup
-- DON'T send email directly in handoff; SMTP implementation pending
+- DON'T send email directly in handoff; implement `EmailSender` and inject it via `HandoffService.EmailSender`

@@ -2,16 +2,23 @@ import { useParams } from 'react-router-dom'
 import { useChatbotContext } from '../../context/ChatbotContext'
 import { useAutoSave } from '../../hooks/useAutoSave'
 import { SaveIndicator } from '../../components/SaveIndicator'
-import { useUpdateBasicInfo, useUpdateModelSettings } from '@/hooks/mutations/useChatbotMutations'
+import {
+  useUpdateBasicInfo,
+  useUpdateModelSettings,
+  useUpdateSecuritySettings,
+} from '@/hooks/mutations/useChatbotMutations'
 import IdentityModelSection from './sections/IdentityModelSection'
+import VisibilitySection from './sections/VisibilitySection'
 import { Settings2 } from 'lucide-react'
 
 export default function SettingsTab() {
   const { id = '' } = useParams()
-  const { name, customInstruction, model, temperature, maxTokens } = useChatbotContext()
+  const { name, customInstruction, model, temperature, maxTokens, buildVisibilityPayload } =
+    useChatbotContext()
 
   const { mutateAsync: updateBasicInfo } = useUpdateBasicInfo(id)
   const { mutateAsync: updateModelSettings } = useUpdateModelSettings(id)
+  const { mutateAsync: updateSecuritySettings } = useUpdateSecuritySettings(id)
 
   const {
     isSaving: isBasicInfoSaving,
@@ -33,14 +40,21 @@ export default function SettingsTab() {
     enabled: !!model,
   })
 
-  const isSaving = isBasicInfoSaving || isModelSaving
+  const {
+    isSaving: isVisibilitySaving,
+    lastSavedAt: visibilitySavedAt,
+    error: visibilityError,
+  } = useAutoSave({
+    payload: buildVisibilityPayload(),
+    saveFn: (_, payload) => updateSecuritySettings(payload),
+  })
+
+  const isSaving = isBasicInfoSaving || isModelSaving || isVisibilitySaving
   const lastSavedAt =
-    basicInfoSavedAt && modelSavedAt
-      ? basicInfoSavedAt > modelSavedAt
-        ? basicInfoSavedAt
-        : modelSavedAt
-      : basicInfoSavedAt || modelSavedAt
-  const error = basicInfoError || modelError
+    [basicInfoSavedAt, modelSavedAt, visibilitySavedAt]
+      .filter((d): d is Date => d !== null)
+      .sort((a, b) => b.getTime() - a.getTime())[0] ?? null
+  const error = basicInfoError || modelError || visibilityError
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
@@ -64,6 +78,7 @@ export default function SettingsTab() {
       {/* Main Content */}
       <div className="space-y-6">
         <IdentityModelSection />
+        <VisibilitySection />
       </div>
     </div>
   )

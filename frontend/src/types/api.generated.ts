@@ -202,6 +202,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chatbots/{id}/security": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update embed security and public visibility */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SecuritySettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated chatbot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Chatbot"];
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chatbots/{id}/handoff-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a chatbot's handoff requests (newest first) */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    limit?: number;
+                    /** @description Only return requests with this status. Omit for all. */
+                    status?: "pending" | "assigned" | "resolved";
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description One page of handoff requests */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HandoffRequestPage"];
+                    };
+                };
+                /** @description Invalid page/limit (BAD_REQUEST) or status (ERR_INVALID_STATUS) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an organization (owner only)
+         * @description Deletion cascades to workspaces and chatbots, so it is refused while the organization still has chatbots, and for the owner's last organization.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Organization deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Cannot delete the owner's last organization */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Organization still has chatbots (ERR_ORG_HAS_CHATBOTS) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chatbots/{id}/sources": {
         parameters: {
             query?: never;
@@ -411,7 +566,89 @@ export interface paths {
                         "application/json": components["schemas"]["ChatResponse"];
                     };
                 };
-                404: components["responses"]["NotFound"];
+                /** @description Chatbot not found or not public (is_public=false) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/chatbots/{chatbot_id}/handoff/{request_id}/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Leave a contact email on a handoff request (widget) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    chatbot_id: string;
+                    request_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: email */
+                        email: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Email stored on the request (user_email, contacted_at) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success?: boolean;
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Invalid IDs (BAD_REQUEST) or email (ERR_INVALID_EMAIL_FORMAT) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Chatbot not found/not public, or request not found for this chatbot */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Request already resolved (ERR_HANDOFF_CLOSED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -468,6 +705,11 @@ export interface components {
             language_code?: string;
             /** @enum {string} */
             status?: "active" | "inactive" | "training";
+            /**
+             * @description Whether the public widget endpoints (/public/chatbots/{id}, .../chat, .../handoff, .../feedback) serve this chatbot. When false they respond 404 as if the chatbot did not exist.
+             * @default true
+             */
+            is_public: boolean;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -478,6 +720,53 @@ export interface components {
             description?: string;
             /** @default tr */
             language_code: string;
+            /**
+             * @description Expose the chatbot on the public widget endpoints. Defaults to true when omitted.
+             * @default true
+             */
+            is_public: boolean;
+        };
+        /** @description Partial update; omitted fields are left unchanged. */
+        SecuritySettingsRequest: {
+            secure_embed_enabled?: boolean;
+            /** @description Domains allowed to embed the widget (array or comma-separated string). */
+            allowed_domains?: string[] | string;
+            embed_secret?: string;
+            /** @description Set to false to hide the chatbot from the public widget endpoints (they return 404). */
+            is_public?: boolean;
+        };
+        HandoffRequest: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            chatbot_id?: string;
+            /** Format: uuid */
+            conversation_id?: string;
+            /** @enum {string} */
+            status?: "pending" | "assigned" | "resolved";
+            assigned_to?: string;
+            notes?: string;
+            /**
+             * Format: email
+             * @description Contact email the visitor left via the widget.
+             */
+            user_email?: string;
+            /**
+             * Format: date-time
+             * @description When the visitor submitted user_email.
+             */
+            contacted_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            resolved_at?: string;
+        };
+        HandoffRequestPage: {
+            requests?: components["schemas"]["HandoffRequest"][];
+            /** @description Number of requests matching the status filter (all pages). */
+            total?: number;
+            page?: number;
+            limit?: number;
         };
         DataSource: {
             /** Format: uuid */

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/mail"
+	"strconv"
 	"strings"
 
 	"github.com/onurceri/botla-app/internal/api"
@@ -116,26 +116,60 @@ func (h *HandoffHandlers) PublicRequestHandoff(w http.ResponseWriter, r *http.Re
 	api.WriteJSON(w, http.StatusOK, result)
 }
 
-// ListHandoffRequests handles GET /api/chatbots/:id/handoff-requests
+// ListHandoffRequests handles GET /api/v1/chatbots/:id/handoff-requests
+// Query params: page (1-based, default 1), limit (1..100, default 50),
+// status (pending|assigned|resolved, default all).
 func (h *HandoffHandlers) ListHandoffRequests(w http.ResponseWriter, r *http.Request) {
 	_, botID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
 
-	// Get handoff requests using injected service
-	requests, err := h.HandoffService.GetHandoffRequests(r.Context(), botID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	q := r.URL.Query()
+	page, okPage := parseIntQuery(q.Get("page"), 1)
+	limit, okLimit := parseIntQuery(q.Get("limit"), services.DefaultHandoffListLimit)
+	if !okPage || !okLimit {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
 
-	api.WriteJSON(w, http.StatusOK, map[string]any{"requests": requests})
+	result, err := h.HandoffService.ListHandoffRequests(r.Context(), botID, strings.TrimSpace(q.Get("status")), page, limit)
+	if err != nil {
+		var invalid services.InvalidHandoffStatusError
+		switch {
+		case errors.As(err, &invalid):
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidStatus)
+		case errors.Is(err, services.ErrInvalidRequest):
+			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
+		default:
+			if h.Log != nil {
+				h.Log.Error("handoff_list_failed", map[string]any{"error": err.Error(), "bot_id": botID})
+			}
+			api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
+		}
+		return
+	}
+
+	api.WriteJSON(w, http.StatusOK, result)
+}
+
+// parseIntQuery parses an optional integer query value, returning def when it
+// is empty and ok=false when it is not a valid integer.
+func parseIntQuery(raw string, def int) (int, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return def, true
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // UpdateHandoffRequest handles PATCH /api/chatbots/:id/handoff-requests/:requestId
 func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -160,7 +194,7 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 	}
 
 	// Update status using injected service
-	if err := h.HandoffService.UpdateHandoffStatus(r.Context(), requestID, req.Status, req.AssignedTo); err != nil {
+	if err := h.HandoffService.UpdateHandoffStatus(r.Context(), botID, requestID, req.Status, req.AssignedTo); err != nil {
 		var invalid services.InvalidHandoffStatusError
 		if errors.As(err, &invalid) {
 			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidStatus)
@@ -202,7 +236,7 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 	}
 	botID := parts[5]
 	requestID := parts[7]
-	if !httputil.IsValidUUID(botID) {
+	if !httputil.IsValidUUID(botID) || !httputil.IsValidUUID(requestID) {
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
@@ -210,13 +244,13 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 	// Parse request
 	var req publicEmailSubmission
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidRequestBody)
 		return
 	}
 
-	// Validate email format using proper parsing
-	if _, err := mail.ParseAddress(req.Email); err != nil {
-		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "valid email is required"})
+	// Cheap format check before touching the DB; the service re-validates.
+	if _, err := services.NormalizeContactEmail(req.Email); err != nil {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidEmailFormat)
 		return
 	}
 
@@ -227,9 +261,16 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Update handoff request with email
-	if err := h.HandoffRepo.UpdateHandoffRequestStatus(r.Context(), requestID, "pending", nil); err != nil {
-		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save email"})
+	// Persist the contact email on the request (scoped to this chatbot).
+	if err := h.HandoffService.SubmitContactEmail(r.Context(), bot.ID, requestID, req.Email); err != nil {
+		if status, code, ok := api.MapHandoffError(err); ok {
+			api.WriteErrorCode(w, status, code)
+			return
+		}
+		if h.Log != nil {
+			h.Log.Error("handoff_submit_email_failed", map[string]any{"error": err.Error(), "bot_id": botID, "request_id": requestID})
+		}
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 
@@ -242,7 +283,7 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 // GetHandoffRequestDetail handles GET /api/v1/chatbots/:id/handoff-requests/:requestId
 // Returns the handoff request with full conversation history
 func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -268,7 +309,9 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
-	if handoffReq == nil {
+	// A request of another chatbot is reported as not found so request IDs
+	// cannot be used to read conversations across tenants.
+	if handoffReq == nil || handoffReq.ChatbotID != botID {
 		api.WriteErrorCode(w, http.StatusNotFound, api.ErrHandoffNotFound)
 		return
 	}
