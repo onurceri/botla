@@ -275,7 +275,7 @@ func (r *PostgresPlanRepo) InvalidateCache(ctx context.Context, userID string) e
 		return nil
 	}
 	key := cacheKeyPrefix + userID
-	return r.redis.Del(ctx, key).Err()
+	return pkgerrors.Wrapf(r.redis.Del(ctx, key).Err(), "invalidate plan cache")
 }
 
 // queryPlanByUserID performs the database query to get a user's plan.
