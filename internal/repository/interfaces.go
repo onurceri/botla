@@ -380,6 +380,10 @@ type HandoffRepository interface {
 	// UpdateHandoffRequestStatus updates the status of a handoff request.
 	UpdateHandoffRequestStatus(ctx context.Context, id, status string, assignedTo *string) error
 
+	// SetHandoffContactEmail stores the visitor's contact email and stamps contacted_at
+	// on a handoff request belonging to chatbotID. Returns sql.ErrNoRows if none matches.
+	SetHandoffContactEmail(ctx context.Context, id, chatbotID, email string) error
+
 	// ListHandoffMessages retrieves conversation messages for a handoff request.
 	ListHandoffMessages(ctx context.Context, conversationID string, limit int) ([]models.Message, error)
 }

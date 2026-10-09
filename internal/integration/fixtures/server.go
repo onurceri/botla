@@ -217,6 +217,10 @@ func NewTestMux(cfg *config.Config, pool *sql.DB, vs handlers.VectorStore, llm r
 	mux.Handle("/api/v1/messages/", middleware.AuthMiddleware(cfg.JWT_SECRET)(http.HandlerFunc(chh.FeedbackHandler)))
 	mux.Handle("/api/v1/public/chatbots/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const p = "/api/v1/public/chatbots/"
+		if strings.HasPrefix(r.URL.Path, p) && strings.Contains(r.URL.Path, "/handoff/") && strings.HasSuffix(r.URL.Path, "/contact") {
+			hoh.PublicSubmitEmail(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, p) && strings.HasSuffix(r.URL.Path, "/handoff") {
 			hoh.PublicRequestHandoff(w, r)
 			return

@@ -14,6 +14,7 @@ type MockHandoffRepo struct {
 	UpdateHandoffRequestStatusFunc  func(ctx context.Context, id, status string, assignedTo *string) error
 	CountPendingHandoffRequestsFunc func(ctx context.Context, chatbotID string) (int, error)
 	ListHandoffMessagesFunc         func(ctx context.Context, conversationID string, limit int) ([]models.Message, error)
+	SetHandoffContactEmailFunc      func(ctx context.Context, id, chatbotID, email string) error
 
 	Calls struct {
 		HasActiveHandoffRequest     []HasActiveHandoffRequestCall
@@ -23,6 +24,7 @@ type MockHandoffRepo struct {
 		UpdateHandoffRequestStatus  []UpdateHandoffRequestStatusCall
 		CountPendingHandoffRequests []CountPendingHandoffRequestsCall
 		ListHandoffMessages         []ListHandoffMessagesCall
+		SetHandoffContactEmail      []SetHandoffContactEmailCall
 	}
 }
 
@@ -55,6 +57,12 @@ type CountPendingHandoffRequestsCall struct {
 type ListHandoffMessagesCall struct {
 	ConversationID string
 	Limit          int
+}
+
+type SetHandoffContactEmailCall struct {
+	ID        string
+	ChatbotID string
+	Email     string
 }
 
 var _ HandoffRepository = (*MockHandoffRepo)(nil)
@@ -119,6 +127,14 @@ func (m *MockHandoffRepo) ListHandoffMessages(ctx context.Context, conversationI
 	return nil, nil
 }
 
+func (m *MockHandoffRepo) SetHandoffContactEmail(ctx context.Context, id, chatbotID, email string) error {
+	m.Calls.SetHandoffContactEmail = append(m.Calls.SetHandoffContactEmail, SetHandoffContactEmailCall{ID: id, ChatbotID: chatbotID, Email: email})
+	if m.SetHandoffContactEmailFunc != nil {
+		return m.SetHandoffContactEmailFunc(ctx, id, chatbotID, email)
+	}
+	return nil
+}
+
 func (m *MockHandoffRepo) Reset() {
 	m.Calls.HasActiveHandoffRequest = nil
 	m.Calls.CreateHandoffRequest = nil
@@ -127,4 +143,5 @@ func (m *MockHandoffRepo) Reset() {
 	m.Calls.UpdateHandoffRequestStatus = nil
 	m.Calls.CountPendingHandoffRequests = nil
 	m.Calls.ListHandoffMessages = nil
+	m.Calls.SetHandoffContactEmail = nil
 }

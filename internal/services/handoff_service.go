@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -257,6 +258,59 @@ func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, sta
 			return ErrHandoffNotFound
 		}
 		return pkgerrors.Wrapf(err, "update handoff status")
+	}
+	return nil
+}
+
+// maxContactEmailLength is the RFC 5321 limit for a forward-path address.
+const maxContactEmailLength = 254
+
+// NormalizeContactEmail trims and validates a visitor-supplied contact email.
+// It accepts only a bare address (no display name such as "Bob <bob@x.io>"),
+// requires a dotted domain and enforces the 254-character limit.
+func NormalizeContactEmail(raw string) (string, error) {
+	email := strings.TrimSpace(raw)
+	if email == "" || len(email) > maxContactEmailLength {
+		return "", ErrInvalidContactEmail
+	}
+	addr, err := mail.ParseAddress(email)
+	if err != nil || addr.Name != "" || addr.Address != email {
+		return "", ErrInvalidContactEmail
+	}
+	at := strings.LastIndex(email, "@")
+	domain := email[at+1:]
+	if at <= 0 || !strings.Contains(domain, ".") || strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") {
+		return "", ErrInvalidContactEmail
+	}
+	return email, nil
+}
+
+// SubmitContactEmail records the visitor's contact email on a handoff request of
+// chatbotID and stamps contacted_at. Returns ErrInvalidContactEmail for a bad
+// address, ErrHandoffNotFound when the request does not exist or belongs to
+// another chatbot, and ErrHandoffClosed when it is already resolved.
+func (s *HandoffService) SubmitContactEmail(ctx context.Context, chatbotID, requestID, email string) error {
+	normalized, err := NormalizeContactEmail(email)
+	if err != nil {
+		return err
+	}
+
+	req, err := s.HandoffRepo.GetHandoffRequestByID(ctx, requestID)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "get handoff request")
+	}
+	if req == nil || req.ChatbotID != chatbotID {
+		return ErrHandoffNotFound
+	}
+	if req.Status == models.HandoffStatusResolved {
+		return ErrHandoffClosed
+	}
+
+	if err := s.HandoffRepo.SetHandoffContactEmail(ctx, requestID, chatbotID, normalized); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrHandoffNotFound
+		}
+		return pkgerrors.Wrapf(err, "set handoff contact email")
 	}
 	return nil
 }

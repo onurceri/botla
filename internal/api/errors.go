@@ -98,6 +98,7 @@ var handoffErrorMappings = []struct {
 	{Target: services.ErrHandoffClosed, Mapping: ErrorMapping{StatusCode: http.StatusConflict, ErrorCode: ErrHandoffClosed}},
 	{Target: services.ErrHandoffRateLimited, Mapping: ErrorMapping{StatusCode: http.StatusTooManyRequests, ErrorCode: ErrHandoffRateLimited}},
 	{Target: services.ErrHandoffNotEnabled, Mapping: ErrorMapping{StatusCode: http.StatusBadRequest, ErrorCode: ErrHandoffNotEnabled}},
+	{Target: services.ErrInvalidContactEmail, Mapping: ErrorMapping{StatusCode: http.StatusBadRequest, ErrorCode: ErrInvalidEmailFormat}},
 }
 
 // MapHandoffError maps a service error to HTTP status and error code

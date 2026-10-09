@@ -24,12 +24,13 @@ var (
 )
 
 var (
-	ErrHandoffExists      = errors.New("handoff request already exists")
-	ErrHandoffNotFound    = errors.New("handoff request not found")
-	ErrHandoffExpired     = errors.New("handoff request has expired")
-	ErrHandoffClosed      = errors.New("handoff request is already closed")
-	ErrHandoffRateLimited = errors.New("too many handoff requests")
-	ErrHandoffNotEnabled  = errors.New("handoff is not enabled for this chatbot")
+	ErrHandoffExists       = errors.New("handoff request already exists")
+	ErrHandoffNotFound     = errors.New("handoff request not found")
+	ErrHandoffExpired      = errors.New("handoff request has expired")
+	ErrHandoffClosed       = errors.New("handoff request is already closed")
+	ErrHandoffRateLimited  = errors.New("too many handoff requests")
+	ErrHandoffNotEnabled   = errors.New("handoff is not enabled for this chatbot")
+	ErrInvalidContactEmail = errors.New("invalid contact email")
 )
 
 var (

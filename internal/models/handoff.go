@@ -24,6 +24,7 @@ type HandoffRequest struct {
 	AssignedTo     *string    `json:"assigned_to,omitempty"`
 	Notes          *string    `json:"notes,omitempty"`
 	UserEmail      *string    `json:"user_email,omitempty"`
+	ContactedAt    *time.Time `json:"contacted_at,omitempty"` // when the visitor submitted UserEmail
 	CreatedAt      time.Time  `json:"created_at"`
 	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
 }

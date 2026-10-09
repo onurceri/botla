@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/mail"
 	"strings"
 
 	"github.com/onurceri/botla-app/internal/api"
@@ -202,7 +201,7 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 	}
 	botID := parts[5]
 	requestID := parts[7]
-	if !httputil.IsValidUUID(botID) {
+	if !httputil.IsValidUUID(botID) || !httputil.IsValidUUID(requestID) {
 		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrCodeBadRequest)
 		return
 	}
@@ -210,13 +209,13 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 	// Parse request
 	var req publicEmailSubmission
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidRequestBody)
 		return
 	}
 
-	// Validate email format using proper parsing
-	if _, err := mail.ParseAddress(req.Email); err != nil {
-		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "valid email is required"})
+	// Cheap format check before touching the DB; the service re-validates.
+	if _, err := services.NormalizeContactEmail(req.Email); err != nil {
+		api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidEmailFormat)
 		return
 	}
 
@@ -227,9 +226,16 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Update handoff request with email
-	if err := h.HandoffRepo.UpdateHandoffRequestStatus(r.Context(), requestID, "pending", nil); err != nil {
-		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save email"})
+	// Persist the contact email on the request (scoped to this chatbot).
+	if err := h.HandoffService.SubmitContactEmail(r.Context(), bot.ID, requestID, req.Email); err != nil {
+		if status, code, ok := api.MapHandoffError(err); ok {
+			api.WriteErrorCode(w, status, code)
+			return
+		}
+		if h.Log != nil {
+			h.Log.Error("handoff_submit_email_failed", map[string]any{"error": err.Error(), "bot_id": botID, "request_id": requestID})
+		}
+		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
 

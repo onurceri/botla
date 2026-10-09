@@ -21,6 +21,20 @@ func NewPostgresHandoffRepo(pool *sql.DB) *PostgresHandoffRepo {
 	return &PostgresHandoffRepo{pool: pool}
 }
 
+// handoffRequestColumns is the column list shared by every handoff_requests read;
+// keep it in sync with handoffRequestScanDest.
+var handoffRequestColumns = []string{
+	"id", "chatbot_id", "conversation_id", "status",
+	"assigned_to", "notes", "user_email", "contacted_at", "created_at", "resolved_at",
+}
+
+func handoffRequestScanDest(req *models.HandoffRequest) []any {
+	return []any{
+		&req.ID, &req.ChatbotID, &req.ConversationID, &req.Status,
+		&req.AssignedTo, &req.Notes, &req.UserEmail, &req.ContactedAt, &req.CreatedAt, &req.ResolvedAt,
+	}
+}
+
 func (r *PostgresHandoffRepo) HasActiveHandoffRequest(ctx context.Context, conversationID string) (bool, error) {
 	query, args, err := psql.
 		Select("COUNT(*)").
@@ -64,10 +78,7 @@ func (r *PostgresHandoffRepo) CreateHandoffRequest(ctx context.Context, req *mod
 
 func (r *PostgresHandoffRepo) GetHandoffRequestsByBotID(ctx context.Context, chatbotID string) ([]*models.HandoffRequest, error) {
 	query, args, err := psql.
-		Select(
-			"id", "chatbot_id", "conversation_id", "status",
-			"assigned_to", "notes", "user_email", "created_at", "resolved_at",
-		).
+		Select(handoffRequestColumns...).
 		From("handoff_requests").
 		Where(sq.Eq{"chatbot_id": chatbotID}).
 		OrderBy("created_at DESC").
@@ -85,10 +96,7 @@ func (r *PostgresHandoffRepo) GetHandoffRequestsByBotID(ctx context.Context, cha
 	var requests []*models.HandoffRequest
 	for rows.Next() {
 		var req models.HandoffRequest
-		if err := rows.Scan(
-			&req.ID, &req.ChatbotID, &req.ConversationID, &req.Status,
-			&req.AssignedTo, &req.Notes, &req.UserEmail, &req.CreatedAt, &req.ResolvedAt,
-		); err != nil {
+		if err := rows.Scan(handoffRequestScanDest(&req)...); err != nil {
 			return nil, pkgerrors.Wrapf(err, "scan handoff request")
 		}
 		requests = append(requests, &req)
@@ -101,10 +109,7 @@ func (r *PostgresHandoffRepo) GetHandoffRequestsByBotID(ctx context.Context, cha
 
 func (r *PostgresHandoffRepo) GetHandoffRequestByID(ctx context.Context, id string) (*models.HandoffRequest, error) {
 	query, args, err := psql.
-		Select(
-			"id", "chatbot_id", "conversation_id", "status",
-			"assigned_to", "notes", "user_email", "created_at", "resolved_at",
-		).
+		Select(handoffRequestColumns...).
 		From("handoff_requests").
 		Where(sq.Eq{"id": id}).
 		ToSql()
@@ -113,10 +118,7 @@ func (r *PostgresHandoffRepo) GetHandoffRequestByID(ctx context.Context, id stri
 	}
 
 	var req models.HandoffRequest
-	err = r.pool.QueryRowContext(ctx, query, args...).Scan(
-		&req.ID, &req.ChatbotID, &req.ConversationID, &req.Status,
-		&req.AssignedTo, &req.Notes, &req.UserEmail, &req.CreatedAt, &req.ResolvedAt,
-	)
+	err = r.pool.QueryRowContext(ctx, query, args...).Scan(handoffRequestScanDest(&req)...)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -147,6 +149,35 @@ func (r *PostgresHandoffRepo) UpdateHandoffRequestStatus(ctx context.Context, id
 	result, err := r.pool.ExecContext(ctx, query, args...)
 	if err != nil {
 		return pkgerrors.Wrapf(err, "update handoff request status")
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return pkgerrors.Wrapf(err, "rows affected")
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// SetHandoffContactEmail stores the visitor's contact email on a handoff request
+// and stamps contacted_at. The update is scoped to chatbotID so a request ID from
+// another chatbot cannot be written through this bot's public endpoint. Returns
+// sql.ErrNoRows when no matching request exists.
+func (r *PostgresHandoffRepo) SetHandoffContactEmail(ctx context.Context, id, chatbotID, email string) error {
+	query, args, err := psql.
+		Update("handoff_requests").
+		Set("user_email", email).
+		Set("contacted_at", sq.Expr("NOW()")).
+		Where(sq.Eq{"id": id, "chatbot_id": chatbotID}).
+		ToSql()
+	if err != nil {
+		return pkgerrors.Wrapf(err, "build set handoff contact email query")
+	}
+
+	result, err := r.pool.ExecContext(ctx, query, args...)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "set handoff contact email")
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
