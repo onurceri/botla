@@ -377,6 +377,51 @@ func TestAuth_Login_EmptyPassword(t *testing.T) {
 	}
 }
 
+func TestAuth_Register_DuplicateEmailCaseInsensitive(t *testing.T) {
+	t.Parallel()
+	te, err := fixtures.SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer fixtures.TeardownTestEnv(te)
+
+	baseEmail := fmt.Sprintf("Dup+%d@Example.com", time.Now().UnixNano())
+	register := func(email string) *http.Response {
+		t.Helper()
+		b, marshalErr := json.Marshal(map[string]string{"email": email, "password": "Test@123", "full_name": "Dup User"})
+		if marshalErr != nil {
+			t.Fatalf("marshal register body failed: %v", marshalErr)
+		}
+		res, postErr := testHTTPPost(te.Server.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
+		if postErr != nil {
+			t.Fatalf("register %s failed: %v", email, postErr)
+		}
+		return res
+	}
+
+	res := register(baseEmail)
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", res.StatusCode)
+	}
+	drainBody(res)
+
+	for _, variant := range []string{strings.ToLower(baseEmail), strings.ToUpper(baseEmail)} {
+		res := register(variant)
+		if res.StatusCode != http.StatusConflict {
+			drainBody(res)
+			t.Fatalf("expected 409 for %s, got %d", variant, res.StatusCode)
+		}
+		var er errResp
+		if err := json.NewDecoder(res.Body).Decode(&er); err != nil {
+			t.Fatalf("decode conflict response failed: %v", err)
+		}
+		drainBody(res)
+		if er.Code != "ERR_EMAIL_EXISTS" {
+			t.Fatalf("expected ERR_EMAIL_EXISTS for %s, got %q", variant, er.Code)
+		}
+	}
+}
+
 func TestAuth_Login_CaseInsensitiveEmail(t *testing.T) {
 	t.Parallel()
 	te, err := fixtures.SetupTestEnv()
