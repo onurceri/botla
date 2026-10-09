@@ -1,0 +1,121 @@
+name: RAG Evals
+
+# Runs the LLM evaluation suite (evals/README.md). It calls paid APIs, so it
+# never runs on every PR by default:
+#   - manually via "Run workflow" (workflow_dispatch), or
+#   - on PRs that touch RAG/chat code AND carry the `run-evals` label.
+# Unit tests for the eval framework itself are offline: `make eval-test`.
+on:
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: "Suites to run (comma-separated: retrieval,generation,calibration)"
+        default: "retrieval,generation,calibration"
+        required: true
+      judge_model:
+        description: "Judge model (OpenAI)"
+        default: "gpt-4.1-mini"
+        required: true
+      max_cost:
+        description: "Abort once metered spend reaches this many USD"
+        default: "1.00"
+        required: true
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - "internal/rag/**"
+      - "internal/services/chat_*.go"
+      - "internal/services/guardrail_service.go"
+      - "internal/processing/text_processor.go"
+      - "internal/evals/**"
+      - "cmd/eval/**"
+      - "evals/**"
+
+concurrency:
+  group: rag-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    name: RAG eval + regression gate
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'run-evals')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.12.4
+        ports:
+          - 6334:6333
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      EVAL_QDRANT_URL: http://localhost:6334
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Check secrets
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY secret is not configured"; exit 2
+          fi
+
+      - name: Wait for Qdrant
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:6334/healthz && exit 0
+            sleep 2
+          done
+          echo "::error::Qdrant did not become healthy"; exit 1
+
+      - name: Restore judge/embedding cache
+        uses: actions/cache@v4
+        with:
+          path: .evalcache
+          key: evalcache-${{ hashFiles('evals/**') }}-${{ github.sha }}
+          restore-keys: |
+            evalcache-${{ hashFiles('evals/**') }}-
+            evalcache-
+
+      - name: Run eval
+        id: eval
+        env:
+          SUITES: ${{ github.event.inputs.suites || 'retrieval,generation,calibration' }}
+          JUDGE_MODEL: ${{ github.event.inputs.judge_model || 'gpt-4.1-mini' }}
+          MAX_COST: ${{ github.event.inputs.max_cost || '1.00' }}
+        run: |
+          set +e
+          go run ./cmd/eval -suites "$SUITES" -judge-model "$JUDGE_MODEL" -max-cost "$MAX_COST" -out evals/reports/latest
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Publish summary
+        if: always()
+        run: |
+          if [ -f evals/reports/latest/report.md ]; then
+            cat evals/reports/latest/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-eval-report
+          path: evals/reports/latest/
+          if-no-files-found: warn
+
+      - name: Enforce regression gate
+        run: |
+          code="${{ steps.eval.outputs.exit_code }}"
+          if [ "$code" = "1" ]; then echo "::error::Regression gate failed (see job summary)"; exit 1; fi
+          if [ "$code" != "0" ]; then echo "::error::Eval run errored (exit $code)"; exit "$code"; fi
