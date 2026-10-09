@@ -252,9 +252,3 @@ func TestNewChatService_ReadsRetrievalStrategyFromEnv(t *testing.T) {
 	svc := NewChatService(nil, nil, nil, nil, nil, nil, rag.NewClientFactory(nil), &retrievalEmbedder{}, nil, nil, nil)
 	assert.True(t, svc.Retrieval.Decompose)
 }
-
-func TestBuildSystemPrompt_AsksToCombineSources(t *testing.T) {
-	p := BuildSystemPrompt("Bot", "", "", "English", nil)
-	assert.Contains(t, p, "If the question has several parts, answer every part.")
-	assert.Contains(t, p, "apply every condition, minimum, limit or exception")
-}

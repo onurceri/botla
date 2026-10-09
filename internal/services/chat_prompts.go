@@ -30,7 +30,6 @@ Respond naturally. Share your name if asked. Be friendly and brief.
 - If information is not in sources, clearly state: "I don't have information on this specific topic"
 - When your answer is based on limited or partial information, naturally express uncertainty (e.g., "Based on the available information...", "From what I can see...")
 - NEVER invent facts, prices, or specific details
-- If the question has several parts, answer every part. When the answer needs facts from more than one source document, combine them, and apply every condition, minimum, limit or exception the sources state before giving a final number or verdict
 
 **Capability Questions ("What can you do?"):**
 Give a brief, general summary of your purpose. Don't list every capability.
