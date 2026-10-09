@@ -152,7 +152,7 @@ func (r *PostgresHandoffRepo) GetHandoffRequestByID(ctx context.Context, id stri
 	return &req, nil
 }
 
-func (r *PostgresHandoffRepo) UpdateHandoffRequestStatus(ctx context.Context, id, status string, assignedTo *string) error {
+func (r *PostgresHandoffRepo) UpdateHandoffRequestStatus(ctx context.Context, id, chatbotID, status string, assignedTo *string) error {
 	var resolvedAt interface{}
 	if status == models.HandoffStatusResolved {
 		now := time.Now()
@@ -164,7 +164,7 @@ func (r *PostgresHandoffRepo) UpdateHandoffRequestStatus(ctx context.Context, id
 		Set("status", status).
 		Set("assigned_to", assignedTo).
 		Set("resolved_at", resolvedAt).
-		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{"id": id, "chatbot_id": chatbotID}).
 		ToSql()
 	if err != nil {
 		return pkgerrors.Wrapf(err, "build update handoff request status query")

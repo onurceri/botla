@@ -11,7 +11,7 @@ type MockHandoffRepo struct {
 	CreateHandoffRequestFunc        func(ctx context.Context, req *models.HandoffRequest) (string, error)
 	ListHandoffRequestsByBotIDFunc  func(ctx context.Context, chatbotID string, filter models.HandoffListFilter) ([]*models.HandoffRequest, int, error)
 	GetHandoffRequestByIDFunc       func(ctx context.Context, id string) (*models.HandoffRequest, error)
-	UpdateHandoffRequestStatusFunc  func(ctx context.Context, id, status string, assignedTo *string) error
+	UpdateHandoffRequestStatusFunc  func(ctx context.Context, id, chatbotID, status string, assignedTo *string) error
 	CountPendingHandoffRequestsFunc func(ctx context.Context, chatbotID string) (int, error)
 	ListHandoffMessagesFunc         func(ctx context.Context, conversationID string, limit int) ([]models.Message, error)
 	SetHandoffContactEmailFunc      func(ctx context.Context, id, chatbotID, email string) error
@@ -47,6 +47,7 @@ type GetHandoffRequestByIDCall struct {
 
 type UpdateHandoffRequestStatusCall struct {
 	ID         string
+	ChatbotID  string
 	Status     string
 	AssignedTo *string
 }
@@ -104,10 +105,10 @@ func (m *MockHandoffRepo) GetHandoffRequestByID(ctx context.Context, id string) 
 	return nil, nil
 }
 
-func (m *MockHandoffRepo) UpdateHandoffRequestStatus(ctx context.Context, id, status string, assignedTo *string) error {
-	m.Calls.UpdateHandoffRequestStatus = append(m.Calls.UpdateHandoffRequestStatus, UpdateHandoffRequestStatusCall{ID: id, Status: status, AssignedTo: assignedTo})
+func (m *MockHandoffRepo) UpdateHandoffRequestStatus(ctx context.Context, id, chatbotID, status string, assignedTo *string) error {
+	m.Calls.UpdateHandoffRequestStatus = append(m.Calls.UpdateHandoffRequestStatus, UpdateHandoffRequestStatusCall{ID: id, ChatbotID: chatbotID, Status: status, AssignedTo: assignedTo})
 	if m.UpdateHandoffRequestStatusFunc != nil {
-		return m.UpdateHandoffRequestStatusFunc(ctx, id, status, assignedTo)
+		return m.UpdateHandoffRequestStatusFunc(ctx, id, chatbotID, status, assignedTo)
 	}
 	return nil
 }

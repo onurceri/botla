@@ -301,13 +301,14 @@ func (s *HandoffService) ListHandoffRequests(ctx context.Context, chatbotID, sta
 	return &HandoffRequestPage{Requests: requests, Total: total, Page: page, Limit: limit}, nil
 }
 
-// UpdateHandoffStatus updates the status of a handoff request
-func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, requestID, status string, assignedTo *string) error {
+// UpdateHandoffStatus updates the status of a handoff request of chatbotID.
+// A request that belongs to another chatbot is reported as ErrHandoffNotFound.
+func (s *HandoffService) UpdateHandoffStatus(ctx context.Context, chatbotID, requestID, status string, assignedTo *string) error {
 	if !models.IsValidHandoffStatus(status) {
 		return InvalidHandoffStatusError{Status: status}
 	}
 
-	if err := s.HandoffRepo.UpdateHandoffRequestStatus(ctx, requestID, status, assignedTo); err != nil {
+	if err := s.HandoffRepo.UpdateHandoffRequestStatus(ctx, requestID, chatbotID, status, assignedTo); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrHandoffNotFound
 		}

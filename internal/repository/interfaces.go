@@ -378,8 +378,9 @@ type HandoffRepository interface {
 	// GetHandoffRequestByID returns a single handoff request by ID.
 	GetHandoffRequestByID(ctx context.Context, id string) (*models.HandoffRequest, error)
 
-	// UpdateHandoffRequestStatus updates the status of a handoff request.
-	UpdateHandoffRequestStatus(ctx context.Context, id, status string, assignedTo *string) error
+	// UpdateHandoffRequestStatus updates the status of a handoff request belonging
+	// to chatbotID. Returns sql.ErrNoRows if no such request exists for that chatbot.
+	UpdateHandoffRequestStatus(ctx context.Context, id, chatbotID, status string, assignedTo *string) error
 
 	// SetHandoffContactEmail stores the visitor's contact email and stamps contacted_at
 	// on a handoff request belonging to chatbotID. Returns sql.ErrNoRows if none matches.

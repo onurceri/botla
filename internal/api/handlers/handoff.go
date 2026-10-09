@@ -169,7 +169,7 @@ func parseIntQuery(raw string, def int) (int, bool) {
 
 // UpdateHandoffRequest handles PATCH /api/chatbots/:id/handoff-requests/:requestId
 func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -194,7 +194,7 @@ func (h *HandoffHandlers) UpdateHandoffRequest(w http.ResponseWriter, r *http.Re
 	}
 
 	// Update status using injected service
-	if err := h.HandoffService.UpdateHandoffStatus(r.Context(), requestID, req.Status, req.AssignedTo); err != nil {
+	if err := h.HandoffService.UpdateHandoffStatus(r.Context(), botID, requestID, req.Status, req.AssignedTo); err != nil {
 		var invalid services.InvalidHandoffStatusError
 		if errors.As(err, &invalid) {
 			api.WriteErrorCode(w, http.StatusBadRequest, api.ErrInvalidStatus)
@@ -283,7 +283,7 @@ func (h *HandoffHandlers) PublicSubmitEmail(w http.ResponseWriter, r *http.Reque
 // GetHandoffRequestDetail handles GET /api/v1/chatbots/:id/handoff-requests/:requestId
 // Returns the handoff request with full conversation history
 func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
+	_, botID, ok := getChatbotContext(w, r, h.ChatbotRepo, h.WorkspaceService, h.OrgService)
 	if !ok {
 		return
 	}
@@ -309,7 +309,9 @@ func (h *HandoffHandlers) GetHandoffRequestDetail(w http.ResponseWriter, r *http
 		api.WriteErrorCode(w, http.StatusInternalServerError, api.ErrCodeInternalError)
 		return
 	}
-	if handoffReq == nil {
+	// A request of another chatbot is reported as not found so request IDs
+	// cannot be used to read conversations across tenants.
+	if handoffReq == nil || handoffReq.ChatbotID != botID {
 		api.WriteErrorCode(w, http.StatusNotFound, api.ErrHandoffNotFound)
 		return
 	}

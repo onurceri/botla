@@ -157,3 +157,49 @@ func TestHandoff_PublicSubmitEmail_PersistsContact(t *testing.T) {
 		t.Fatalf("resolved request: expected 409, got %d", code)
 	}
 }
+
+func TestHandoff_RequestOfAnotherChatbot_IsNotVisible(t *testing.T) {
+	t.Parallel()
+	te, err := fixtures.SetupTestEnv()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	defer fixtures.TeardownTestEnv(te)
+
+	_, victimBotID := setupHandoffBot(t, te, "handoff_victim@example.com")
+	requestID := requestPublicHandoff(t, te, victimBotID, "victim-session")
+	attackerToken, attackerBotID := setupHandoffBot(t, te, "handoff_attacker@example.com")
+
+	base := te.Server.URL + "/api/v1/chatbots/" + attackerBotID + "/handoff-requests/" + requestID
+
+	reqGet, _ := http.NewRequest(http.MethodGet, base, nil)
+	reqGet.Header.Set("Authorization", "Bearer "+attackerToken)
+	resGet, err := testHTTPClient().Do(reqGet)
+	if err != nil {
+		t.Fatalf("get detail: %v", err)
+	}
+	defer drainBody(resGet)
+	if resGet.StatusCode != http.StatusNotFound {
+		t.Fatalf("detail via another chatbot: expected 404, got %d", resGet.StatusCode)
+	}
+
+	reqPatch, _ := http.NewRequest(http.MethodPatch, base, strings.NewReader(`{"status":"resolved"}`))
+	reqPatch.Header.Set("Authorization", "Bearer "+attackerToken)
+	reqPatch.Header.Set("Content-Type", "application/json")
+	resPatch, err := testHTTPClient().Do(reqPatch)
+	if err != nil {
+		t.Fatalf("patch: %v", err)
+	}
+	defer drainBody(resPatch)
+	if resPatch.StatusCode != http.StatusNotFound {
+		t.Fatalf("patch via another chatbot: expected 404, got %d", resPatch.StatusCode)
+	}
+
+	var status string
+	if err := te.DB.QueryRow("SELECT status FROM handoff_requests WHERE id=$1", requestID).Scan(&status); err != nil {
+		t.Fatalf("read status: %v", err)
+	}
+	if status != models.HandoffStatusPending {
+		t.Fatalf("victim request was modified: status=%s", status)
+	}
+}
