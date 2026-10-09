@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from '@playwright/test'
-import { WidgetHelper, setupChatMocks, waitForWidgetMounted } from './helpers'
+import { WidgetHelper, waitForWidgetMounted } from './helpers'
 
 test.describe('Widget Configuration', () => {
   let helper: WidgetHelper
@@ -22,7 +22,7 @@ test.describe('Widget Configuration', () => {
     helper = new WidgetHelper(page)
   })
 
-  test('loads configuration from API', async ({ page }) => {
+  test('loads configuration from API', async () => {
     // Verify config is loaded and applied
     await helper.openWidget()
     

@@ -64,7 +64,7 @@ export function createHandoffMessage(requestId: string = 'handoff-123'): ChatMes
 export function createMessageList(count: number = 5, options: FactoryOptions<ChatMessage> = {}): ChatMessage[] {
   const messages: ChatMessage[] = []
   let role: 'user' | 'assistant' = 'user'
-  let baseTimestamp = Date.now()
+  const baseTimestamp = Date.now()
   
   for (let i = 0; i < count; i++) {
     messages.push(createMessage({

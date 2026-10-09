@@ -25,7 +25,7 @@ test.describe('Chat Flows', () => {
     helper = new WidgetHelper(page)
   })
 
-  test('handles simple question and answer flow', async ({ page }) => {
+  test('handles simple question and answer flow', async () => {
     await helper.openWidget()
     
     // Initial welcome message should be present
@@ -73,7 +73,7 @@ test.describe('Chat Flows', () => {
     await expect(helper.messageRows).toHaveCount(15)
   })
 
-  test('handles rapid message sending', async ({ page }) => {
+  test('handles rapid message sending', async () => {
     await helper.openWidget()
     
     // Send messages rapidly
@@ -87,7 +87,7 @@ test.describe('Chat Flows', () => {
     await helper.expectMessageWithContent('Mesaj 3')
   })
 
-  test('maintains conversation context', async ({ page }) => {
+  test('maintains conversation context', async () => {
     await helper.openWidget()
     
     // First message
@@ -103,7 +103,7 @@ test.describe('Chat Flows', () => {
     await expect(helper.messageRows).toHaveCount(4) // welcome + 2 user + 2 assistant
   })
 
-  test('handles very long messages', async ({ page }) => {
+  test('handles very long messages', async () => {
     await helper.openWidget()
     
     // Create a long message (close to max length)
@@ -115,7 +115,7 @@ test.describe('Chat Flows', () => {
     await expect(helper.messageRows.last()).toBeVisible()
   })
 
-  test('handles special characters in messages', async ({ page }) => {
+  test('handles special characters in messages', async () => {
     await helper.openWidget()
     
     // Message with special characters
@@ -127,7 +127,7 @@ test.describe('Chat Flows', () => {
     await helper.expectMessageWithContent('Merhaba!')
   })
 
-  test('handles multi-line messages', async ({ page }) => {
+  test('handles multi-line messages', async () => {
     await helper.openWidget()
     
     // Message with newlines
@@ -138,7 +138,7 @@ test.describe('Chat Flows', () => {
     await helper.expectMessageWithContent('Satır 1')
   })
 
-  test('handles Unicode and Turkish characters', async ({ page }) => {
+  test('handles Unicode and Turkish characters', async () => {
     await helper.openWidget()
     
     // Turkish specific characters
@@ -150,7 +150,7 @@ test.describe('Chat Flows', () => {
     await helper.expectMessageWithContent('Türkçe')
   })
 
-  test('handles consecutive user messages without assistant response delay', async ({ page }) => {
+  test('handles consecutive user messages without assistant response delay', async () => {
     await helper.openWidget()
     
     // Send messages quickly

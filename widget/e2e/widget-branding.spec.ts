@@ -21,7 +21,7 @@ test.describe('Widget Branding', () => {
     helper = new WidgetHelper(page)
   })
 
-  test('shows default Botla branding', async ({ page }) => {
+  test('shows default Botla branding', async () => {
     await helper.openWidget()
     
     // Default branding should be visible

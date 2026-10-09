@@ -4,7 +4,7 @@ export const WIDGET_Z_INDEX = 2147483647
 // Default values
 export const DEFAULT_MAX_CHARS = 1000
 export const DEFAULT_THEME_COLOR = 'rgba(255, 174, 0, 1)'
-export const DEFAULT_POSITION: 'bottom-right' = 'bottom-right'
+export const DEFAULT_POSITION = 'bottom-right' as const
 
 // Timeouts
 export const SCROLL_DELAY_MS = 10

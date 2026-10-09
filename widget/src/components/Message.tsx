@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { sanitizeUrl } from '../utils/sanitize'
@@ -18,7 +18,9 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
   const [submitted, setSubmitted] = useState(m.emailSubmitted || false)
   const [error, setError] = useState('')
   
-  const time = new Date(m.ts || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+  // Messages without a timestamp show the time they were first rendered.
+  const [fallbackTs] = useState(() => Date.now())
+  const time = new Date(m.ts || fallbackTs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
   const isUser = m.role === 'user'
   const isHandoff = m.type === 'handoff'
 
@@ -147,7 +149,7 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeSanitize]}
-            components={markdownComponents as any}
+            components={markdownComponents as Components}
           >
             {m.content}
           </ReactMarkdown>

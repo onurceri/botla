@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
 export function Suggestions({ items, disabled, onPick }: { items: string[]; disabled: boolean; onPick: (q: string) => void }) {
-  if (!items || items.length === 0) return null
-
   const [currentIndex, setCurrentIndex] = useState(0)
+
+  if (!items || items.length === 0) return null
 
   const next = () => {
     setCurrentIndex((prev) => (prev + 1) % items.length)
