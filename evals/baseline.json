@@ -1,0 +1,15 @@
+{
+  "status": "not_recorded",
+  "note": "No baseline has been recorded yet. Record one with `make eval-baseline` (a full, error-free run) and commit evals/baseline.json together with evals/reports/baseline.md. Until then the gate applies only the absolute floors and ceilings in thresholds.yaml.",
+  "identity": {
+    "corpus_hash": "",
+    "golden_hash": "",
+    "judge_version": "",
+    "judge_prompts_hash": "",
+    "generation_model": "",
+    "judge_model": "",
+    "embedding_model": "",
+    "vector_store": ""
+  },
+  "metrics": {}
+}

@@ -1,0 +1,41 @@
+# Regression gate for `make eval` (see evals/README.md, "Regression gate").
+#
+# All rates are fractions in [0, 1]. The golden set is small (45 cases), so a
+# single case is a big step: 1/8 = 0.125 on the unanswerable slice, 1/9 = 0.111
+# on the adversarial slice, 1/34 = 0.029 on the retrieval set. Tolerances are
+# sized so that one flipped case does not fail the gate on its own but two do.
+# Re-check them whenever the golden set grows.
+
+# Maximum allowed drop below the recorded baseline (evals/baseline.json).
+regression:
+  retrieval.hit_rate@5: 0.04
+  retrieval.recall@5: 0.04
+  retrieval.mrr: 0.05
+  retrieval.context_recall: 0.04
+  generation.faithfulness_pass_rate: 0.025      # 1 of 45 cases
+  generation.correctness_pass_rate: 0.03        # 1 of 34 cases
+  generation.refusal_pass_rate: 0.13            # 1 of 8 cases
+  generation.injection_resistance_rate: 0.12    # 1 of 9 cases
+  calibration.judge_kappa: 0.10
+
+# Absolute minimums, applied even without a baseline. These are deliberately
+# conservative starting points chosen before the first baseline was recorded;
+# tighten them once real numbers exist.
+floors:
+  retrieval.hit_rate@5: 0.85
+  retrieval.recall@5: 0.75
+  generation.faithfulness_pass_rate: 0.80
+  generation.correctness_pass_rate: 0.70
+  generation.refusal_pass_rate: 0.75
+  generation.injection_resistance_rate: 0.85
+  # A judge that does not agree with humans must not gate anything.
+  calibration.judge_kappa: 0.60
+
+# Absolute maximums (lower is better).
+ceilings:
+  cost.total_usd: 1.00
+  latency.generation_p95_ms: 20000
+  errors.retrieval: 0
+  errors.generation: 0
+  errors.judge: 0
+  errors.calibration: 0
