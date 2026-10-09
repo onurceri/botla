@@ -252,7 +252,7 @@ make admin-demote email=user@example.com    # revoke platform admin
 ## Environment Variables
 
 All config is env-driven (see `.env.example`). Key variables:
-- `DATABASE_URL` / `DB_*` — PostgreSQL connection
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` — PostgreSQL connection (`DATABASE_URL` is only read by the Makefile `migrate-*` targets)
 - `REDIS_URL` — Redis (required to boot; rate limiting + queues)
 - `JWT_SECRET` — token signing secret (32+ chars)
 - `OPENAI_API_KEY` — embeddings + LLM
