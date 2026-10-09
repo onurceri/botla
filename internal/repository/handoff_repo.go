@@ -95,7 +95,7 @@ func (r *PostgresHandoffRepo) ListHandoffRequestsByBotID(ctx context.Context, ch
 		return nil, 0, pkgerrors.Wrapf(err, "build count handoff requests query")
 	}
 	var total int
-	if err := r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+	if err = r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "count handoff requests")
 	}
 
