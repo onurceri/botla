@@ -1,4 +1,4 @@
-import { test, expect, type Page, BrowserContext } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { setAuthCookies, setupAuthenticatedMocks, DEFAULT_TEST_USER } from './utils/cookie-auth'
 import { setupOrgMocks, setupAnalyticsMocks } from './helpers'
 
@@ -24,7 +24,7 @@ test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 test.describe('Mobile Responsiveness', () => {
   test.beforeEach(async ({ page, context }) => {
     // Set up HttpOnly cookies and mock auth endpoints
-    await setAuthCookies(context, DEFAULT_TEST_USER)
+    await setAuthCookies(context, { user: DEFAULT_TEST_USER })
     await setupAuthenticatedMocks(page)
     await setupOrgMocks(page)
     await setupAnalyticsMocks(page)

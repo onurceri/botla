@@ -251,7 +251,6 @@ describe('PrivacySettingsPage', () => {
   })
 
   it('limits correction textarea to max length', async () => {
-    const user = userEvent.setup()
     mockDefaultApiGet()
 
     renderWithProviders(<PrivacySettingsPage />)

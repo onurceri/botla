@@ -156,7 +156,6 @@ export async function setAuthCookies(
 
   // Get base URL from environment or default
   const baseUrl = process.env.VITE_API_BASE_URL || 'http://localhost:5173'
-  const url = new URL(baseUrl)
   // When using 'url', we generally don't need 'domain'. 'path' is inferred from url usually, but can be explicit.
   // The error "Cookie should have either url or path" implies we might be missing something valid or providing a conflict.
   // Actually, strictly: url OR (domain AND path).

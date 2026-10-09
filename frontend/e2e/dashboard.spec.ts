@@ -141,7 +141,7 @@ test.describe('Dashboard Layout', () => {
       await sidebar.expectNavItemActive(sidebar.navDashboard)
     })
 
-    test('should navigate to Chatbots page when clicking nav item', async ({ page }) => {
+    test('should navigate to Chatbots page when clicking nav item', async () => {
       await sidebar.navigateToChatbots()
       await expect(sidebar.navChatbots).toHaveClass(/active/)
     })

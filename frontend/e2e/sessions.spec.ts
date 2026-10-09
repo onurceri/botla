@@ -11,18 +11,15 @@ import {
   createSession,
   createExpiredSession,
   createExpiringSession,
-  setExpiredSession,
   TOKEN_EXPIRY,
 } from './utils/session-manager'
 import {
   mockSuccessfulTokenRefresh,
-  mockEndpointUnauthorized,
   mockExpiredRefreshToken,
   mockInvalidRefreshToken,
   mockRevokedRefreshToken,
   mockRefreshTokenServerError,
   mockRefreshTokenNetworkError,
-  mockSessionExpired,
   mockRefreshRateLimit,
   mockDelayedTokenRefresh,
   mockUserInfo,
@@ -462,6 +459,7 @@ test.describe('Session Management', () => {
         user: {
           id: 'user-123',
           email: 'test@example.com',
+          name: 'Test User',
         }
       })
       await page.evaluate(() => localStorage.setItem('remember_me', 'true'))
@@ -597,7 +595,7 @@ test.describe('Session Management', () => {
       await setSessionStorage(page, {
         accessToken: 'not-a-valid-jwt-format',
         refreshToken: 'valid-refresh-token',
-        user: { id: 'user-123' }
+        user: { id: 'user-123', email: 'test@example.com', name: 'Test User' }
       })
 
       await mockUserInfoUnauthorized(page)
@@ -617,7 +615,7 @@ test.describe('Session Management', () => {
       await setSessionStorage(page, {
         accessToken: tamperedToken,
         refreshToken: 'valid-refresh-token',
-        user: { id: 'user-123' }
+        user: { id: 'user-123', email: 'test@example.com', name: 'Test User' }
       })
 
       await mockUserInfoUnauthorized(page)

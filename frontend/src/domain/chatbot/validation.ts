@@ -171,7 +171,7 @@ export function validateURL(url: string): ValidationResult {
   try {
     const parsedUrl = new URL(trimmed);
     
-    if (!URL_CONSTRAINTS.allowedProtocols.includes(parsedUrl.protocol)) {
+    if (!(URL_CONSTRAINTS.allowedProtocols as readonly string[]).includes(parsedUrl.protocol)) {
       errors.push({
         field: 'url',
         code: 'ERR_INVALID_URL_PROTOCOL',

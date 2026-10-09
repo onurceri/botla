@@ -1,4 +1,4 @@
-import { test as base, Page, Locator } from '@playwright/test'
+import { test as base } from '@playwright/test'
 import { LoginPage } from '../pages/login.page'
 
 // Test data interfaces
