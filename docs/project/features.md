@@ -928,6 +928,14 @@ Key architectural decisions:
 | `preview-mode` | boolean | Preview/embed mode |
 | `position-strategy` | string | fixed or absolute |
 | `use-url-overrides` | boolean | Use URL param overrides |
+| `parent-origin` | string | Origin of a page that frames the widget's host page and should receive `WIDGET_EVENT_*` messages (also settable as `data-parent-origin`) |
+
+#### postMessage protocol and trust rules
+
+- **Inbound `WIDGET_CONFIG`** (Playground live updates) is handled only when the widget runs in preview mode (`preview-mode=1`, set by `preview.html`). A message is applied only if `event.origin` exactly equals a dashboard origin and `event.source` is the parent window. Dashboard origins come from `VITE_DASHBOARD_URL` (comma-separated) at build time, defaulting to `https://botla.app` and `https://www.botla.app`; `http://localhost:5173` and `http://localhost:3000` are added only in dev builds. If the allowlist is empty, every message is rejected.
+- **`api-base` over postMessage** must be an `https://` URL (`http://` only for `localhost`/`127.0.0.1`), with no credentials, query or fragment. Invalid values are ignored and the current API base is kept.
+- **`WIDGET_CONFIG_APPLIED`** is sent back only to the sender (`event.source`, `event.origin`).
+- **Outbound `WIDGET_EVENT_*`** events (`CONFIG_LOADED`, `MESSAGE_SENT`, `RESPONSE_RECEIVED`, `ERROR`, `SESSION_RESET`) are never posted with a `'*'` target. They go to the dashboard origins and, if set, to `parent-origin`. The browser drops a delivery when the real parent's origin doesn't match, so a page that frames a customer site without being configured gets nothing. **Behaviour change:** integrations that frame a page with the widget and listen for `WIDGET_EVENT_*` must now set `parent-origin` (or `data-parent-origin`) to their own origin.
 
 ### 4.6 State & Session Management
 
