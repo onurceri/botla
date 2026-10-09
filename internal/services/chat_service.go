@@ -42,6 +42,10 @@ type ChatService struct {
 	Quota            *QuotaEnforcer
 	Context          *ChatContextBuilder
 	SyncAnalytics    bool
+	// Retrieval selects the RAG retrieval strategy (query decomposition etc.).
+	// NewChatService reads it from the environment; the zero value is plain
+	// single-query search.
+	Retrieval rag.RetrievalStrategy
 }
 
 // NewChatService creates a new ChatService instance with all sub-services composed.
@@ -80,6 +84,7 @@ func NewChatService(
 		Guardrails:       guardrails,
 		Quota:            NewQuotaEnforcer(usageRepo),
 		Context:          NewChatContextBuilder(guardrails),
+		Retrieval:        rag.RetrievalStrategyFromEnv(),
 	}
 }
 

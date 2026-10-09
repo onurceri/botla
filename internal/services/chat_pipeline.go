@@ -45,47 +45,15 @@ func (s *ChatService) saveUserMessage(ctx context.Context, cc *chatContext) erro
 	return nil
 }
 
-// performRAGSearch searches for relevant context using vector similarity.
+// performRAGSearch gathers RAG context for the user's message (see RetrieveContext).
 func (s *ChatService) performRAGSearch(ctx context.Context, cc *chatContext) {
-	embedder := s.getEmbedder()
-	qc := s.getQdrantClient()
-
-	if embedder == nil || qc == nil {
-		cc.SearchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
-		return
-	}
-
-	// Create embedding
-	embedding, err := embedder.CreateEmbedding(ctx, cc.Request.Message)
-	if err != nil {
-		cc.SearchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
-		return
-	}
-
-	// Perform tiered search
-	result, err := rag.SearchContextTiered(
-		ctx,
-		qc,
-		embedding,
-		cc.Bot.ID,
-		cc.RAGConfig.TopK,
-		cc.RAGConfig.MaxContextTokens,
-		cc.ThresholdCfg,
-	)
-	if err != nil && s.Log != nil {
-		s.Log.Warn("tiered_search_error", map[string]any{"error": err.Error(), "chatbot_id": cc.Bot.ID})
-	}
-
-	if result == nil {
-		cc.SearchResult = &rag.TieredSearchResult{Tier: rag.TierLow}
-		return
-	}
-
-	cc.SearchResult = result
-	cc.ChunkMetas = result.Chunks
+	out := s.RetrieveContext(ctx, cc.Bot, cc.Request.Message, cc.RAGConfig, cc.ThresholdCfg)
+	cc.TotalTokens += out.LLMTokens
+	cc.SearchResult = out.Result
+	cc.ChunkMetas = out.Result.Chunks
 
 	// Build sources list
-	for _, m := range result.Chunks {
+	for _, m := range out.Result.Chunks {
 		cc.Sources = append(cc.Sources, models.SourceUsed{
 			ChunkIndex: m.ChunkIndex,
 			SourceType: m.SourceType,

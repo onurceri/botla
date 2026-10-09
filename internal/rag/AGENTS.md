@@ -12,6 +12,8 @@ RAG pipeline implementation with OpenAI embeddings, Qdrant vector storage, tiere
 | `circuit_breaker.go` | CircuitBreakerClient/Manager wrapping LLMClient with gobreaker, failure ratio 0.5, 30s timeout |
 | `topic_extractor.go` | ExtractIngestionMetadata: capability summaries, suggested questions, ALWAYS ENGLISH prompts |
 | `search.go` | SearchContextTiered: tiered similarity search (high/medium/low), threshold-based context filtering |
+| `multi_query.go` | SearchContextMulti: tiered search over several query embeddings (round-robin fusion, same top-K/budget); RetrievalStrategy from `RAG_QUERY_DECOMPOSITION` (default off) |
+| `query_decomposer.go` | DecomposeQuery: one small LLM call splitting a multi-part question into ≤3 standalone sub-queries; ALWAYS ENGLISH prompt |
 | `qdrant.go` | QdrantClient: HTTP-based vector operations, collection ensure, upsert, search, scroll, delete |
 | `openai.go` | OpenAIClient: embeddings (text-embedding-3-small), chat completions with 4x retry, exponential backoff |
 
