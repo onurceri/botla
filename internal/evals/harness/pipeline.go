@@ -24,6 +24,9 @@ type Pipeline struct {
 	Bot      models.Chatbot
 	Plan     models.Plan
 	Log      *logger.Logger
+	// Retrieval is the product retrieval strategy under test (query
+	// decomposition). The zero value is plain single-query search.
+	Retrieval rag.RetrievalStrategy
 }
 
 // RAGConfig is the per-plan retrieval configuration ProcessChatWithValidation
@@ -48,6 +51,9 @@ type Retrieval struct {
 	Context      []RetrievedChunk `json:"context"`
 	Tier         string           `json:"tier"`
 	HighestScore float64          `json:"highest_score"`
+	// SubQueries are the standalone queries searched when query
+	// decomposition split the question (empty for single-part questions).
+	SubQueries []string `json:"sub_queries,omitempty"`
 }
 
 // RankedDocs returns the chunk ranking as source IDs.
@@ -64,33 +70,80 @@ func sourceIDs(cs []RetrievedChunk) []string {
 	return out
 }
 
-// Retrieve embeds the question with the product embedder and runs both the
-// raw vector search (depth topN) and the product's tiered context selection.
+// Retrieve runs the product's retrieval (services.ChatService.RetrieveContext,
+// the same call ProcessChat makes) and, for rank metrics, the raw similarity
+// ranking at depth topN. When decomposition split the question, the ranking
+// is the round-robin fusion of the question's and each sub-query's depth-topN
+// ranking, the same fusion the product uses for context selection.
 func (p *Pipeline) Retrieve(ctx context.Context, question string, topN int) (Retrieval, error) {
-	emb, err := p.Embedder.CreateEmbedding(ctx, question)
-	if err != nil {
-		return Retrieval{}, fmt.Errorf("embed question: %w", err)
+	svc := p.newService(nil)
+	bot := p.Bot
+	got := svc.RetrieveContext(ctx, &bot, question, p.RAGConfig(), p.Bot.ThresholdConfig)
+
+	queries := append([]string{question}, got.SubQueries...)
+	rankings := make([][]rag.SearchResult, 0, len(queries))
+	for _, q := range queries {
+		emb, err := p.Embedder.CreateEmbedding(ctx, q)
+		if err != nil {
+			return Retrieval{}, fmt.Errorf("embed question: %w", err)
+		}
+		hits, err := p.Vector.SearchSimilar(ctx, emb, p.Bot.ID, topN)
+		if err != nil {
+			return Retrieval{}, fmt.Errorf("vector search: %w", err)
+		}
+		sort.SliceStable(hits, func(i, j int) bool { return hits[i].Score > hits[j].Score })
+		rankings = append(rankings, hits)
 	}
-	hits, err := p.Vector.SearchSimilar(ctx, emb, p.Bot.ID, topN)
-	if err != nil {
-		return Retrieval{}, fmt.Errorf("vector search: %w", err)
+	hits := rag.FuseRoundRobin(rankings)
+	if len(hits) > topN {
+		hits = hits[:topN]
 	}
-	sort.SliceStable(hits, func(i, j int) bool { return hits[i].Score > hits[j].Score })
-	out := Retrieval{Ranked: make([]RetrievedChunk, len(hits))}
+	out := Retrieval{Ranked: make([]RetrievedChunk, len(hits)), SubQueries: got.SubQueries}
 	for i, h := range hits {
 		out.Ranked[i] = RetrievedChunk{SourceID: h.Payload.SourceID, ChunkIndex: h.Payload.ChunkIndex, Score: h.Score}
 	}
-	rc := p.RAGConfig()
-	tiered, err := rag.SearchContextTiered(ctx, p.Vector, emb, p.Bot.ID, rc.TopK, rc.MaxContextTokens, p.Bot.ThresholdConfig)
-	if err != nil {
-		return Retrieval{}, fmt.Errorf("tiered search: %w", err)
-	}
-	out.Tier = string(tiered.Tier)
-	out.HighestScore = tiered.HighestScore
-	for _, m := range tiered.Chunks {
+	out.Tier = string(got.Result.Tier)
+	out.HighestScore = got.Result.HighestScore
+	for _, m := range got.Result.Chunks {
 		out.Context = append(out.Context, RetrievedChunk{SourceID: m.SourceID, ChunkIndex: m.ChunkIndex, Score: m.Score})
 	}
 	return out, nil
+}
+
+// newService builds a ChatService over fresh in-memory repositories, wired to
+// the eval clients and retrieval strategy. onSources, if set, receives the
+// chunks ProcessChat saves as the answer's sources.
+func (p *Pipeline) newService(onSources func([]models.ChunkMetadata)) *services.ChatService {
+	plan := p.Plan
+	planRepo := repository.NewMockPlanRepo()
+	planRepo.GetByUserIDFunc = func(context.Context, string) (*models.Plan, error) { return &plan, nil }
+
+	convRepo := &repository.MockConversationRepo{}
+	convRepo.GetOrCreateBySessionIDFunc = func(_ context.Context, chatbotID, sid string) (*models.Conversation, error) {
+		s := sid
+		return &models.Conversation{ID: "eval-conv-" + sid, ChatbotID: chatbotID, SessionID: &s}, nil
+	}
+	convRepo.CreateMessageFunc = func(_ context.Context, msg *models.Message) (string, error) {
+		return "eval-msg-" + msg.Role, nil
+	}
+	convRepo.SaveMessageSourcesFunc = func(_ context.Context, _ string, sources []models.ChunkMetadata) error {
+		if onSources != nil {
+			onSources(sources)
+		}
+		return nil
+	}
+
+	sourceRepo := repository.NewMockSourceRepo()
+	caps := append([]string(nil), p.Index.Capabilities...)
+	sourceRepo.GetCapabilitySummariesFunc = func(context.Context, string) ([]string, error) { return caps, nil }
+
+	svc := services.NewChatService(
+		planRepo, convRepo, repository.NewMockAnalyticsRepo(), repository.NewMockActionRepo(),
+		sourceRepo, repository.NewMockHandoffRepo(), p.Factory, p.Embedder, p.Vector, nil, p.Log,
+	)
+	svc.SyncAnalytics = true
+	svc.Retrieval = p.Retrieval
+	return svc
 }
 
 // Generation is the outcome of one end-to-end chat turn.
@@ -119,34 +172,11 @@ func (p *Pipeline) Generate(ctx context.Context, question, sessionID string) (Ge
 		mu       sync.Mutex
 		captured []models.ChunkMetadata
 	)
-	plan := p.Plan
-	planRepo := repository.NewMockPlanRepo()
-	planRepo.GetByUserIDFunc = func(context.Context, string) (*models.Plan, error) { return &plan, nil }
-
-	convRepo := &repository.MockConversationRepo{}
-	convRepo.GetOrCreateBySessionIDFunc = func(_ context.Context, chatbotID, sid string) (*models.Conversation, error) {
-		s := sid
-		return &models.Conversation{ID: "eval-conv-" + sid, ChatbotID: chatbotID, SessionID: &s}, nil
-	}
-	convRepo.CreateMessageFunc = func(_ context.Context, msg *models.Message) (string, error) {
-		return "eval-msg-" + msg.Role, nil
-	}
-	convRepo.SaveMessageSourcesFunc = func(_ context.Context, _ string, sources []models.ChunkMetadata) error {
+	svc := p.newService(func(sources []models.ChunkMetadata) {
 		mu.Lock()
 		captured = append([]models.ChunkMetadata(nil), sources...)
 		mu.Unlock()
-		return nil
-	}
-
-	sourceRepo := repository.NewMockSourceRepo()
-	caps := append([]string(nil), p.Index.Capabilities...)
-	sourceRepo.GetCapabilitySummariesFunc = func(context.Context, string) ([]string, error) { return caps, nil }
-
-	svc := services.NewChatService(
-		planRepo, convRepo, repository.NewMockAnalyticsRepo(), repository.NewMockActionRepo(),
-		sourceRepo, repository.NewMockHandoffRepo(), p.Factory, p.Embedder, p.Vector, nil, p.Log,
-	)
-	svc.SyncAnalytics = true
+	})
 
 	bot := p.Bot
 	start := time.Now()

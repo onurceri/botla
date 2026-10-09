@@ -17,6 +17,7 @@ type RetrievalCase struct {
 	ContextDocs     []string                 `json:"context_docs"`
 	Tier            string                   `json:"tier"`
 	HighestScore    float64                  `json:"highest_score"`
+	SubQueries      []string                 `json:"sub_queries,omitempty"`
 	Scores          *metrics.RetrievalScores `json:"scores,omitempty"`
 	Error           string                   `json:"error,omitempty"`
 }
@@ -54,6 +55,7 @@ func runRetrieval(ctx context.Context, cfg Config, r Retriever) *RetrievalReport
 		rc.RankedDocs = metrics.DedupeRanked(res.RankedDocs())
 		rc.ContextDocs = metrics.DedupeRanked(res.ContextDocs())
 		rc.Tier, rc.HighestScore = res.Tier, res.HighestScore
+		rc.SubQueries = res.SubQueries
 		if cs.HasRetrievalTarget() {
 			s := metrics.ScoreRetrieval(rc.RankedDocs, rc.ContextDocs, cs.ExpectedSources, cfg.Ks)
 			rc.Scores = &s

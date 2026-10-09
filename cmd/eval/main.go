@@ -48,6 +48,9 @@ type options struct {
 	concurrency, repeats, limit                        int
 	cases, categories, logLevel, golden                string
 	verbosityProbe, noCache, updateBaseline, preflight bool
+	// Retrieval overrides (default: the seeded pro plan and the product's env defaults).
+	ragTopK, ragMaxContextTokens int
+	ragDecompose                 bool
 }
 
 func parseFlags() options {
@@ -79,6 +82,10 @@ func parseFlags() options {
 	flag.BoolVar(&o.updateBaseline, "update-baseline", false, "write this run's metrics to baseline.json (requires a full, error-free run)")
 	flag.BoolVar(&o.preflight, "preflight", true, "make one cheap call per provider before starting, to fail fast on bad keys")
 	flag.StringVar(&o.logLevel, "log-level", "ERROR", "product logger level (logs go to stdout)")
+	strategy := rag.RetrievalStrategyFromEnv()
+	flag.IntVar(&o.ragTopK, "rag-topk", 5, "chunks admitted to the context (the pro plan's chat_rag_top_k)")
+	flag.IntVar(&o.ragMaxContextTokens, "rag-max-context-tokens", 4000, "context token budget (the pro plan's chat_rag_max_context_tokens)")
+	flag.BoolVar(&o.ragDecompose, "rag-decompose", strategy.Decompose, "query decomposition for multi-part questions (default: product default / "+rag.EnvQueryDecomposition+")")
 	flag.Parse()
 	if o.judgeDir == "" {
 		o.judgeDir = filepath.Join(o.evalsDir, "judge", "v1")
@@ -349,6 +356,7 @@ func buildPipeline(ctx context.Context, o options, fx *fixtures, metered *http.C
 		return nil, fmt.Errorf("ingest corpus (is Qdrant running? try `make eval-up` or -vector memory): %w", err)
 	}
 	fmt.Printf("Ingested %d documents into %d chunks (%s)\n", len(fx.corpus.Docs), index.TotalChunks(), o.vector)
+	fmt.Printf("Retrieval: top-k %d, context budget %d tokens, query decomposition %t\n", o.ragTopK, o.ragMaxContextTokens, o.ragDecompose)
 
 	return &harness.Pipeline{
 		Factory:  factory,
@@ -363,9 +371,10 @@ func buildPipeline(ctx context.Context, o options, fx *fixtures, metered *http.C
 		},
 		// Mirrors the seeded "pro" plan (db/migrations/000001_init.up.sql).
 		Plan: models.Plan{Code: "pro", Limits: &models.PlanLimits{
-			ChatRAGTopK: 5, ChatRAGMaxContextTokens: 4000,
+			ChatRAGTopK: o.ragTopK, ChatRAGMaxContextTokens: o.ragMaxContextTokens,
 			GuardrailsCanUseSmartFallback: true, GuardrailsCanCustomizeThresholds: true,
 		}},
+		Retrieval: rag.RetrievalStrategy{Decompose: o.ragDecompose},
 	}, nil
 }
 
