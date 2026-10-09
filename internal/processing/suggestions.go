@@ -216,6 +216,7 @@ func fetchSourceQuestionsFromRepo(ctx context.Context, sourceRepo repository.Sou
 }
 
 // fetchSourceQuestions retrieves source questions from the chatbot's sources.
+//
 // Deprecated: Use fetchSourceQuestionsFromRepo with a SourceRepository instead.
 func fetchSourceQuestions(ctx context.Context, chatbotID string) ([]SourceQuestions, error) {
 	// This is a legacy placeholder for backward compatibility

@@ -127,7 +127,7 @@ func (r *PostgresUserRepo) AdminListUsers(ctx context.Context, filter UserFilter
 	countQuery = fmt.Sprintf("SELECT COUNT(*) FROM (%s) as sub", countQuery)
 
 	var total int
-	if err := r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+	if err = r.pool.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
 		return nil, 0, pkgerrors.Wrapf(err, "count users")
 	}
 

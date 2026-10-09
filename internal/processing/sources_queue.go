@@ -25,7 +25,6 @@ type SourceQueue struct {
 	processor       *JobProcessor
 	trainingJobRepo repository.TrainingJobRepository
 	log             *logger.Logger
-	loader          *tokenizer.Loader
 }
 
 // StartSourceQueue creates and starts a new source processing queue.
