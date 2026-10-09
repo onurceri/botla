@@ -146,6 +146,7 @@ func New(cfg *config.Config, pool *sql.DB, log *logger.Logger, q *processing.Sou
 	ach := handlers.NewAdminChatbotHandlers(adminChatbotRepo, adminSvc, ragSvc, queueWrapper)
 	ash := handlers.NewAdminSourceHandlers(adminRepo, adminSvc, ragSvc, queueWrapper)
 	apnh := handlers.NewAdminPlanHandlers(planSvc, planRepo)
+	apnh.Logger = log
 
 	// Health
 	mux.HandleFunc("/health", hh.Health)
