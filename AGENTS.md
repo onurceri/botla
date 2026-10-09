@@ -20,7 +20,8 @@ Detailed conventions live in **per-area `AGENTS.md` files** — read the relevan
 ```
 ├── cmd/
 │   ├── server/          # HTTP API entrypoint (dependency wiring)
-│   └── cli/             # Admin CLI (promote/demote platform admins)
+│   ├── cli/             # Admin CLI (promote/demote platform admins)
+│   └── eval/            # RAG eval runner (see evals/README.md, `make eval`)
 ├── internal/            # Private application code
 │   ├── api/             # HTTP layer
 │   │   ├── handlers/    # Thin request handlers (auth, chatbot, chat, source, admin, org)
@@ -37,6 +38,7 @@ Detailed conventions live in **per-area `AGENTS.md` files** — read the relevan
 │   ├── scraper/         # Web scraping (sitemap, CSS selectors, go-rod browser)
 │   ├── pdf/             # PDF processing (requires `fitz` build tag)
 │   ├── validation/      # Input validation
+│   ├── evals/           # RAG eval framework: dataset, metrics, judge, harness, gate, runner
 │   ├── integration/     # Integration tests
 │   └── testdb/          # Database test utilities
 ├── pkg/                 # Public packages
