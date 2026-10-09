@@ -167,3 +167,23 @@ func TestSecuritySettingsRequest_UnmarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestSecuritySettingsRequest_IsPublic(t *testing.T) {
+	t.Parallel()
+
+	var withFlag SecuritySettingsRequest
+	if err := json.Unmarshal([]byte(`{"is_public": false}`), &withFlag); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if withFlag.IsPublic == nil || *withFlag.IsPublic {
+		t.Fatalf("expected is_public=false to decode, got %v", withFlag.IsPublic)
+	}
+
+	var without SecuritySettingsRequest
+	if err := json.Unmarshal([]byte(`{"secure_embed_enabled": true}`), &without); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if without.IsPublic != nil {
+		t.Fatal("omitted is_public must stay nil so it is left unchanged")
+	}
+}

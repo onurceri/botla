@@ -22,6 +22,10 @@ tags:
     description: Chat endpoints
   - name: Training
     description: Training job management
+  - name: Handoff
+    description: Human handoff requests
+  - name: Organizations
+    description: Organization management
 
 components:
   securitySchemes:
@@ -104,6 +108,13 @@ components:
         status:
           type: string
           enum: [active, inactive, training]
+        is_public:
+          type: boolean
+          default: true
+          description: >-
+            Whether the public widget endpoints (/public/chatbots/{id}, .../chat,
+            .../handoff, .../feedback) serve this chatbot. When false they respond
+            404 as if the chatbot did not exist.
         created_at:
           type: string
           format: date-time
@@ -125,6 +136,79 @@ components:
         language_code:
           type: string
           default: tr
+        is_public:
+          type: boolean
+          default: true
+          description: Expose the chatbot on the public widget endpoints. Defaults to true when omitted.
+
+    SecuritySettingsRequest:
+      type: object
+      description: Partial update; omitted fields are left unchanged.
+      properties:
+        secure_embed_enabled:
+          type: boolean
+        allowed_domains:
+          description: Domains allowed to embed the widget (array or comma-separated string).
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: string
+        embed_secret:
+          type: string
+        is_public:
+          type: boolean
+          description: Set to false to hide the chatbot from the public widget endpoints (they return 404).
+
+    # Handoff schemas
+    HandoffRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        chatbot_id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, assigned, resolved]
+        assigned_to:
+          type: string
+        notes:
+          type: string
+        user_email:
+          type: string
+          format: email
+          description: Contact email the visitor left via the widget.
+        contacted_at:
+          type: string
+          format: date-time
+          description: When the visitor submitted user_email.
+        created_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+
+    HandoffRequestPage:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandoffRequest'
+        total:
+          type: integer
+          description: Number of requests matching the status filter (all pages).
+        page:
+          type: integer
+        limit:
+          type: integer
 
     # Source schemas
     DataSource:
@@ -374,6 +458,119 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /chatbots/{id}/security:
+    put:
+      tags: [Chatbots]
+      summary: Update embed security and public visibility
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecuritySettingsRequest'
+      responses:
+        '200':
+          description: Updated chatbot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chatbot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /chatbots/{id}/handoff-requests:
+    get:
+      tags: [Handoff]
+      summary: List a chatbot's handoff requests (newest first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: status
+          in: query
+          description: Only return requests with this status. Omit for all.
+          schema:
+            type: string
+            enum: [pending, assigned, resolved]
+      responses:
+        '200':
+          description: One page of handoff requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandoffRequestPage'
+        '400':
+          description: Invalid page/limit (BAD_REQUEST) or status (ERR_INVALID_STATUS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /organizations/{id}:
+    delete:
+      tags: [Organizations]
+      summary: Delete an organization (owner only)
+      description: >-
+        Deletion cascades to workspaces and chatbots, so it is refused while the
+        organization still has chatbots, and for the owner's last organization.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Organization deleted
+        '400':
+          description: Cannot delete the owner's last organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Organization still has chatbots (ERR_ORG_HAS_CHATBOTS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # Source endpoints
   /chatbots/{id}/sources:
     get:
@@ -530,4 +727,64 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatResponse'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Chatbot not found or not public (is_public=false)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /public/chatbots/{chatbot_id}/handoff/{request_id}/contact:
+    post:
+      tags: [Handoff]
+      summary: Leave a contact email on a handoff request (widget)
+      parameters:
+        - name: chatbot_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+      responses:
+        '200':
+          description: Email stored on the request (user_email, contacted_at)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Invalid IDs (BAD_REQUEST) or email (ERR_INVALID_EMAIL_FORMAT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Chatbot not found/not public, or request not found for this chatbot
+        '409':
+          description: Request already resolved (ERR_HANDOFF_CLOSED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

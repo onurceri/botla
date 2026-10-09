@@ -104,6 +104,8 @@ export interface SecuritySettingsRequest {
   secure_embed_enabled?: boolean | null;
   allowed_domains?: string[];
   embed_secret?: string | null;
+  /** false hides the chatbot from the public widget endpoints (they return 404). */
+  is_public?: boolean;
 }
 
 export interface GuardrailsRequest {
