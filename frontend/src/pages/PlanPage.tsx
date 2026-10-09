@@ -28,6 +28,7 @@ import {
   Bot,
   Sparkles,
   TrendingUp,
+  Upload,
 } from 'lucide-react'
 import { usePlan, useUsage } from '@/hooks/queries/useProfile'
 import { useRateLimit } from '@/hooks/useRateLimit'
@@ -537,6 +538,18 @@ const PlanPage = () => {
                       icon={FileText} 
                       current={usage?.files_count || 0} 
                       max={planFeatures?.files.max_files_total || 0} 
+                    />
+                    <LimitBar
+                      label="Aylık Kaynak Ekleme"
+                      icon={Upload}
+                      current={usage?.ingestions_used ?? 0}
+                      max={planLimits?.max_monthly_ingestions ?? 0}
+                    />
+                    <LimitBar
+                      label="Embedding Token"
+                      icon={Database}
+                      current={usage?.ingestion_embedding_tokens ?? 0}
+                      max={planLimits?.max_monthly_embedding_tokens ?? 0}
                     />
                   </div>
 
