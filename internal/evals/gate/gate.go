@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -65,6 +66,32 @@ type Identity struct {
 	// VectorStore is informational; it is deliberately not part of Diff
 	// because exact (memory) and Qdrant search agree at eval-corpus size.
 	VectorStore string `json:"vector_store"`
+	// GenRepeats is how many times each case was generated and judged
+	// (-gen-repeats); 0 when the generation suite did not run. It is not part
+	// of Diff: a mismatch only makes the generation metrics incomparable, so
+	// Evaluate skips just those regression checks.
+	GenRepeats int `json:"gen_repeats,omitempty"`
+}
+
+// EffectiveGenRepeats is GenRepeats for a run that generated, treating a
+// missing value (baselines recorded before repeats existed) as 1.
+func (a Identity) EffectiveGenRepeats() int {
+	if a.GenRepeats < 1 {
+		return 1
+	}
+	return a.GenRepeats
+}
+
+// genMetricPrefixes are the metrics whose value depends on generation repeats.
+var genMetricPrefixes = []string{"generation.", "latency.generation"}
+
+func isGenMetric(m string) bool {
+	for _, p := range genMetricPrefixes {
+		if strings.HasPrefix(m, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // Diff lists identity fields that differ between a and b, ignoring empty fields.
@@ -186,7 +213,9 @@ func sortedKeys(m map[string]float64) []string {
 // retrieval-only run) is skipped, not failed: the gate judges what was
 // measured. Regression checks are skipped with a warning when the baseline
 // was recorded with a different corpus, golden set, judge or model, because
-// such numbers are not comparable.
+// such numbers are not comparable. Generation metrics are additionally
+// skipped when the baseline and the run used a different number of
+// generation repeats (means over 3 runs and single runs have different noise).
 func Evaluate(metrics map[string]float64, th *Thresholds, base *Baseline, current Identity) Result {
 	res := Result{Passed: true, BaselineStatus: BaselineNotRecorded}
 	if th == nil {
@@ -236,6 +265,12 @@ func Evaluate(metrics map[string]float64, th *Thresholds, base *Baseline, curren
 		comparable = false
 		res.Warnings = append(res.Warnings, fmt.Sprintf("baseline not comparable, regression checks skipped; changed: %v. Re-record the baseline (-update-baseline) in the same PR.", diff))
 	}
+	genComparable := comparable
+	if comparable && current.GenRepeats > 0 && base.Identity.EffectiveGenRepeats() != current.GenRepeats {
+		genComparable = false
+		res.Warnings = append(res.Warnings, fmt.Sprintf("baseline was recorded with gen_repeats=%d but this run used %d: generation regression checks skipped (run with -gen-repeats %d to compare)",
+			base.Identity.EffectiveGenRepeats(), current.GenRepeats, base.Identity.EffectiveGenRepeats()))
+	}
 
 	for _, m := range sortedKeys(th.Regression) {
 		tol := th.Regression[m]
@@ -246,6 +281,8 @@ func Evaluate(metrics map[string]float64, th *Thresholds, base *Baseline, curren
 			c.Status, c.Note = StatusSkipped, "metric not produced by this run"
 		case !comparable:
 			c.Status, c.Value, c.Note = StatusSkipped, ptr(v), "no comparable baseline"
+		case !genComparable && isGenMetric(m):
+			c.Status, c.Value, c.Note = StatusSkipped, ptr(v), "different gen_repeats than the baseline"
 		default:
 			b, inBase := base.Metrics[m]
 			if !inBase {

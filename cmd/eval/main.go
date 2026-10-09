@@ -45,7 +45,7 @@ type options struct {
 	vector, qdrantURL, qdrantKey, collection           string
 	genProvider, genModel, judgeProvider, judgeModel   string
 	genTemperature, judgeTemperature, maxCost          float64
-	concurrency, repeats, limit                        int
+	concurrency, repeats, limit, genRepeats            int
 	cases, categories, logLevel, golden                string
 	verbosityProbe, noCache, updateBaseline, preflight bool
 	// Retrieval overrides (default: the seeded pro plan and the product's env defaults).
@@ -74,6 +74,7 @@ func parseFlags() options {
 	flag.Float64Var(&o.judgeTemperature, "judge-temperature", 0, "judge sampling temperature")
 	flag.IntVar(&o.concurrency, "concurrency", 4, "parallel cases")
 	flag.IntVar(&o.repeats, "repeats", 3, "judge repeats per calibration item (self-consistency check)")
+	flag.IntVar(&o.genRepeats, "gen-repeats", 1, "generate and judge every golden case this many times; metrics become means over case-repeats with a per-repeat spread (the baseline uses 3)")
 	flag.BoolVar(&o.verbosityProbe, "verbosity-probe", true, "re-judge calibration items with claim-free padding to detect verbosity bias")
 	flag.Float64Var(&o.maxCost, "max-cost", 1.0, "abort new provider calls once metered spend reaches this many USD (0 = unlimited)")
 	flag.StringVar(&o.cases, "cases", "", "only run these case IDs (comma-separated)")
@@ -198,6 +199,9 @@ func providerBase(provider string) (base, key string, err error) {
 
 //nolint:gocyclo // linear wiring of the eval run; splitting it would obscure the sequence
 func run(ctx context.Context, o options) (int, error) {
+	if o.genRepeats < 1 {
+		return 2, fmt.Errorf("-gen-repeats must be at least 1, got %d", o.genRepeats)
+	}
 	suites := splitList(o.suites)
 	for _, s := range suites {
 		if !has(runner.AllSuites, s) {
@@ -229,6 +233,9 @@ func run(ctx context.Context, o options) (int, error) {
 		CorpusHash: fx.corpus.Hash(), GoldenHash: fx.golden.Hash(),
 		JudgeVersion: fx.prompts.Version, JudgeHash: fx.prompts.Hash,
 		EmbedModel: embeddingModel, VectorStore: o.vector,
+	}
+	if has(suites, runner.SuiteGeneration) {
+		identity.GenRepeats = o.genRepeats
 	}
 	deps := runner.Deps{}
 
@@ -265,7 +272,7 @@ func run(ctx context.Context, o options) (int, error) {
 	en := langconfig.Get("en").UserMessages
 	cfg := runner.Config{
 		Suites: suites, Cases: cases, Corpus: fx.corpus, Calibration: fx.calibration,
-		Concurrency: o.concurrency, JudgeRepeats: o.repeats, VerbosityProbe: o.verbosityProbe,
+		Concurrency: o.concurrency, JudgeRepeats: o.repeats, VerbosityProbe: o.verbosityProbe, GenRepeats: o.genRepeats,
 		ErrorMessages: []string{en.ErrorMessage, en.EmptyStateMessage},
 		Identity:      identity, Thresholds: fx.thresholds, Baseline: fx.baseline,
 	}

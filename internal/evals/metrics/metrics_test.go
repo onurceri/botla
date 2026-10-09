@@ -155,3 +155,33 @@ func TestWilson(t *testing.T) {
 	assert.Equal(t, Rate{}, NewRate(0, 0))
 	assert.False(t, math.IsNaN(NewRate(0, 3).CILow))
 }
+
+func TestNewRepeatedRate(t *testing.T) {
+	assert.Equal(t, NewRate(3, 4), NewRepeatedRate(3, 4, 1), "one repeat is a plain rate")
+	assert.Equal(t, NewRate(3, 4), NewRepeatedRate(3, 4, 0))
+
+	r := NewRepeatedRate(14, 30, 3) // 10 cases x 3 repeats
+	assert.Equal(t, 14, r.Passed)
+	assert.Equal(t, 30, r.Total)
+	assert.InDelta(t, 14.0/30, r.Value, 1e-12, "value is the mean over case-repeats")
+	naive := NewRate(14, 30)
+	assert.Less(t, r.CILow, naive.CILow, "the interval uses n = cases, so it is wider than counting repeats as trials")
+	assert.Greater(t, r.CIHigh, naive.CIHigh)
+	assert.True(t, r.CILow <= r.Value && r.Value <= r.CIHigh)
+
+	assert.Equal(t, Rate{}, NewRepeatedRate(0, 0, 3))
+}
+
+func TestNewSpread(t *testing.T) {
+	assert.Equal(t, Spread{}, NewSpread(nil))
+	one := NewSpread([]float64{0.5})
+	assert.InDelta(t, 0.5, one.Mean, 1e-12)
+	assert.Zero(t, one.Std)
+
+	s := NewSpread([]float64{0.4, 0.6, 0.5})
+	assert.Equal(t, []float64{0.4, 0.6, 0.5}, s.Values)
+	assert.InDelta(t, 0.5, s.Mean, 1e-12)
+	assert.InDelta(t, 0.4, s.Min, 1e-12)
+	assert.InDelta(t, 0.6, s.Max, 1e-12)
+	assert.InDelta(t, 0.1, s.Std, 1e-12, "sample standard deviation")
+}

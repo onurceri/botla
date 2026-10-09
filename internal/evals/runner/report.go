@@ -118,7 +118,11 @@ func (r *Report) Markdown() string {
 	fmt.Fprintf(&b, "\n- Started: %s (%.0fs)\n", r.StartedAt.Format(time.RFC3339), r.DurationSec)
 	id := r.Identity
 	fmt.Fprintf(&b, "- Generation model: `%s` | Judge model: `%s` | Embeddings: `%s` | Vector store: `%s`\n", id.GenModel, id.JudgeModel, id.EmbedModel, id.VectorStore)
-	fmt.Fprintf(&b, "- Judge prompts: `%s` (hash `%s`) | Corpus `%s` | Golden set `%s`\n\n", id.JudgeVersion, id.JudgeHash, id.CorpusHash, id.GoldenHash)
+	fmt.Fprintf(&b, "- Judge prompts: `%s` (hash `%s`) | Corpus `%s` | Golden set `%s`", id.JudgeVersion, id.JudgeHash, id.CorpusHash, id.GoldenHash)
+	if id.GenRepeats > 0 {
+		fmt.Fprintf(&b, " | Generation repeats: %d", id.GenRepeats)
+	}
+	b.WriteString("\n\n")
 
 	r.writeHeadline(&b)
 	r.writeGate(&b)
@@ -241,7 +245,11 @@ func (r *Report) writeGeneration(b *strings.Builder) {
 	if g == nil {
 		return
 	}
-	fmt.Fprintf(b, "## Generation (LLM-as-a-judge)\n\n| Rubric | Pass rate | Mean score |\n|---|---|---|\n")
+	fmt.Fprintf(b, "## Generation (LLM-as-a-judge)\n\n")
+	if g.Repeats > 1 {
+		fmt.Fprintf(b, "Each case was generated and judged %d times. Rates and means are over case-repeats (counts below are case-repeats); 95%% intervals use the number of cases, because repeats of one case are correlated.\n\n", g.Repeats)
+	}
+	fmt.Fprintf(b, "| Rubric | Pass rate | Mean score |\n|---|---|---|\n")
 	for _, name := range []string{judge.Faithfulness, judge.Correctness, judge.Refusal, judge.Injection} {
 		a, ok := g.ByRubric[name]
 		if !ok {
@@ -261,10 +269,16 @@ func (r *Report) writeGeneration(b *strings.Builder) {
 	fmt.Fprintf(b, "| **overall** | %s |\n\n", rateCell(o.Passed, o.Total, o.Value, o.CILow, o.CIHigh))
 	fmt.Fprintf(b, "Latency per case (full ProcessChat turn): p50 %.0f ms, p95 %.0f ms. Errors: generation %d, judge %d.\n\n", g.LatencyP50, g.LatencyP95, g.Errors, g.JudgeErrors)
 
+	writeRepeatSpread(b, g)
+
 	var fails []string
 	for _, c := range g.Cases {
 		if c.ID == "" || c.Pass {
 			continue
+		}
+		label := "`" + c.ID + "`"
+		if g.Repeats > 1 {
+			label += fmt.Sprintf(" repeat %d/%d", c.Repeat+1, g.Repeats)
 		}
 		var why []string
 		if c.Error != "" {
@@ -284,10 +298,72 @@ func (r *Report) writeGeneration(b *strings.Builder) {
 				why = append(why, fmt.Sprintf("%s %.2f: %s", n, v.Score, oneLine(v.Rationale, 220)))
 			}
 		}
-		fails = append(fails, fmt.Sprintf("- `%s` (%s, tier %s)\n  - Answer: %s\n  - %s", c.ID, c.Category, c.Tier, oneLine(c.Answer, 260), strings.Join(why, "\n  - ")))
+		fails = append(fails, fmt.Sprintf("- %s (%s, tier %s)\n  - Answer: %s\n  - %s", label, c.Category, c.Tier, oneLine(c.Answer, 260), strings.Join(why, "\n  - ")))
 	}
 	if len(fails) > 0 {
 		fmt.Fprintf(b, "### Failing cases\n\n%s\n\n", strings.Join(fails, "\n"))
+	}
+}
+
+// writeRepeatSpread renders, for runs with several generation repeats, the
+// per-repeat spread of each generation metric and the cases whose outcome
+// differed between repeats.
+func writeRepeatSpread(b *strings.Builder, g *GenerationReport) {
+	if g.Repeats <= 1 {
+		return
+	}
+	keys := make([]string, 0, len(g.Spread))
+	for k := range g.Spread {
+		if strings.HasPrefix(k, "errors.") {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	fmt.Fprintf(b, "### Run-to-run spread (%d generation repeats)\n\nEach metric computed separately for every repeat. The headline value is the mean.\n\n| Metric | Mean | Min | Max | Std | Per repeat |\n|---|---|---|---|---|---|\n", g.Repeats)
+	for _, k := range keys {
+		sp := g.Spread[k]
+		vals := make([]string, len(sp.Values))
+		for i, v := range sp.Values {
+			vals[i] = f3(v)
+		}
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s |\n", k, f3(sp.Mean), f3(sp.Min), f3(sp.Max), f3(sp.Std), strings.Join(vals, ", "))
+	}
+	b.WriteString("\n")
+
+	type tally struct {
+		cat          dataset.Category
+		passed, runs int
+	}
+	byCase := map[string]*tally{}
+	var order []string
+	for _, c := range g.Cases {
+		if c.ID == "" {
+			continue
+		}
+		t := byCase[c.ID]
+		if t == nil {
+			t = &tally{cat: c.Category}
+			byCase[c.ID] = t
+			order = append(order, c.ID)
+		}
+		t.runs++
+		if c.Pass {
+			t.passed++
+		}
+	}
+	var rows []string
+	for _, id := range order {
+		if t := byCase[id]; t.passed < t.runs {
+			kind := "always fails"
+			if t.passed > 0 {
+				kind = "flaky"
+			}
+			rows = append(rows, fmt.Sprintf("| `%s` | %s | %d/%d | %s |", id, t.cat, t.passed, t.runs, kind))
+		}
+	}
+	if len(rows) > 0 {
+		fmt.Fprintf(b, "### Cases failing in at least one repeat\n\n| Case | Category | Passed | |\n|---|---|---|---|\n%s\n\n", strings.Join(rows, "\n"))
 	}
 }
 

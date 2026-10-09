@@ -57,6 +57,10 @@ type Config struct {
 	// JudgeRepeats is how many times each calibration item is judged, to
 	// measure judge self-consistency (default 3; 1 disables the check).
 	JudgeRepeats int
+	// GenRepeats runs every case's generation (and judging) this many times
+	// and reports means over case-repeats plus the per-repeat spread
+	// (default 1).
+	GenRepeats int
 	// VerbosityProbe re-judges each calibration item with claim-free padding
 	// added to the answer, to detect verbosity bias.
 	VerbosityProbe bool
@@ -87,6 +91,9 @@ func (c *Config) defaults() {
 	}
 	if c.JudgeRepeats <= 0 {
 		c.JudgeRepeats = 3
+	}
+	if c.GenRepeats <= 0 {
+		c.GenRepeats = 1
 	}
 	if len(c.Suites) == 0 {
 		c.Suites = AllSuites

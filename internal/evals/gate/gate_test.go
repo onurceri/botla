@@ -140,3 +140,58 @@ func TestBaselineRoundTrip(t *testing.T) {
 	require.NoError(t, err, "committed baseline must parse")
 	assert.Contains(t, []string{BaselineRecorded, BaselineNotRecorded}, real.Status)
 }
+
+func TestEvaluate_GenRepeatsMismatchSkipsOnlyGenerationRegression(t *testing.T) {
+	id := Identity{CorpusHash: "c", JudgeVersion: "v1", GenModel: "m"}
+	th := &Thresholds{Regression: map[string]float64{
+		"generation.faithfulness_pass_rate": 0.01,
+		"latency.generation_p95_ms":         0, // only checked as a regression here to prove it is generation-scoped
+		"retrieval.recall@5":                0.01,
+	}}
+	m := map[string]float64{"generation.faithfulness_pass_rate": 0.5, "latency.generation_p95_ms": 1, "retrieval.recall@5": 0.5}
+
+	legacy := &Baseline{Status: BaselineRecorded, Identity: id, Metrics: map[string]float64{
+		"generation.faithfulness_pass_rate": 0.9, "latency.generation_p95_ms": 5, "retrieval.recall@5": 0.9,
+	}}
+	cur := id
+	cur.GenRepeats = 3
+	r := Evaluate(m, th, legacy, cur)
+	assert.Equal(t, StatusSkipped, checkFor(t, r, KindRegression, "generation.faithfulness_pass_rate").Status)
+	assert.Equal(t, StatusSkipped, checkFor(t, r, KindRegression, "latency.generation_p95_ms").Status)
+	assert.Equal(t, StatusFail, checkFor(t, r, KindRegression, "retrieval.recall@5").Status, "retrieval stays comparable")
+	require.Len(t, r.Warnings, 1)
+	assert.Contains(t, r.Warnings[0], "gen_repeats=1 but this run used 3")
+
+	cur.GenRepeats = 1
+	r = Evaluate(m, th, legacy, cur)
+	assert.Equal(t, StatusFail, checkFor(t, r, KindRegression, "generation.faithfulness_pass_rate").Status, "a baseline without gen_repeats counts as 1 repeat")
+	assert.Empty(t, r.Warnings)
+
+	same := *legacy
+	same.Identity.GenRepeats = 3
+	cur.GenRepeats = 3
+	r = Evaluate(m, th, &same, cur)
+	assert.Equal(t, StatusFail, checkFor(t, r, KindRegression, "generation.faithfulness_pass_rate").Status)
+	assert.Empty(t, r.Warnings)
+
+	cur.GenRepeats = 0 // retrieval-only run: nothing generation-related to compare, no warning
+	r = Evaluate(map[string]float64{"retrieval.recall@5": 0.95}, th, &same, cur)
+	assert.Equal(t, StatusPass, checkFor(t, r, KindRegression, "retrieval.recall@5").Status)
+	assert.Empty(t, r.Warnings)
+}
+
+func TestIdentity_GenRepeats(t *testing.T) {
+	assert.Equal(t, 1, Identity{}.EffectiveGenRepeats())
+	assert.Equal(t, 3, Identity{GenRepeats: 3}.EffectiveGenRepeats())
+	assert.Empty(t, Identity{GenRepeats: 1}.Diff(Identity{GenRepeats: 3}), "repeats are handled per metric, not by Diff")
+
+	dir := t.TempDir()
+	b := &Baseline{Status: BaselineRecorded, Identity: Identity{GenModel: "m", GenRepeats: 3}, Metrics: map[string]float64{}}
+	require.NoError(t, b.Write(filepath.Join(dir, "b.json")))
+	raw, err := os.ReadFile(filepath.Join(dir, "b.json"))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"gen_repeats": 3`)
+	got, err := LoadBaseline(filepath.Join(dir, "b.json"))
+	require.NoError(t, err)
+	assert.Equal(t, 3, got.Identity.GenRepeats)
+}

@@ -366,3 +366,95 @@ func TestGuardPadAndHelpers(t *testing.T) {
 	assert.Equal(t, []string{"1", "2", "3", "4", "5"}, head5([]string{"1", "2", "3", "4", "5", "6"}))
 	assert.Equal(t, "fail", passWord(false))
 }
+
+// sessionGenerator answers per (question, session), so repeats can differ.
+type sessionGenerator struct {
+	mu       sync.Mutex
+	sessions []string
+	answer   func(q, session string) string
+}
+
+func (g *sessionGenerator) Generate(_ context.Context, q, session string) (harness.Generation, error) {
+	g.mu.Lock()
+	g.sessions = append(g.sessions, session)
+	g.mu.Unlock()
+	return harness.Generation{Answer: g.answer(q, session), Tier: "high", Context: "ctx", Latency: 100 * time.Millisecond}, nil
+}
+
+func TestRun_GenerationRepeats(t *testing.T) {
+	cfg := fullConfig(t)
+	cfg.Suites = []string{SuiteGeneration}
+	cfg.Cases = []dataset.Case{cases()[0], cases()[2], cases()[3]} // a1, m1, u1
+	cfg.GenRepeats = 3
+	gen := &sessionGenerator{answer: func(q, session string) string {
+		if q == "qm1" && strings.HasSuffix(session, "-r1") {
+			return "BAD second try"
+		}
+		return "fine " + session
+	}}
+	grader := &fakeGrader{}
+	rep, err := Run(context.Background(), cfg, Deps{Generator: gen, Grader: grader})
+	require.NoError(t, err)
+	g := rep.Generation
+	require.NotNil(t, g)
+
+	assert.Equal(t, 3, g.Repeats)
+	require.Len(t, g.Cases, 9, "every repeat is kept per case")
+	assert.ElementsMatch(t, []string{"eval-a1", "eval-a1-r1", "eval-a1-r2", "eval-m1", "eval-m1-r1", "eval-m1-r2", "eval-u1", "eval-u1-r1", "eval-u1-r2"}, gen.sessions, "each repeat is its own conversation")
+	for i, c := range g.Cases {
+		assert.Equal(t, i%3, c.Repeat)
+	}
+
+	judged := map[string]bool{}
+	for _, c := range grader.calls {
+		judged[c.Input.Answer] = true
+		assert.Zero(t, c.Repeat, "judge repeat index is for calibration; answers differ via the rendered prompt")
+	}
+	assert.True(t, judged["BAD second try"], "a repeat's own answer is judged")
+	assert.True(t, judged["fine eval-m1-r2"])
+
+	mh := g.ByCategory[dataset.MultiHop]
+	assert.Equal(t, 2, mh.Passed)
+	assert.Equal(t, 3, mh.Total)
+	assert.InDelta(t, 2.0/3, rep.Metrics["generation.case_pass_rate.multi_hop"], 1e-9, "metrics are means over case-repeats")
+	assert.InDelta(t, 8.0/9, rep.Metrics["generation.case_pass_rate"], 1e-9)
+
+	sp := g.Spread["generation.case_pass_rate.multi_hop"]
+	assert.Equal(t, []float64{1, 0, 1}, sp.Values)
+	assert.InDelta(t, 0, sp.Min, 1e-9)
+	assert.InDelta(t, 1, sp.Max, 1e-9)
+	assert.InDelta(t, 2.0/3, sp.Mean, 1e-9, "spread mean equals the headline mean when every repeat has the same cases")
+	assert.Positive(t, sp.Std)
+	assert.Contains(t, g.Spread, "latency.generation_p50_ms")
+	assert.NotContains(t, g.Spread, "errors.generation")
+
+	md := rep.Markdown()
+	assert.Contains(t, md, "Run-to-run spread (3 generation repeats)")
+	assert.Contains(t, md, "| generation.case_pass_rate.multi_hop | 0.667 | 0.000 | 1.000 |")
+	assert.Contains(t, md, "| `m1` | multi_hop | 2/3 | flaky |")
+	assert.Contains(t, md, "- `m1` repeat 2/3 (multi_hop")
+	assert.Contains(t, md, "95% intervals use the number of cases")
+
+	raw, err := json.Marshal(rep)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"repeat_spread"`)
+	assert.Contains(t, string(raw), `"repeats":3`)
+}
+
+func TestRun_SingleGenerationRepeatHasNoSpread(t *testing.T) {
+	cfg := fullConfig(t)
+	cfg.Suites = []string{SuiteGeneration}
+	rep, err := Run(context.Background(), cfg, fullDeps())
+	require.NoError(t, err)
+	assert.Equal(t, 1, rep.Generation.Repeats)
+	assert.Nil(t, rep.Generation.Spread)
+	assert.NotContains(t, rep.Markdown(), "Run-to-run spread")
+}
+
+func TestAggregateRepeats_ClampsAndSkipsEmpty(t *testing.T) {
+	rep := aggregateRepeats([]GenerationCase{{ID: "a", Category: dataset.Answerable, Pass: true}, {}}, 0)
+	assert.Equal(t, 1, rep.Repeats)
+	assert.Equal(t, 1, rep.Overall.Total)
+	assert.Equal(t, "eval-x", sessionID("x", 0))
+	assert.Equal(t, "eval-x-r2", sessionID("x", 2))
+}

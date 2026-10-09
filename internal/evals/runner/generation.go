@@ -11,9 +11,11 @@ import (
 	"github.com/onurceri/botla-app/internal/evals/usage"
 )
 
-// GenerationCase is the end-to-end outcome for one golden case.
+// GenerationCase is the end-to-end outcome for one golden case and one
+// generation repeat. With -gen-repeats N every case appears N times.
 type GenerationCase struct {
 	ID          string                   `json:"id"`
+	Repeat      int                      `json:"repeat"`
 	Category    dataset.Category         `json:"category"`
 	Question    string                   `json:"question"`
 	Answer      string                   `json:"answer"`
@@ -41,8 +43,14 @@ type RubricAgg struct {
 	NotApplicable int `json:"not_applicable,omitempty"`
 }
 
-// GenerationReport is the generation suite section of the report.
+// GenerationReport is the generation suite section of the report. With
+// repeats > 1, every rate and mean is over case-repeats (so pass rates can be
+// fractional in case terms), confidence intervals use the number of cases
+// (see metrics.NewRepeatedRate), and Spread holds each generation metric
+// computed separately per repeat.
 type GenerationReport struct {
+	Repeats     int                               `json:"repeats"`
+	Spread      map[string]metrics.Spread         `json:"repeat_spread,omitempty"`
 	Cases       []GenerationCase                  `json:"cases"`
 	ByRubric    map[string]RubricAgg              `json:"by_rubric"`
 	ByCategory  map[dataset.Category]metrics.Rate `json:"case_pass_by_category"`
@@ -67,19 +75,35 @@ func Guard(answer string, forbidden []string) []string {
 }
 
 func runGeneration(ctx context.Context, cfg Config, deps Deps, genPhase, judgePhase *usage.Meter) *GenerationReport {
-	out := make([]GenerationCase, len(cfg.Cases))
-	forEach(ctx, len(cfg.Cases), cfg.Concurrency, func(i int) {
-		out[i] = runGenerationCase(ctx, cfg, deps, cfg.Cases[i], genPhase, judgePhase)
+	repeats := cfg.GenRepeats
+	out := make([]GenerationCase, len(cfg.Cases)*repeats)
+	forEach(ctx, len(out), cfg.Concurrency, func(i int) {
+		out[i] = runGenerationCase(ctx, cfg, deps, cfg.Cases[i/repeats], i%repeats, genPhase, judgePhase)
 	})
-	return aggregateGeneration(out)
+	return aggregateRepeats(out, repeats)
 }
 
-func runGenerationCase(ctx context.Context, cfg Config, deps Deps, cs dataset.Case, genPhase, judgePhase *usage.Meter) GenerationCase {
-	gc := GenerationCase{ID: cs.ID, Category: cs.Category, Question: cs.Question, Verdicts: map[string]judge.Verdict{}}
+// sessionID gives every case-repeat its own conversation. Repeat 0 keeps the
+// historical ID.
+func sessionID(caseID string, repeat int) string {
+	if repeat == 0 {
+		return "eval-" + caseID
+	}
+	return fmt.Sprintf("eval-%s-r%d", caseID, repeat)
+}
+
+// runGenerationCase generates and judges one case-repeat. Generation is never
+// cached, so every repeat is a fresh product turn. Judge calls are cached by
+// the fully rendered prompt, which contains the answer: a repeat whose answer
+// differs is always judged afresh, and an identical answer reuses the verdict
+// (the judge runs at temperature 0, and its own consistency is measured
+// separately by the calibration suite).
+func runGenerationCase(ctx context.Context, cfg Config, deps Deps, cs dataset.Case, repeat int, genPhase, judgePhase *usage.Meter) GenerationCase {
+	gc := GenerationCase{ID: cs.ID, Repeat: repeat, Category: cs.Category, Question: cs.Question, Verdicts: map[string]judge.Verdict{}}
 
 	genMeter := usage.NewMeter()
 	gctx := usage.WithMeter(usage.WithMeter(ctx, genPhase), genMeter)
-	gen, err := deps.Generator.Generate(gctx, cs.Question, "eval-"+cs.ID)
+	gen, err := deps.Generator.Generate(gctx, cs.Question, sessionID(cs.ID, repeat))
 	gc.GenUsage = genMeter.Total()
 	if err != nil {
 		gc.Error = err.Error()
@@ -123,8 +147,41 @@ func runGenerationCase(ctx context.Context, cfg Config, deps Deps, cs dataset.Ca
 	return gc
 }
 
-func aggregateGeneration(cases []GenerationCase) *GenerationReport {
-	rep := &GenerationReport{Cases: cases, ByRubric: map[string]RubricAgg{}, ByCategory: map[dataset.Category]metrics.Rate{}}
+// aggregateRepeats aggregates all case-repeats (means) and, for more than one
+// repeat, the per-repeat spread of every generation and latency metric.
+func aggregateRepeats(cases []GenerationCase, repeats int) *GenerationReport {
+	if repeats < 1 {
+		repeats = 1
+	}
+	rep := aggregateGeneration(cases, repeats)
+	if repeats == 1 {
+		return rep
+	}
+	perMetric := map[string][]float64{}
+	for r := 0; r < repeats; r++ {
+		var sub []GenerationCase
+		for _, c := range cases {
+			if c.ID != "" && c.Repeat == r {
+				sub = append(sub, c)
+			}
+		}
+		m := map[string]float64{}
+		aggregateGeneration(sub, 1).addMetrics(m)
+		for k, v := range m {
+			if strings.HasPrefix(k, "generation.") || strings.HasPrefix(k, "latency.") {
+				perMetric[k] = append(perMetric[k], v)
+			}
+		}
+	}
+	rep.Spread = make(map[string]metrics.Spread, len(perMetric))
+	for k, vs := range perMetric {
+		rep.Spread[k] = metrics.NewSpread(vs)
+	}
+	return rep
+}
+
+func aggregateGeneration(cases []GenerationCase, repeats int) *GenerationReport {
+	rep := &GenerationReport{Repeats: repeats, Cases: cases, ByRubric: map[string]RubricAgg{}, ByCategory: map[dataset.Category]metrics.Rate{}}
 	type tally struct {
 		pass, total, na int
 		scores          []float64
@@ -177,13 +234,13 @@ func aggregateGeneration(cases []GenerationCase) *GenerationReport {
 		}
 	}
 	for name, t := range rubrics {
-		rep.ByRubric[name] = RubricAgg{Rate: metrics.NewRate(t.pass, t.total), MeanScore: metrics.Mean(t.scores), NotApplicable: t.na}
+		rep.ByRubric[name] = RubricAgg{Rate: metrics.NewRepeatedRate(t.pass, t.total, repeats), MeanScore: metrics.Mean(t.scores), NotApplicable: t.na}
 	}
 	for cat, cp := range catPass {
-		rep.ByCategory[cat] = metrics.NewRate(cp[0], cp[1])
+		rep.ByCategory[cat] = metrics.NewRepeatedRate(cp[0], cp[1], repeats)
 	}
-	rep.Overall = metrics.NewRate(overallPass, overallTotal)
-	rep.Injection = metrics.NewRate(injPass, injTotal)
+	rep.Overall = metrics.NewRepeatedRate(overallPass, overallTotal, repeats)
+	rep.Injection = metrics.NewRepeatedRate(injPass, injTotal, repeats)
 	rep.LatencyP50 = metrics.Percentile(latencies, 50)
 	rep.LatencyP95 = metrics.Percentile(latencies, 95)
 	return rep

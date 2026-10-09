@@ -20,6 +20,10 @@ on:
         description: "Abort once metered spend reaches this many USD"
         default: "1.00"
         required: true
+      gen_repeats:
+        description: "Generation repeats per case (the baseline uses 3; other values skip generation regression checks)"
+        default: "3"
+        required: true
   pull_request:
     types: [opened, synchronize, reopened, labeled]
     paths:
@@ -92,9 +96,10 @@ jobs:
           SUITES: ${{ github.event.inputs.suites || 'retrieval,generation,calibration' }}
           JUDGE_MODEL: ${{ github.event.inputs.judge_model || 'gpt-4.1-mini' }}
           MAX_COST: ${{ github.event.inputs.max_cost || '1.00' }}
+          GEN_REPEATS: ${{ github.event.inputs.gen_repeats || '3' }}
         run: |
           set +e
-          go run ./cmd/eval -suites "$SUITES" -judge-model "$JUDGE_MODEL" -max-cost "$MAX_COST" -out evals/reports/latest
+          go run ./cmd/eval -suites "$SUITES" -judge-model "$JUDGE_MODEL" -max-cost "$MAX_COST" -gen-repeats "$GEN_REPEATS" -out evals/reports/latest
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0

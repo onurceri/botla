@@ -46,8 +46,12 @@ func Wilson(successes, n int, z float64) (lo, hi float64) {
 	if n <= 0 {
 		return 0, 0
 	}
-	nf := float64(n)
-	p := float64(successes) / nf
+	return wilsonP(float64(successes)/float64(n), float64(n), z)
+}
+
+// wilsonP is the Wilson interval for a proportion p observed over nf trials.
+// p need not be a ratio of integers, which averaged (repeated) pass rates need.
+func wilsonP(p, nf, z float64) (lo, hi float64) {
 	z2 := z * z
 	denom := 1 + z2/nf
 	center := (p + z2/(2*nf)) / denom
@@ -69,6 +73,52 @@ type Rate struct {
 	Value  float64 `json:"value"`
 	CILow  float64 `json:"ci95_low"`
 	CIHigh float64 `json:"ci95_high"`
+}
+
+// NewRepeatedRate builds a Rate from counts over case-repeats: each of
+// total/repeats cases was run repeats times. Value is the mean pass rate over
+// all case-repeats. The confidence interval is computed with n = number of
+// cases, not case-repeats, because repeats of one case are strongly correlated
+// and counting them as independent trials would overstate precision.
+func NewRepeatedRate(passed, total, repeats int) Rate {
+	if repeats <= 1 {
+		return NewRate(passed, total)
+	}
+	r := Rate{Passed: passed, Total: total}
+	if total > 0 {
+		r.Value = float64(passed) / float64(total)
+		cases := float64(total) / float64(repeats)
+		r.CILow, r.CIHigh = wilsonP(r.Value, cases, 1.96)
+	}
+	return r
+}
+
+// Spread summarizes one metric across repeated runs.
+type Spread struct {
+	Values []float64 `json:"values"`
+	Mean   float64   `json:"mean"`
+	Min    float64   `json:"min"`
+	Max    float64   `json:"max"`
+	// Std is the sample standard deviation (n-1); 0 for fewer than 2 values.
+	Std float64 `json:"std"`
+}
+
+// NewSpread computes the spread of xs (zero value for an empty slice).
+func NewSpread(xs []float64) Spread {
+	if len(xs) == 0 {
+		return Spread{}
+	}
+	s := Spread{Values: append([]float64(nil), xs...), Mean: Mean(xs), Min: xs[0], Max: xs[0]}
+	var ss float64
+	for _, x := range xs {
+		s.Min = math.Min(s.Min, x)
+		s.Max = math.Max(s.Max, x)
+		ss += (x - s.Mean) * (x - s.Mean)
+	}
+	if len(xs) > 1 {
+		s.Std = math.Sqrt(ss / float64(len(xs)-1))
+	}
+	return s
 }
 
 // NewRate builds a Rate from counts.
