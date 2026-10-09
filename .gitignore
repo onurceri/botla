@@ -1,111 +1,82 @@
-# Go
-*.o
-*.a
-*.so
+# Root ignore rules for the whole monorepo. frontend/ and widget/ add a few
+# tool-specific rules in their own .gitignore files.
+
+# --- Environment and secrets -------------------------------------------------
+# Real env files never get committed; the documented templates do.
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+*.crt
+
+# --- Go build output --------------------------------------------------------
+/server
+bin/
+vendor/
 *.exe
 *.exe~
 *.dll
+*.so
 *.dylib
+*.o
+*.a
+*.test
+
+# --- Go coverage and profiling ----------------------------------------------
+*.out
+*.coverprofile
+coverage.html
+*.prof
+*.pprof
+
+# --- Node / web builds ------------------------------------------------------
+node_modules/
 dist/
-bin/
-vendor/
+dist-ssr/
+build/
+.next/
+.cache/
+*.tsbuildinfo
+.eslintcache
 
-# Environment
-.env
-.env.local
-.env.*.local
+# --- Test and coverage reports ----------------------------------------------
+coverage/
+.nyc_output/
+coverage-final.json
+lcov-report/
+*.lcov
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
-# IDE
+# --- RAG evals (evals/reports/baseline.md stays committed) -------------------
+.evalcache/
+evals/reports/latest/
+
+# --- Local data --------------------------------------------------------------
+*.db
+database.backup
+logs/
+*.log
+# Tokenizer data is loaded from R2 in production.
+data/sentences/
+docs/test.pdf
+
+# --- Local tooling and agent scratch space ----------------------------------
+.direnv/
+.agent/
+.sisyphus/
+docs/temp/
+
+# --- Editors and OS ---------------------------------------------------------
 .vscode/
 .idea/
 *.swp
 *.swo
 *.sublime-project
 *.sublime-workspace
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Database
-*.db
-
-database.backup
-
-# Logs
-*.log
-logs/
-
-# Node
-node_modules/
-dist/
-build/
-.next/
-.cache/
-
-/server
-coverage/
-**/coverage/
-.nyc_output/
-coverage-final.json
-lcov-report/
-
-# Go coverage artifacts
-coverage.out
-cover-*.out
-*.coverprofile
-coverage.html
-*.out
-rag.out
-
-# Test artifacts
-# internal/testdb/
-docs/test.pdf
-
-# Go test binaries
-*.test
-
-# Profiler outputs
-*.prof
-*.pprof
-cpu.prof
-mem.prof
-
-# Local tooling
-.direnv/
-.envrc
-
-# Certificates/keys
-*.pem
-*.key
-*.crt
-
-# IDEs
-#.trae/
-
-.agent/
-
-# Tokenizer data (loaded from R2 in production)
-data/sentences/
-
-.sisyphus/
-
-docs/temp/
-
-# Playwright test artifacts
-test-results/
-frontend/test-results/
-
-# Coverage reports
-widget/coverage/
-
-# Production env files (configure via hosting provider)
-frontend/.env.production
-widget/.env.production
-frontend/.env.local
-widget/.env.local
-.env.production
-widget/.env.production.local
-# RAG eval: content-hash cache and per-run reports (baseline.md is committed)
-.evalcache/
-evals/reports/latest/
