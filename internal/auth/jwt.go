@@ -14,6 +14,10 @@ const (
 	JWTAudience = "botla-api"
 )
 
+// signingMethod is the only algorithm used to sign and accepted when verifying
+// first-party tokens.
+var signingMethod = jwt.SigningMethodHS256
+
 type Claims struct {
 	UserID          string
 	TokenType       string
@@ -41,7 +45,7 @@ func GenerateToken(secret string, userID string, isPlatformAdmin bool, tokenType
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(signingMethod, claims)
 	s, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", fmt.Errorf("sign token: %w", err)
@@ -52,7 +56,13 @@ func GenerateToken(secret string, userID string, isPlatformAdmin bool, tokenType
 func VerifyToken(secret string, tokenString string) (*Claims, error) {
 	parsed, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (any, error) {
 		return []byte(secret), nil
-	}, jwt.WithIssuer(JWTIssuer), jwt.WithAudience(JWTAudience))
+	},
+		// Pin the algorithm to the one GenerateToken uses so tokens signed with
+		// any other method (including "none") are rejected before key lookup.
+		jwt.WithValidMethods([]string{signingMethod.Alg()}),
+		jwt.WithIssuer(JWTIssuer),
+		jwt.WithAudience(JWTAudience),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("parse token: %w", err)
 	}
