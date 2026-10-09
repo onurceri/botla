@@ -2,7 +2,7 @@
 
 An offline-reproducible evaluation harness for Botla's RAG chatbot. It measures retrieval quality, uses an LLM judge to check answer faithfulness (hallucination), correctness, refusal and prompt-injection resistance, measures how far that judge can be trusted, and fails CI when quality regresses.
 
-> **Status: baseline re-recorded on 2026-10-09** after the multi-hop work (generator `gpt-4o-mini`, judge `anthropic/claude-haiku-5.5`, both via OpenRouter; embeddings `text-embedding-3-small`; real Qdrant). Full report: [`reports/baseline.md`](reports/baseline.md). See [Experiments: multi-hop](#experiments-multi-hop) for what changed and why.
+> **Status: baseline re-recorded on 2026-10-09 with 3 generation repeats** after the multi-hop work (generator `gpt-4o-mini`, judge `anthropic/claude-haiku-5.5`, both via OpenRouter; embeddings `text-embedding-3-small`; real Qdrant). Full report: [`reports/baseline.md`](reports/baseline.md). See [Experiments: multi-hop](#experiments-multi-hop) for what changed and why.
 
 ## What runs, and why it is the product's code
 
@@ -62,7 +62,9 @@ The gate has a floor of `calibration.judge_kappa ≥ 0.60`. A judge that does no
 
 ## Results
 
-Current baseline (re-recorded 2026-10-09 with the shipped defaults: multi-source prompt rule on, query decomposition off): 45 golden cases and 21 calibration items. Generator `gpt-4o-mini` (the product default) at temperature 0, judge `anthropic/claude-haiku-5.5` (a different vendor, to limit self-preference bias), real Qdrant. Metered spend for the run: **$0.0225** with a warm judge cache (the first, cold baseline cost $0.065). Full per-case report: [`reports/baseline.md`](reports/baseline.md).
+Current baseline (re-recorded 2026-10-09 with **`-gen-repeats 3`** and the shipped defaults: multi-source prompt rule on, query decomposition off): 45 golden cases × 3 generation repeats, and 21 calibration items. Generator `gpt-4o-mini` (the product default) at temperature 0, judge `anthropic/claude-haiku-5.5` (a different vendor, to limit self-preference bias), real Qdrant. Metered spend for the run: **$0.057**. Full per-case report, with every repeat: [`reports/baseline.md`](reports/baseline.md).
+
+**Why repeats.** At temperature 0, `gpt-4o-mini` still gives different answers from run to run. Single runs of one configuration moved golden multi-hop by up to 2 of 10 cases, which is as large as the effects we try to measure. Every generation metric is now the mean over 3 repeats. The report also shows each repeat's value and the min/max/std, and lists cases that pass in some repeats and fail in others.
 
 **Judge reliability, measured against the 21 human labels:**
 
@@ -75,29 +77,29 @@ Current baseline (re-recorded 2026-10-09 with the shipped defaults: multi-source
 
 The judge is weakest on *correctness*, where partial answers are hardest to grade. Kappa is high, but the set has only 21 items labelled by one annotator, so treat it as a sanity check rather than a precise estimate.
 
-**Retrieval** (34 cases with expected sources): recall@5 0.971, hit@1 0.912, MRR 0.951, context recall 0.956. Only 25% of unanswerable questions land in the low-confidence tier, so the tier is a weak signal for "I don't know".
+**Retrieval** (34 cases with expected sources, deterministic): recall@5 0.971, hit@1 0.912, MRR 0.951, context recall 0.956. Only 25% of unanswerable questions land in the low-confidence tier, so the tier is a weak signal for "I don't know".
 
-**Generation:**
+**Generation** (mean over 3 repeats; per-repeat values in brackets):
 
-| Slice | Case pass rate (this baseline) | First baseline |
+| Slice | Case pass rate | Single-run baselines (first / previous) |
 |---|---|---|
-| Answerable (18) | 0.944 | 0.944 |
-| Unanswerable, refuses correctly (8) | 0.875 | 0.875 |
-| Adversarial, prompt injection (9) | 0.778 | 0.778 |
-| Multi-hop (10) | **0.400** | 0.500 |
-| Overall (45) | 0.778 | 0.800 |
+| Answerable (18) | 0.926 [0.889, 0.944, 0.944] | 0.944 / 0.944 |
+| Unanswerable, refuses correctly (8) | 0.875 [0.875 ×3] | 0.875 / 0.875 |
+| Adversarial, prompt injection (9) | 0.778 [0.778 ×3] | 0.778 / 0.778 |
+| Multi-hop (10) | **0.367** [0.4, 0.3, 0.4] | 0.500 / 0.400 |
+| Overall (45) | 0.763 [0.756, 0.756, 0.778] | 0.800 / 0.778 |
 
-Faithfulness pass rate 0.822 (mean 0.953), injection resistance 0.889, generation p50 1.4 s, p95 2.8 s.
+Faithfulness pass rate 0.837 [0.822, 0.844, 0.844] (mean score 0.954), correctness 0.863 [0.882, 0.853, 0.853], injection resistance 0.889, refusal 0.875. Generation p50 1.3 s, p95 2.3 s.
 
-**Read the multi-hop number with the run-to-run noise in mind.** At temperature 0, `gpt-4o-mini` is still not deterministic: re-running the *unchanged* first-baseline configuration gave 5/10 and 6/10, and the shipped configuration gave 6/10 and 4/10 on golden (8/12 and 9/12 on the held-out set, against 7/12 and 7/12 before). Of this run's 6 multi-hop failures, 5 also failed in at least one run of the unchanged first configuration; the sixth, `mh-solid-red-warranty`, failed only on the faithfulness nitpick below. Against the old baseline this run fails the faithfulness regression check by 2 cases (0.822 vs 0.867, tolerance 0.025); the two new faithfulness failures are judge-strict nitpicks (expanding "RMA" to "Return Merchandise Authorization", saying "4.3 or later" where the notes say 4.3), not fabrications.
+**How this compares with the single-run numbers.** Refusal, injection and adversarial pass rates did not move in any repeat. Answerable, faithfulness and correctness move by about one case between repeats. Multi-hop is the noisiest slice and also the lowest: 11 of 30 case-repeats pass (3 to 4 of 10 per repeat). That is below both earlier single-run baselines (5/10 and 4/10). The 3-repeat re-check below suggests part of that gap comes from the prompt rule shipped in the multi-hop work, not only from noise.
 
-**What it found:** multi-hop questions are the clear weak spot, and the cause is split. In 3 of the 5 multi-hop failures of the first baseline, one required document never reached the model's context (ranked 5th, 6th and 10th). In the other 2 the context was complete and the model failed to combine the facts. The experiments below show that on this corpus the second cause dominates.
+**What it found:** multi-hop questions are the clear weak spot, and the cause is split. In 3 of the 5 multi-hop failures of the first baseline, one required document never reached the model's context (ranked 5th, 6th and 10th). In the other 2 the context was complete and the model failed to combine the facts. The experiments below show that on this corpus the second cause dominates, and that the model's run-to-run variance is large enough to swamp single-run comparisons.
 
 ## Experiments: multi-hop
 
 Goal: fix the weakest slice (multi-hop, 5/10 in the first baseline) without overfitting to 10 cases. Protocol: the held-out set (`golden_holdout.yaml`) was written and committed **before** any retrieval code (see the commit order on `feat/multi-hop-retrieval`), and the winner was chosen on held-out multi-hop, with no regression allowed in refusal or injection resistance. Every number below comes from a real run (generator `gpt-4o-mini` at temperature 0, judge `anthropic/claude-haiku-5.5`, Qdrant, pro-plan limits unless stated). "Retrieval only" rows were not run through generation, because their prompt context was identical to E0 (E2) or the variant was superseded by E3b (E3).
 
-**n is small. State differences in cases, not percentages.** One case is 10 points on golden multi-hop and 8 points on held-out. Re-running the *unchanged* E0 configuration moved golden multi-hop by 1 case (5/10 vs 6/10), so a 1-case difference is noise.
+**n is small. State differences in cases, not percentages.** One case is 10 points on golden multi-hop and 8 points on held-out. Re-running the *unchanged* E0 configuration moved golden multi-hop by 1 case (5/10 vs 6/10), and later 3-repeat runs showed spreads of up to 2 cases (4, 6, 5 of 10), so differences of 1 to 2 cases in the single-run tables below are noise. The E0-E5 tables are single runs; see the 3-repeat re-check after them.
 
 **golden.yaml (10 multi-hop, 18 answerable, 8 unanswerable, 9 adversarial)**
 
@@ -142,19 +144,38 @@ Gen. $ is the metered generator spend for the run (the product's own calls, incl
 
 ### Decision
 
-- **Ship E5** (the prompt rule), always on. It is the only change that moved held-out multi-hop, and it did so in both repeats, by +1 to +2 cases. Pooled over two runs of each set, E5 passes 27 of 44 multi-hop case-runs against E0's 25 of 44. That is a small, consistent effect, **not** a statistically established one, which we accept because it costs nothing and shows no refusal or injection regression. It applies to every question. That is a deliberate change of behaviour for single-part questions, justified because the rule is conditional ("if the question has several parts") and answerable (17/18, 4/6), refusal and injection results were unchanged in every run.
+- **E5 (the prompt rule) was shipped on the single-run evidence above, and the 3-repeat re-check below does not support it.** It was chosen because it was the only change that moved held-out multi-hop in two single runs (+1 and +2 cases). With 3 repeats per configuration, that gain disappears, and golden gets worse (see "Re-check with 3 generation repeats"). **Recommendation: revert the one-line rule** (`internal/services/chat_prompts.go`, commit `7266642`) and re-record the baseline. That decision is left to the maintainers, so the current baseline still measures the shipped behaviour.
 - **Ship query decomposition behind `RAG_QUERY_DECOMPOSITION`, default off.** It is implemented in product code (`services.ChatService.RetrieveContext` → `rag.DecomposeQuery` + `rag.SearchContextMulti`) and measurably fixes retrieval misses. But on this corpus it did not improve answers and it doubles median latency. Turn it on for a bot whose failures are dominated by missing documents and whose users can absorb about 1.3 s more per turn; measure first. With it off, retrieval is byte-for-byte the original single-query path (unit-tested: `TestRetrieveContext_DecompositionOffIsSingleQuery`). With it on, a single-part question is still searched verbatim (the decomposer's output is used only when it returns two or more parts), but it pays the extra call.
 - **Do not raise top-k.** E1 and E4 show that more context hurts reasoning (`mh-open-office-cost`) and refusal (`ho-un-usb-cable`) about as often as it helps recall.
+
+### Re-check with 3 generation repeats
+
+After `-gen-repeats` was added, E0 (no prompt rule) and E5 (prompt rule, the shipped default) were each re-run with 3 repeats on both sets. Retrieval is identical in both (decomposition off, top-k 5). Every number is from a real run. Counts are passing case-repeats.
+
+| Set | Metric | E0 (no rule) | E5 (rule, shipped) | Difference |
+|---|---|---|---|---|
+| golden | multi-hop | **15/30** [4, 6, 5 of 10] | **11/30** [4, 3, 4 of 10] | -4 case-repeats (about -1.3 cases) |
+| golden | answerable | 51/54 | 50/54 | -1 |
+| golden | refusal / injection | 21/24 / 24/27 | 21/24 / 24/27 | 0 / 0 |
+| golden | faithfulness pass rate | 0.881 [0.867, 0.889, 0.889] | 0.837 [0.822, 0.844, 0.844] | -0.044 (about -2 cases) |
+| held-out | multi-hop | **21/36** [7, 7, 7 of 12] | **20/36** [6, 7, 7 of 12] | -1 case-repeat |
+| held-out | answerable / refusal | 12/18 / 12/12 | 12/18 / 12/12 | 0 / 0 |
+| held-out | faithfulness pass rate | 0.773 | 0.742 | -0.03 |
+| both | p50 latency | 1.31 s / 1.37 s | 1.31 s / 1.40 s | none |
+
+The golden E5 row is the recorded baseline run. Run costs: E0 golden $0.053, E0 held-out $0.022, E5 held-out $0.024.
+
+**How this compares with the single-run numbers.** The single runs suggested E5 helps held-out multi-hop (9/12 and 8/12 against E0's 7/12 and 7/12). With 3 repeats, E5 and E0 are tied on held-out (6.7 vs 7.0 of 12 per repeat). On golden, E5 is behind by about 1.3 cases per repeat, and on faithfulness by about 2 cases: the rule pushes the model toward combining and inferring, and the judge counts more of those inferences as unsupported. Pooled over every run made (single and repeated), E5 passes 58 of 110 multi-hop case-runs against E0's 61 of 110. There is **no evidence that the rule helps, and moderate evidence that it costs faithfulness**. The earlier "+2 held-out cases" was within run-to-run noise, which is exactly the failure mode `-gen-repeats` exists to catch. The decomposition and top-k conclusions do not depend on this re-check: they rest on retrieval metrics (deterministic) and on latency and refusal effects that appeared in every run.
 
 ### Trade-offs
 
 | | Latency (p50) | Extra cost per turn | Risk |
 |---|---|---|---|
-| E5 prompt rule (shipped, on) | unchanged within noise | a few dozen prompt tokens | none measured |
+| E5 prompt rule (shipped, on; revert recommended) | unchanged | a few dozen prompt tokens | 3-repeat re-check: about -1.3 golden multi-hop cases and -2 faithfulness cases per repeat |
 | Decomposition (shipped, off) | about +1.3 s (one `gpt-4o-mini` call before retrieval, then batched sub-query embeddings) | about 200 tokens on the bot's own model, counted in the turn's `TokensUsed` and therefore in the quota | failed or unparseable decomposition falls back to the plain query; the question is passed as data and the output is only ever used as search input |
 | Top-k 10 | unchanged | about 1.8x metered tokens per run (longer prompts) | refusal and reasoning regressions observed |
 
-### Remaining failures (golden, recorded baseline)
+### Remaining failures (golden; from the single-run baseline before repeats)
 
 - `mh-battery-42`: `beacon-hardware-specs` never reaches the context. Even with decomposition its best sub-query score is under the 0.30 medium threshold, so it is cut, not out-ranked. This is a threshold issue, and lowering thresholds would hurt refusal, so it is left alone.
 - `mh-founders-s2`, `mh-scim-advance-replacement`: missing documents (ranks 6 and 10). Decomposition + top-k 10 fixes both at the retrieval level, but see the E4 trade-off above.
@@ -171,16 +192,18 @@ export OPENAI_API_KEY=...          # or put it in .env
 # OpenRouter only (no OpenAI key): route the product's embedding client through OpenRouter
 #   export OPENAI_API_BASE=https://openrouter.ai/api OPENAI_API_KEY=$OPENROUTER_API_KEY
 #   make eval-baseline EVAL_FLAGS="-gen-provider openrouter -judge-provider openrouter -judge-model anthropic/claude-haiku-5.5"
-make eval                          # all suites → evals/reports/latest/report.{md,json}
+make eval                          # all suites, 3 generation repeats → evals/reports/latest/report.{md,json}
+make eval-quick                    # all suites, 1 generation repeat (about 1/3 the generation+judge cost; generation regression checks skipped)
 make eval EVAL_FLAGS="-vector memory"           # no Docker: exact in-process search
 make eval-retrieval                # retrieval only (embeddings only, ~free)
 make eval-calibrate                # judge meta-eval only
-make eval-baseline                 # full run, then write baseline.json + reports/baseline.md
+make eval-baseline                 # full run with 3 generation repeats, then write baseline.json + reports/baseline.md
 make eval-test                     # offline unit tests for the framework
 ```
 
 Useful flags (`go run ./cmd/eval -h`):
 - `-judge-model`, `-judge-provider openai|openrouter`: a judge from a different model family than the generator reduces self-preference bias. The default `gpt-4.1-mini` judge is at least a different and stronger model than the `gpt-4o-mini` generator.
+- `-gen-repeats N` (default 1 for `go run ./cmd/eval`; 3 in `make eval`, `make eval-baseline` and CI, overridable with `EVAL_GEN_REPEATS`): generate and judge every case N times. Repeats are fresh product turns in separate conversations (generation is never cached). Judge calls are cached by the rendered prompt, which contains the answer, so a different answer is always judged and an identical answer reuses its verdict. Metrics are means over case-repeats; confidence intervals use the number of cases, because repeats of a case are correlated. The report adds the per-repeat spread and the flaky cases.
 - `-cases`, `-categories`, `-limit`: run a subset.
 - `-golden golden_holdout.yaml` (or `golden.yaml,golden_holdout.yaml`): run the held-out set (see below). `-update-baseline` only accepts `golden.yaml`.
 - `-rag-topk`, `-rag-max-context-tokens`, `-rag-decompose`: retrieval overrides for experiments (defaults: the pro plan's 5 / 4,000, and the product's `RAG_QUERY_DECOMPOSITION` default).
@@ -190,7 +213,7 @@ Useful flags (`go run ./cmd/eval -h`):
 
 Exit codes: `0` gate passed, `1` gate failed, `2` configuration or runtime error.
 
-**Cost.** Measured: the 2026-10-09 baseline cost $0.065 in total. One full run is about 45 generations, about 100 judge calls, about 84 calibration judge calls, and a few hundred embedding calls. With `gpt-4o-mini` and a `gpt-4.1-mini` judge this should be well under $0.25. Cached re-runs only pay for generation. The report records the actual metered cost per phase and per model.
+**Cost.** Measured: the first 2026-10-09 baseline (1 repeat, cold cache) cost $0.065 in total; the 3-repeat baseline cost $0.057 with a warm embedding/calibration cache (generation $0.027, judge $0.030). Each extra generation repeat costs about one generation pass plus judging of any answer that changed. One full run is about 45 generations, about 100 judge calls, about 84 calibration judge calls, and a few hundred embedding calls. With `gpt-4o-mini` and a `gpt-4.1-mini` judge this should be well under $0.25. Cached re-runs only pay for generation. The report records the actual metered cost per phase and per model.
 
 ## Regression gate
 
@@ -198,7 +221,7 @@ Exit codes: `0` gate passed, `1` gate failed, `2` configuration or runtime error
 - **floors / ceilings**: absolute limits on quality, cost, p95 latency, and error counts (which must be zero).
 - **regression**: the largest allowed drop below `baseline.json` for each metric. Tolerances are sized to the slice: one case is 12.5 points on the 8 unanswerable cases, so one flip is tolerated and two are not.
 
-The baseline stores the run's **identity**: corpus, golden set, judge prompt hashes, and models. If any of these changed, regression checks are skipped with a warning instead of comparing incomparable numbers. Re-record the baseline in the same PR (`make eval-baseline`) so the reviewer sees the before and after. The baseline refuses to update from partial or errored runs.
+The baseline stores the run's **identity**: corpus, golden set, judge prompt hashes, models and `gen_repeats`. If the corpus, golden set, judge or models changed, regression checks are skipped with a warning instead of comparing incomparable numbers. If only `gen_repeats` differs (for example a `make eval-quick` run against the 3-repeat baseline), just the generation regression checks are skipped, with a warning; retrieval and calibration are still compared. A baseline without `gen_repeats` counts as 1 repeat. Generation tolerances are 1.5 case-equivalents, sized from the measured repeat spread (see the comment in `thresholds.yaml`). Re-record the baseline in the same PR (`make eval-baseline`) so the reviewer sees the before and after. The baseline refuses to update from partial or errored runs.
 
 CI (`.github/workflows/rag-evals.yml`) runs on manual dispatch, or on PRs touching RAG/chat code **that have the `run-evals` label**, so a typo fix doesn't pay for evals. It needs the `OPENAI_API_KEY` secret, posts the Markdown report to the job summary, and uploads the JSON.
 
