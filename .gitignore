@@ -106,3 +106,6 @@ frontend/.env.local
 widget/.env.local
 .env.production
 widget/.env.production.local
+# RAG eval: content-hash cache and per-run reports (baseline.md is committed)
+.evalcache/
+evals/reports/latest/

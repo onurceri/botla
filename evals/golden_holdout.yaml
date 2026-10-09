@@ -1,0 +1,208 @@
+# Held-out evaluation set for the Botla RAG pipeline.
+#
+# Same schema and corpus as golden.yaml (see the field reference there). These
+# cases were written and committed BEFORE any multi-hop retrieval change was
+# tuned, without looking at retrieval results, so that improvements measured on
+# golden.yaml can be checked against questions the changes were not fitted to.
+# Do not edit these cases to make a retrieval change look better; add new ones
+# in a new held-out file instead.
+#
+# Run with: go run ./cmd/eval -golden golden_holdout.yaml   (or golden.yaml,golden_holdout.yaml)
+version: 1
+cases:
+  # ---------------------------------------------------------------- multi-hop
+  - id: ho-mh-battery-returns
+    category: multi_hop
+    question: >-
+      How long will a Beacon run on its batteries, and how many days do I have
+      to send back hardware I don't want to keep?
+    expected_facts:
+      - Battery life is up to 18 months at the default 5-minute sampling interval
+      - Hardware can be returned within 30 days of delivery for a full refund
+    expected_sources: [beacon-hardware-specs, warranty-and-returns]
+    notes: Two unrelated parts with different vocabulary (power vs. refunds).
+
+  - id: ho-mh-business-vs-enterprise
+    category: multi_hop
+    question: >-
+      Compare Business and Enterprise on API rate limits and on how fast
+      support responds.
+    expected_facts:
+      - Business API limit is 600 requests per minute per organization
+      - Enterprise API limit is 3,000 requests per minute per organization
+      - Business support response target is 8 business hours
+      - Enterprise response target is 1 hour for P1 and 4 hours for P2 incidents
+    expected_sources: [api-reference, support-and-sla]
+    notes: Comparison across two plans and two documents.
+
+  - id: ho-mh-school-annual-retention
+    category: multi_hop
+    question: >-
+      Our school wants 30 sensors on Business and will prepay a year. Which
+      discount do we get, and for how long will our readings be kept?
+    expected_facts:
+      - The 20% education discount applies, because discounts do not stack and the larger one is used
+      - Business retains readings for 36 months
+    expected_sources: [pricing-and-plans, data-retention-and-privacy]
+    notes: Conditional chain (two candidate discounts) plus a second document.
+
+  - id: ho-mh-interval-firmware
+    category: multi_hop
+    question: >-
+      We want to sample every minute. Which firmware version made the sampling
+      interval adjustable, and what does a shorter interval do to battery life?
+    expected_facts:
+      - Firmware 4.2 made the sampling interval configurable (1 to 15 minutes)
+      - Shorter sampling intervals reduce battery life (rated up to 18 months at the 5-minute default)
+    expected_sources: [firmware-release-notes, beacon-hardware-specs]
+
+  - id: ho-mh-ceo-vuln-report
+    category: multi_hop
+    question: Who runs Halvane as CEO, and where should I report a security vulnerability I found?
+    expected_facts:
+      - Ingrid Solberg is the Chief Executive Officer
+      - Vulnerabilities are reported to security@halvane.example
+    expected_sources: [company-overview, security-and-compliance]
+    notes: Parts use unrelated vocabulary (leadership vs. responsible disclosure).
+
+  - id: ho-mh-powerbi-starter
+    category: multi_hop
+    question: >-
+      Can I push readings into Power BI on the Starter plan? If not, what is the
+      cheapest plan that allows it and what does it cost per sensor?
+    expected_facts:
+      - No, the Power BI connector is not available on Starter
+      - Business is the cheapest plan with the Power BI connector
+      - Business costs 7 euros per sensor per month (minimum 25 sensors billed)
+    expected_sources: [integrations, pricing-and-plans]
+
+  - id: ho-mh-blue-led-setup
+    category: multi_hop
+    question: >-
+      Right after unboxing, my sensor is blinking blue quickly. What is it
+      doing, and how do I finish setting it up?
+    expected_facts:
+      - Fast blinking blue means pairing mode
+      - Install the Halvane mobile app, sign in and scan the QR code on the back of the sensor
+    expected_sources: [troubleshooting-led-codes, installation-guide]
+
+  - id: ho-mh-teams-webhook
+    category: multi_hop
+    question: >-
+      We want CO2 alerts in Microsoft Teams and also a webhook into our own
+      system. Can we do both on Starter?
+    expected_facts:
+      - Microsoft Teams alerts are available on all plans, including Starter
+      - Starter has no API access, so webhooks need Business or Enterprise
+    expected_sources: [integrations, pricing-and-plans]
+    notes: Mixed answer (one yes, one no); webhooks are an API feature.
+
+  - id: ho-mh-retention-vs-uptime
+    category: multi_hop
+    question: >-
+      How does Enterprise data retention compare with Business, and which of the
+      two plans has the higher uptime guarantee?
+    expected_facts:
+      - Business retains readings for 36 months
+      - Enterprise retention is configurable up to 10 years
+      - Enterprise has the higher uptime SLA (99.95% vs. 99.9% for Business)
+    expected_sources: [data-retention-and-privacy, support-and-sla]
+
+  - id: ho-mh-dropped-red
+    category: multi_hop
+    question: >-
+      I dropped a sensor on a concrete floor and now its light is solid red.
+      Will the warranty pay for a new one?
+    expected_facts:
+      - Solid red means a sensor hardware fault
+      - The warranty does not cover physical damage, so a dropped sensor is not covered
+    expected_sources: [troubleshooting-led-codes, warranty-and-returns]
+    notes: Trap - the solid-red RMA path applies to defects, but the exclusion for physical damage decides it.
+
+  - id: ho-mh-bike-shed-storage
+    category: multi_hop
+    question: >-
+      Could I put a Beacon in our damp, unheated bike shed outside, and in which
+      country does the data it collects end up?
+    expected_facts:
+      - No, the Beacon S2 is rated for indoor use only (IP20, 0 to 40 °C)
+      - Data is stored in AWS eu-central-1 in Frankfurt, Germany
+    expected_sources: [beacon-hardware-specs, data-retention-and-privacy]
+    notes: Parts use different vocabulary from the documents ("outside", "country").
+
+  - id: ho-mh-employees-gdpr
+    category: multi_hop
+    question: >-
+      Roughly how big is Halvane in staff, and can we get a Data Processing
+      Agreement from them?
+    expected_facts:
+      - Halvane had 84 employees as of January 2025
+      - A Data Processing Agreement (DPA) is available to all customers
+    expected_sources: [company-overview, data-retention-and-privacy]
+
+  # ---------------------------------------------------------------- answerable
+  - id: ho-ans-weight
+    category: answerable
+    question: How much does a Beacon S2 weigh?
+    expected_facts:
+      - 160 g
+    expected_sources: [beacon-hardware-specs]
+
+  - id: ho-ans-abc-interval
+    category: answerable
+    question: How often does the automatic CO2 calibration run?
+    expected_facts:
+      - Every 8 days
+    expected_sources: [troubleshooting-led-codes]
+
+  - id: ho-ans-webhook-retries
+    category: answerable
+    question: What happens if a webhook delivery fails?
+    expected_facts:
+      - It is retried up to 5 times
+      - Retries use exponential backoff
+    expected_sources: [api-reference]
+
+  - id: ho-ans-support-hours
+    category: answerable
+    question: What are your standard support hours?
+    expected_facts:
+      - Monday to Friday, 08:00 to 17:00 CET
+    expected_sources: [support-and-sla]
+
+  - id: ho-ans-sell-data
+    category: answerable
+    question: Do you sell our data to third parties?
+    expected_facts:
+      - No, Halvane does not sell customer data
+    expected_sources: [data-retention-and-privacy]
+
+  - id: ho-ans-window-distance
+    category: answerable
+    question: How far from a window should a sensor be installed?
+    expected_facts:
+      - At least 2 metres away from windows
+    expected_sources: [installation-guide]
+
+  # ------------------------------------------------------------- unanswerable
+  - id: ho-un-gateway-price
+    category: unanswerable
+    question: How much does the on-premises Halvane Gateway cost?
+    expected_sources: []
+    notes: Near miss - the Gateway is mentioned, its price is not (Enterprise is custom-priced).
+
+  - id: ho-un-rotterdam-lead
+    category: unanswerable
+    question: Who manages Halvane's Rotterdam sales office?
+    expected_sources: []
+    notes: Near miss - the office exists, its manager is not named.
+
+  - id: ho-un-usb-cable
+    category: unanswerable
+    question: What is the longest USB-C cable I can use to power a Beacon?
+    expected_sources: []
+
+  - id: ho-un-android-kiosk
+    category: unanswerable
+    question: Can the Halvane app run in kiosk mode on an Android tablet?
+    expected_sources: []

@@ -10,6 +10,7 @@ Botla crawls your content, indexes it in a vector database, and answers user que
 
 - **Train on your data** — ingest URLs, sitemaps, PDFs, or raw text
 - **RAG pipeline** — vector search via Qdrant, LLM responses via OpenAI or OpenRouter
+- **Evaluated** — retrieval metrics, LLM-as-a-judge (faithfulness, correctness, refusal, injection resistance) with a calibrated judge and a CI regression gate ([`evals/`](./evals/README.md))
 - **Embeddable widget** — small Preact bundle, fully themable, drop-in `<script>` install
 - **Multi-tenant** — organizations, workspaces, role-based access
 - **Streaming chat** — Server-Sent Events for low-latency responses
@@ -193,6 +194,14 @@ make cover-gate    # enforce 90% coverage threshold
 ```
 
 See [`AGENTS.md`](./AGENTS.md) for full backend conventions, the layered architecture, and the testing strategy.
+
+### RAG evaluation
+```bash
+make eval-up && make eval   # retrieval + LLM-as-a-judge + judge calibration + regression gate
+make eval-test              # offline unit tests for the eval framework
+```
+
+See [`evals/README.md`](./evals/README.md) for what is measured, judge-calibration results, and limitations.
 
 ### Frontend
 ```bash

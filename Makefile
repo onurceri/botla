@@ -1,6 +1,8 @@
 SHELL := /bin/sh
 
-.PHONY: up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover check-coverage
+EVAL_FLAGS ?=
+
+.PHONY: eval eval-quick eval-up eval-down eval-retrieval eval-calibrate eval-baseline eval-test up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover check-coverage
 
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
 MIGRATIONS_DIR ?= db/migrations
@@ -213,3 +215,38 @@ docker-compose-down-integration:
 
 docker-compose-logs-integration:
 	docker compose -f docker-compose.integration.yml logs -f
+
+# --- RAG evaluation suite (see evals/README.md) ---------------------------
+# Needs OPENAI_API_KEY (embeddings + generation + default judge). Qdrant comes
+# from the integration stack on :6334; pass EVAL_FLAGS="-vector memory" to skip it.
+eval-up:
+	docker compose -f docker-compose.integration.yml up -d qdrant-integration
+
+eval-down:
+	docker compose -f docker-compose.integration.yml stop qdrant-integration
+
+# Generation repeats: the baseline is recorded with 3 (each case generated and
+# judged 3 times, metrics averaged), and generation regression checks only
+# compare runs with the same repeats, so `make eval` uses 3 too. `make
+# eval-quick` is a single-repeat smoke run: about a third of the generation
+# and judge cost, but its generation regression checks are skipped.
+EVAL_GEN_REPEATS ?= 3
+
+eval:
+	go run ./cmd/eval -gen-repeats $(EVAL_GEN_REPEATS) $(EVAL_FLAGS)
+
+eval-quick:
+	go run ./cmd/eval -gen-repeats 1 $(EVAL_FLAGS)
+
+eval-retrieval:
+	go run ./cmd/eval -suites retrieval $(EVAL_FLAGS)
+
+eval-calibrate:
+	go run ./cmd/eval -suites calibration $(EVAL_FLAGS)
+
+eval-baseline:
+	go run ./cmd/eval -update-baseline -gen-repeats $(EVAL_GEN_REPEATS) $(EVAL_FLAGS)
+
+# Offline unit tests for the eval framework (no network, no API keys).
+eval-test:
+	go test -race -cover ./internal/evals/...
