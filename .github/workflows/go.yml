@@ -105,6 +105,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # internal/integration/fixtures and internal/testdb shell out to the
+      # golang-migrate CLI, which the runner image does not ship.
+      - name: Install golang-migrate CLI
+        run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1
+      # Ubuntu 24.04 runners block unprivileged user namespaces through AppArmor,
+      # which Chromium's sandbox needs; the go-rod scraper tests launch Chromium.
+      - name: Allow Chromium sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       # -short skips the slow integration scenarios; the real-service suites
       # also stay off because TEST_INTEGRATION is not set.
       - name: Test
