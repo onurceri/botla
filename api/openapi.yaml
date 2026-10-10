@@ -733,6 +733,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /public/chatbots/{chatbot_id}:
+    get:
+      tags: [Chatbots]
+      summary: Get public widget configuration
+      description: >-
+        Appearance and behaviour settings the embeddable widget needs. Only a
+        subset of the fields is listed here.
+      parameters:
+        - name: chatbot_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Public chatbot configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  welcome_message:
+                    type: string
+                  suggested_questions:
+                    type: array
+                    items:
+                      type: string
+                  handoff_enabled:
+                    type: boolean
+                  language_code:
+                    type: string
+                    description: >-
+                      The chatbot's language (e.g. "tr", "en-US"). The widget
+                      uses it to pick its UI language.
+        '400':
+          description: Invalid chatbot ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Chatbot not found or not public (is_public=false)
+
   /public/chatbots/{chatbot_id}/handoff/{request_id}/contact:
     post:
       tags: [Handoff]

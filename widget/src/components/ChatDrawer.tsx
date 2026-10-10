@@ -3,6 +3,7 @@ import { Message as MsgComp } from './Message'
 import { Suggestions } from './Suggestions'
 import { ConfirmModal } from './ConfirmModal'
 import type { ChatMessage, CustomBranding } from '../types'
+import { getMessages, type Lang } from '../i18n'
 
 const MARKETING_URL = import.meta.env.VITE_MARKETING_URL || 'https://botla.app'
 const LONG_CONVERSATION_THRESHOLD = 15 // Show warning after 15 user messages
@@ -28,6 +29,7 @@ interface ChatDrawerProps {
   onFeedback?: (id: string, isPositive: boolean) => void
   onSubmitEmail?: (requestId: string, email: string) => Promise<void>
   isPreviewMode?: boolean
+  lang?: Lang
 }
 
 export function ChatDrawer({
@@ -50,8 +52,10 @@ export function ChatDrawer({
   customBranding,
   onFeedback,
   onSubmitEmail,
-  isPreviewMode = false
+  isPreviewMode = false,
+  lang
 }: ChatDrawerProps) {
+  const s = getMessages(lang)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const MAX_CHARS = maxChars
@@ -130,7 +134,7 @@ export function ChatDrawer({
         </div>
         <div className="cbw-header-actions">
           {onResetSession && (
-            <button className="cbw-reset-btn" onClick={onResetSession} aria-label="Yeni Konuşma" title="Yeni Konuşma Başlat">
+            <button className="cbw-reset-btn" onClick={onResetSession} aria-label={s.newConversation} title={s.startNewConversation}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                 <path d="M3 3v5h5" />
@@ -139,7 +143,7 @@ export function ChatDrawer({
               </svg>
             </button>
           )}
-          <button className="cbw-close-btn" onClick={onClose} aria-label="Kapat">
+          <button className="cbw-close-btn" onClick={onClose} aria-label={s.close}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -160,19 +164,19 @@ export function ChatDrawer({
             </div>
             <div className="cbw-conversation-warning-content">
               <span className="cbw-conversation-warning-text">
-                Daha iyi sonuçlar için yeni konuşma başlatabilirsiniz.
+                {s.longConversationHint}
               </span>
             </div>
             <button className="cbw-conversation-warning-action" onClick={onResetSession}>
-              Yeni
+              {s.newShort}
             </button>
           </div>
         )}
-        {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} botIcon={botIcon} />)}
+        {messages.map((m, i) => <MsgComp key={i} m={m} onFeedback={onFeedback} onSubmitEmail={onSubmitEmail} botIcon={botIcon} lang={lang} />)}
         {(!messages || (messages.filter(m => m.role === 'user').length === 0 && !messages.some(m => m.type === 'handoff'))) && suggestions && suggestions.length > 0 && (
           <div className="cbw-suggestions-container">
 
-            <Suggestions items={suggestions} disabled={!!loading} onPick={(q) => {
+            <Suggestions items={suggestions} disabled={!!loading} lang={lang} onPick={(q) => {
               if (onPickSuggestion) onPickSuggestion(q)
             }} />
           </div>
@@ -208,13 +212,13 @@ export function ChatDrawer({
             ref={textareaRef}
             rows={1}
             className="cbw-input-field"
-            placeholder="Mesaj yazın..."
+            placeholder={s.inputPlaceholder}
             value={input}
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             disabled={loading}
           />
-          <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label="Gönder">
+          <button className="cbw-send-btn" onClick={onSend} disabled={loading || !input.trim()} aria-label={s.send}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 2L11 13"></path>
               <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
@@ -246,10 +250,11 @@ export function ChatDrawer({
         <ConfirmModal
           isOpen={showResetConfirm}
           icon="refresh"
-          title="Yeni Konuşma Başlat"
-          message="Mevcut konuşmanız silinecek."
-          confirmText="Başlat"
-          cancelText="Vazgeç"
+          title={s.startNewConversation}
+          message={s.resetConfirmMessage}
+          confirmText={s.confirmStart}
+          cancelText={s.cancel}
+          lang={lang}
           onConfirm={onResetConfirm}
           onCancel={onResetCancel}
         />

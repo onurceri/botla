@@ -46,6 +46,7 @@ type publicChatbot struct {
 	HideBranding         bool                   `json:"hide_branding"`
 	CustomBranding       *models.CustomBranding `json:"custom_branding,omitempty"`
 	HandoffEnabled       bool                   `json:"handoff_enabled"`
+	LanguageCode         string                 `json:"language_code"`
 }
 
 func PublicChatbotConfig(chatbotRepo repository.ChatbotRepository) http.HandlerFunc {
@@ -125,6 +126,7 @@ func PublicChatbotConfig(chatbotRepo repository.ChatbotRepository) http.HandlerF
 			HideBranding:         c.HideBranding,
 			CustomBranding:       cb,
 			HandoffEnabled:       c.HandoffEnabled,
+			LanguageCode:         c.LanguageCode,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

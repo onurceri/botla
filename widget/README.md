@@ -6,6 +6,8 @@ The embeddable chat widget: a Preact + TypeScript bundle that mounts into a Shad
 <script src="https://<your-widget-host>/widget.js" data-bot="<chatbot-id>"></script>
 ```
 
+The UI language follows the bot's language (`tr` or `en`, defaulting to `tr`). Add `data-lang="en"` to the script tag to force one.
+
 ## Develop
 
 Install dependencies once from the repository root (`npm ci`), then:

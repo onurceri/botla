@@ -29,6 +29,8 @@ export interface ChatbotConfig {
   hide_branding?: boolean
   custom_branding?: CustomBranding
   max_chars?: number
+  /** Bot language, e.g. "tr" or "en-US"; drives the widget UI language. */
+  language_code?: string
   // Styling
   bot_message_color?: string
   bot_message_text_color?: string

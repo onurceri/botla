@@ -11,9 +11,9 @@ import {
   DEFAULT_THEME_COLOR,
   DEFAULT_POSITION,
   DEFAULT_MAX_CHARS,
-  DEFAULT_ERROR_MESSAGE,
   ERROR_DISPLAY_DELAY_MS
 } from './constants'
+import { resolveLang, t } from './i18n'
 
 export function WidgetApp(props: WidgetAppProps) {
   const { 
@@ -24,7 +24,7 @@ export function WidgetApp(props: WidgetAppProps) {
     welcome, embedTokenUrl, captchaSiteKey, autoOpen, useOverrides, 
     resetSession, sessionIdOverride, suggestions: suggestionsOverride, 
     hideBrandingOverride, customBrandingOverride, 
-    positionStrategy = 'fixed', previewMode = false, parentOrigin, onOpenChange 
+    positionStrategy = 'fixed', previewMode = false, parentOrigin, onOpenChange, lang: langOverride 
   } = props
 
   const [open, setOpen] = useState(!!autoOpen)
@@ -97,6 +97,8 @@ export function WidgetApp(props: WidgetAppProps) {
       ? { ...config.custom_branding, link: sanitizeUrl(config.custom_branding.link) } 
       : undefined
   
+  const lang = resolveLang(langOverride, config?.language_code)
+
   // Determine effective values for styling with proper override logic
   const effectiveBotMsgColor = (useOverrides && botMessageColor) ? botMessageColor : (config?.bot_message_color ?? color)
   const effectiveUserMsgColor = (useOverrides && userMessageColor) ? userMessageColor : (config?.user_message_color ?? color)
@@ -249,7 +251,7 @@ export function WidgetApp(props: WidgetAppProps) {
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      const ans: string = data.response || 'Merhaba!'
+      const ans: string = data.response || t('emptyResponse', lang)
       
       emitEvent('RESPONSE_RECEIVED', { content: ans, message_id: data.message_id })
 
@@ -284,7 +286,7 @@ export function WidgetApp(props: WidgetAppProps) {
       // Use standard delay constant
       await new Promise((r) => setTimeout(r, ERROR_DISPLAY_DELAY_MS))
       
-      const em = { role: 'assistant', content: DEFAULT_ERROR_MESSAGE.tr, ts: Date.now() } as ChatMessage
+      const em = { role: 'assistant', content: t('errorMessage', lang), ts: Date.now() } as ChatMessage
       setMessages((m) => {
         const nm = [...m, em]
         saveSession(chatbotId, { sessionId: ensureSession(chatbotId, sid, setSid), messages: nm })
@@ -401,6 +403,7 @@ export function WidgetApp(props: WidgetAppProps) {
         onClick={toggle} 
         icon={botIcon} 
         isOpen={open}
+        lang={lang}
       />
       {/* Show panel when open */}
       {open && (
@@ -425,6 +428,7 @@ export function WidgetApp(props: WidgetAppProps) {
           showResetConfirm={showResetConfirm}
           onResetConfirm={handleResetSessionConfirm}
           onResetCancel={() => setShowResetConfirm(false)}
+          lang={lang}
         />
       )}
     </div>
