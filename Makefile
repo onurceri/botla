@@ -2,7 +2,7 @@ SHELL := /bin/sh
 
 EVAL_FLAGS ?=
 
-.PHONY: eval eval-quick eval-up eval-down eval-retrieval eval-calibrate eval-baseline eval-test up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover test-integration test-integration-up test-integration-down test-integration-real test-integration-real-race test-integration-db test-integration-redis test-integration-qdrant test-integration-full docker-compose-up-integration docker-compose-down-integration docker-compose-logs-integration
+.PHONY: eval eval-quick eval-up eval-down eval-retrieval eval-calibrate eval-baseline eval-test up down psql redis-ping migrate-up migrate-down migrate-down-one migrate-version migrate-up-test migrate-down-test migrate-version-test migrate-up-docker migrate-down-docker migrate-version-docker migrate-up-test-docker migrate-down-test-docker migrate-version-test-docker migrate-force-docker be-run be-run-no-pdf be-run-test fe-run test-all test-no-pdf cover-html cover-func cover-gate fmt imports vet lint vuln ci build run test fmt-go vet-go tidy clean test-cover test-integration test-integration-up test-integration-down test-integration-real test-integration-real-race test-integration-db test-integration-redis test-integration-qdrant test-integration-full docker-compose-up-integration docker-compose-down-integration docker-compose-logs-integration screenshots demo-seed
 
 DATABASE_URL ?= postgres://botla:botla@localhost:5432/botla_dev?sslmode=disable
 MIGRATIONS_DIR ?= db/migrations
@@ -267,3 +267,11 @@ eval-baseline:
 # Offline unit tests for the eval framework (no network, no API keys).
 eval-test:
 	go test -race -cover ./internal/evals/...
+
+# --- README screenshots (see CONTRIBUTING.md) --------------------------------
+# Needs the running stack: `make up`, the API on :8080 and `npm run dev`.
+demo-seed:
+	scripts/demo/seed.sh
+
+screenshots: demo-seed
+	npx playwright test -c scripts/demo/playwright.config.ts

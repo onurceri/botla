@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { getMessages, type Lang } from '../i18n'
 
-export function Suggestions({ items, disabled, onPick }: { items: string[]; disabled: boolean; onPick: (q: string) => void }) {
+export function Suggestions({ items, disabled, onPick, lang }: { items: string[]; disabled: boolean; onPick: (q: string) => void; lang?: Lang }) {
+  const s = getMessages(lang)
   const [currentIndex, setCurrentIndex] = useState(0)
 
   if (!items || items.length === 0) return null
@@ -14,10 +16,10 @@ export function Suggestions({ items, disabled, onPick }: { items: string[]; disa
   }
 
   return (
-    <div className="cbw-suggestions" aria-label="Önerilen sorular">
+    <div className="cbw-suggestions" aria-label={s.suggestedQuestions}>
       <div className="cbw-suggestions-header">
         <span className="cbw-suggestions-title">
-          <span className="cbw-suggestions-sparkle">✨</span> ÖNERİLEN SORULAR
+          <span className="cbw-suggestions-sparkle">✨</span> {s.suggestedQuestionsTitle}
         </span>
         {items.length > 1 && (
           <span className="cbw-suggestions-counter">
@@ -31,7 +33,7 @@ export function Suggestions({ items, disabled, onPick }: { items: string[]; disa
             className="cbw-carousel-btn prev" 
             onClick={prev}
             disabled={disabled}
-            aria-label="Önceki soru"
+            aria-label={s.previousQuestion}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 18l-6-6 6-6" />
@@ -56,7 +58,7 @@ export function Suggestions({ items, disabled, onPick }: { items: string[]; disa
             className="cbw-carousel-btn next" 
             onClick={next}
             disabled={disabled}
-            aria-label="Sonraki soru"
+            aria-label={s.nextQuestion}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 18l6-6-6-6" />

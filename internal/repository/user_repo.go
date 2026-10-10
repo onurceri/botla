@@ -169,7 +169,7 @@ func (r *PostgresUserRepo) AdminUpdateUser(ctx context.Context, id string, updat
 			query = query.Set("is_platform_admin", v)
 		}
 	}
-	query = query.Set("updated_at", sq.Expr("NOW())"))
+	query = query.Set("updated_at", sq.Expr("NOW()"))
 	query = query.Where(sq.Eq{"id": id}).Where(sq.Eq{"deleted_at": nil})
 
 	sqlQuery, args, err := query.ToSql()

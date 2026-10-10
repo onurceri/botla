@@ -8,6 +8,7 @@ func TestModel_IsValid(t *testing.T) {
 		model Model
 		valid bool
 	}{
+		{"valid gpt-6-luna", ModelGPT6Luna, true},
 		{"valid gpt-4o-mini", ModelGPT4oMini, true},
 		{"valid gpt-4o", ModelGPT4o, true},
 		{"valid gpt-5", ModelGPT5, true},
@@ -30,6 +31,7 @@ func TestModel_String(t *testing.T) {
 		model Model
 		want  string
 	}{
+		{"gpt-6-luna", ModelGPT6Luna, "gpt-6-luna"},
 		{"gpt-4o-mini", ModelGPT4oMini, "gpt-4o-mini"},
 		{"gpt-4o", ModelGPT4o, "gpt-4o"},
 		{"gpt-5", ModelGPT5, "gpt-5"},
@@ -46,8 +48,8 @@ func TestModel_String(t *testing.T) {
 
 func TestDefaultChatModel(t *testing.T) {
 	model := DefaultChatModel()
-	if model != ModelGPT4oMini {
-		t.Errorf("DefaultChatModel() = %v, want %v", model, ModelGPT4oMini)
+	if model != ModelGPT6Luna {
+		t.Errorf("DefaultChatModel() = %v, want %v", model, ModelGPT6Luna)
 	}
 
 	// Ensure the default is a valid model

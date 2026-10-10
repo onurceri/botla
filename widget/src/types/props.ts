@@ -47,6 +47,8 @@ export interface WidgetAppProps extends
   botIconOverride?: string
   welcome?: string
   suggestions?: string[]
+  /** Explicit UI language (embed `lang` param); overrides the bot's language_code. */
+  lang?: string
   
   // Session
   resetSession?: boolean

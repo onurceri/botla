@@ -46,6 +46,24 @@ If you change user flows, also run the Playwright suites (`npm run e2e --workspa
 
 Changes to retrieval, prompts or the chat pipeline can change answer quality without breaking a single unit test. Run `make eval-test` (offline) and, if you have an API key, `make eval-quick`. To have CI run the full eval suite on your pull request, ask a maintainer to add the `run-evals` label. See [evals/README.md](evals/README.md).
 
+## README screenshots
+
+`make screenshots` regenerates `docs/screenshots/*.png`. It runs `scripts/demo/seed.sh`, which uses the public API to create `demo@example.com` with a "Halvane Instruments" organization (the fictional company from `evals/corpus`), a support bot trained on the 13 corpus documents, three smaller bots, a few real conversations, feedback and a handoff request. It then captures the dashboard and the widget with Playwright (`scripts/demo/screenshots.spec.ts`). Re-running it recreates the demo bots.
+
+Start the stack first: `make up`, `npm run dev`, and the API with working embedding and chat models. Two things make the run smoother:
+
+```bash
+# Generous rate limits: the seed and the capture make bursts of requests.
+export RATE_LIMIT_GLOBAL_REQUESTS_PER_MINUTE=2000 RATE_LIMIT_USER_REQUESTS_PER_MINUTE=2000 \
+  RATE_LIMIT_ENDPOINT_CHAT=200 RATE_LIMIT_ENDPOINT_SOURCES=200 RATE_LIMIT_AUTH_LOGIN=200
+# Optional: route embeddings and chat through OpenRouter when you have no OpenAI key.
+export OPENAI_API_BASE=https://openrouter.ai/api OPENAI_API_KEY=$OPENROUTER_API_KEY
+make be-run-no-pdf
+make screenshots                  # PW_CHANNEL=chrome uses an installed Chrome
+```
+
+Without R2 credentials the API keeps uploaded sources in memory in development, which is enough for the seed. The seed upgrades the demo user to the Ultra plan directly in the dev database (human handoff needs it), so it only works against the local `make up` stack. The demo bots use `gpt-6-luna`, the default model.
+
 ## Commits
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, with the summary in the imperative mood and without a trailing period.

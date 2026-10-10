@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { getMessages, type Lang } from '../i18n'
 
 interface ConfirmModalProps {
   isOpen: boolean
@@ -9,6 +10,7 @@ interface ConfirmModalProps {
   cancelText?: string
   onConfirm: () => void
   onCancel: () => void
+  lang?: Lang
 }
 
 const icons = {
@@ -41,11 +43,13 @@ export function ConfirmModal({
   icon = 'refresh',
   title,
   message,
-  confirmText = 'Başlat',
-  cancelText = 'Vazgeç',
+  confirmText,
+  cancelText,
   onConfirm,
-  onCancel
+  onCancel,
+  lang
 }: ConfirmModalProps) {
+  const s = getMessages(lang)
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Handle escape key
@@ -87,13 +91,13 @@ export function ConfirmModal({
             className="cbw-modal-btn cbw-modal-btn-cancel" 
             onClick={onCancel}
           >
-            {cancelText}
+            {cancelText ?? s.cancel}
           </button>
           <button 
             className="cbw-modal-btn cbw-modal-btn-confirm" 
             onClick={onConfirm}
           >
-            {confirmText}
+            {confirmText ?? s.confirmStart}
           </button>
         </div>
       </div>

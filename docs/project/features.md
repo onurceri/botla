@@ -659,7 +659,7 @@ RequestID → SecurityHeaders → Recovery → RequestLogger → MaxBytes(52MB) 
       ↓
 [Search] → [Tiered similarity search (High/Medium/Low)]
       ↓
-[LLM Generation] → [OpenAI GPT-4o / GPT-4o-mini via circuit breaker]
+[LLM Generation] → [OpenAI GPT-6 Luna / GPT-4o / GPT-4o-mini / GPT-5 via circuit breaker]
       ↓
 [Response] → [With citations and sources]
 ```
@@ -1133,10 +1133,10 @@ Rate limits per plan (configurable via env vars):
 
 | Plan | Default | Allowed Models |
 |------|---------|----------------|
-| **Free** | gpt-4o-mini | gpt-4o-mini |
+| **Free** | gpt-6-luna | gpt-6-luna, gpt-4o-mini |
 | **Starter** | gpt-4o-mini | gpt-4o-mini, gpt-4o |
-| **Pro** | gpt-4o | gpt-4o-mini, gpt-4o |
-| **Ultra** | gpt-4o | gpt-4o-mini, gpt-4o |
+| **Pro** | gpt-4o | gpt-6-luna, gpt-4o-mini, gpt-4o |
+| **Ultra** | gpt-4o | gpt-6-luna, gpt-4o-mini, gpt-4o, gpt-5 |
 
 ### 8.3 Quota Enforcement
 

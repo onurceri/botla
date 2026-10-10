@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"sort"
 	"sync"
 
 	"github.com/onurceri/botla-app/pkg/langconfig"
@@ -70,4 +72,31 @@ func (l *Loader) download(ctx context.Context, key string) ([]byte, error) {
 		return nil, fmt.Errorf("read %s: %w", key, err)
 	}
 	return data, nil
+}
+
+// MissingLanguages lists the languages whose trained sentence tokenizer is not
+// available, so the chunker silently falls back to the English Punkt model for
+// them. In production the data must be in the loader cache (downloaded from R2);
+// elsewhere it is read from the language's TokenizerData file on disk. English
+// is skipped because its fallback is the same English model.
+func MissingLanguages(l *Loader, production bool) []string {
+	var missing []string
+	for code, cfg := range langconfig.Configs {
+		if cfg.TokenizerData == "" || code == "en" {
+			continue
+		}
+		if production {
+			if l == nil {
+				missing = append(missing, code)
+			} else if _, ok := l.Get(code); !ok {
+				missing = append(missing, code)
+			}
+			continue
+		}
+		if _, err := os.Stat(cfg.TokenizerData); err != nil {
+			missing = append(missing, code)
+		}
+	}
+	sort.Strings(missing)
+	return missing
 }

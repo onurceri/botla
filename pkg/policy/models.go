@@ -10,8 +10,9 @@ type Model string
 // The provider prefix is added by the system when needed for API calls to OpenRouter.
 const (
 	// Chat/Completion models (via OpenRouter)
+	ModelGPT6Luna  Model = "gpt-6-luna"
 	ModelGPT4o     Model = "gpt-4o"
-	ModelGPT4oMini Model = "gpt-4o-mini"
+	ModelGPT4oMini Model = "gpt-4o-mini" // former default; kept valid for existing bots
 	ModelGPT5      Model = "gpt-5"
 
 	// Embedding models (via OpenAI directly)
@@ -27,7 +28,7 @@ func (m Model) String() string {
 // Note: This only validates known constants, not all possible models in the database.
 func (m Model) IsValid() bool {
 	switch m {
-	case ModelGPT4o, ModelGPT4oMini, ModelGPT5, ModelEmbeddingSmall:
+	case ModelGPT6Luna, ModelGPT4o, ModelGPT4oMini, ModelGPT5, ModelEmbeddingSmall:
 		return true
 	default:
 		return false
@@ -35,9 +36,10 @@ func (m Model) IsValid() bool {
 }
 
 // DefaultChatModel returns the default model for chat completions.
-// This should match the default in pkg/config/models.go and database migrations.
+// This should match the default in pkg/config/models.go and database migrations
+// (000007_default_model_gpt_6_luna).
 func DefaultChatModel() Model {
-	return ModelGPT4oMini
+	return ModelGPT6Luna
 }
 
 // DefaultEmbeddingModel returns the default model for embeddings.

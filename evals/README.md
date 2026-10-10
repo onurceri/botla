@@ -2,7 +2,7 @@
 
 An offline-reproducible evaluation harness for Botla's RAG chatbot. It measures retrieval quality, uses an LLM judge to check answer faithfulness (hallucination), correctness, refusal and prompt-injection resistance, measures how far that judge can be trusted, and fails CI when quality regresses.
 
-> **Status: baseline re-recorded on 2026-10-09 with 3 generation repeats**, after the multi-hop work and after reverting the multi-source prompt rule (generator `gpt-4o-mini`, judge `anthropic/claude-haiku-5.5`, both via OpenRouter; embeddings `text-embedding-3-small`; real Qdrant). Full report: [`reports/baseline.md`](reports/baseline.md). See [Experiments: multi-hop](#experiments-multi-hop) for what changed and why.
+> **Status: baseline re-recorded on 2026-10-10 with 3 generation repeats after the default chat model changed from `gpt-4o-mini` to GPT-6 Luna (`gpt-6-luna`)** (generator `gpt-6-luna`, judge `anthropic/claude-haiku-5.5`, both via OpenRouter; embeddings `text-embedding-3-small`; real Qdrant). Full report: [`reports/baseline.md`](reports/baseline.md). The previous `gpt-4o-mini` baseline (2026-10-09) is kept in [Results](#results) for comparison. See [Experiments: multi-hop](#experiments-multi-hop) for what changed and why.
 
 ## What runs, and why it is the product's code
 
@@ -14,7 +14,7 @@ The suite drives Botla's real code paths. It does not reimplement them.
 | Retrieval | `rag.OpenAIClient` embeddings → `VectorClient.SearchSimilar` (ranking) and `rag.SearchContextTiered` (what the product actually puts in the prompt) | nothing |
 | Generation | `services.ChatService.ProcessChat`: same system prompt (`BuildSystemPrompt`), tier logic, built-in tools, agentic loop and smart fallback as the HTTP chat handler | Postgres repositories → the repo's in-memory `repository.Mock*Repo` |
 
-The eval chatbot is configured like a real one: English, `gpt-4o-mini` (the product default), `max_tokens` 512, default similarity thresholds, and the seeded **pro** plan's RAG limits (top-k 5, 4,000 context tokens, smart fallback). One deliberate deviation is generation temperature 0 instead of the product default 0.7, to cut run-to-run variance in a 45-case gate. To measure the bot as shipped, pass `-gen-temperature 0.7`.
+The eval chatbot is configured like a real one: English, `gpt-6-luna` (the product default; `gpt-4o-mini` before 2026-10-10), `max_tokens` 512, default similarity thresholds, and the seeded **pro** plan's RAG limits (top-k 5, 4,000 context tokens, smart fallback). One deliberate deviation is generation temperature 0 instead of the product default 0.7, to cut run-to-run variance in a 45-case gate. To measure the bot as shipped, pass `-gen-temperature 0.7`. Caveat for `gpt-6-luna`: OpenRouter does not list `temperature` among its supported parameters, so the setting is probably dropped and has no effect for this model. The product sends no reasoning parameter, so Luna runs with the provider default; a probe call reported 0 reasoning tokens, and the eval keeps that behaviour.
 
 Usage is metered without touching product code. A `usage.Transport` is injected through the clients' existing `WithHTTPClient` options and reads each provider response's `usage` block. That gives exact prompt and completion tokens per case. Cost comes from `pricing.yaml`, or from OpenRouter's reported `usage.cost` when available.
 
@@ -62,7 +62,29 @@ The gate has a floor of `calibration.judge_kappa ≥ 0.60`. A judge that does no
 
 ## Results
 
-Current baseline (re-recorded 2026-10-09 with **`-gen-repeats 3`** and the product as shipped: no multi-source prompt rule (tested and reverted, see Experiments), query decomposition off): 45 golden cases × 3 generation repeats, and 21 calibration items. Generator `gpt-4o-mini` (the product default) at temperature 0, judge `anthropic/claude-haiku-5.5` (a different vendor, to limit self-preference bias), real Qdrant. Metered spend for the run: **$0.041** (generation $0.023, judge $0.019; embeddings and calibration cached). Full per-case report, with every repeat: [`reports/baseline.md`](reports/baseline.md).
+### Current baseline: GPT-6 Luna (2026-10-10)
+
+Re-recorded with the same harness, judge, corpus and settings as the `gpt-4o-mini` baseline below. Only the generator changed: `-gen-model gpt-6-luna -gen-provider openrouter -judge-provider openrouter -judge-model anthropic/claude-haiku-5.5 -gen-repeats 3`. 45 golden cases × 3 repeats. Retrieval and judge calibration do not depend on the generator and are unchanged (recall@5 0.971, MRR 0.951, context recall 0.956; judge kappa 0.901). Full report: [`reports/baseline.md`](reports/baseline.md).
+
+| Metric (mean over 3 repeats) | `gpt-4o-mini` (2026-10-09) | `gpt-6-luna` (2026-10-10) |
+|---|---|---|
+| Overall case pass rate (45) | 0.815 | **0.852** [0.822, 0.889, 0.844] |
+| Answerable (18) | 0.944 | 0.907 [0.889, 0.944, 0.889] |
+| Multi-hop (10) | 0.533 | 0.500 [0.4, 0.6, 0.5] |
+| Unanswerable, refuses correctly (8) | 0.917 | 1.000 |
+| Adversarial, prompt injection (9) | 0.778 | 1.000 |
+| Faithfulness pass rate (mean score) | 0.867 (0.962) | 0.948 (0.989) |
+| Correctness pass rate | 0.882 | 0.873 |
+| Refusal / injection resistance | 0.917 / 0.889 | 1.000 / 1.000 |
+| Generation latency p50 / p95 | 1.4 s / 2.4 s | 1.6 s / 3.5 s |
+| Generation tokens, prompt / completion (per 3-repeat run) | 199,380 / 7,280 | 205,758 / 11,953 |
+| Generation cost per 3-repeat run | $0.023 | $0.017 |
+
+How to read it: n is small (8 to 18 cases per slice, 3 repeats of each), and the 95% intervals in the report overlap for every slice. The clearest differences are adversarial (7 of 9 cases in every `gpt-4o-mini` repeat, 9 of 9 in every Luna repeat), refusal (every unanswerable case declined in all 3 repeats) and faithfulness (128 of 135 case-repeats fully supported against 117). Multi-hop, answerable and correctness moved by less than one case per repeat, which is within the run-to-run spread, so Luna does not fix the multi-hop weakness. Luna writes about 64% more completion tokens and is about 0.2 s slower at p50 and 1 s slower at p95, but at $0.10/$0.50 per 1M tokens its generation cost is about 25% lower. The whole run cost $0.105 metered (generation $0.017, judge $0.088): the judge cache missed because every answer was new, so this is a cold-judge figure, not comparable with the $0.041 warm-cache figure below. One run per model with one judge; treat the deltas as indicative.
+
+### Previous baseline: `gpt-4o-mini` (2026-10-09)
+
+Previous baseline (recorded 2026-10-09 with **`-gen-repeats 3`** and the product as shipped: no multi-source prompt rule (tested and reverted, see Experiments), query decomposition off): 45 golden cases × 3 generation repeats, and 21 calibration items. Generator `gpt-4o-mini` (the product default until 2026-10-10) at temperature 0, judge `anthropic/claude-haiku-5.5` (a different vendor, to limit self-preference bias), real Qdrant. Metered spend for the run: **$0.041** (generation $0.023, judge $0.019; embeddings and calibration cached). Full per-case report, with every repeat: [`reports/baseline.md`](reports/baseline.md).
 
 **Why repeats.** At temperature 0, `gpt-4o-mini` still gives different answers from run to run. Single runs of one configuration moved golden multi-hop by up to 2 of 10 cases, which is as large as the effects we try to measure. Every generation metric is now the mean over 3 repeats. The report also shows each repeat's value and the min/max/std, and lists cases that pass in some repeats and fail in others.
 
@@ -175,7 +197,7 @@ The golden E5 run was the 3-repeat baseline recorded before the revert. Run cost
 | Decomposition (shipped, off) | about +1.3 s (one `gpt-4o-mini` call before retrieval, then batched sub-query embeddings) | about 200 tokens on the bot's own model, counted in the turn's `TokensUsed` and therefore in the quota | failed or unparseable decomposition falls back to the plain query; the question is passed as data and the output is only ever used as search input |
 | Top-k 10 | unchanged | about 1.8x metered tokens per run (longer prompts) | refusal and reasoning regressions observed |
 
-### Remaining failures (current 3-repeat baseline; passes out of 3 repeats)
+### Remaining failures (`gpt-4o-mini` 3-repeat baseline; passes out of 3 repeats)
 
 - `mh-founders-s2` (0/3), `mh-scim-advance-replacement` (0/3): a required document ranks 6th and 10th, so it never reaches the context. Decomposition + top-k 10 (E4) retrieves both, but costs latency and refusal (see above), so it stays off.
 - `mh-battery-42` (1/3): `beacon-hardware-specs` scores under the 0.30 medium threshold, so it is cut, not out-ranked. Lowering thresholds would hurt refusal, so it is left alone.
@@ -213,7 +235,7 @@ Useful flags (`go run ./cmd/eval -h`):
 
 Exit codes: `0` gate passed, `1` gate failed, `2` configuration or runtime error.
 
-**Cost.** Measured: the first 2026-10-09 baseline (1 repeat, cold cache) cost $0.065 in total; the current 3-repeat baseline cost $0.041 with a warm embedding/calibration cache (generation $0.023, judge $0.019). Each extra generation repeat costs about one generation pass plus judging of any answer that changed. One full run is about 45 generations, about 100 judge calls, about 84 calibration judge calls, and a few hundred embedding calls. With `gpt-4o-mini` and a `gpt-4.1-mini` judge this should be well under $0.25. Cached re-runs only pay for generation. The report records the actual metered cost per phase and per model.
+**Cost.** Measured: the first 2026-10-09 baseline (1 repeat, cold cache) cost $0.065 in total; the 3-repeat `gpt-4o-mini` baseline cost $0.041 with a warm embedding/calibration cache (generation $0.023, judge $0.019); the current `gpt-6-luna` baseline cost $0.105 with a cold judge cache (generation $0.017, judge $0.088). Each extra generation repeat costs about one generation pass plus judging of any answer that changed. One full run is about 45 generations, about 100 judge calls, about 84 calibration judge calls, and a few hundred embedding calls. With `gpt-6-luna` and a `gpt-4.1-mini` or `claude-haiku-5.5` judge this stays well under $0.25. Cached re-runs only pay for generation. The report records the actual metered cost per phase and per model.
 
 ## Regression gate
 
@@ -234,7 +256,7 @@ CI (`.github/workflows/rag-evals.yml`) runs on manual dispatch, or on PRs touchi
 
 ## Known limitations
 
-- **One recorded baseline.** The numbers above come from a single 3-repeat run (2026-10-09) with one generator and judge pair (`gpt-4o-mini`, `anthropic/claude-haiku-5.5`). There is no history over time or across models yet.
+- **Two recorded baselines.** The numbers above come from one 3-repeat run per generator (`gpt-4o-mini` on 2026-10-09, `gpt-6-luna` on 2026-10-10), both judged by `anthropic/claude-haiku-5.5`. There is no longer history over time or across judges yet.
 - **Small sample.** 45 cases and 21 calibration labels give wide confidence intervals. The gate catches large regressions, not 2-point drifts.
 - **Single annotator.** The calibration labels were written by one person, the author of the fixtures, so there is no inter-human agreement figure. That figure is the ceiling for judge-human agreement. A second annotator is the most valuable next step.
 - **Single-turn only.** Conversation history, handoff and custom actions (tool calls to customer APIs) are not exercised. Built-in tools are offered to the model, as in production.

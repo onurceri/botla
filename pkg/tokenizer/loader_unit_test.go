@@ -337,3 +337,20 @@ func TestLoader_Preload_ContinuesOnError(t *testing.T) {
 
 // Compile-time check: mockStorage implements storage.StorageService
 var _ storage.StorageService = (*mockStorageService)(nil)
+
+func TestMissingLanguages(t *testing.T) {
+	// Production reads the loader cache: nothing cached means Turkish is missing.
+	if got := MissingLanguages(nil, true); len(got) != 1 || got[0] != "tr" {
+		t.Fatalf("production, no loader: got %v, want [tr]", got)
+	}
+	l := &Loader{cache: map[string][]byte{"tr": []byte("{}")}}
+	if got := MissingLanguages(l, true); len(got) != 0 {
+		t.Fatalf("production, tr cached: got %v, want none", got)
+	}
+
+	// Elsewhere it reads the file on disk, relative to the working directory.
+	t.Chdir(t.TempDir())
+	if got := MissingLanguages(nil, false); len(got) != 1 || got[0] != "tr" {
+		t.Fatalf("dev, no file: got %v, want [tr]", got)
+	}
+}
