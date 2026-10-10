@@ -481,6 +481,9 @@ func TestProPlan_URLLimits(t *testing.T) {
 }
 
 func TestProPlan_DynamicScraping(t *testing.T) {
+	if testing.Short() {
+		t.Skip("launches a real browser; skipped in -short mode")
+	}
 	oai, qd, override := setupStubs(t)
 	defer oai.Close()
 	defer qd.Close()

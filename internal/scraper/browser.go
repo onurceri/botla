@@ -50,6 +50,12 @@ func NewBrowserPool(size int, idleTTL time.Duration, browserPath string) (*Brows
 // initial pool fill and the post-reap refill share one implementation.
 func launchBrowser(browserPath string) *rod.Browser {
 	l := launcher.New().Headless(true)
+	if browserPath == "" {
+		// Prefer an installed Chrome/Chromium over rod's ~150 MB download.
+		if path, found := launcher.LookPath(); found {
+			browserPath = path
+		}
+	}
 	if browserPath != "" {
 		l = l.Bin(browserPath)
 	}

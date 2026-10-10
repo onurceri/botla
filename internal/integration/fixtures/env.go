@@ -5,15 +5,18 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres" // registers the postgres:// driver
+	_ "github.com/golang-migrate/migrate/v4/source/file"       // registers the file:// source
 	"github.com/onurceri/botla-app/internal/api/handlers"
 	"github.com/onurceri/botla-app/internal/db"
 	"github.com/onurceri/botla-app/internal/models"
@@ -250,11 +253,8 @@ func setupTestEnvCommon(useMocks bool, override ConfigOverride) (*TestEnv, error
 	time.Sleep(50 * time.Millisecond)
 
 	// Migrate Up
-	//nolint:gosec // this is a test helper using dynamic path
-	cmdUp := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "up")
-	output, migrateErr := cmdUp.CombinedOutput()
-	if migrateErr != nil {
-		return nil, fmt.Errorf("migration up failed: %s, %v", output, migrateErr)
+	if migrateErr := migrateUp(migrationsPath, dbURL); migrateErr != nil {
+		return nil, fmt.Errorf("migration up failed: %w", migrateErr)
 	}
 
 	// Clean up only data, don't drop tables
@@ -549,4 +549,16 @@ func (te *TestEnv) UpdatePlanLimit(planCode, field string, value any) error {
 	return testdb.UpdatePlanLimit(context.Background(), te.DB, planCode, field, value)
 }
 
-
+// migrateUp applies every pending migration in migrationsPath to dbURL using
+// golang-migrate as a library, so tests need no migrate CLI on the PATH.
+func migrateUp(migrationsPath, dbURL string) error {
+	m, err := migrate.New("file://"+migrationsPath, dbURL)
+	if err != nil {
+		return fmt.Errorf("open migrations: %w", err)
+	}
+	defer func() { _, _ = m.Close() }()
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("apply migrations: %w", err)
+	}
+	return nil
+}

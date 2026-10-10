@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -16,6 +15,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres" // registers the postgres:// driver
+	_ "github.com/golang-migrate/migrate/v4/source/file"       // registers the file:// source
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -548,11 +551,13 @@ func extractDirtyVersion(output string) int {
 // forceMigrationVersion forces the database to a specific migration version.
 // This is used to recover from a dirty state.
 func forceMigrationVersion(migrationsPath, dbURL string, version int) error {
-	//nolint:gosec // this is a test helper using dynamic path
-	cmd := exec.Command("migrate", "-path", migrationsPath, "-database", dbURL, "force", strconv.Itoa(version))
-	output, err := cmd.CombinedOutput()
+	m, err := migrate.New("file://"+migrationsPath, dbURL)
 	if err != nil {
-		return fmt.Errorf("force version %d failed: %s (error: %w)", version, string(output), err)
+		return fmt.Errorf("force version %d: open migrations: %w", version, err)
+	}
+	defer func() { _, _ = m.Close() }()
+	if err := m.Force(version); err != nil {
+		return fmt.Errorf("force version %d failed: %w", version, err)
 	}
 	return nil
 }

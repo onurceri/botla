@@ -1,0 +1,71 @@
+name: Browser tests
+
+# Tests that launch a real Chromium through go-rod. They are skipped under
+# `go test -short` (go.yml), so they run here only when scraper code changes.
+# rod uses the runner's preinstalled Google Chrome (launcher.LookPath), so no
+# browser is downloaded.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'internal/scraper/**'
+      - 'internal/integration/plan_features_pro_test.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/browser-tests.yml'
+  pull_request:
+    paths:
+      - 'internal/scraper/**'
+      - 'internal/integration/plan_features_pro_test.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/browser-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    name: Scraper browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # TestProPlan_DynamicScraping boots the API against a real PostgreSQL.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: botla
+          POSTGRES_PASSWORD: botla
+          POSTGRES_DB: botla_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U botla -d botla_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_USER: botla
+      DB_PASSWORD: botla
+      DB_NAME: botla_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor,
+      # which Chrome's sandbox uses.
+      - name: Allow Chrome sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Test
+        run: |
+          go test -timeout 10m ./internal/scraper/...
+          go test -timeout 10m -run 'TestProPlan_DynamicScraping' ./internal/integration/

@@ -7,7 +7,17 @@ import (
 	"time"
 )
 
+// skipWithoutBrowser skips tests that launch a real Chromium in -short mode. The
+// browser-tests workflow runs them against the runner's preinstalled Chrome.
+func skipWithoutBrowser(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("launches a real browser; skipped in -short mode")
+	}
+}
+
 func TestScrapeDynamicURL(t *testing.T) {
+	skipWithoutBrowser(t)
 	t.Parallel()
 	// Ensure domain whitelist allows localhost
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +56,7 @@ func TestScrapeDynamicURL(t *testing.T) {
 // instead of waiting on the reaper's tick, so the test is deterministic under CPU
 // load rather than timing-dependent.
 func TestBrowserPool_RefillsToSizeAfterReap(t *testing.T) {
+	skipWithoutBrowser(t)
 	const poolSize = 2
 	// Browser launches use Must* and panic when Chrome is unavailable; skip then.
 	defer func() {
