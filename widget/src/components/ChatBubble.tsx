@@ -1,15 +1,19 @@
-export function ChatBubble({ color, unread, onClick, icon, isOpen = false }: { 
+import { getMessages, type Lang } from '../i18n'
+
+export function ChatBubble({ color, unread, onClick, icon, isOpen = false, lang }: { 
   color: string; 
   unread: number; 
   onClick: () => void; 
   icon?: string;
   isOpen?: boolean;
+  lang?: Lang;
 }) {
+  const s = getMessages(lang)
   return (
     <button 
       className={`cbw-bubble ${icon && !isOpen ? 'has-icon' : ''} ${isOpen ? 'is-open' : ''}`} 
       onClick={onClick} 
-      aria-label={isOpen ? "Sohbeti kapat" : "Sohbeti aç"} 
+      aria-label={isOpen ? s.closeChat : s.openChat} 
       style={!icon || isOpen ? { background: color } : {}}
     >
       {isOpen ? (
@@ -25,7 +29,7 @@ export function ChatBubble({ color, unread, onClick, icon, isOpen = false }: {
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
       )}
-      {!isOpen && unread > 0 && <span className="cbw-badge" aria-label={`Okunmamış ${unread}`}>{unread}</span>}
+      {!isOpen && unread > 0 && <span className="cbw-badge" aria-label={s.unread(unread)}>{unread}</span>}
     </button>
   )
 }

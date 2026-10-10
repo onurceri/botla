@@ -4,15 +4,18 @@ import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { sanitizeUrl } from '../utils/sanitize'
 import type { ChatMessage } from '../types'
+import { getMessages, type Lang } from '../i18n'
 
 type Props = {
   m: ChatMessage
   onFeedback?: (id: string, isPositive: boolean) => void
   onSubmitEmail?: (requestId: string, email: string) => Promise<void>
   botIcon?: string
+  lang?: Lang
 }
 
-export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
+export function Message({ m, onFeedback, onSubmitEmail, botIcon, lang }: Props) {
+  const s = getMessages(lang)
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(m.emailSubmitted || false)
@@ -33,7 +36,7 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
     
     onSubmitEmail(m.handoffRequestId, email.trim())
       .then(() => setSubmitted(true))
-      .catch(() => setError('E-posta gönderilemedi, lütfen tekrar deneyin.'))
+      .catch(() => setError(s.emailSendFailed))
       .finally(() => setSubmitting(false))
   }
 
@@ -63,10 +66,10 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
             <div className="cbw-handoff-success">
               <div className="cbw-handoff-success-sparkle">✨</div>
               <div className="cbw-handoff-success-title">
-                Talebiniz alındı!
+                {s.handoffReceived}
               </div>
               <div className="cbw-handoff-success-text">
-                En kısa sürede sizinle iletişime geçeceğiz.
+                {s.handoffWillContact}
               </div>
             </div>
           ) : (
@@ -78,18 +81,18 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
                   </svg>
                 </div>
                 <span className="cbw-handoff-title">
-                  Destek Talebi
+                  {s.handoffTitle}
                 </span>
               </div>
               <div className="cbw-handoff-description">
-                Size dönüş yapabilmemiz için lütfen e-postanızı paylaşın.
+                {s.handoffDescription}
               </div>
               <form onSubmit={handleSubmitEmail} className="cbw-handoff-form">
                 <input
                   type="email"
                   value={email}
                   onInput={handleEmailChange}
-                  placeholder="e-posta@adresiniz.com"
+                  placeholder={s.emailPlaceholder}
                   disabled={submitting}
                   className="cbw-handoff-input"
                 />
@@ -99,7 +102,7 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
                   disabled={submitting || !email.includes('@')}
                   className="cbw-handoff-submit"
                 >
-                  {submitting ? 'Gönderiliyor...' : 'Gönder'}
+                  {submitting ? s.sending : s.send}
                 </button>
               </form>
             </>
@@ -160,7 +163,7 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
               <button 
                 className={`cbw-feedback-btn ${m.feedback === true ? 'active positive' : ''}`}
                 onClick={() => onFeedback(m.id!, true)}
-                title="Yararlı"
+                title={s.helpful}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill={m.feedback === true ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 10v12" />
@@ -170,7 +173,7 @@ export function Message({ m, onFeedback, onSubmitEmail, botIcon }: Props) {
               <button 
                 className={`cbw-feedback-btn ${m.feedback === false ? 'active negative' : ''}`}
                 onClick={() => onFeedback(m.id!, false)}
-                title="Yararlı değil"
+                title={s.notHelpful}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill={m.feedback === false ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 14V2" />

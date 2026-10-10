@@ -25,6 +25,9 @@ function currentParams() {
   if (script && script.dataset.bot) {
     params.set('chatbot-id', script.dataset.bot)
   }
+  if (script && script.dataset.lang) {
+    params.set('lang', script.dataset.lang)
+  }
   if (script && script.dataset.parentOrigin) {
     params.set('parent-origin', script.dataset.parentOrigin)
   }
@@ -192,6 +195,8 @@ export function mount() {
   const sessionIdOverride = params.get('session-id') || undefined
   // Optional: origin of a page that frames this one and should receive widget events
   const parentOrigin = params.get('parent-origin') || undefined
+  // Optional: force the UI language (otherwise the bot's language is used)
+  const lang = params.get('lang') || undefined
   
   // Playground preview params
   const positionStrategyRaw = params.get('position-strategy') || undefined
@@ -225,7 +230,7 @@ export function mount() {
   let currentOpenState: boolean | undefined = undefined
   const setOpenState = (isOpen: boolean) => { currentOpenState = isOpen }
   
-  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, previewMode, parentOrigin, onOpenChange: setOpenState }
+  const props = { chatbotId, apiBase, themeColor, headerColor, headerTextColor, botMessageColor, botMessageTextColor, userMessageColor, userMessageTextColor, fontFamily, position: position as "bottom-left" | "bottom-right" | undefined, botNameOverride: botName, botIconOverride: botIcon, panelHeight, panelWidth, panelBg, inputBg, inputText, chatBg, bubbleRadius, sendButtonColor, useOverrides, welcome, embedTokenUrl, captchaSiteKey, autoOpen, resetSession, sessionIdOverride, positionStrategy: positionStrategy as "fixed" | "absolute", suggestions: suggestionsOverride, hideBrandingOverride, customBrandingOverride, previewMode, parentOrigin, lang, onOpenChange: setOpenState }
   
   render(<WidgetApp {...props} />, root)
 
@@ -277,6 +282,7 @@ export function mount() {
           botNameOverride: newConfig['bot-name'] || botName,
           botIconOverride: newConfig['bot-icon'] || botIcon,
           welcome: newConfig['welcome'] || welcome,
+          lang: newConfig['lang'] || lang,
           chatBg: newConfig['chat-bg-color'] || chatBg,
           panelBg: newConfig['panel-bg-color'] || panelBg,
           inputBg: newConfig['input-bg-color'] || inputBg,

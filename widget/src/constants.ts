@@ -22,9 +22,3 @@ export const DEFAULT_API_ENDPOINTS = {
   handoff: (chatbotId: string, requestId: string) => 
     `/api/v1/public/chatbots/${encodeURIComponent(chatbotId)}/handoff/${encodeURIComponent(requestId)}/contact`,
 } as const
-
-// i18n defaults
-export const DEFAULT_ERROR_MESSAGE = {
-  tr: 'Şu an bir hata oluştu, lütfen tekrar deneyin.',
-  en: 'An error occurred, please try again.'
-}
