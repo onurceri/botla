@@ -58,6 +58,9 @@ jobs:
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.7.2
+          # Config verification downloads a JSON schema on every run, and a
+          # failed download fails the job. The linters themselves still run.
+          verify: false
 
   test:
     name: Unit tests
