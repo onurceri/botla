@@ -22,6 +22,29 @@ Botla is a multi-tenant RAG chatbot platform. It crawls and extracts your conten
 - **Privacy**: KVKK/GDPR-style data export, correction and deletion requests, plus a scheduled retention job.
 - **Measured quality**: a RAG eval suite with retrieval metrics, an LLM judge, judge-versus-human calibration and a regression gate ([see below](#rag-evaluation)).
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/04-widget.png" alt="Chat widget answering a two-part question on a sample customer site"><br><sub>The widget on a customer site, answering a two-part question from the ingested docs</sub></td>
+    <td width="50%"><img src="docs/screenshots/01-chatbots.png" alt="Chatbot list in the dashboard"><br><sub>Chatbots in a workspace</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/02-sources.png" alt="Knowledge base with 13 ingested text sources"><br><sub>Knowledge base: ingested sources and their status</sub></td>
+    <td><img src="docs/screenshots/03-playground.png" alt="Appearance settings next to a live widget preview"><br><sub>Appearance settings with a live preview</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/05-analytics.png" alt="Analytics with message, conversation, feedback and token totals and a trend chart"><br><sub>Analytics: messages, conversations, feedback and token usage</sub></td>
+    <td><img src="docs/screenshots/06-handoff.png" alt="Human handoff request with the visitor's email"><br><sub>Human handoff requests</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/07-deploy.png" alt="Embed snippet on the deploy tab"><br><sub>The embed snippet</sub></td>
+    <td></td>
+  </tr>
+</table>
+
+The dashboard UI is in Turkish. The demo data is fictional; `make screenshots` regenerates these images (see [CONTRIBUTING.md](CONTRIBUTING.md#readme-screenshots)).
+
 ## Architecture
 
 ```mermaid
