@@ -11,9 +11,9 @@
 - [ ] Verify each plan object contains `code`, `price`, `currency`, `limits`, `features`
 - [ ] Verify limits include `max_chatbots`, `max_monthly_ingestions`, `max_monthly_embedding_tokens`
 - [ ] Verify features include `scraping`, `files`, `chat`, `refresh`, `security`, `guardrails`, `branding`, `rate_limits`
-- [ ] Verify Free plan shows `chat_default_model: "openai/gpt-4o-mini"`
-- [ ] Verify Pro plan shows 2 allowed models (`gpt-4o-mini`, `gpt-4o`)
-- [ ] Verify Ultra plan shows 3 allowed models (`gpt-4o-mini`, `gpt-4o`, `gpt-5`)
+- [ ] Verify Free plan shows `chat_default_model: "openai/gpt-6-luna"`
+- [ ] Verify Pro plan shows 3 allowed models (`gpt-6-luna`, `gpt-4o-mini`, `gpt-4o`)
+- [ ] Verify Ultra plan shows 4 allowed models (`gpt-6-luna`, `gpt-4o-mini`, `gpt-4o`, `gpt-5`)
 - [ ] Verify all plans are cached after first request (subsequent request does not hit DB)
 
 **Scenario 3.1.2 — Get plan by code (valid)**

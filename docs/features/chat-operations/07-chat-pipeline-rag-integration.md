@@ -10,6 +10,6 @@
 - [ ] Retrieved chunks are assembled into the LLM context window
 - [ ] Context window respects `RAG_MAX_CONTEXT_TOKENS` env var
 - [ ] Top-K results respect `RAG_TOPK` env var
-- [ ] LLM generation uses OpenAI (GPT-4o / GPT-4o-mini) or OpenRouter provider
+- [ ] LLM generation uses OpenAI (GPT-6 Luna default; GPT-4o-mini / GPT-4o / GPT-5) or OpenRouter provider
 - [ ] Circuit breaker protects LLM calls: 50% failure threshold, 30s timeout
 - [ ] Response is streamed or returned as JSON depending on client preference

@@ -375,9 +375,9 @@
 ### 3.12 Admin — Model Registry
 
 **Scenario 3.12.1 — Get available models by plan**
-- [ ] User on Free plan (allowed: `gpt-4o-mini`) — verify only that model returned
-- [ ] User on Pro plan (allowed: `gpt-4o-mini`, `gpt-4o`) — verify both returned
-- [ ] User on Ultra plan (allowed: `gpt-4o-mini`, `gpt-4o`, `gpt-5`) — verify all three returned
+- [ ] User on Free plan (allowed: `gpt-6-luna`, `gpt-4o-mini`) — verify both returned
+- [ ] User on Pro plan (allowed: `gpt-6-luna`, `gpt-4o-mini`, `gpt-4o`) — verify all three returned
+- [ ] User on Ultra plan (allowed: `gpt-6-luna`, `gpt-4o-mini`, `gpt-4o`, `gpt-5`) — verify all four returned
 
 **Scenario 3.12.2 — Resolve API model ID**
 - [ ] Call `GetAPIModelID("gpt-4o-mini")` — verify returns `openai/gpt-4o-mini`

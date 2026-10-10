@@ -53,7 +53,7 @@ done
 
 create_bot() { # create_bot NAME DESCRIPTION COLOR WELCOME -> id
   json POST /api/v1/chatbots "$(jq -nc --arg n "$1" --arg d "$2" --arg c "$3" --arg w "$4" \
-    '{name:$n,description:$d,language:"en",model:"gpt-4o-mini",theme_color:$c,welcome_message:$w}')" | jq -r '.id'
+    '{name:$n,description:$d,language:"en",model:"gpt-6-luna",theme_color:$c,welcome_message:$w}')" | jq -r '.id'
 }
 add_text() { # add_text BOT FILE
   api POST "/api/v1/chatbots/$1/sources" -F source_type=text -F "text=<$2" >/dev/null

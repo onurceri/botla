@@ -60,7 +60,7 @@ for _, plan := range policy.AllPlans() {
 import "github.com/onurceri/botla-app/pkg/policy"
 
 // Use default model
-defaultModel := policy.DefaultChatModel() // ModelGPT4oMini
+defaultModel := policy.DefaultChatModel() // ModelGPT6Luna
 
 // Validate model
 userModel := policy.Model("gpt-4o")
@@ -127,7 +127,7 @@ When replacing magic strings with policy constants:
 ## Files
 
 - `plans.go` - Plan type and constants (Free, Pro, Ultra)
-- `models.go` - Model type and constants (GPT-4o, GPT-4o-mini, etc.)
+- `models.go` - Model type and constants (GPT-6 Luna, GPT-4o, GPT-4o-mini, GPT-5, etc.)
 - `limits.go` - Reference limit constants (for testing/validation only)
 - `*_test.go` - Comprehensive unit tests
 

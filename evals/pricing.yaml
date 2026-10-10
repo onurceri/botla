@@ -3,6 +3,7 @@
 # longest prefix, so dated snapshots like "gpt-4o-mini-2024-07-18" resolve.
 # Source: provider price pages at the time of writing; verify before relying on it.
 models:
+  gpt-6-luna: {input: 0.10, output: 0.50}
   gpt-4o-mini: {input: 0.15, output: 0.60}
   gpt-4o: {input: 2.50, output: 10.00}
   gpt-4.1-nano: {input: 0.10, output: 0.40}

@@ -178,6 +178,7 @@ The backend reads all settings from environment variables, loaded from `.env`. [
 | `PORT` | yes | HTTP port |
 | `OPENAI_API_KEY` | for chat | Embeddings and chat models |
 | `OPENROUTER_API_KEY` | no | Route chat models through OpenRouter |
+| `DEFAULT_CHATBOT_MODEL` | no | Fallback chat model (bare id); defaults to `gpt-6-luna` (GPT-6 Luna) |
 | `CORS_ALLOWED_ORIGINS` | no | Origins allowed to call the API with credentials |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | no | Storage for uploads, privacy exports and tokenizer data |
 | `RAG_TOPK`, `RAG_MAX_CONTEXT_TOKENS`, `RAG_QUERY_DECOMPOSITION` | no | Retrieval tuning |

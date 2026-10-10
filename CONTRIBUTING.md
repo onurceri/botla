@@ -62,7 +62,7 @@ make be-run-no-pdf
 make screenshots                  # PW_CHANNEL=chrome uses an installed Chrome
 ```
 
-Without R2 credentials the API keeps uploaded sources in memory in development, which is enough for the seed. The seed upgrades the demo user to the Ultra plan directly in the dev database (human handoff needs it), so it only works against the local `make up` stack. A run costs about a cent with `gpt-4o-mini`.
+Without R2 credentials the API keeps uploaded sources in memory in development, which is enough for the seed. The seed upgrades the demo user to the Ultra plan directly in the dev database (human handoff needs it), so it only works against the local `make up` stack. The demo bots use `gpt-6-luna`, the default model.
 
 ## Commits
 
