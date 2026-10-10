@@ -143,8 +143,9 @@ func initInfrastructure(cfg *config.Config, log *logger.Logger) (*infraDeps, err
 			log.Info("tokenizer_loaded", nil)
 		}
 	}
-	if storageService == nil && cfg.GO_ENV != "production" {
-		// Local development without R2: keep uploaded files in memory so text
+	if storageService == nil && cfg.GO_ENV == "development" {
+		// Local development without R2 (GO_ENV=development only, so a misconfigured
+		// deployment fails loudly instead): keep uploaded files in memory so text
 		// and PDF sources still ingest. They are lost when the server restarts.
 		// The tokenizer above keeps its built-in English fallback.
 		storageService = storage.NewMemoryStorage()
