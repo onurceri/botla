@@ -43,7 +43,9 @@ Botla is a multi-tenant RAG chatbot platform. It crawls and extracts your conten
   </tr>
 </table>
 
-The dashboard UI is in Turkish. The demo data is fictional; `make screenshots` regenerates these images (see [CONTRIBUTING.md](CONTRIBUTING.md#readme-screenshots)).
+**Built for the Turkish market.** The dashboard is Turkish-first by design: a Turkish UI, Turkish-trained sentence segmentation for chunking, and KVKK data export and deletion. Each chatbot still has its own language (Turkish or English), and the widget's UI follows it, as in the English demo bot above.
+
+The demo data is fictional; `make screenshots` regenerates these images (see [CONTRIBUTING.md](CONTRIBUTING.md#readme-screenshots)).
 
 ## Architecture
 

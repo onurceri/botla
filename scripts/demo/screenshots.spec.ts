@@ -15,7 +15,11 @@ const QUIET_CSS = `
   [data-sonner-toaster], [role="status"][aria-live], vite-error-overlay { display: none !important; }
 `
 
+// SHOTS=03,04 retakes only the screenshots whose names start with those prefixes.
+const ONLY = process.env.SHOTS?.split(',').filter(Boolean)
+
 async function shoot(page: Page, name: string) {
+  if (ONLY && !ONLY.some((p) => name.startsWith(p))) return
   await page.addStyleTag({ content: QUIET_CSS })
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(800)
