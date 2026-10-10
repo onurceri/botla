@@ -328,10 +328,29 @@ func TestQuota_RaceCondition_DoubleSpend(t *testing.T) {
 		}
 	}
 
-	if successCount > 2 {
-		t.Errorf("Race condition detected! Expected max 2 successes, got %d", successCount)
-	}
+	// Each request reserves its max_tokens (40) and, when it finishes, gives back
+	// the unused part (the mock LLM reports 20 tokens). How many of the 10
+	// requests succeed therefore depends on timing: two if all overlap, more if
+	// early ones finish first. What must always hold is that concurrent
+	// reservations never push recorded usage past the monthly limit, and that
+	// the limit actually rejects some requests.
 	if successCount == 0 {
-		t.Errorf("Too few successes, expected around 2, got 0")
+		t.Fatalf("expected some requests to succeed, got 0")
+	}
+	if successCount == concurrency {
+		t.Errorf("expected the quota to reject some of %d concurrent requests, all succeeded", concurrency)
+	}
+
+	now := time.Now().UTC()
+	periodMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	var used int
+	if err := te.DB.QueryRow(
+		`SELECT chat_tokens FROM usage_ingestions WHERE user_id = $1 AND period_month = $2`,
+		userID, periodMonth,
+	).Scan(&used); err != nil {
+		t.Fatalf("read usage: %v", err)
+	}
+	if used > 1000 {
+		t.Errorf("quota overspent under concurrency: %d tokens recorded, limit 1000 (%d requests succeeded)", used, successCount)
 	}
 }
