@@ -370,7 +370,7 @@ func TestModelConfiguration(t *testing.T) {
 	token := authToken(t, te.Server.URL, "model_test@example.com")
 
 	// Update plan to allow all these models
-	models := []string{"gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"}
+	models := []string{policy.DefaultChatModel().String(), "gpt-4o", "gpt-4o-mini", "anthropic:claude-3-5-sonnet", "google:gemini-1.5-flash", "openrouter:meta-llama/llama-3"}
 	_, _ = te.DB.Exec(`UPDATE plan_limits SET chat_allowed_models = $1 WHERE plan_id = (SELECT id FROM plans WHERE code = $2)`,
 		pq.Array(models), policy.PlanFree.String())
 	// Ensure user is on free plan
@@ -381,7 +381,7 @@ func TestModelConfiguration(t *testing.T) {
 		model    *string
 		expected string
 	}{
-		{"Default Model", nil, policy.ModelGPT4oMini.String()},
+		{"Default Model", nil, policy.DefaultChatModel().String()},
 		{"GPT-4o", stringPtr(policy.ModelGPT4o.String()), policy.ModelGPT4o.String()},
 		{"GPT-4o-Mini", stringPtr(policy.ModelGPT4oMini.String()), policy.ModelGPT4oMini.String()},
 		{"Anthropic", stringPtr("anthropic:claude-3-5-sonnet"), "anthropic/claude-3-5-sonnet"},
@@ -586,8 +586,8 @@ func TestInvalidModel(t *testing.T) {
 	lastReq := stub.Requests[len(stub.Requests)-1]
 	stub.Mu.Unlock()
 
-	if baseModelName(lastReq.Model) != policy.ModelGPT4oMini.String() {
-		t.Errorf("expected fallback to %s, got %s", policy.ModelGPT4oMini.String(), lastReq.Model)
+	if baseModelName(lastReq.Model) != policy.DefaultChatModel().String() {
+		t.Errorf("expected fallback to %s, got %s", policy.DefaultChatModel().String(), lastReq.Model)
 	}
 }
 
