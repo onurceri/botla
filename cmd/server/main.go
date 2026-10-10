@@ -139,9 +139,15 @@ func initInfrastructure(cfg *config.Config, log *logger.Logger) (*infraDeps, err
 		tokLoader = tokenizer.NewLoader(storageService)
 		if tokErr := tokLoader.Preload(context.Background()); tokErr != nil {
 			log.Warn("tokenizer_init_fallback", map[string]any{"error": tokErr.Error()})
-		} else {
-			log.Info("tokenizer_loaded", nil)
 		}
+	}
+	if missing := tokenizer.MissingLanguages(tokLoader, cfg.GO_ENV == "production"); len(missing) > 0 {
+		log.Warn("tokenizer_fallback_english", map[string]any{
+			"languages": missing,
+			"impact":    "sentences in these languages are split with the English Punkt model, which degrades chunking and retrieval",
+		})
+	} else {
+		log.Info("tokenizer_loaded", nil)
 	}
 	if storageService == nil && cfg.GO_ENV == "development" {
 		// Local development without R2 (GO_ENV=development only, so a misconfigured
